@@ -1,0 +1,317 @@
+{
+  "language": {
+    "ru": "RU",
+    "en": "EN",
+    "zh": "ZH",
+    "es": "ES",
+    "ar": "AR",
+    "hi": "HI",
+    "fr": "FR",
+    "bn": "BN",
+    "pt": "PT"
+  },
+  "app": {
+    "menu": "মেনু"
+  },
+  "common": {
+    "loading": "লোড হচ্ছে...",
+    "closeEsc": "বন্ধ করুন (Esc)",
+    "selectOption": "একটি অপশন নির্বাচন করুন"
+  },
+  "think": {
+    "label": "ভাবনা",
+    "expand": "ভাবনা প্রসারিত করুন",
+    "collapse": "ভাবনা সংকুচিত করুন"
+  },
+  "landing": {
+    "ariaLabel": "শুরু স্ক্রিন",
+    "readonlyBanner": "পাবলিক চ্যাট: শুধুমাত্র পড়ার জন্য",
+    "welcomeMessages": [
+      "স্বাগতম!",
+      "হ্যালো! আজ আমি কীভাবে সাহায্য করতে পারি?",
+      "প্রশ্ন করে কথোপকথন শুরু করুন।"
+    ]
+  },
+  "warnings": {
+    "dynamicPhrases": [
+      "ReMind ভুল করতে পারে।"
+    ]
+  },
+  "chat": {
+    "readOnly": "চ্যাট শুধুমাত্র পড়ার জন্য"
+  },
+  "composer": {
+    "attachFiles": "ফাইল সংযুক্ত করুন",
+    "attachUnavailable": "সংযুক্তি উপলভ্য নয়",
+    "attachRequiresAccount": "ফাইল সংযুক্ত করতে সাইন আপ করুন",
+    "attachUnavailableReadOnly": "পাবলিক চ্যাট: ফাইল উপলভ্য নয়",
+    "removeQuote": "উদ্ধৃতি সরান",
+    "dragDropTitle": "ফাইল এখানে ছাড়ুন",
+    "dragDropSubtitle": "ছবি, ডকুমেন্ট এবং অন্যান্য ফাইল সমর্থিত",
+    "placeholder": "আজ আপনি কী শিখতে চান?",
+    "placeholderReadOnly": "পাবলিক চ্যাট: শুধুমাত্র পড়ার জন্য",
+    "ariaInput": "বার্তা ইনপুট",
+    "send": "পাঠান",
+    "sendEnter": "পাঠান (Enter)",
+    "sendCtrlEnter": "পাঠান (Cmd+Enter / Ctrl+Enter)",
+    "stop": "থামুন",
+    "joinDialog": "কথোপকথন শুরু করুন",
+    "quote": "উদ্ধৃতি"
+  },
+  "files": {
+    "removeFile": "ফাইল সরান",
+    "model3d": "৩ডি মডেল"
+  },
+  "share": {
+    "title": "চ্যাট শেয়ারিং",
+    "close": "বন্ধ করুন",
+    "signinToManage": "চ্যাট প্রকাশনা পরিচালনা করতে সাইন ইন করুন।",
+    "status": "অবস্থা",
+    "public": "পাবলিক",
+    "private": "প্রাইভেট",
+    "enable": "শেয়ারিং সক্রিয় করুন",
+    "disable": "শেয়ারিং নিষ্ক্রিয় করুন",
+    "publicLink": "পাবলিক লিংক",
+    "enableFirst": "প্রথমে শেয়ারিং সক্রিয় করুন",
+    "copyLink": "লিংক কপি করুন",
+    "tip": "লিংক থাকলে যে কেউ পাবলিক চ্যাট দেখতে পারে। শুধু মালিক সম্পাদনা ও বার্তা পাঠাতে পারেন।",
+    "configure": "শেয়ারিং কনফিগার করুন",
+    "shareChat": "চ্যাট শেয়ার করুন",
+    "publicChat": "পাবলিক চ্যাট",
+    "readOnly": "শুধুমাত্র পড়ার জন্য"
+  },
+  "models": {
+    "choose": "মডেল নির্বাচন করুন",
+    "gemini": {
+      "desc": "গুগলের সাধারণ উদ্দেশ্যের মডেল",
+      "badge": "বিটা"
+    },
+    "echo": {
+      "desc": "পরীক্ষার জন্য ইকো বট"
+    }
+  },
+  "rail": {
+    "newChat": "নতুন চ্যাট",
+    "searchChats": "চ্যাট খুঁজুন",
+    "searchHint": "ইঙ্গিত: শিরোনাম, বিষয়, শেষ বার্তা",
+    "searchPlaceholder": "চ্যাট খুঁজতে টাইপ করুন",
+    "searchInput": "চ্যাট অনুসন্ধান",
+    "yourChats": "আপনার চ্যাট",
+    "untitled": "শিরোনামহীন",
+    "expand": "প্রসারিত",
+    "collapse": "সংকুচিত",
+    "menu": "মেনু",
+    "favorite": {
+      "add": "পছন্দের",
+      "remove": "পছন্দের থেকে সরান"
+    },
+    "public": "পাবলিক",
+    "publicChat": "পাবলিক চ্যাট",
+    "emptyHistory": "ইতিহাস খালি",
+    "noResults": "কোনো মিল নেই",
+    "settings": "সেটিংস",
+    "share": "শেয়ার করুন",
+    "rename": "নাম পরিবর্তন",
+    "delete": "মুছুন"
+  },
+  "settings": {
+    "title": "সেটিংস",
+    "close": "বন্ধ করুন",
+    "tabs": {
+      "account": "অ্যাকাউন্ট",
+      "appearance": "চেহারা",
+      "personalization": "ব্যক্তিগতকরণ",
+      "interface": "ইন্টারফেস",
+      "accessibility": "অ্যাক্সেসিবিলিটি"
+    },
+    "languages": {
+      "en": "English",
+      "ru": "Русский",
+      "zh": "中文",
+      "es": "Español",
+      "ar": "العربية",
+      "hi": "हिन्दी",
+      "fr": "Français",
+      "bn": "বাংলা",
+      "pt": "Português"
+    },
+    "account": {
+      "title": "অ্যাকাউন্ট ব্যবস্থাপনা",
+      "description": "প্রোফাইলের অবস্থা দেখুন এবং তথ্য আপডেট করুন।",
+      "status": {
+        "authorized": "সাইন ইন",
+        "guest": "অতিথি"
+      },
+      "fields": {
+        "status": "অবস্থা",
+        "email": "ইমেল",
+        "id": "আইডি",
+        "username": "ব্যবহারকারীর নাম"
+      },
+      "signedIn": "আপনি সাইন ইন করেছেন",
+      "guestMode": "আপনি অতিথি মোড ব্যবহার করছেন",
+      "unavailable": "উপলভ্য নয়",
+      "ctaTitle": "সাইন ইন করুন বা প্রোফাইল তৈরি করুন",
+      "ctaDescription": "সেটিংস ও ইতিহাস সংরক্ষণ করতে সাইন ইন করুন।",
+      "signInOrRegister": "সাইন ইন বা সাইন আপ করুন",
+      "emailReadonlyHint": "ইমেল পরিবর্তন করা যায় না।",
+      "saving": "সংরক্ষণ করা হচ্ছে...",
+      "saveChanges": "পরিবর্তন সংরক্ষণ করুন",
+      "signOut": "সাইন আউট",
+      "profileUpdated": "প্রোফাইল আপডেট হয়েছে",
+      "updateError": "আপডেট ব্যর্থ"
+    },
+    "appearance": {
+      "themeGroup": "থিম",
+      "themeLabel": "থিম",
+      "theme": {
+        "system": "সিস্টেম",
+        "dark": "ডার্ক",
+        "light": "লাইট"
+      },
+      "accentLabel": "অ্যাকসেন্ট রং",
+      "accent": {
+        "white": "সাদা",
+        "blue": "নীল",
+        "green": "সবুজ",
+        "yellow": "হলুদ",
+        "pink": "গোলাপি",
+        "orange": "কমলা",
+        "black": "কালো",
+        "purple": "বেগুনি",
+        "cyan": "সায়ান"
+      },
+      "contentGroup": "কনটেন্ট রেন্ডারিং",
+      "renderMarkdown": {
+        "title": "Markdown রেন্ডার করুন",
+        "description": "তালিকা, শিরোনাম এবং টেবিল রেন্ডার করুন।"
+      },
+      "snowBackground": {
+        "title": "তুষার ব্যাকগ্রাউন্ড",
+        "description": "ব্যাকগ্রাউন্ডে হালকা সাজসজ্জার তুষার।"
+      },
+      "compactMode": {
+        "title": "কম্প্যাক্ট মোড",
+        "description": "জায়গা বাঁচাতে স্পেসিং কমান।"
+      }
+    },
+    "personalization": {
+      "title": "ব্যক্তিগতকরণ",
+      "description": "এই তথ্যগুলো সিস্টেম প্রম্পটে যোগ করা হয়।",
+      "instructionsLabel": "কাস্টম নির্দেশনা",
+      "instructionsPlaceholder": "উদাহরণ: আমি চাই আপনি সংক্ষিপ্ত থাকুন...",
+      "nicknameLabel": "ডাকনাম",
+      "professionLabel": "পেশা",
+      "moreLabel": "অতিরিক্ত তথ্য",
+      "morePlaceholder": "আপনার সম্পর্কে অতিরিক্ত যেকোনো তথ্য..."
+    },
+    "interfaceLanguage": {
+      "title": "ইন্টারফেস ভাষা",
+      "selectLabel": "ভাষা নির্বাচন করুন"
+    },
+    "interface": {
+      "navigationGroup": "নেভিগেশন",
+      "showChatPreview": {
+        "title": "প্রিভিউ দেখান",
+        "description": "চ্যাট তালিকায় শেষ বার্তা দেখান।"
+      },
+      "showSuggestions": {
+        "title": "সাজেশন দেখান",
+        "description": "স্টার্ট পেজে প্রম্পট সাজেশন দেখান।"
+      },
+      "autocomplete": {
+        "title": "অটো-কমপ্লিট",
+        "description": "টাইপ করার সময় স্বয়ংক্রিয়ভাবে অপশন প্রস্তাব করুন।"
+      },
+      "behaviorGroup": "আচরণ",
+      "autoscroll": {
+        "title": "অটো-স্ক্রল",
+        "description": "নতুন বার্তায় স্বয়ংক্রিয়ভাবে স্ক্রল করুন।"
+      },
+      "notifyOnThinkingDone": {
+        "title": "ReMind চিন্তা শেষ করলে জানান",
+        "description": "উত্তর শেষ হলে নোটিফিকেশন দেখান।"
+      },
+      "notifyPermissionWarning": "সিস্টেম নোটিফিকেশন পেতে ব্রাউজারে নোটিফিকেশনের অনুমতি দিন।",
+      "requireCtrlEnter": {
+        "title": "পাঠাতে Cmd+Enter দরকার",
+        "description": "সক্রিয় হলে Cmd+Enter (অথবা Ctrl+Enter) বার্তা পাঠায়। Enter নতুন লাইন যোগ করে।"
+      },
+      "renderUserMarkdown": {
+        "title": "আপনার বার্তায় Markdown",
+        "description": "আপনার বার্তায় তালিকা ও কোড ব্লক রেন্ডার করুন।"
+      },
+      "autoSave": {
+        "title": "অটো-সেভ",
+        "description": "চ্যাট ইতিহাস স্বয়ংক্রিয়ভাবে সংরক্ষণ করুন।"
+      }
+    },
+    "accessibility": {
+      "typographyGroup": "টাইপোগ্রাফি",
+      "fontFamilyLabel": "ফন্ট পরিবার",
+      "fontSizeLabel": "ফন্ট সাইজ",
+      "fontSize": {
+        "small": "ছোট",
+        "normal": "স্বাভাবিক",
+        "large": "বড়",
+        "xlarge": "অতিরিক্ত বড়"
+      },
+      "accessibilityGroup": "অ্যাক্সেসিবিলিটি",
+      "keyboardSupport": {
+        "title": "কীবোর্ড সমর্থন",
+        "description": "কীবোর্ড নেভিগেশন সক্রিয় করুন।"
+      },
+      "highContrast": {
+        "title": "উচ্চ কনট্রাস্ট",
+        "description": "ইন্টারফেসের কনট্রাস্ট বাড়ান।"
+      },
+      "codeGroup": "কোড প্রদর্শন",
+      "codeWrap": {
+        "title": "কোড লাইনে মোড়ানো",
+        "description": "দীর্ঘ কোড লাইন স্বয়ংক্রিয়ভাবে মোড়ান।"
+      }
+    }
+  },
+  "translationPanel": {
+    "close": "বন্ধ করুন",
+    "loading": "অনুবাদ হচ্ছে...",
+    "noText": "অনুবাদ করার মতো কোনো লেখা নেই",
+    "unknownError": "অজানা অনুবাদ ত্রুটি",
+    "errorPrefix": "অনুবাদ ত্রুটি: {{message}}",
+    "failed": "অনুবাদ ব্যর্থ",
+    "serverErrorTitle": "অনুবাদ সার্ভার ত্রুটি",
+    "serverErrorDetails": "অনুবাদ সার্ভার সাময়িকভাবে উপলভ্য নয়। পরে চেষ্টা করুন অথবা বিকল্প সেবা ব্যবহার করুন।",
+    "serviceUnavailableTitle": "অনুবাদ সেবা উপলভ্য নয়",
+    "serviceUnavailableDetails": "অনুবাদ API পাওয়া যায়নি। সার্ভার সেটিংস যাচাই করুন।",
+    "noConnectionTitle": "সার্ভারের সাথে সংযোগ নেই",
+    "noConnectionDetails": "আপনার ইন্টারনেট সংযোগ এবং সার্ভারের উপলভ্যতা যাচাই করুন।",
+    "fallbackNotice": "বিকল্প সেবা ব্যবহার করে অনুবাদ করা হয়েছে",
+    "languages": {
+      "english": "ইংরেজি",
+      "russian": "রুশ",
+      "spanish": "স্প্যানিশ",
+      "german": "জার্মান",
+      "french": "ফরাসি",
+      "chinese": "চীনা",
+      "japanese": "জাপানি",
+      "korean": "কোরিয়ান",
+      "italian": "ইতালীয়",
+      "portuguese": "পর্তুগিজ",
+      "arabic": "আরবি",
+      "hindi": "হিন্দি",
+      "bengali": "বাংলা"
+    }
+  },
+  "quiz": {
+    "dataError": "কুইজ ডেটা ত্রুটি",
+    "completed": "কুইজ সম্পন্ন!",
+    "score": "আপনার স্কোর: {{score}} এর মধ্যে {{total}}",
+    "tryAgain": "আবার চেষ্টা করুন",
+    "question": "প্রশ্ন {{current}}/{{total}}",
+    "hint": "ইঙ্গিত",
+    "next": "পরবর্তী"
+  },
+  "spinwheel": {
+    "spin": "স্পিন"
+  }
+}

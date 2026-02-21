@@ -1,0 +1,131 @@
+.web-sources-container {
+  margin-bottom: calc(var(--spacing-unit) * 3);
+
+  padding: calc(var(--spacing-unit) * 2.5);
+
+  background-color: rgba(var(--color-white-raw), 0.03);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-fast);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.web-sources-container:hover {
+  background-color: rgba(var(--color-white-raw), 0.06);
+  border-color: var(--color-border-medium);
+}
+
+.web-sources-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.web-sources-header img {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.web-sources-pills {
+  display: flex;
+  align-items: center;
+}
+
+.source-favicon-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-surface-alt);
+  background-color: var(--color-bg-interactive);
+  object-fit: contain;
+  transition: transform var(--transition-fast);
+}
+
+.source-favicon-pill:not(:first-child) {
+  margin-left: -8px;
+}
+
+.web-sources-container:hover .source-favicon-pill {
+  transform: translateY(-2px);
+}
+
+.web-sources-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.4s ease-in-out,
+    opacity 0.3s ease-in-out,
+    margin-top 0.4s ease-in-out;
+}
+
+.web-sources-container.expanded .web-sources-list {
+  max-height: 500px;
+
+  opacity: 1;
+  margin-top: calc(var(--spacing-unit) * 3);
+}
+
+.source-item {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2.5);
+
+  padding: calc(var(--spacing-unit) * 2);
+
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.source-item:hover {
+  background-color: rgba(var(--color-white-raw), 0.05);
+}
+
+.source-item a {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2.5);
+  text-decoration: none;
+  color: inherit;
+  width: 100%;
+}
+
+.source-item .source-favicon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.source-item .source-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.source-item .source-title {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-item .source-url {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

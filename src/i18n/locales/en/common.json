@@ -1,0 +1,317 @@
+{
+  "language": {
+    "ru": "RU",
+    "en": "EN",
+    "zh": "ZH",
+    "es": "ES",
+    "ar": "AR",
+    "hi": "HI",
+    "fr": "FR",
+    "bn": "BN",
+    "pt": "PT"
+  },
+  "app": {
+    "menu": "Menu"
+  },
+  "common": {
+    "loading": "Loading...",
+    "closeEsc": "Close (Esc)",
+    "selectOption": "Select an option"
+  },
+  "think": {
+    "label": "Thoughts",
+    "expand": "Expand thoughts",
+    "collapse": "Collapse thoughts"
+  },
+  "landing": {
+    "ariaLabel": "Start screen",
+    "readonlyBanner": "Public chat: read-only",
+    "welcomeMessages": [
+      "Welcome!",
+      "Hi! How can I help today?",
+      "Start a dialog by asking a question."
+    ]
+  },
+  "warnings": {
+    "dynamicPhrases": [
+      "ReMind may make mistakes."
+    ]
+  },
+  "chat": {
+    "readOnly": "Chat is read-only"
+  },
+  "composer": {
+    "attachFiles": "Attach files",
+    "attachUnavailable": "Attachment unavailable",
+    "attachRequiresAccount": "Sign up to attach files",
+    "attachUnavailableReadOnly": "Public chat: files are unavailable",
+    "removeQuote": "Remove quote",
+    "dragDropTitle": "Drop files here",
+    "dragDropSubtitle": "Images, documents, and other files are supported",
+    "placeholder": "What would you like to learn today?",
+    "placeholderReadOnly": "Public chat: read-only",
+    "ariaInput": "Message input",
+    "send": "Send",
+    "sendEnter": "Send (Enter)",
+    "sendCtrlEnter": "Send (Cmd+Enter / Ctrl+Enter)",
+    "stop": "Stop",
+    "joinDialog": "Start a dialog",
+    "quote": "Quote"
+  },
+  "files": {
+    "removeFile": "Remove file",
+    "model3d": "3D model"
+  },
+  "share": {
+    "title": "Chat sharing",
+    "close": "Close",
+    "signinToManage": "Sign in to manage chat publishing.",
+    "status": "Status",
+    "public": "Public",
+    "private": "Private",
+    "enable": "Enable sharing",
+    "disable": "Disable sharing",
+    "publicLink": "Public link",
+    "enableFirst": "Enable sharing first",
+    "copyLink": "Copy link",
+    "tip": "Anyone with the link can view the public chat. Only the owner can edit and send messages.",
+    "configure": "Configure sharing",
+    "shareChat": "Share chat",
+    "publicChat": "Public chat",
+    "readOnly": "Read-only"
+  },
+  "models": {
+    "choose": "Choose a model",
+    "gemini": {
+      "desc": "General-purpose Google model",
+      "badge": "Beta"
+    },
+    "echo": {
+      "desc": "Echo bot for testing"
+    }
+  },
+  "rail": {
+    "newChat": "New chat",
+    "searchChats": "Search chats",
+    "searchHint": "Hint: title, topic, last message",
+    "searchPlaceholder": "Type to search chats",
+    "searchInput": "Chat search",
+    "yourChats": "Your chats",
+    "untitled": "Untitled",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "menu": "Menu",
+    "favorite": {
+      "add": "Favorite",
+      "remove": "Remove from favorites"
+    },
+    "public": "Public",
+    "publicChat": "Public chat",
+    "emptyHistory": "History is empty",
+    "noResults": "No matches",
+    "settings": "Settings",
+    "share": "Share",
+    "rename": "Rename",
+    "delete": "Delete"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close",
+    "tabs": {
+      "account": "Account",
+      "appearance": "Appearance",
+      "personalization": "Personalization",
+      "interface": "Interface",
+      "accessibility": "Accessibility"
+    },
+    "languages": {
+      "en": "English",
+      "ru": "Русский",
+      "zh": "中文",
+      "es": "Español",
+      "ar": "العربية",
+      "hi": "हिन्दी",
+      "fr": "Français",
+      "bn": "বাংলা",
+      "pt": "Português"
+    },
+    "account": {
+      "title": "Account management",
+      "description": "View profile status and update your details.",
+      "status": {
+        "authorized": "Signed in",
+        "guest": "Guest"
+      },
+      "fields": {
+        "status": "Status",
+        "email": "Email",
+        "id": "ID",
+        "username": "Username"
+      },
+      "signedIn": "You are signed in",
+      "guestMode": "You are using guest mode",
+      "unavailable": "Unavailable",
+      "ctaTitle": "Sign in or create a profile",
+      "ctaDescription": "Sign in to save settings and history.",
+      "signInOrRegister": "Sign in or sign up",
+      "emailReadonlyHint": "Email can't be changed.",
+      "saving": "Saving...",
+      "saveChanges": "Save changes",
+      "signOut": "Sign out",
+      "profileUpdated": "Profile updated",
+      "updateError": "Update failed"
+    },
+    "appearance": {
+      "themeGroup": "Theme",
+      "themeLabel": "Theme",
+      "theme": {
+        "system": "System",
+        "dark": "Dark",
+        "light": "Light"
+      },
+      "accentLabel": "Accent color",
+      "accent": {
+        "white": "White",
+        "blue": "Blue",
+        "green": "Green",
+        "yellow": "Yellow",
+        "pink": "Pink",
+        "orange": "Orange",
+        "black": "Black",
+        "purple": "Purple",
+        "cyan": "Cyan"
+      },
+      "contentGroup": "Content rendering",
+      "renderMarkdown": {
+        "title": "Render Markdown",
+        "description": "Render lists, headings, and tables."
+      },
+      "snowBackground": {
+        "title": "Snow background",
+        "description": "Light decorative snow in the background."
+      },
+      "compactMode": {
+        "title": "Compact mode",
+        "description": "Reduce spacing to save space."
+      }
+    },
+    "personalization": {
+      "title": "Personalization",
+      "description": "These details are added to the system prompt.",
+      "instructionsLabel": "Custom instructions",
+      "instructionsPlaceholder": "For example: I want you to be concise...",
+      "nicknameLabel": "Nickname",
+      "professionLabel": "Profession",
+      "moreLabel": "Additional info",
+      "morePlaceholder": "Any additional info about you..."
+    },
+    "interfaceLanguage": {
+      "title": "Interface language",
+      "selectLabel": "Select language"
+    },
+    "interface": {
+      "navigationGroup": "Navigation",
+      "showChatPreview": {
+        "title": "Show preview",
+        "description": "Show the last message in the chat list."
+      },
+      "showSuggestions": {
+        "title": "Show suggestions",
+        "description": "Show prompt suggestions on the start page."
+      },
+      "autocomplete": {
+        "title": "Autocomplete",
+        "description": "Automatically suggest options while typing."
+      },
+      "behaviorGroup": "Behavior",
+      "autoscroll": {
+        "title": "Auto-scroll",
+        "description": "Automatically scroll to new messages."
+      },
+      "notifyOnThinkingDone": {
+        "title": "Notify when ReMind is done thinking",
+        "description": "Show a notification after the response is finished."
+      },
+      "notifyPermissionWarning": "Allow notifications in your browser to receive system notifications.",
+      "requireCtrlEnter": {
+        "title": "Require Cmd+Enter to send",
+        "description": "When enabled, Cmd+Enter (or Ctrl+Enter) sends a message. Enter adds a new line."
+      },
+      "renderUserMarkdown": {
+        "title": "Markdown in your messages",
+        "description": "Render lists and code blocks in your messages."
+      },
+      "autoSave": {
+        "title": "Auto-save",
+        "description": "Automatically save chat history."
+      }
+    },
+    "accessibility": {
+      "typographyGroup": "Typography",
+      "fontFamilyLabel": "Font family",
+      "fontSizeLabel": "Font size",
+      "fontSize": {
+        "small": "Small",
+        "normal": "Normal",
+        "large": "Large",
+        "xlarge": "Extra large"
+      },
+      "accessibilityGroup": "Accessibility",
+      "keyboardSupport": {
+        "title": "Keyboard support",
+        "description": "Enable keyboard navigation."
+      },
+      "highContrast": {
+        "title": "High contrast",
+        "description": "Increase UI contrast."
+      },
+      "codeGroup": "Code display",
+      "codeWrap": {
+        "title": "Wrap code lines",
+        "description": "Automatically wrap long lines of code."
+      }
+    }
+  },
+  "translationPanel": {
+    "close": "Close",
+    "loading": "Translating...",
+    "noText": "No text to translate",
+    "unknownError": "Unknown translation error",
+    "errorPrefix": "Translation error: {{message}}",
+    "failed": "Failed to translate",
+    "serverErrorTitle": "Translation server error",
+    "serverErrorDetails": "The translation server is temporarily unavailable. Try again later or use the fallback service.",
+    "serviceUnavailableTitle": "Translation service unavailable",
+    "serviceUnavailableDetails": "Translation API not found. Check server settings.",
+    "noConnectionTitle": "No connection to server",
+    "noConnectionDetails": "Check your internet connection and server availability.",
+    "fallbackNotice": "Translated using a fallback service",
+    "languages": {
+      "english": "English",
+      "russian": "Russian",
+      "spanish": "Spanish",
+      "german": "German",
+      "french": "French",
+      "chinese": "Chinese",
+      "japanese": "Japanese",
+      "korean": "Korean",
+      "italian": "Italian",
+      "portuguese": "Portuguese",
+      "arabic": "Arabic",
+      "hindi": "Hindi",
+      "bengali": "Bengali"
+    }
+  },
+  "quiz": {
+    "dataError": "Quiz data error",
+    "completed": "Quiz completed!",
+    "score": "Your score: {{score}} out of {{total}}",
+    "tryAgain": "Try again",
+    "question": "Question {{current}}/{{total}}",
+    "hint": "Hint",
+    "next": "Next"
+  },
+  "spinwheel": {
+    "spin": "Spin"
+  }
+}

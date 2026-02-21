@@ -1,0 +1,20 @@
+<svg viewBox="0 0 64 64"
+   xmlns="http://www.w3.org/2000/svg" fill="#000000">
+   <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+   <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+   <g id="SVGRepo_iconCarrier">
+      <defs>
+         <style>.cls-1{fill:#ffffff;}.cls-1,.cls-2{stroke:#000000;}.cls-1,.cls-2,.cls-5{stroke-linecap:round;stroke-linejoin:round;stroke-width:2px;}.cls-2{fill:#ffffff;}.cls-3,.cls-4{fill:#000000;}.cls-4{opacity:0.15;}.cls-5{fill:none;stroke:#55a6ff;}</style>
+      </defs>
+      <title>clap</title>
+      <g id="clap">
+         <path class="cls-1" d="M47.2,24.83a2.56,2.56,0,0,0-3.47,1L41.84,29.3l-10.6-5.41L35.51,16a3,3,0,0,0-5.23-2.85l-3.46,6.35-.21.38-4.68,8.59-4.16-3.62a4.79,4.79,0,0,0-6.78,0,1.16,1.16,0,0,0,0,1.64l2.34,2.37c3.33,3.36,4,4.66,3.36,8.83l-1,5.83,16.44,9,2-3.77a5.59,5.59,0,0,0,4.48-2.89l8.73-16,.82-1.49A2.56,2.56,0,0,0,47.2,24.83Z"></path>
+         <path class="cls-1" d="M34.84,29.72,43.18,14.4a3,3,0,0,0-1.19-4h0a3,3,0,0,0-4,1.19L29.61,26.87"></path>
+         <rect class="cls-2" x="16.31" y="41.61" width="10.21" height="21.27" transform="translate(-34.71 46.07) rotate(-61.43)"></rect>
+         <path class="cls-1" d="M56.84,29a2.54,2.54,0,0,0-3.59.33l-2.53,3L41.37,25l5.71-6.87a3,3,0,0,0-4.58-3.81l-4.62,5.56-.28.33-6.25,7.52L28,23.38A4.8,4.8,0,0,0,21.31,22,1.16,1.16,0,0,0,21,23.64l1.83,2.77c2.62,3.95,3,5.35,1.59,9.32l-2.1,5.53,14.4,12,2.74-3.3a5.56,5.56,0,0,0,5-2l11.67-14,1.09-1.31A2.54,2.54,0,0,0,56.84,29Z"></path>
+         <path class="cls-1" d="M43.77,31.44,54.93,18a3,3,0,0,0-.39-4.2h0a3,3,0,0,0-4.19.39L39.19,27.63"></path>
+         <path class="cls-1" d="M48.54,35,57.85,23.8a2.76,2.76,0,0,0-.71-3.8h0a2.77,2.77,0,0,0-3.87,0L44,31.18"></path>
+         <rect class="cls-2" x="21.13" y="40.3" width="10.21" height="21.27" transform="translate(-29.7 38.53) rotate(-50.24)"></rect>
+      </g>
+   </g>
+</svg>

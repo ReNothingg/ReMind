@@ -1,0 +1,37 @@
+.setting-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.setting-control {
+  width: 100%;
+}
+
+.theme-select {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .setting-control-group {
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .custom-select-label {
+    font-size: 0.75rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .setting-control-group {
+    color: var(--color-text-primary);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .setting-control-group {
+    color: var(--color-text-primary);
+  }
+}

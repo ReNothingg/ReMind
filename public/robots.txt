@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+Disallow: /database
+
+Sitemap: https://chat.synvexai.com/public/sitemap.xml

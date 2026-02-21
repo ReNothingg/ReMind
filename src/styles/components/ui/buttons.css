@@ -1,0 +1,98 @@
+.btn {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  text-align: center;
+  transition: var(--transition);
+  border: none;
+  font-size: 1rem;
+}
+
+.btn-primary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing-unit) * 2);
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 6);
+  border-radius: var(--radius-lg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+  text-align: center;
+  min-height: 48px;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent-bg);
+  border-radius: 8px;
+  padding: 0.85rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+html[data-theme='light'] .btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent-bg);
+}
+
+html[data-theme='light'] .btn-primary:hover {
+  background-color: var(--color-accent);
+  opacity: 0.9;
+}
+
+html[data-theme='light'] .btn-primary:disabled {
+  background-color: var(--color-bg-interactive);
+  color: var(--color-text-tertiary);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent);
+  opacity: 0.85;
+  color: var(--color-text-on-accent-bg);
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn-outline:hover {
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent-bg);
+}
+
+.btn-danger {
+  background-color: var(--color-error);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: color-mix(in srgb, var(--color-danger), black 5%);
+  color: white;
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.btn i {
+  margin-right: 0.5rem;
+}

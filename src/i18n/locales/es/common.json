@@ -1,0 +1,317 @@
+{
+  "language": {
+    "ru": "RU",
+    "en": "EN",
+    "zh": "ZH",
+    "es": "ES",
+    "ar": "AR",
+    "hi": "HI",
+    "fr": "FR",
+    "bn": "BN",
+    "pt": "PT"
+  },
+  "app": {
+    "menu": "Menú"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "closeEsc": "Cerrar (Esc)",
+    "selectOption": "Selecciona una opción"
+  },
+  "think": {
+    "label": "Pensamientos",
+    "expand": "Expandir pensamientos",
+    "collapse": "Contraer pensamientos"
+  },
+  "landing": {
+    "ariaLabel": "Pantalla de inicio",
+    "readonlyBanner": "Chat público: solo lectura",
+    "welcomeMessages": [
+      "¡Bienvenido!",
+      "¡Hola! ¿En qué puedo ayudar hoy?",
+      "Inicia un diálogo haciendo una pregunta."
+    ]
+  },
+  "warnings": {
+    "dynamicPhrases": [
+      "ReMind puede cometer errores."
+    ]
+  },
+  "chat": {
+    "readOnly": "El chat es de solo lectura"
+  },
+  "composer": {
+    "attachFiles": "Adjuntar archivos",
+    "attachUnavailable": "Adjunto no disponible",
+    "attachRequiresAccount": "Regístrate para adjuntar archivos",
+    "attachUnavailableReadOnly": "Chat público: archivos no disponibles",
+    "removeQuote": "Quitar cita",
+    "dragDropTitle": "Suelta los archivos aquí",
+    "dragDropSubtitle": "Se admiten imágenes, documentos y otros archivos",
+    "placeholder": "¿Qué te gustaría aprender hoy?",
+    "placeholderReadOnly": "Chat público: solo lectura",
+    "ariaInput": "Entrada de mensaje",
+    "send": "Enviar",
+    "sendEnter": "Enviar (Enter)",
+    "sendCtrlEnter": "Enviar (Cmd+Enter / Ctrl+Enter)",
+    "stop": "Detener",
+    "joinDialog": "Iniciar un diálogo",
+    "quote": "Citar"
+  },
+  "files": {
+    "removeFile": "Quitar archivo",
+    "model3d": "Modelo 3D"
+  },
+  "share": {
+    "title": "Compartir chat",
+    "close": "Cerrar",
+    "signinToManage": "Inicia sesión para administrar la publicación de chats.",
+    "status": "Estado",
+    "public": "Público",
+    "private": "Privado",
+    "enable": "Habilitar compartición",
+    "disable": "Deshabilitar compartición",
+    "publicLink": "Enlace público",
+    "enableFirst": "Primero habilita la compartición",
+    "copyLink": "Copiar enlace",
+    "tip": "Cualquiera con el enlace puede ver el chat público. Solo el propietario puede editar y enviar mensajes.",
+    "configure": "Configurar compartición",
+    "shareChat": "Compartir chat",
+    "publicChat": "Chat público",
+    "readOnly": "Solo lectura"
+  },
+  "models": {
+    "choose": "Elige un modelo",
+    "gemini": {
+      "desc": "Modelo general de Google",
+      "badge": "Beta"
+    },
+    "echo": {
+      "desc": "Bot eco para pruebas"
+    }
+  },
+  "rail": {
+    "newChat": "Nuevo chat",
+    "searchChats": "Buscar chats",
+    "searchHint": "Pista: título, tema, último mensaje",
+    "searchPlaceholder": "Escribe para buscar chats",
+    "searchInput": "Búsqueda de chats",
+    "yourChats": "Tus chats",
+    "untitled": "Sin título",
+    "expand": "Expandir",
+    "collapse": "Contraer",
+    "menu": "Menú",
+    "favorite": {
+      "add": "Favorito",
+      "remove": "Quitar de favoritos"
+    },
+    "public": "Público",
+    "publicChat": "Chat público",
+    "emptyHistory": "El historial está vacío",
+    "noResults": "Sin coincidencias",
+    "settings": "Configuración",
+    "share": "Compartir",
+    "rename": "Renombrar",
+    "delete": "Eliminar"
+  },
+  "settings": {
+    "title": "Configuración",
+    "close": "Cerrar",
+    "tabs": {
+      "account": "Cuenta",
+      "appearance": "Apariencia",
+      "personalization": "Personalización",
+      "interface": "Interfaz",
+      "accessibility": "Accesibilidad"
+    },
+    "languages": {
+      "en": "English",
+      "ru": "Русский",
+      "zh": "中文",
+      "es": "Español",
+      "ar": "العربية",
+      "hi": "हिन्दी",
+      "fr": "Français",
+      "bn": "বাংলা",
+      "pt": "Português"
+    },
+    "account": {
+      "title": "Gestión de cuenta",
+      "description": "Consulta el estado del perfil y actualiza tus datos.",
+      "status": {
+        "authorized": "Con sesión",
+        "guest": "Invitado"
+      },
+      "fields": {
+        "status": "Estado",
+        "email": "Correo",
+        "id": "ID",
+        "username": "Usuario"
+      },
+      "signedIn": "Has iniciado sesión",
+      "guestMode": "Estás en modo invitado",
+      "unavailable": "No disponible",
+      "ctaTitle": "Inicia sesión o crea un perfil",
+      "ctaDescription": "Inicia sesión para guardar ajustes e historial.",
+      "signInOrRegister": "Iniciar sesión o registrarse",
+      "emailReadonlyHint": "El correo no se puede cambiar.",
+      "saving": "Guardando...",
+      "saveChanges": "Guardar cambios",
+      "signOut": "Cerrar sesión",
+      "profileUpdated": "Perfil actualizado",
+      "updateError": "Error al actualizar"
+    },
+    "appearance": {
+      "themeGroup": "Tema",
+      "themeLabel": "Tema",
+      "theme": {
+        "system": "Sistema",
+        "dark": "Oscuro",
+        "light": "Claro"
+      },
+      "accentLabel": "Color de acento",
+      "accent": {
+        "white": "Blanco",
+        "blue": "Azul",
+        "green": "Verde",
+        "yellow": "Amarillo",
+        "pink": "Rosa",
+        "orange": "Naranja",
+        "black": "Negro",
+        "purple": "Púrpura",
+        "cyan": "Cian"
+      },
+      "contentGroup": "Representación de contenido",
+      "renderMarkdown": {
+        "title": "Renderizar Markdown",
+        "description": "Renderiza listas, encabezados y tablas."
+      },
+      "snowBackground": {
+        "title": "Fondo de nieve",
+        "description": "Nieve decorativa ligera en el fondo."
+      },
+      "compactMode": {
+        "title": "Modo compacto",
+        "description": "Reduce el espaciado para ahorrar espacio."
+      }
+    },
+    "personalization": {
+      "title": "Personalización",
+      "description": "Estos datos se añaden al prompt del sistema.",
+      "instructionsLabel": "Instrucciones personalizadas",
+      "instructionsPlaceholder": "Por ejemplo: Quiero que seas conciso...",
+      "nicknameLabel": "Apodo",
+      "professionLabel": "Profesión",
+      "moreLabel": "Información adicional",
+      "morePlaceholder": "Cualquier información adicional sobre ti..."
+    },
+    "interfaceLanguage": {
+      "title": "Idioma de la interfaz",
+      "selectLabel": "Selecciona idioma"
+    },
+    "interface": {
+      "navigationGroup": "Navegación",
+      "showChatPreview": {
+        "title": "Mostrar vista previa",
+        "description": "Muestra el último mensaje en la lista de chats."
+      },
+      "showSuggestions": {
+        "title": "Mostrar sugerencias",
+        "description": "Muestra sugerencias de prompts en la página de inicio."
+      },
+      "autocomplete": {
+        "title": "Autocompletar",
+        "description": "Sugiere opciones automáticamente al escribir."
+      },
+      "behaviorGroup": "Comportamiento",
+      "autoscroll": {
+        "title": "Desplazamiento automático",
+        "description": "Desplaza automáticamente a los nuevos mensajes."
+      },
+      "notifyOnThinkingDone": {
+        "title": "Notificar cuando ReMind termine de pensar",
+        "description": "Muestra una notificación al finalizar la respuesta."
+      },
+      "notifyPermissionWarning": "Permite notificaciones en tu navegador para recibir notificaciones del sistema.",
+      "requireCtrlEnter": {
+        "title": "Requerir Cmd+Enter para enviar",
+        "description": "Cuando está habilitado, Cmd+Enter (o Ctrl+Enter) envía el mensaje. Enter añade una nueva línea."
+      },
+      "renderUserMarkdown": {
+        "title": "Markdown en tus mensajes",
+        "description": "Renderiza listas y bloques de código en tus mensajes."
+      },
+      "autoSave": {
+        "title": "Guardado automático",
+        "description": "Guarda automáticamente el historial del chat."
+      }
+    },
+    "accessibility": {
+      "typographyGroup": "Tipografía",
+      "fontFamilyLabel": "Familia tipográfica",
+      "fontSizeLabel": "Tamaño de fuente",
+      "fontSize": {
+        "small": "Pequeño",
+        "normal": "Normal",
+        "large": "Grande",
+        "xlarge": "Muy grande"
+      },
+      "accessibilityGroup": "Accesibilidad",
+      "keyboardSupport": {
+        "title": "Soporte de teclado",
+        "description": "Habilita la navegación por teclado."
+      },
+      "highContrast": {
+        "title": "Alto contraste",
+        "description": "Aumenta el contraste de la interfaz."
+      },
+      "codeGroup": "Visualización de código",
+      "codeWrap": {
+        "title": "Ajustar líneas de código",
+        "description": "Ajusta automáticamente las líneas largas de código."
+      }
+    }
+  },
+  "translationPanel": {
+    "close": "Cerrar",
+    "loading": "Traduciendo...",
+    "noText": "No hay texto para traducir",
+    "unknownError": "Error de traducción desconocido",
+    "errorPrefix": "Error de traducción: {{message}}",
+    "failed": "Error al traducir",
+    "serverErrorTitle": "Error del servidor de traducción",
+    "serverErrorDetails": "El servidor de traducción no está disponible temporalmente. Inténtalo más tarde o usa el servicio alternativo.",
+    "serviceUnavailableTitle": "Servicio de traducción no disponible",
+    "serviceUnavailableDetails": "No se encontró la API de traducción. Verifica la configuración del servidor.",
+    "noConnectionTitle": "Sin conexión al servidor",
+    "noConnectionDetails": "Verifica tu conexión a internet y la disponibilidad del servidor.",
+    "fallbackNotice": "Traducido con un servicio alternativo",
+    "languages": {
+      "english": "Inglés",
+      "russian": "Ruso",
+      "spanish": "Español",
+      "german": "Alemán",
+      "french": "Francés",
+      "chinese": "Chino",
+      "japanese": "Japonés",
+      "korean": "Coreano",
+      "italian": "Italiano",
+      "portuguese": "Portugués",
+      "arabic": "Árabe",
+      "hindi": "Hindi",
+      "bengali": "Bengalí"
+    }
+  },
+  "quiz": {
+    "dataError": "Error de datos del cuestionario",
+    "completed": "¡Cuestionario completado!",
+    "score": "Tu puntuación: {{score}} de {{total}}",
+    "tryAgain": "Intentar de nuevo",
+    "question": "Pregunta {{current}}/{{total}}",
+    "hint": "Pista",
+    "next": "Siguiente"
+  },
+  "spinwheel": {
+    "spin": "Girar"
+  }
+}

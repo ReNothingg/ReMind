@@ -1,0 +1,9 @@
+<svg fill="#000000" viewBox="0 0 24 24" id="idea-lamp" data-name="Line Color"
+    xmlns="http://www.w3.org/2000/svg" class="icon line-color">
+    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+    <g id="SVGRepo_iconCarrier">
+        <path id="primary" d="M16.19,13.29A4,4,0,0,0,15,16.12V19a1,1,0,0,1-1,1H10a1,1,0,0,1-1-1V16.13a4.13,4.13,0,0,0-1.26-2.91,6,6,0,1,1,8.45.07Z" style="fill: none; stroke: #ffffff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path>
+        <path id="secondary" d="M15,16a.49.49,0,0,0,0,.12V19a1,1,0,0,1-1,1H10a1,1,0,0,1-1-1V16.13A.57.57,0,0,0,9,16Zm-2,5H11V20h2Z" style="fill: none; stroke: #ffffff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path>
+    </g>
+</svg>

@@ -1,0 +1,68 @@
+name: Bug Report
+description: Сообщить о проблеме в работе приложения
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за репорт. Пожалуйста, заполните поля максимально точно.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Node, Docker (если используется)
+      placeholder: "Windows 11, Python 3.11, Node 20, Docker Desktop 4.x"
+    validations:
+      required: true
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      description: Где проблема наблюдается
+      placeholder: "frontend / backend / docker / auth / api / ci"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Шаги воспроизведения
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      placeholder: "Что вы ожидали увидеть"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      placeholder: "Что произошло фактически"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Traceback
+      description: Вставьте релевантные логи (без секретов)
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-check
+      options:
+        - label: Я проверил, что похожий issue не создан
+          required: true
+        - label: Я убрал секреты/персональные данные из логов
+          required: true

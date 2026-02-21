@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+
+<head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0" />
+   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+   <base href="/">
+
+   <title>ReMind</title>
+   <meta name="description" content="ReMind для всех. Даже для тех, кто еще не понял, зачем.">
+   <meta name="author" content="SynvexAI">
+   <meta name="robots" content="index, follow, max-image-preview:large">
+
+   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+   <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
+
+   <meta name="mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+   <meta name="apple-mobile-web-app-title" content="ReMind">
+
+   <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net data:; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.google.com https://www.googletagmanager.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; script-src-elem 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.google.com https://www.googletagmanager.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https: http: wss: ws:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self';">
+
+   <meta name="msapplication-TileColor" content="#1a1a1a">
+   <link rel="icon" type="image/svg+xml" href="/assets/icons/branding/logo.svg">
+   <link rel="icon" href="/icons/branding/logo-dark.svg" media="(prefers-color-scheme: light)">
+   <link rel="icon" href="/icons/branding/logo-light.svg" media="(prefers-color-scheme: dark)">
+   <link rel="apple-touch-icon" sizes="180x180" href="/icons/branding/apple-touch-icon.png">
+   <link rel="icon" type="image/png" sizes="32x32" href="/icons/branding/logo-32.png">
+   <link rel="icon" type="image/png" sizes="16x16" href="/icons/branding/logo-16.png">
+   <link rel="manifest" href="/manifest.json">
+   <link rel="shortcut icon" href="/icons/branding/logo.png">
+
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+
+   <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Inter:wght@100..800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet">
+   <link
+      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Nunito:wght@400;600;700&family=Pixelify+Sans:wght@400;600;700&family=Silkscreen:wght@400;700&family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;600;700&display=swap"
+      rel="stylesheet">
+
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
+      integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+
+   <script type="application/ld+json">
+      {
+         "@context": "https://schema.org",
+         "@type": "SoftwareApplication",
+         "name": "ReMind",
+         "applicationCategory": "ProductivityApplication",
+         "operatingSystem": "Web",
+         "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "RUB"
+         },
+         "description": "ReMind для всех. Даже для тех, кто еще не понял, зачем.",
+         "author": {
+            "@type": "Organization",
+            "name": "SynvexAI"
+         }
+      }
+   </script>
+
+   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+   <script async src="https://www.googletagmanager.com/gtag/js?id=G-WXWXW958WM"></script>
+   <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', 'G-WXWXW958WM');
+   </script>
+</head>
+
+<body>
+   <noscript>Для работы ReMind нужен JavaScript.</noscript>
+   <div id="root"></div>
+
+   <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

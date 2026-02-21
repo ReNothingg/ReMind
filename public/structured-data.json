@@ -1,0 +1,17 @@
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ReMind",
+  "applicationCategory": "ProductivityApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "RUB"
+  },
+  "description": "ReMind для всех. Даже для тех, кто еще не понял, зачем.",
+  "author": {
+    "@type": "Organization",
+    "name": "SynvexAI"
+  }
+}

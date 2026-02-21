@@ -1,0 +1,53 @@
+.variants-nav {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1.5);
+
+  margin-left: auto;
+}
+
+.variant-btn {
+  background: none;
+  border: none;
+  padding: var(--spacing-unit);
+
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  line-height: 0;
+}
+
+.variant-btn img {
+  width: 14px;
+  height: 14px;
+  display: block;
+  filter: brightness(0.8);
+}
+
+.variant-btn.active {
+  opacity: 0.8;
+}
+
+.variant-btn.active:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.variant-btn.active img {
+  filter: brightness(1);
+}
+
+.variant-btn:not(.active) {
+  cursor: default;
+}
+
+.variants-counter {
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+  min-width: 3em;
+
+  text-align: center;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.2s ease-in-out;
+}

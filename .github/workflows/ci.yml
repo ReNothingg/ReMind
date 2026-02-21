@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan tracked files for obvious secrets
+        run: |
+          python - <<'PY'
+          import re
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          patterns = [
+              r"AIza[0-9A-Za-z_-]{20,}",
+              r"GOCSPX-[A-Za-z0-9_-]{10,}",
+              r"-----BEGIN (?:RSA|EC|OPENSSH|DSA|PGP) PRIVATE KEY-----",
+          ]
+          combined = re.compile("|".join(patterns))
+
+          files = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          findings = []
+          for rel in files:
+              path = Path(rel)
+              try:
+                  text = path.read_text(encoding="utf-8", errors="ignore")
+              except Exception:
+                  continue
+              for lineno, line in enumerate(text.splitlines(), start=1):
+                  if combined.search(line):
+                      findings.append(f"{rel}:{lineno}: potential secret pattern")
+
+          if findings:
+              print("Potential hardcoded secrets found:")
+              for item in findings:
+                  print(item)
+              sys.exit(1)
+          print("No obvious secret patterns found in tracked files.")
+          PY
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+  backend-syntax:
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate Python syntax
+        run: |
+          files=$(git ls-files '*.py')
+          if [ -n "$files" ]; then
+            python -m py_compile $files
+          fi

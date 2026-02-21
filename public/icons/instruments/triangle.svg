@@ -1,0 +1,12 @@
+<svg version="1.1" id="Icons"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32" xml:space="preserve" fill="#ffffff" stroke="#ffffff">
+    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+    <g id="SVGRepo_iconCarrier">
+        <style type="text/css"> .st0{fill:none;stroke:#ffffff;stroke-width:2;stroke-linejoin:round;stroke-miterlimit:10;} .st1{fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;} </style>
+        <circle class="st1" cx="16" cy="6" r="2"></circle>
+        <polyline class="st1" points="7,23.2 16,8 27,26 8.8,26 "></polyline>
+        <line class="st1" x1="17" y1="21" x2="23" y2="29"></line>
+    </g>
+</svg>

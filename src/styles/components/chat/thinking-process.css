@@ -1,0 +1,186 @@
+.thinking-process-block {
+  font-family: var(--font-main-thinking);
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-black-raw), 0.08),
+    rgba(var(--color-black-raw), 0.18)
+  );
+  border: 1px solid rgba(var(--color-white-raw), 0.06);
+  border-radius: var(--radius-lg);
+  padding: calc(var(--spacing-unit) * 3);
+  margin: calc(var(--spacing-unit) * 3) 0;
+  transition: transform 0.3s ease;
+  overflow: hidden;
+  font-size: 0.8125rem;
+}
+
+.thinking-process-block .thinking-header {
+  display: flex;
+  align-items: center;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  position: relative;
+  padding-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.thinking-process-block.collapsible .thinking-header {
+  cursor: pointer;
+}
+
+.thinking-process-block.collapsible .thinking-header::after {
+  content: '▼';
+  font-size: 0.8em;
+  margin-left: auto;
+  padding-left: var(--spacing-unit);
+  transition: transform 0.3s ease;
+  color: var(--color-text-tertiary);
+}
+
+.thinking-process-block.collapsible.collapsed .thinking-header::after {
+  transform: rotate(-90deg);
+}
+
+.thinking-process-block .thinking-header .timer {
+  font-weight: normal;
+  color: var(--color-text-tertiary);
+  margin-left: calc(var(--spacing-unit) * 1.5);
+}
+
+.thinking-process-block .content {
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease, opacity 0.5s ease;
+  padding-left: calc(var(--spacing-unit) * 2);
+  position: relative;
+}
+
+.thinking-process-block:not(.collapsed) .content {
+  max-height: 99999px;
+  overflow: hidden;
+  opacity: 1;
+  transition: max-height 0.5s ease, opacity 0.5s ease;
+}
+
+.thought-step {
+  position: relative;
+  padding-left: calc(var(--spacing-unit) * 7);
+  padding-bottom: calc(var(--spacing-unit) * 4);
+  animation: thoughtStepFadeIn 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.thought-step::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-bg-surface);
+  border: 2px solid var(--color-text-tertiary);
+  border-radius: 50%;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.thought-step::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 16px;
+  bottom: -4px;
+  width: 2px;
+  background-color: var(--color-text-tertiary);
+  z-index: 1;
+  opacity: 0.5;
+}
+
+.thought-step:last-child::after {
+  display: none;
+}
+
+.thought-step:hover::before {
+  border-color: var(--color-text-link-hover);
+  background-color: var(--color-text-link-hover);
+  transform: scale(1.2);
+}
+
+.thought-step p {
+  margin: 0;
+}
+
+.thinking-process-block.simple-timer .thinking-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  align-items: center;
+}
+
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+}
+
+.thinking-process-block .content {
+  font-size: 1em;
+  line-height: 1.6;
+}
+
+.thinking-process-block .content > *:first-child {
+  margin-top: 0;
+}
+
+.thinking-process-block .content > *:last-child {
+  margin-bottom: 0;
+}
+
+.thinking-process-block .content h1,
+.thinking-process-block .content h2,
+.thinking-process-block .content h3,
+.thinking-process-block .content h4 {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 1em 0 0.5em 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.thinking-process-block .content h3 {
+  font-size: 1.1em;
+}
+
+.thinking-process-block .content h4 {
+  font-size: 1em;
+  border-bottom: none;
+}
+
+.thinking-process-block .content ul,
+.thinking-process-block .content ol {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+
+.thinking-process-block .content li {
+  margin-bottom: 0.4em;
+}
+
+.thinking-process-block .content strong {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.thinking-process-block .content pre {
+  margin: 1em 0;
+  border-radius: var(--radius-sm);
+}
+
+.thinking-process-block .content p {
+  margin: 0.5em 0;
+}

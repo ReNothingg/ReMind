@@ -1,0 +1,59 @@
+name: Feature Request
+description: Предложить улучшение или новую функцию
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Опишите идею в формате проблема -> решение -> ценность.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Какую реальную проблему нужно решить?
+      placeholder: "Сейчас ... и это затрудняет ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Что именно предлагается
+      placeholder: "Предлагаю добавить ... с поведением ..."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Какие альтернативы рассматривались
+      placeholder: "Вариант A ...; вариант B ..."
+    validations:
+      required: false
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: На кого и как повлияет изменение
+      placeholder: "Пользователи получат ...; риск ...; миграция ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-check
+      options:
+        - label: Я проверил, что похожий feature request не создан
+          required: true

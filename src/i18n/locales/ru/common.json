@@ -1,0 +1,317 @@
+{
+  "language": {
+    "ru": "RU",
+    "en": "EN",
+    "zh": "ZH",
+    "es": "ES",
+    "ar": "AR",
+    "hi": "HI",
+    "fr": "FR",
+    "bn": "BN",
+    "pt": "PT"
+  },
+  "app": {
+    "menu": "Меню"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "closeEsc": "Закрыть (Esc)",
+    "selectOption": "Выберите опцию"
+  },
+  "think": {
+    "label": "Размышления",
+    "expand": "Развернуть размышления",
+    "collapse": "Свернуть размышления"
+  },
+  "landing": {
+    "ariaLabel": "Стартовый экран",
+    "readonlyBanner": "Публичный чат: только чтение",
+    "welcomeMessages": [
+      "Добро пожаловать!",
+      "Привет! Чем могу помочь сегодня?",
+      "Начните диалог, задав вопрос."
+    ]
+  },
+  "warnings": {
+    "dynamicPhrases": [
+      "ReMind может допускать ошибки."
+    ]
+  },
+  "chat": {
+    "readOnly": "Чат только для чтения"
+  },
+  "composer": {
+    "attachFiles": "Прикрепить файлы",
+    "attachUnavailable": "Прикрепление недоступно",
+    "attachRequiresAccount": "Зарегистрируйтесь для прикрепления файлов",
+    "attachUnavailableReadOnly": "Публичный чат: файлы недоступны",
+    "removeQuote": "Удалить цитату",
+    "dragDropTitle": "Перетащите файлы сюда",
+    "dragDropSubtitle": "Поддерживаются изображения, документы и другие файлы",
+    "placeholder": "Что хотите узнать сегодня?",
+    "placeholderReadOnly": "Публичный чат: доступно только чтение",
+    "ariaInput": "Поле ввода сообщения",
+    "send": "Отправить",
+    "sendEnter": "Отправить (Enter)",
+    "sendCtrlEnter": "Отправить (Cmd+Enter / Ctrl+Enter)",
+    "stop": "Остановить",
+    "joinDialog": "Вступить в диалог",
+    "quote": "Цитировать"
+  },
+  "files": {
+    "removeFile": "Удалить файл",
+    "model3d": "3D модель"
+  },
+  "share": {
+    "title": "Общий доступ к чату",
+    "close": "Закрыть",
+    "signinToManage": "Войдите, чтобы управлять публикацией чатов.",
+    "status": "Статус",
+    "public": "Публичный",
+    "private": "Приватный",
+    "enable": "Включить доступ",
+    "disable": "Отключить доступ",
+    "publicLink": "Публичная ссылка",
+    "enableFirst": "Сначала включите доступ",
+    "copyLink": "Скопировать ссылку",
+    "tip": "Публичный чат доступен всем по ссылке. Редактировать и писать может только владелец.",
+    "configure": "Настроить общий доступ",
+    "shareChat": "Поделиться чатом",
+    "publicChat": "Публичный чат",
+    "readOnly": "Только чтение"
+  },
+  "models": {
+    "choose": "Выберите модель",
+    "gemini": {
+      "desc": "Универсальная модель от Google",
+      "badge": "Beta"
+    },
+    "echo": {
+      "desc": "Эхо-бот для тестов"
+    }
+  },
+  "rail": {
+    "newChat": "Новый чат",
+    "searchChats": "Поиск в чатах",
+    "searchHint": "Подсказка: название, тема, последнее сообщение",
+    "searchPlaceholder": "Введите запрос для поиска",
+    "searchInput": "Поиск чатов",
+    "yourChats": "Ваши чаты",
+    "untitled": "Без названия",
+    "expand": "Развернуть",
+    "collapse": "Свернуть",
+    "menu": "Меню",
+    "favorite": {
+      "add": "Избранное",
+      "remove": "Убрать из избранного"
+    },
+    "public": "Публичный",
+    "publicChat": "Публичный чат",
+    "emptyHistory": "История пуста",
+    "noResults": "Ничего не найдено",
+    "settings": "Настройки",
+    "share": "Поделиться",
+    "rename": "Переименовать",
+    "delete": "Удалить"
+  },
+  "settings": {
+    "title": "Настройки",
+    "close": "Закрыть",
+    "tabs": {
+      "account": "Аккаунт",
+      "appearance": "Внешний вид",
+      "personalization": "Персонализация",
+      "interface": "Интерфейс",
+      "accessibility": "Доступность"
+    },
+    "languages": {
+      "en": "English",
+      "ru": "Русский",
+      "zh": "中文",
+      "es": "Español",
+      "ar": "العربية",
+      "hi": "हिन्दी",
+      "fr": "Français",
+      "bn": "বাংলা",
+      "pt": "Português"
+    },
+    "account": {
+      "title": "Управление аккаунтом",
+      "description": "Просматривайте статус профиля и обновляйте свои данные.",
+      "status": {
+        "authorized": "Авторизован",
+        "guest": "Гость"
+      },
+      "fields": {
+        "status": "Статус",
+        "email": "Email",
+        "id": "ID",
+        "username": "Имя пользователя"
+      },
+      "signedIn": "Вы вошли в систему",
+      "guestMode": "Вы используете гостевой режим",
+      "unavailable": "Недоступно",
+      "ctaTitle": "Войдите или создайте профиль",
+      "ctaDescription": "Авторизуйтесь, чтобы сохранять настройки и историю.",
+      "signInOrRegister": "Войти или зарегистрироваться",
+      "emailReadonlyHint": "Email нельзя изменить.",
+      "saving": "Сохранение...",
+      "saveChanges": "Сохранить изменения",
+      "signOut": "Выйти из аккаунта",
+      "profileUpdated": "Профиль обновлен",
+      "updateError": "Ошибка обновления"
+    },
+    "appearance": {
+      "themeGroup": "Тема оформления",
+      "themeLabel": "Тема",
+      "theme": {
+        "system": "Как в системе",
+        "dark": "Темная",
+        "light": "Светлая"
+      },
+      "accentLabel": "Цвет акцента",
+      "accent": {
+        "white": "Белый",
+        "blue": "Синий",
+        "green": "Зеленый",
+        "yellow": "Желтый",
+        "pink": "Розовый",
+        "orange": "Оранжевый",
+        "black": "Черный",
+        "purple": "Фиолетовый",
+        "cyan": "Циан"
+      },
+      "contentGroup": "Отображение контента",
+      "renderMarkdown": {
+        "title": "Форматировать Markdown",
+        "description": "Рендерить списки, заголовки и таблицы."
+      },
+      "snowBackground": {
+        "title": "Снежный фон",
+        "description": "Легкий декоративный снег на фоне."
+      },
+      "compactMode": {
+        "title": "Компактный режим",
+        "description": "Уменьшить отступы для экономии места."
+      }
+    },
+    "personalization": {
+      "title": "Персонализация",
+      "description": "Эти данные будут добавлены к системному промпту.",
+      "instructionsLabel": "Пользовательские инструкции",
+      "instructionsPlaceholder": "Например: Я хочу, чтобы ты был краток...",
+      "nicknameLabel": "Псевдоним",
+      "professionLabel": "Профессия",
+      "moreLabel": "Дополнительная информация",
+      "morePlaceholder": "Любая дополнительная информация о вас..."
+    },
+    "interfaceLanguage": {
+      "title": "Язык интерфейса",
+      "selectLabel": "Выберите язык"
+    },
+    "interface": {
+      "navigationGroup": "Навигация",
+      "showChatPreview": {
+        "title": "Показывать предпросмотр",
+        "description": "Отображать последнее сообщение в списке чатов."
+      },
+      "showSuggestions": {
+        "title": "Показывать подсказки",
+        "description": "Отображать предложения промптов на главной странице."
+      },
+      "autocomplete": {
+        "title": "Автодополнение",
+        "description": "Автоматически предлагать варианты при вводе."
+      },
+      "behaviorGroup": "Поведение",
+      "autoscroll": {
+        "title": "Автопрокрутка",
+        "description": "Автоматически прокручивать к новым сообщениям."
+      },
+      "notifyOnThinkingDone": {
+        "title": "Уведомлять, когда ReMind закончил размышлять",
+        "description": "Показывать уведомление после завершения ответа."
+      },
+      "notifyPermissionWarning": "Разрешите уведомления в браузере, чтобы получать системные уведомления.",
+      "requireCtrlEnter": {
+        "title": "Требовать Cmd+Enter для отправки",
+        "description": "Когда включено, Cmd+Enter (или Ctrl+Enter) отправляет сообщение. Enter добавляет новую строку."
+      },
+      "renderUserMarkdown": {
+        "title": "Markdown в сообщениях пользователя",
+        "description": "Рендерить списки и блоки кода в ваших сообщениях."
+      },
+      "autoSave": {
+        "title": "Автосохранение",
+        "description": "Автоматически сохранять историю чатов."
+      }
+    },
+    "accessibility": {
+      "typographyGroup": "Типографика",
+      "fontFamilyLabel": "Семейство шрифтов",
+      "fontSizeLabel": "Размер шрифта",
+      "fontSize": {
+        "small": "Маленький",
+        "normal": "Обычный",
+        "large": "Большой",
+        "xlarge": "Очень большой"
+      },
+      "accessibilityGroup": "Доступность",
+      "keyboardSupport": {
+        "title": "Поддержка клавиатуры",
+        "description": "Включить навигацию с клавиатуры."
+      },
+      "highContrast": {
+        "title": "Высокий контраст",
+        "description": "Увеличить контрастность интерфейса."
+      },
+      "codeGroup": "Отображение кода",
+      "codeWrap": {
+        "title": "Перенос строк в коде",
+        "description": "Автоматически переносить длинные строки кода."
+      }
+    }
+  },
+  "translationPanel": {
+    "close": "Закрыть",
+    "loading": "Переводим...",
+    "noText": "Нет текста для перевода",
+    "unknownError": "Неизвестная ошибка перевода",
+    "errorPrefix": "Ошибка перевода: {{message}}",
+    "failed": "Не удалось выполнить перевод",
+    "serverErrorTitle": "Ошибка сервера перевода",
+    "serverErrorDetails": "Сервер перевода временно недоступен. Попробуйте позже или используйте резервный сервис.",
+    "serviceUnavailableTitle": "Сервис перевода недоступен",
+    "serviceUnavailableDetails": "API перевода не найден. Проверьте настройки сервера.",
+    "noConnectionTitle": "Нет соединения с сервером",
+    "noConnectionDetails": "Проверьте подключение к интернету и доступность сервера.",
+    "fallbackNotice": "Перевод выполнен с помощью резервного сервиса",
+    "languages": {
+      "english": "Английский",
+      "russian": "Русский",
+      "spanish": "Испанский",
+      "german": "Немецкий",
+      "french": "Французский",
+      "chinese": "Китайский",
+      "japanese": "Японский",
+      "korean": "Корейский",
+      "italian": "Итальянский",
+      "portuguese": "Португальский",
+      "arabic": "Арабский",
+      "hindi": "Хинди",
+      "bengali": "Бенгальский"
+    }
+  },
+  "quiz": {
+    "dataError": "Ошибка данных квиза",
+    "completed": "Квиз завершён!",
+    "score": "Ваш результат: {{score}} из {{total}}",
+    "tryAgain": "Попробовать снова",
+    "question": "Вопрос {{current}}/{{total}}",
+    "hint": "Подсказка",
+    "next": "Далее"
+  },
+  "spinwheel": {
+    "spin": "Вращать"
+  }
+}

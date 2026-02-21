@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ReMind | Вход</title>
+    <meta name="description" content="Вход в ReMind — персональный AI-ассистент для идей, обучения и продуктивности.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <link rel="canonical" href="/login">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ReMind">
+    <meta property="og:title" content="ReMind | Вход">
+    <meta property="og:description"
+        content="Вход в ReMind — персональный AI-ассистент для идей, обучения и продуктивности.">
+    <meta property="og:url" content="/login">
+    <meta property="og:image" content="/images/banners/banner.png">
+    <meta property="og:image:alt" content="ReMind — ваш персональный AI-ассистент">
+
+
+
+    <meta name="theme-color" content="#1a1a1a">
+    <link rel="manifest" href="/manifest.json">
+
+    <link rel="icon" type="image/svg+xml" href="/icons/branding/logo.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/branding/logo-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/branding/logo-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/branding/apple-touch-icon.png">
+
+    <link rel="stylesheet" href="/styles/variables.css">
+    <link rel="stylesheet" href="/styles/styles.css">
+    <link rel="stylesheet" href="/styles/components/auth/auth-modal.css">
+    <link rel="stylesheet" href="/styles/components/auth/auth.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Inter:wght@100..800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --page-bg: var(--surface-1);
+            --page-text: var(--text-primary);
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background: var(--page-bg);
+            color: var(--page-text);
+            font-family: 'Inter', 'Manrope', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .skip-link {
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--surface-2);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            transform: translateY(-140%);
+            transition: transform 0.2s ease;
+            z-index: 9999;
+        }
+
+        .skip-link:focus {
+            transform: translateY(0);
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 2rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            height: 48px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo img {
+            height: 100%;
+            width: auto;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .message {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            border-left: 4px solid #4ade80;
+        }
+
+        .message.danger {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            border-left: 4px solid #f87171;
+        }
+
+        .message.warning {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border-left: 4px solid #fbbf24;
+        }
+
+        .message.info {
+            background: rgba(96, 165, 250, 0.1);
+            color: #60a5fa;
+            border-left: 4px solid #60a5fa;
+        }
+
+        .message::before {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            background-size: 16px;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .message.success::before {
+            background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%234ade80%22 stroke-width=%222%22%3E%3Cpolyline points=%223 12 9 18 21 6%22%3E%3C/polyline%3E%3C/svg%3E');
+        }
+
+        .message.danger::before {
+            background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23f87171%22 stroke-width=%222%22%3E%3Ccircle cx=%2212%22 cy=%2712%22 r=%2710%22%3E%3C/circle%3E%3Cline x1=%2712%22 y1=%278%22 x2=%2712%22 y2=%2216%22%3E%3C/line%3E%3C/svg%3E');
+        }
+
+        .message.warning::before {
+            background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23fbbf24%22 stroke-width=%222%22%3E%3Cpath d=%22M12 2L2 20h20L12 2z%22%3E%3C/path%3E%3C/svg%3E');
+        }
+
+        .message.info::before {
+            background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2360a5fa%22 stroke-width=%222%22%3E%3Ccircle cx=%2712%22 cy=%2712%22 r=%2710%22%3E%3C/circle%3E%3Cline x1=%2712%22 y1=%2716%22 x2=%2712%22 y2=%2720%22%3E%3C/line%3E%3Cline x1=%2712%22 y1=%278%22 x2=%2712.01%22 y2=%278%22%3E%3C/line%3E%3C/svg%3E');
+        }
+
+        .loading-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .login-container {
+                padding: 1.5rem;
+            }
+
+            .login-title {
+                font-size: 1.5rem;
+            }
+
+            .login-subtitle {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <a class="skip-link" href="#main-content">Перейти к содержимому</a>
+
+    <main class="login-container" id="main-content" tabindex="-1">
+        <div class="login-header" aria-label="Вход в ReMind">
+            <div class="logo">
+                <img src="/icons/branding/logo-light.svg" alt="ReMind Logo" onerror="this.style.display='none'">
+            </div>
+            <h1 class="login-title">ReMind</h1>
+            <p class="login-subtitle">Ваш персональный ассистент</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="message {{ category }}" role="alert" aria-live="assertive">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="loading-text" role="status" aria-live="polite">Пожалуйста, подождите...</div>
+    </main>
+
+    <script>
+        window.TURNSTILE_SITE_KEY = '{{ turnstile_site_key }}';
+
+        const delay = document.querySelector('.message') ? 2000 : 1000;
+        setTimeout(() => {
+            window.location.assign('/');
+        }, delay);
+    </script>
+</body>
+
+</html>

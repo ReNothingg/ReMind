@@ -1,0 +1,130 @@
+.spin-wheel-container {
+  width: 600px;
+  height: 300px;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-medium);
+  border-radius: calc(var(--radius-lg) + 2px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  box-sizing: border-box;
+  position: relative;
+  transition: transform 0.18s ease;
+  will-change: transform;
+  margin: 0 auto;
+}
+
+.wheel-viewport {
+  width: 100%;
+  height: 225px;
+  overflow: hidden;
+  position: relative;
+}
+
+.wheel-reel {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.wheel-reel li {
+  height: 75px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 80px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: filter 0.3s ease, text-shadow 0.3s ease;
+}
+
+.wheel-reel li.active {
+  color: var(--color-text-primary);
+  text-shadow: 0 0 15px rgba(var(--color-accent-raw), 0.7);
+}
+
+.controls {
+  position: absolute;
+  bottom: 50px;
+  text-align: center;
+}
+
+.spin-button {
+  background-color: var(--color-bg-interactive);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: 50px;
+  padding: 15px 40px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.spin-button:hover {
+  background-color: var(--color-bg-interactive-hover);
+  border-color: var(--color-border-strong);
+}
+
+.spin-button.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+.spin-wheel-container.spinning .wheel-reel {
+  transition: transform 4.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.spinwheel-instance-host {
+  width: 100%;
+  max-width: 600px;
+  margin: 20px auto;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .spin-wheel-container {
+    width: 100%;
+    max-width: 500px;
+    height: 250px;
+  }
+
+  .wheel-viewport {
+    height: 175px;
+  }
+
+  .wheel-reel li {
+    font-size: 60px;
+    height: 60px;
+  }
+
+  .spin-button {
+    padding: 12px 30px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .spin-wheel-container {
+    height: 200px;
+  }
+
+  .wheel-viewport {
+    height: 140px;
+  }
+
+  .wheel-reel li {
+    font-size: 50px;
+    height: 50px;
+  }
+
+  .spin-button {
+    padding: 10px 25px;
+    font-size: 14px;
+  }
+}

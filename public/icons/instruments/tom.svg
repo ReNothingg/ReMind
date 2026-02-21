@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+    <title>Белый подвесной том (Контур)</title>
+    <g stroke="#000000" stroke-width="2" fill="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+
+        <path d="M30 70 L30 140 Q100 170 170 140 L170 70" />
+
+        <path d="M30 140 Q100 170 170 140" fill="none" stroke-width="2.5"/>
+
+        <ellipse cx="100" cy="70" rx="70" ry="20" stroke-width="2.5"/>
+        <ellipse cx="100" cy="70" rx="65" ry="18" fill="none" stroke-width="1" opacity="0.5"/>
+
+        <use href="#tomLug" x="40" y="80" />
+        <use href="#tomLug" x="70" y="95" />
+        <use href="#tomLug" x="100" y="100" />
+        <use href="#tomLug" x="130" y="95" />
+        <use href="#tomLug" x="160" y="80" />
+
+    </g>
+</svg>

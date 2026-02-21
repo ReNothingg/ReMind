@@ -1,0 +1,166 @@
+version: '3.3'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    user: "nginx"
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "5000"
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
+      - BACKEND_URL=${BACKEND_URL}
+      - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - LOCALHOST_MODE=False
+      - ALLOW_GUEST_CHATS_SAVE=False
+      - VALIDATE_USER_AGENT=True
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: remind
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: remind_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --protected-mode yes
+      --bind 0.0.0.0
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+  redis_data:

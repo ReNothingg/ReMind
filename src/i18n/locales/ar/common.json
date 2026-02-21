@@ -1,0 +1,317 @@
+{
+  "language": {
+    "ru": "RU",
+    "en": "EN",
+    "zh": "ZH",
+    "es": "ES",
+    "ar": "AR",
+    "hi": "HI",
+    "fr": "FR",
+    "bn": "BN",
+    "pt": "PT"
+  },
+  "app": {
+    "menu": "القائمة"
+  },
+  "common": {
+    "loading": "جارٍ التحميل...",
+    "closeEsc": "إغلاق (Esc)",
+    "selectOption": "اختر خيارًا"
+  },
+  "think": {
+    "label": "الأفكار",
+    "expand": "توسيع الأفكار",
+    "collapse": "طي الأفكار"
+  },
+  "landing": {
+    "ariaLabel": "شاشة البدء",
+    "readonlyBanner": "دردشة عامة: للقراءة فقط",
+    "welcomeMessages": [
+      "مرحبًا!",
+      "مرحبًا! كيف يمكنني المساعدة اليوم؟",
+      "ابدأ حوارًا بطرح سؤال."
+    ]
+  },
+  "warnings": {
+    "dynamicPhrases": [
+      "قد يخطئ ReMind."
+    ]
+  },
+  "chat": {
+    "readOnly": "الدردشة للقراءة فقط"
+  },
+  "composer": {
+    "attachFiles": "إرفاق ملفات",
+    "attachUnavailable": "الإرفاق غير متاح",
+    "attachRequiresAccount": "سجّل لتتمكن من إرفاق الملفات",
+    "attachUnavailableReadOnly": "دردشة عامة: الملفات غير متاحة",
+    "removeQuote": "إزالة الاقتباس",
+    "dragDropTitle": "أسقط الملفات هنا",
+    "dragDropSubtitle": "تُدعم الصور والمستندات وملفات أخرى",
+    "placeholder": "ماذا تريد أن تتعلم اليوم؟",
+    "placeholderReadOnly": "دردشة عامة: للقراءة فقط",
+    "ariaInput": "إدخال الرسالة",
+    "send": "إرسال",
+    "sendEnter": "إرسال (Enter)",
+    "sendCtrlEnter": "إرسال (Cmd+Enter / Ctrl+Enter)",
+    "stop": "إيقاف",
+    "joinDialog": "ابدأ حوارًا",
+    "quote": "اقتباس"
+  },
+  "files": {
+    "removeFile": "إزالة الملف",
+    "model3d": "نموذج ثلاثي الأبعاد"
+  },
+  "share": {
+    "title": "مشاركة الدردشة",
+    "close": "إغلاق",
+    "signinToManage": "سجّل الدخول لإدارة نشر الدردشات.",
+    "status": "الحالة",
+    "public": "عام",
+    "private": "خاص",
+    "enable": "تفعيل المشاركة",
+    "disable": "إيقاف المشاركة",
+    "publicLink": "رابط عام",
+    "enableFirst": "فعّل المشاركة أولًا",
+    "copyLink": "نسخ الرابط",
+    "tip": "يمكن لأي شخص لديه الرابط عرض الدردشة العامة. المالك فقط يمكنه التعديل والإرسال.",
+    "configure": "إعداد المشاركة",
+    "shareChat": "مشاركة الدردشة",
+    "publicChat": "دردشة عامة",
+    "readOnly": "للقراءة فقط"
+  },
+  "models": {
+    "choose": "اختر نموذجًا",
+    "gemini": {
+      "desc": "نموذج عام من Google",
+      "badge": "تجريبي"
+    },
+    "echo": {
+      "desc": "بوت صدى للاختبار"
+    }
+  },
+  "rail": {
+    "newChat": "دردشة جديدة",
+    "searchChats": "بحث في الدردشات",
+    "searchHint": "تلميح: العنوان، الموضوع، آخر رسالة",
+    "searchPlaceholder": "اكتب للبحث في الدردشات",
+    "searchInput": "بحث الدردشات",
+    "yourChats": "دردشاتك",
+    "untitled": "بدون عنوان",
+    "expand": "توسيع",
+    "collapse": "طي",
+    "menu": "القائمة",
+    "favorite": {
+      "add": "مفضلة",
+      "remove": "إزالة من المفضلة"
+    },
+    "public": "عام",
+    "publicChat": "دردشة عامة",
+    "emptyHistory": "السجل فارغ",
+    "noResults": "لا توجد نتائج",
+    "settings": "الإعدادات",
+    "share": "مشاركة",
+    "rename": "إعادة تسمية",
+    "delete": "حذف"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "close": "إغلاق",
+    "tabs": {
+      "account": "الحساب",
+      "appearance": "المظهر",
+      "personalization": "التخصيص",
+      "interface": "الواجهة",
+      "accessibility": "إمكانية الوصول"
+    },
+    "languages": {
+      "en": "English",
+      "ru": "Русский",
+      "zh": "中文",
+      "es": "Español",
+      "ar": "العربية",
+      "hi": "हिन्दी",
+      "fr": "Français",
+      "bn": "বাংলা",
+      "pt": "Português"
+    },
+    "account": {
+      "title": "إدارة الحساب",
+      "description": "اعرض حالة الملف الشخصي وحدّث بياناتك.",
+      "status": {
+        "authorized": "مسجل الدخول",
+        "guest": "ضيف"
+      },
+      "fields": {
+        "status": "الحالة",
+        "email": "البريد الإلكتروني",
+        "id": "المعرّف",
+        "username": "اسم المستخدم"
+      },
+      "signedIn": "أنت مسجل الدخول",
+      "guestMode": "أنت تستخدم وضع الضيف",
+      "unavailable": "غير متاح",
+      "ctaTitle": "سجّل الدخول أو أنشئ ملفًا",
+      "ctaDescription": "سجّل الدخول لحفظ الإعدادات والسجل.",
+      "signInOrRegister": "تسجيل الدخول أو التسجيل",
+      "emailReadonlyHint": "لا يمكن تغيير البريد الإلكتروني.",
+      "saving": "جارٍ الحفظ...",
+      "saveChanges": "حفظ التغييرات",
+      "signOut": "تسجيل الخروج",
+      "profileUpdated": "تم تحديث الملف الشخصي",
+      "updateError": "فشل التحديث"
+    },
+    "appearance": {
+      "themeGroup": "السمة",
+      "themeLabel": "السمة",
+      "theme": {
+        "system": "النظام",
+        "dark": "داكن",
+        "light": "فاتح"
+      },
+      "accentLabel": "لون التمييز",
+      "accent": {
+        "white": "أبيض",
+        "blue": "أزرق",
+        "green": "أخضر",
+        "yellow": "أصفر",
+        "pink": "وردي",
+        "orange": "برتقالي",
+        "black": "أسود",
+        "purple": "بنفسجي",
+        "cyan": "سماوي"
+      },
+      "contentGroup": "عرض المحتوى",
+      "renderMarkdown": {
+        "title": "عرض Markdown",
+        "description": "يعرض القوائم والعناوين والجداول."
+      },
+      "snowBackground": {
+        "title": "خلفية ثلجية",
+        "description": "ثلج زخرفي خفيف في الخلفية."
+      },
+      "compactMode": {
+        "title": "وضع مضغوط",
+        "description": "تقليل المسافات لتوفير المساحة."
+      }
+    },
+    "personalization": {
+      "title": "التخصيص",
+      "description": "تتم إضافة هذه التفاصيل إلى مطالبة النظام.",
+      "instructionsLabel": "تعليمات مخصصة",
+      "instructionsPlaceholder": "مثال: أريدك أن تكون مختصرًا...",
+      "nicknameLabel": "اللقب",
+      "professionLabel": "المهنة",
+      "moreLabel": "معلومات إضافية",
+      "morePlaceholder": "أي معلومات إضافية عنك..."
+    },
+    "interfaceLanguage": {
+      "title": "لغة الواجهة",
+      "selectLabel": "اختر اللغة"
+    },
+    "interface": {
+      "navigationGroup": "التنقل",
+      "showChatPreview": {
+        "title": "عرض المعاينة",
+        "description": "عرض آخر رسالة في قائمة الدردشات."
+      },
+      "showSuggestions": {
+        "title": "عرض الاقتراحات",
+        "description": "عرض اقتراحات المطالبات في الصفحة الرئيسية."
+      },
+      "autocomplete": {
+        "title": "إكمال تلقائي",
+        "description": "اقتراح خيارات تلقائيًا أثناء الكتابة."
+      },
+      "behaviorGroup": "السلوك",
+      "autoscroll": {
+        "title": "تمرير تلقائي",
+        "description": "التمرير تلقائيًا إلى الرسائل الجديدة."
+      },
+      "notifyOnThinkingDone": {
+        "title": "إشعار عند انتهاء ReMind من التفكير",
+        "description": "عرض إشعار بعد انتهاء الرد."
+      },
+      "notifyPermissionWarning": "اسمح بالإشعارات في المتصفح لتلقي إشعارات النظام.",
+      "requireCtrlEnter": {
+        "title": "يتطلب Cmd+Enter للإرسال",
+        "description": "عند التفعيل، يرسل Cmd+Enter (أو Ctrl+Enter) الرسالة. يضيف Enter سطرًا جديدًا."
+      },
+      "renderUserMarkdown": {
+        "title": "Markdown في رسائلك",
+        "description": "عرض القوائم وكتل الشيفرة في رسائلك."
+      },
+      "autoSave": {
+        "title": "حفظ تلقائي",
+        "description": "حفظ سجل الدردشة تلقائيًا."
+      }
+    },
+    "accessibility": {
+      "typographyGroup": "الطباعة",
+      "fontFamilyLabel": "عائلة الخط",
+      "fontSizeLabel": "حجم الخط",
+      "fontSize": {
+        "small": "صغير",
+        "normal": "عادي",
+        "large": "كبير",
+        "xlarge": "كبير جدًا"
+      },
+      "accessibilityGroup": "إمكانية الوصول",
+      "keyboardSupport": {
+        "title": "دعم لوحة المفاتيح",
+        "description": "تمكين التنقل بلوحة المفاتيح."
+      },
+      "highContrast": {
+        "title": "تباين عالٍ",
+        "description": "زيادة تباين الواجهة."
+      },
+      "codeGroup": "عرض الشيفرة",
+      "codeWrap": {
+        "title": "التفاف أسطر الشيفرة",
+        "description": "التفاف أسطر الشيفرة الطويلة تلقائيًا."
+      }
+    }
+  },
+  "translationPanel": {
+    "close": "إغلاق",
+    "loading": "جارٍ الترجمة...",
+    "noText": "لا يوجد نص للترجمة",
+    "unknownError": "خطأ ترجمة غير معروف",
+    "errorPrefix": "خطأ ترجمة: {{message}}",
+    "failed": "فشلت الترجمة",
+    "serverErrorTitle": "خطأ في خادم الترجمة",
+    "serverErrorDetails": "خادم الترجمة غير متاح مؤقتًا. حاول لاحقًا أو استخدم الخدمة البديلة.",
+    "serviceUnavailableTitle": "خدمة الترجمة غير متاحة",
+    "serviceUnavailableDetails": "لم يتم العثور على واجهة ترجمة. تحقق من إعدادات الخادم.",
+    "noConnectionTitle": "لا يوجد اتصال بالخادم",
+    "noConnectionDetails": "تحقق من اتصال الإنترنت وتوفر الخادم.",
+    "fallbackNotice": "تمت الترجمة باستخدام خدمة بديلة",
+    "languages": {
+      "english": "الإنجليزية",
+      "russian": "الروسية",
+      "spanish": "الإسبانية",
+      "german": "الألمانية",
+      "french": "الفرنسية",
+      "chinese": "الصينية",
+      "japanese": "اليابانية",
+      "korean": "الكورية",
+      "italian": "الإيطالية",
+      "portuguese": "البرتغالية",
+      "arabic": "العربية",
+      "hindi": "الهندية",
+      "bengali": "البنغالية"
+    }
+  },
+  "quiz": {
+    "dataError": "خطأ في بيانات الاختبار",
+    "completed": "اكتمل الاختبار!",
+    "score": "درجتك: {{score}} من {{total}}",
+    "tryAgain": "حاول مرة أخرى",
+    "question": "السؤال {{current}}/{{total}}",
+    "hint": "تلميح",
+    "next": "التالي"
+  },
+  "spinwheel": {
+    "spin": "أدر"
+  }
+}
