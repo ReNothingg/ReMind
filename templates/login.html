@@ -18,8 +18,6 @@
     <meta property="og:image" content="/images/banners/banner.png">
     <meta property="og:image:alt" content="ReMind — ваш персональный AI-ассистент">
 
-
-
     <meta name="theme-color" content="#1a1a1a">
     <link rel="manifest" href="/manifest.json">
 
@@ -257,6 +255,7 @@
             <p class="login-subtitle">Ваш персональный ассистент</p>
         </div>
 
+
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
@@ -270,11 +269,11 @@
 
     <script>
         window.TURNSTILE_SITE_KEY = '{{ turnstile_site_key }}';
+        window.location.assign('/');
+        // const delay = document.querySelector('.message') ? 2000 : 1000;
+        // setTimeout(() => {
 
-        const delay = document.querySelector('.message') ? 2000 : 1000;
-        setTimeout(() => {
-            window.location.assign('/');
-        }, delay);
+        // }, delay);
     </script>
 </body>
 

@@ -155,6 +155,11 @@ def _is_allowed_hostname(hostname: str, allowed_hosts) -> bool:
     return False
 
 
+def _is_loopback_hostname(hostname: str) -> bool:
+    host = (hostname or "").lower().strip(".")
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
 def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:
     if not target or not isinstance(target, str):
         return False
@@ -582,17 +587,19 @@ def register_auth_routes(app):
         )
     @app.route("/login/google")
     def login_google():
-        from config import BACKEND_URL, ALLOWED_HOSTS
+        from config import BACKEND_URL, ALLOWED_HOSTS, LOCALHOST_MODE
 
         redirect_to_candidate = request.args.get("redirect_to") or request.headers.get("Referer") or ""
         if _is_safe_redirect_target(redirect_to_candidate, ALLOWED_HOSTS):
             session["oauth_redirect_to"] = redirect_to_candidate
 
-        if BACKEND_URL:
+        request_host = urlparse(request.host_url).hostname
+        prefer_request_host = LOCALHOST_MODE or _is_loopback_hostname(request_host)
+
+        if BACKEND_URL and not prefer_request_host:
             redirect_uri = f"{BACKEND_URL.rstrip('/')}{url_for('authorize_google')}"
         else:
-            parsed_host = urlparse(request.host_url)
-            if not _is_allowed_hostname(parsed_host.hostname, ALLOWED_HOSTS):
+            if not _is_allowed_hostname(request_host, ALLOWED_HOSTS):
                 app.logger.warning("Blocked OAuth start due to untrusted request host")
                 return redirect(url_for("login"))
             redirect_uri = f"{request.host_url.rstrip('/')}{url_for('authorize_google')}"
