@@ -30,6 +30,13 @@ export default tseslint.config(
       globals: {
         ...globals.browser,
         ...globals.node,
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
       },
     },
     plugins: {

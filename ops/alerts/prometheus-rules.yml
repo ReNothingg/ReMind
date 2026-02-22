@@ -1,0 +1,33 @@
+groups:
+  - name: remind-api-alerts
+    rules:
+      - alert: ReMindHigh5xxRate
+        expr: sum(rate(remind_endpoint_errors_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx rate on ReMind API"
+          description: "5xx rate exceeded threshold for /chat, /translate, /synthesize."
+
+      - alert: ReMindTimeoutSpike
+        expr: sum(rate(remind_endpoint_timeouts_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Timeout spike on ReMind API"
+          description: "Timeout-like responses or very slow requests exceeded threshold."
+
+      - alert: ReMindHighLatency
+        expr: (
+          sum(rate(remind_endpoint_latency_ms_sum{endpoint=~"/chat|/translate|/synthesize"}[5m]))
+          /
+          sum(rate(remind_endpoint_latency_ms_count{endpoint=~"/chat|/translate|/synthesize"}[5m]))
+        ) > 2500
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High average latency on ReMind API"
+          description: "Average latency is above 2500ms for key endpoints."

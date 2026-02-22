@@ -1,5 +1,6 @@
 import os
-from datetime import timedelta
+import time
+from datetime import datetime, timedelta, timezone
 from flask import Flask, request, g
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -22,6 +23,7 @@ from config import (
     VALIDATE_USER_AGENT,
     ALLOWED_USER_AGENT_PATTERNS,
     BYPASS_USER_AGENT_VALIDATION_ROUTES,
+    SQLALCHEMY_DATABASE_URI,
     IS_PRODUCTION,
     ALLOWED_HOSTS,
 )
@@ -34,6 +36,7 @@ from utils.security_headers import apply_security_headers, get_safe_error_respon
 from utils.session_security import configure_session, update_session_activity
 from utils.audit_log import log_audit_event, AuditEvents
 from utils.privacy import anonymize_ip
+from utils.observability import start_request_context, finish_request_context
 from routes.api import api_bp
 
 def create_app():
@@ -53,13 +56,15 @@ def create_app():
         static_url_path="",
         template_folder="templates",
     )
+    app.config["APP_STARTED_AT"] = datetime.now(timezone.utc)
+    app.config["APP_STARTED_MONOTONIC"] = time.perf_counter()
     app.config.from_mapping(
         UPLOAD_FOLDER=str(UPLOAD_FOLDER),
         CHATS_FOLDER=str(CHATS_FOLDER),
         CREATE_IMAGE_FOLDER=str(CREATE_IMAGE_FOLDER),
         MAX_CONTENT_LENGTH=MAX_CONTENT_LENGTH,
         SECRET_KEY=SECRET_KEY,
-        SQLALCHEMY_DATABASE_URI=app.config.get("SQLALCHEMY_DATABASE_URI") or f"sqlite:///{BASE_PATH}/database/users.db",
+        SQLALCHEMY_DATABASE_URI=SQLALCHEMY_DATABASE_URI,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         PREFERRED_URL_SCHEME="https",
@@ -110,6 +115,10 @@ def create_app():
     )
 
     @app.before_request
+    def attach_request_context():
+        start_request_context()
+
+    @app.before_request
     def validate_user_agent():
         is_valid, error_message = user_agent_validator.validate_request()
 
@@ -131,6 +140,7 @@ def create_app():
     def add_security_headers(response):
         response = add_csrf_token_to_response(response)
         response = apply_security_headers(response)
+        response = finish_request_context(response)
 
         return response
 

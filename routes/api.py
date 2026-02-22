@@ -17,6 +17,7 @@ from flask import (
     session,
     current_app,
 )
+from sqlalchemy import and_, text
 
 from config import (
     BASE_PATH,
@@ -43,6 +44,7 @@ from services.files import handle_file_upload
 from services.voice import synthesize_text_segments
 from utils.rate_limiting import rate_limit, api_limiter, upload_limiter
 from utils.input_validation import InputValidator, ValidationError
+from utils.observability import export_prometheus_metrics
 _resolve_session_identifier = resolve_session_identifier
 
 api_bp = Blueprint("api", __name__)
@@ -435,12 +437,45 @@ def get_session_history(session_id):
 def list_sessions():
     sessions = []
     db_user_id = None
+    page = request.args.get("page", default=1, type=int) or 1
+    page_size = request.args.get("page_size", default=50, type=int) or 50
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    total = 0
+    has_more = False
 
     if "user_id" in session:
         try:
             db_user_id = int(session.get("user_id"))
-            user_chats = UserChatHistory.query.filter_by(user_id=db_user_id).all()
-            for chat in user_chats:
+            base_query = (
+                db.session.query(
+                    UserChatHistory,
+                    ChatShare.public_id,
+                    ChatShare.is_public,
+                )
+                .outerjoin(
+                    ChatShare,
+                    and_(
+                        ChatShare.user_id == db_user_id,
+                        ChatShare.session_id == UserChatHistory.session_id,
+                    ),
+                )
+                .filter(UserChatHistory.user_id == db_user_id)
+            )
+            total = base_query.count()
+            has_more = (page * page_size) < total
+
+            rows = (
+                base_query.order_by(
+                    UserChatHistory.updated_at.desc(),
+                    UserChatHistory.created_at.desc(),
+                )
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+                .all()
+            )
+
+            for chat, public_id, is_public in rows:
                 last_updated = 0
                 if chat.updated_at:
                     last_updated = chat.updated_at.timestamp()
@@ -455,19 +490,14 @@ def list_sessions():
                     if parts and isinstance(parts[0], dict):
                         last_msg_text = parts[0].get("text", "")
 
-                share = ChatShare.query.filter_by(
-                    session_id=chat.session_id
-                ).first()
-                is_public = bool(share and share.is_public)
-
                 sessions.append(
                     {
                         "session_id": chat.session_id,
                         "last_updated": last_updated,
                         "title": chat.title or "Новый чат",
                         "last_message": last_msg_text[:60],
-                        "is_public": is_public,
-                        "public_id": share.public_id if share else None,
+                        "is_public": bool(is_public),
+                        "public_id": public_id,
                     }
                 )
         except Exception as e:
@@ -514,8 +544,23 @@ def list_sessions():
         except Exception:
             logger.warning("Guest session listing rejected due to invalid token map")
 
-    sessions.sort(key=lambda s: s.get("last_updated", 0), reverse=True)
-    return make_ok({"sessions": sessions})
+    if not db_user_id:
+        sessions.sort(key=lambda s: s.get("last_updated", 0), reverse=True)
+        total = len(sessions)
+        start = (page - 1) * page_size
+        end = start + page_size
+        has_more = end < total
+        sessions = sessions[start:end]
+
+    return make_ok(
+        {
+            "sessions": sessions,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "has_more": has_more,
+        }
+    )
 
 @api_bp.route("/sessions", methods=["POST"])
 def create_session():
@@ -745,9 +790,79 @@ def generated_image_route(filename):
         str(current_app.config["CREATE_IMAGE_FOLDER"]), secure_filename(filename)
     )
 
+
+@api_bp.route("/openapi.json", methods=["GET"])
+def openapi_spec():
+    spec_path = BASE_PATH / "openapi" / "openapi.json"
+    if not spec_path.exists():
+        return make_error("OpenAPI contract not found", status=404, code="not_found")
+    return send_file(str(spec_path), mimetype="application/json")
+
+
 @api_bp.route("/health", methods=["GET"])
 def health():
-    return make_ok({"status": "ok"})
+    started_at = time.perf_counter()
+    checks = {}
+    status = "ok"
+    http_status = 200
+
+    try:
+        db.session.execute(text("SELECT 1"))
+        checks["database"] = {"status": "ok"}
+    except Exception as exc:
+        checks["database"] = {"status": "fail", "reason": "unreachable"}
+        logger.error(f"Health-check database probe failed: {exc}")
+        status = "fail"
+        http_status = 503
+
+    storage_checks = {}
+    for cfg_key in ("UPLOAD_FOLDER", "CHATS_FOLDER", "CREATE_IMAGE_FOLDER"):
+        folder = current_app.config.get(cfg_key)
+        writable = bool(folder and os.path.isdir(folder) and os.access(folder, os.W_OK))
+        storage_checks[cfg_key.lower()] = {
+            "status": "ok" if writable else "fail",
+            "path": str(folder),
+        }
+        if not writable:
+            status = "fail"
+            http_status = 503
+    checks["storage"] = storage_checks
+
+    session_redis = current_app.config.get("SESSION_REDIS")
+    if session_redis is not None:
+        try:
+            session_redis.ping()
+            checks["redis"] = {"status": "ok"}
+        except Exception as exc:
+            checks["redis"] = {"status": "degraded", "reason": "unreachable"}
+            logger.warning(f"Health-check redis probe failed: {exc}")
+            if status == "ok":
+                status = "degraded"
+
+    now_mono = time.perf_counter()
+    startup_mono = current_app.config.get("APP_STARTED_MONOTONIC", now_mono)
+    include_full = (request.args.get("full", "") or "").lower() in {"1", "true", "yes"}
+
+    payload = {
+        "ok": status != "fail",
+        "status": status,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "uptime_seconds": round(max(0.0, now_mono - startup_mono), 3),
+        "latency_ms": round((time.perf_counter() - started_at) * 1000.0, 3),
+    }
+    if include_full or status != "ok":
+        payload["checks"] = checks
+
+    return jsonify(payload), http_status
+
+
+@api_bp.route("/metrics", methods=["GET"])
+def metrics():
+    return Response(
+        export_prometheus_metrics(),
+        mimetype="text/plain; version=0.0.4; charset=utf-8",
+    )
+
 @api_bp.route("/api/privacy/export", methods=["GET"])
 def export_user_data():
 

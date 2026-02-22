@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SynvexAI/ReMind/actions/workflows/ci.yml"><img src="https://github.com/SynvexAI/ReMind/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/ReNothingg/ReMind/actions/workflows/ci.yml"><img src="https://github.com/ReNothingg/ReMind/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License: AGPLv3" /></a>
-  <a href="https://github.com/SynvexAI/ReMind/issues"><img src="https://img.shields.io/github/issues/SynvexAI/ReMind" alt="Open Issues" /></a>
-  <a href="https://github.com/SynvexAI/ReMind/stargazers"><img src="https://img.shields.io/github/stars/SynvexAI/ReMind" alt="Stars" /></a>
-  <a href="https://github.com/SynvexAI/ReMind/pulls"><img src="https://img.shields.io/github/issues-pr/SynvexAI/ReMind" alt="Open PRs" /></a>
+  <a href="https://github.com/ReNothingg/ReMind/issues"><img src="https://img.shields.io/github/issues/ReNothingg/ReMind" alt="Open Issues" /></a>
+  <a href="https://github.com/ReNothingg/ReMind/stargazers"><img src="https://img.shields.io/github/stars/ReNothingg/ReMind" alt="Stars" /></a>
+  <a href="https://github.com/ReNothingg/ReMind/pulls"><img src="https://img.shields.io/github/issues-pr/ReNothingg/ReMind" alt="Open PRs" /></a>
 </p>
 
 ## О проекте
@@ -90,7 +90,7 @@ graph LR
 ### 1. Клонирование
 
 ```bash
-git clone https://github.com/SynvexAI/ReMind.git
+git clone https://github.com/ReNothingg/ReMind.git
 cd ReMind
 ```
 
@@ -202,10 +202,6 @@ docker compose up --build
 - [Pull Request Template](.github/pull_request_template.md)
 - [Issue Templates](.github/ISSUE_TEMPLATE/)
 - [CODEOWNERS](.github/CODEOWNERS)
-- [Changelog](docs/CHANGELOG.md)
-- [Architecture Notes](docs/ARCHITECTURE.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Release Process](docs/RELEASE_PROCESS.md)
 
 Базовые проверки в CI:
 
@@ -214,24 +210,7 @@ docker compose up --build
 - frontend build (`npm run build`)
 - Python syntax check (`py_compile`)
 
-## Структура репозитория
-
-```text
-ReMind/
-  .github/             # workflow + issue/PR templates + codeowners
-  ai_engine/           # AI-провайдеры и логика генерации
-  routes/              # API blueprint
-  services/            # файлы, voice, tasks
-  utils/               # auth, security, csrf, privacy, rate limiting
-  src/                 # React/TypeScript frontend
-  public/              # статика
-  migrations/          # миграции БД
-  docs/                # changelog и проектная документация
-```
-
-## Известные технические ограничения
-
-- В CI пока нет полноценных unit/integration/e2e тестов.
+---
 
 ## Лицензия
 

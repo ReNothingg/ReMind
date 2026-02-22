@@ -9,7 +9,6 @@
 - `GOVERNANCE.md`
 - `SECURITY.md`
 - `CODE_OF_CONDUCT.md`
-- `docs/RELEASE_PROCESS.md`
 
 ## Scope
 
@@ -18,7 +17,7 @@
 - backend (`routes/`, `services/`, `utils/`, `ai_engine/`);
 - frontend (`src/`, `public/`);
 - инфраструктуру (`Dockerfile`, `docker-compose.yml`, `.github/`);
-- документацию (`README.md`, `docs/`, policy-файлы).
+- документацию (`README.md`, policy-файлы).
 
 ## Before You Start
 
@@ -31,7 +30,7 @@
 ## Local Setup
 
 ```bash
-git clone https://github.com/SynvexAI/ReMind.git
+git clone https://github.com/ReNothingg/ReMind.git
 cd ReMind
 python -m venv .venv
 source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
@@ -44,16 +43,15 @@ cp .env.example .env       # Windows: Copy-Item .env.example .env
 
 - Базовая ветка: `main`
 - Именование feature-веток:
+
 1. `feat/<short-description>`
 2. `fix/<short-description>`
 3. `chore/<short-description>`
-4. `docs/<short-description>`
 
 Примеры:
 
 - `feat/session-sharing`
 - `fix/csrf-token-validation`
-- `docs/readme-refresh`
 
 ## Commit Convention
 
@@ -126,5 +124,4 @@ docker compose config
 
 ## Changelog Discipline
 
-- Любые user-facing изменения добавляйте в `docs/CHANGELOG.md`.
 - Если изменение затрагивает security/infra, отдельно укажите impact в PR.

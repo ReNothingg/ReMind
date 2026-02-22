@@ -82,12 +82,14 @@ CORS_ALLOW_HEADERS = [
     "Authorization",
     "X-Requested-With",
     "X-CSRF-Token",
+    "X-Request-Id",
     "Accept",
     "Accept-Language",
 ]
 
 CORS_EXPOSE_HEADERS = [
     "Content-Type",
+    "X-Request-Id",
     "X-Total-Count",
     "X-Page-Number",
 ]
@@ -174,6 +176,8 @@ VALIDATE_USER_AGENT: bool = os.getenv("VALIDATE_USER_AGENT", "True").lower() in 
 
 BYPASS_USER_AGENT_VALIDATION_ROUTES = [
     r"^/health",
+    r"^/metrics",
+    r"^/openapi\\.json$",
     r"^/status",
     r"^/$",
     r"^/index\.html$",

@@ -48,29 +48,7 @@ jobs:
           print("No obvious secret patterns found in tracked files.")
           PY
 
-  frontend-build:
-    runs-on: ubuntu-latest
-    needs: secret-scan
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint frontend
-        run: npm run lint
-
-      - name: Build frontend
-        run: npm run build
-
-  backend-syntax:
+  backend-tests:
     runs-on: ubuntu-latest
     needs: secret-scan
     steps:
@@ -80,11 +58,133 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Validate Python syntax
+      - name: Install backend deps + pytest
         run: |
-          files=$(git ls-files '*.py')
-          if [ -n "$files" ]; then
-            python -m py_compile $files
-          fi
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Run pytest (API/auth/privacy)
+        run: pytest
+
+  frontend-unit-build:
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install frontend test tooling
+        run: npm install --no-save vitest jsdom
+
+      - name: OpenAPI generated client is up to date
+        run: npm run openapi:check
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Run Vitest unit tests
+        run: npm run test:unit
+
+      - name: Build frontend
+        run: npm run build
+
+  playwright-e2e:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-unit-build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Install Playwright test tooling
+        run: npm install --no-save @playwright/test playwright
+
+      - name: Build frontend for backend static serving
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npm run test:e2e:install
+
+      - name: Run Playwright e2e (login -> chat -> session history)
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+  security-pipeline:
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pip-audit bandit semgrep
+          npm ci
+
+      - name: Run pip-audit report
+        run: pip-audit -r requirements.txt --format json --output pip-audit.json || true
+
+      - name: Run npm audit report
+        run: npm audit --json --audit-level=high > npm-audit.json || true
+
+      - name: Run Bandit report
+        run: bandit -r . -f json -o bandit.json -q || true
+
+      - name: Run Semgrep report
+        run: semgrep --config p/security-audit --config p/secrets --exclude node_modules --exclude dist --json --output semgrep.json . || true
+
+      - name: Enforce high-severity security gate
+        run: python scripts/security_gate.py --pip pip-audit.json --npm npm-audit.json --bandit bandit.json --semgrep semgrep.json

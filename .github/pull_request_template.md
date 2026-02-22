@@ -8,7 +8,7 @@
 
 ## What Changed
 
-- 
+-
 
 ## Risk and Impact
 
@@ -24,7 +24,6 @@ If any checkbox above is selected, explain here:
 - [ ] `npm run build`
 - [ ] Python syntax check (`py_compile`) for touched modules
 - [ ] Manual smoke test of changed user flow
-- [ ] Added/updated docs if behavior changed
 
 Commands / evidence:
 
@@ -36,4 +35,3 @@ Commands / evidence:
 
 - [ ] I followed `CONTRIBUTING.md`
 - [ ] I did not include secrets or sensitive data
-- [ ] I updated `docs/CHANGELOG.md` for user-facing changes

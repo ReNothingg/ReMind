@@ -1,5 +1,11 @@
 import { API_BASE_URL } from '../utils/constants';
 import { SERIOUS_ERROR_KEYPHRASES } from '../utils/constants';
+import {
+    apiGetSessionHistory,
+    apiListSessions,
+    apiSynthesize,
+    apiTranslate
+} from './openapiClient';
 
 const CSRF_COOKIE_KEY = 'csrf_token';
 const CSRF_HEADER_KEY = 'X-CSRF-Token';
@@ -177,19 +183,38 @@ export const apiService = {
         }
     },
 
-    async listSessions(idsQuery = '') {
+    async listSessions(options = '') {
         const guestTokens = getGuestSessionTokens();
         const headers = Object.keys(guestTokens).length
             ? { 'X-Guest-Tokens': JSON.stringify(guestTokens) }
             : undefined;
-        const endpoint = idsQuery ? `/sessions?ids=${encodeURIComponent(idsQuery)}` : '/sessions';
-        return this._fetch(endpoint, { headers });
+
+        let idsQuery = '';
+        let page = 1;
+        let pageSize = 50;
+
+        if (typeof options === 'string') {
+            idsQuery = options;
+        } else if (options && typeof options === 'object') {
+            idsQuery = options.idsQuery || '';
+            page = Number(options.page || 1);
+            pageSize = Number(options.pageSize || 50);
+        }
+
+        return apiListSessions(
+            {
+                ids: idsQuery || undefined,
+                page,
+                page_size: pageSize
+            },
+            headers
+        );
     },
 
     async getSessionHistory(sessionId) {
         const token = getGuestSessionToken(sessionId);
         const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-        return this._fetch(`/sessions/${encodeURIComponent(sessionId)}/history`, { headers });
+        return apiGetSessionHistory(sessionId, headers);
     },
 
     async toggleShare(sessionId, isPublic = true) {
@@ -225,11 +250,7 @@ export const apiService = {
 
     async translate(text, targetLang) {
         try {
-            return await this._fetch('/translate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, target_lang: targetLang })
-            });
+            return await apiTranslate({ text, target_lang: targetLang });
         } catch (error) {
             console.warn('Primary translation API failed, trying fallback:', error);
             try {
@@ -264,11 +285,7 @@ export const apiService = {
     },
 
     async synthesize(text) {
-        return this._fetch('/synthesize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
-        });
+        return apiSynthesize({ text });
     },
 
     async getLinkMetadata(url) {

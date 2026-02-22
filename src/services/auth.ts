@@ -1,4 +1,5 @@
 import { apiService, getCsrfToken } from './api';
+import { ApiClientError, apiAuthCheck, apiAuthLogin } from './openapiClient';
 
 const buildCsrfHeaders = (headers = {}) => {
     const token = getCsrfToken();
@@ -9,15 +10,8 @@ const buildCsrfHeaders = (headers = {}) => {
 export const authService = {
     async checkAuth() {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/check`, {
-                method: 'GET',
-                credentials: 'include'
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                return { authenticated: data.authenticated, user: data.user || null };
-            }
+            const data = await apiAuthCheck();
+            return { authenticated: data.authenticated, user: data.user || null };
         } catch (error) {
             console.error('Auth check failed:', error);
         }
@@ -27,23 +21,18 @@ export const authService = {
 
     async login(email, password, turnstileResponse) {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/login`, {
-                method: 'POST',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify({ email, password, turnstile_response: turnstileResponse })
+            const data = await apiAuthLogin({
+                email,
+                password,
+                turnstile_response: turnstileResponse
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                return { success: true, message: data.message, user: data.user };
-            } else {
-                const err = (data && (data.error?.message || data.error)) || 'Ошибка при входе';
-                return { success: false, error: err };
-            }
+            return { success: true, message: data.message, user: data.user };
         } catch (error) {
             console.error('Login failed:', error);
+            if (error instanceof ApiClientError) {
+                const apiError = (error.data && (error.data.error?.message || error.data.error)) || error.message;
+                return { success: false, error: apiError || 'Ошибка при входе' };
+            }
             return { success: false, error: error.message };
         }
     },

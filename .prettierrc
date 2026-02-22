@@ -9,5 +9,6 @@
   "endOfLine": "lf",
   "bracketSpacing": true,
   "jsxBracketSameLine": false,
-  "jsxSingleQuote": false
+  "jsxSingleQuote": false,
+  "filepath": ""
 }

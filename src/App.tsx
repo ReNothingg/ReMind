@@ -369,11 +369,30 @@ const GlobalHeader = ({
 
 
     const refreshSessions = useCallback(async () => {
+        const loadAllPages = async (idsQuery = '') => {
+            const merged = [];
+            let page = 1;
+            const pageSize = 50;
+
+            while (page <= 20) {
+                const data = await apiService.listSessions({ idsQuery, page, pageSize });
+                if (data?.sessions?.length) {
+                    merged.push(...data.sessions);
+                }
+                if (!data?.has_more) {
+                    break;
+                }
+                page += 1;
+            }
+
+            return merged;
+        };
+
         try {
             if (isAuthenticated) {
 
-                const data = await apiService.listSessions();
-                if (data?.sessions) setSessions(data.sessions);
+                const sessions = await loadAllPages();
+                setSessions(sessions);
             } else {
 
                 if (ALLOW_GUEST_CHATS_SAVE) {
@@ -381,8 +400,8 @@ const GlobalHeader = ({
                         const guestIds = JSON.parse(localStorage.getItem('guest_chat_history_ids') || '[]');
                         if (guestIds.length > 0) {
                             const query = guestIds.join(',');
-                            const data = await apiService.listSessions(query);
-                            if (data?.sessions) setSessions(data.sessions);
+                            const sessions = await loadAllPages(query);
+                            setSessions(sessions);
                         } else {
                             setSessions([]);
                         }

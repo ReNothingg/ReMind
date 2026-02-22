@@ -1,0 +1,603 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ReMind API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/check": {
+      "get": {
+        "summary": "Get current auth state",
+        "responses": {
+          "200": {
+            "description": "Authentication state",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthCheckResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthLoginResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Email not confirmed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate-limited",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions": {
+      "get": {
+        "summary": "List user/guest sessions",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{session_id}/history": {
+      "get": {
+        "summary": "Get history for a session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session history",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionHistoryResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/translate": {
+      "post": {
+        "summary": "Translate text",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TranslateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Translated text",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TranslateResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/synthesize": {
+      "post": {
+        "summary": "Text-to-speech synthesis",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SynthesizeRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Synthesis result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SynthesizeResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Healthy/degraded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Unhealthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/privacy/export": {
+      "get": {
+        "summary": "Export user privacy data",
+        "responses": {
+          "200": {
+            "description": "Data export payload",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PrivacyExportResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/privacy/delete": {
+      "post": {
+        "summary": "Delete/anonymize user privacy data",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PrivacyDeleteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deletion result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PrivacyDeleteResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF validation failed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": ["id", "username", "email", "is_confirmed"],
+        "properties": {
+          "id": { "type": "integer" },
+          "username": { "type": "string" },
+          "email": { "type": "string" },
+          "is_confirmed": { "type": "boolean" },
+          "created_at": { "type": ["string", "null"] },
+          "oauth_provider": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "AuthCheckResponse": {
+        "type": "object",
+        "required": ["authenticated", "user"],
+        "properties": {
+          "authenticated": { "type": "boolean" },
+          "user": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/User" },
+              { "type": "null" }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthLoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string" },
+          "password": { "type": "string" },
+          "turnstile_response": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "AuthLoginResponse": {
+        "type": "object",
+        "required": ["message", "user"],
+        "properties": {
+          "message": { "type": "string" },
+          "user": { "$ref": "#/components/schemas/User" }
+        },
+        "additionalProperties": false
+      },
+      "AuthErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "MessageTextPart": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "required": ["text"],
+        "additionalProperties": true
+      },
+      "MessageFileRef": {
+        "type": "object",
+        "properties": {
+          "url_path": { "type": "string" },
+          "mime_type": { "type": "string" },
+          "original_name": { "type": ["string", "null"] }
+        },
+        "required": ["url_path"],
+        "additionalProperties": true
+      },
+      "MessagePart": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/MessageTextPart" },
+          {
+            "type": "object",
+            "required": ["image"],
+            "properties": {
+              "image": { "$ref": "#/components/schemas/MessageFileRef" }
+            },
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "required": ["file"],
+            "properties": {
+              "file": { "$ref": "#/components/schemas/MessageFileRef" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ChatMessage": {
+        "type": "object",
+        "required": ["role", "parts"],
+        "properties": {
+          "id": { "type": ["string", "null"] },
+          "role": { "type": "string" },
+          "parts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MessagePart" }
+          },
+          "timestamp": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "SessionSummary": {
+        "type": "object",
+        "required": [
+          "session_id",
+          "last_updated",
+          "title",
+          "last_message"
+        ],
+        "properties": {
+          "session_id": { "type": "string" },
+          "last_updated": { "type": "number" },
+          "title": { "type": "string" },
+          "last_message": { "type": "string" },
+          "is_public": { "type": "boolean" },
+          "public_id": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "SessionListResponse": {
+        "type": "object",
+        "required": ["ok", "sessions", "page", "page_size", "total", "has_more"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "sessions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SessionSummary" }
+          },
+          "page": { "type": "integer" },
+          "page_size": { "type": "integer" },
+          "total": { "type": "integer" },
+          "has_more": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "SessionHistoryResponse": {
+        "type": "object",
+        "required": ["ok", "session_id", "history"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "session_id": { "type": "string" },
+          "history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChatMessage" }
+          },
+          "title": { "type": ["string", "null"] },
+          "is_public": { "type": "boolean" },
+          "is_owner": { "type": "boolean" },
+          "public_id": { "type": ["string", "null"] },
+          "share_url": { "type": ["string", "null"] },
+          "read_only": { "type": "boolean" }
+        },
+        "additionalProperties": true
+      },
+      "TranslateRequest": {
+        "type": "object",
+        "required": ["text", "target_lang"],
+        "properties": {
+          "text": { "type": "string" },
+          "target_lang": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "TranslateResponse": {
+        "type": "object",
+        "required": ["ok", "translated_text"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "translated_text": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "SynthesizeRequest": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "SynthesizeResponse": {
+        "type": "object",
+        "required": ["ok", "segments"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "segments": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              ]
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["ok", "status", "timestamp", "uptime_seconds", "latency_ms"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ok", "degraded", "fail"] },
+          "timestamp": { "type": "string" },
+          "uptime_seconds": { "type": "number" },
+          "latency_ms": { "type": "number" },
+          "checks": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "PrivacyExportPayload": {
+        "type": "object",
+        "properties": {
+          "exported_at": { "type": "string" },
+          "user_id": { "type": "integer" },
+          "profile": { "type": "object", "additionalProperties": true },
+          "settings": { "type": "object", "additionalProperties": true },
+          "chats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "shares": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "PrivacyExportResponse": {
+        "type": "object",
+        "required": ["ok", "data"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "data": { "$ref": "#/components/schemas/PrivacyExportPayload" }
+        },
+        "additionalProperties": false
+      },
+      "PrivacyDeleteRequest": {
+        "type": "object",
+        "properties": {
+          "delete_account": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "PrivacyDeleteResponse": {
+        "type": "object",
+        "required": ["ok", "deleted"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "deleted": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "integer" },
+              "deleted_at": { "type": "string" },
+              "account_deleted": { "type": "boolean" },
+              "items_deleted": {
+                "type": "object",
+                "additionalProperties": { "type": "integer" }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["ok", "error"],
+        "properties": {
+          "ok": { "type": "boolean", "const": false },
+          "request_id": { "type": ["string", "null"] },
+          "error": {
+            "type": "object",
+            "required": ["message"],
+            "properties": {
+              "message": { "type": "string" },
+              "code": { "type": ["string", "null"] }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
