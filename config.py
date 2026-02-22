@@ -31,6 +31,17 @@ except ValueError:
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 DEFAULT_LANGUAGE: str = "ru"
 
+
+def _sqlite_directory_usable(folder: Path) -> bool:
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        probe = folder / f".sqlite_probe_{os.getpid()}.tmp"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        return True
+    except Exception:
+        return False
+
 def _normalize_host_entry(value: str) -> str:
     raw = (value or "").strip()
     if not raw:
@@ -106,7 +117,31 @@ SERVER_CHANNEL_TIMEOUT: int = 300
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL") or f"sqlite:///{DB_PATH}/users.db"
+_database_url = os.getenv("DATABASE_URL")
+if _database_url:
+    _db_url = _database_url.strip()
+    if _db_url.startswith("sqlite:///"):
+        _sqlite_target = _db_url[len("sqlite:///"):]
+        if _sqlite_target and _sqlite_target != ":memory:":
+            if not Path(_sqlite_target).is_absolute():
+                _sqlite_path = (BASE_PATH / _sqlite_target).resolve()
+                target_parent = _sqlite_path.parent
+            else:
+                _sqlite_path = Path(_sqlite_target)
+                target_parent = _sqlite_path.parent
+
+            if not _sqlite_directory_usable(target_parent):
+                fallback_sqlite_path = (BASE_PATH / "users.db").resolve()
+                _sqlite_path = fallback_sqlite_path
+                _sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+
+            SQLALCHEMY_DATABASE_URI = f"sqlite:///{_sqlite_path.as_posix()}"
+        else:
+            SQLALCHEMY_DATABASE_URI = _db_url
+    else:
+        SQLALCHEMY_DATABASE_URI = _db_url
+else:
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{(DB_PATH / 'users.db').as_posix()}"
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

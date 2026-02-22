@@ -1256,8 +1256,25 @@ def register_auth_routes(app):
 def setup_auth(app):
 
     from config import SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+    from sqlalchemy import event
     db.init_app(app)
     oauth.init_app(app)
+
+    db_uri = (app.config.get("SQLALCHEMY_DATABASE_URI") or "").lower()
+    if db_uri.startswith("sqlite:"):
+        with app.app_context():
+            engine = db.engine
+            if not getattr(engine, "_remind_sqlite_pragmas", False):
+                @event.listens_for(engine, "connect")
+                def _set_sqlite_pragmas(dbapi_connection, _connection_record):
+                    cursor = dbapi_connection.cursor()
+                    # Some Windows ACL setups deny deleting journal files.
+                    # Keep journaling/temp files in memory to avoid startup failures.
+                    cursor.execute("PRAGMA journal_mode=MEMORY")
+                    cursor.execute("PRAGMA temp_store=MEMORY")
+                    cursor.execute("PRAGMA synchronous=NORMAL")
+                    cursor.close()
+                engine._remind_sqlite_pragmas = True
 
     if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
         app.logger.info(
