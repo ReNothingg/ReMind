@@ -92,6 +92,8 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+    healthcheck:
+      disable: true
     restart: unless-stopped
     cap_drop:
       - ALL
@@ -126,7 +128,7 @@ services:
       --appendonly yes
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --protected-mode yes
+      --protected-mode no
       --bind 0.0.0.0
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
