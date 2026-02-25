@@ -10,6 +10,9 @@ from flask import has_request_context, request
 from config import IS_PRODUCTION, LOGS_FOLDER
 from utils.observability import get_request_id
 
+logger = logging.getLogger("remind")
+logger.addHandler(logging.NullHandler())
+
 
 class PIIFilter(logging.Filter):
     PII_PATTERNS = [
@@ -94,6 +97,7 @@ def _build_formatter() -> logging.Formatter:
 
 
 def setup_logging(app):
+    global logger
     LOGS_FOLDER.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger("remind")
