@@ -6,11 +6,7 @@ from urllib.parse import urlparse
 env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=env_path)
 
-_PROD_BASE = Path("upload")
-if _PROD_BASE.exists():
-    BASE_PATH: Path = _PROD_BASE
-else:
-    BASE_PATH: Path = Path(__file__).resolve().parent
+BASE_PATH: Path = Path(__file__).resolve().parent
 
 DB_PATH: Path = BASE_PATH / "database"
 
