@@ -135,13 +135,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETGID
-      - SETUID
-    security_opt:
-      - no-new-privileges:true
 
 volumes:
   postgres_data:
