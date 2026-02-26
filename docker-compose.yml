@@ -135,24 +135,34 @@ services:
 
   redis:
     image: redis:7-alpine
+    environment:
+      - REDISCLI_AUTH=${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
       - ./ops/redis/users.acl:/usr/local/etc/redis/users.acl:ro
     restart: unless-stopped
-    command: >
-      redis-server
-      --appendonly yes
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-      --protected-mode yes
-      --bind 0.0.0.0
-      --requirepass ${REDIS_PASSWORD}
-      --aclfile /usr/local/etc/redis/users.acl
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --protected-mode
+      - "yes"
+      - --bind
+      - 0.0.0.0
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --aclfile
+      - /usr/local/etc/redis/users.acl
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 15s
     networks:
       - backend
 
