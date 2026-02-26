@@ -13,6 +13,10 @@
   "app": {
     "menu": "القائمة"
   },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "التسجيل"
+  },
   "common": {
     "loading": "جارٍ التحميل...",
     "closeEsc": "إغلاق (Esc)",

@@ -13,6 +13,10 @@
   "app": {
     "menu": "Menu"
   },
+  "auth": {
+    "login": "Iniciar sessão",
+    "register": "Registar-se"
+  },
   "common": {
     "loading": "A carregar...",
     "closeEsc": "Fechar (Esc)",

@@ -13,6 +13,10 @@
   "app": {
     "menu": "मेनू"
   },
+  "auth": {
+    "login": "लॉगिन",
+    "register": "रजिस्टर"
+  },
   "common": {
     "loading": "लोड हो रहा है...",
     "closeEsc": "बंद करें (Esc)",

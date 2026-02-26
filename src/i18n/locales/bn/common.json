@@ -13,6 +13,10 @@
   "app": {
     "menu": "মেনু"
   },
+  "auth": {
+    "login": "লগইন",
+    "register": "রেজিস্টার"
+  },
   "common": {
     "loading": "লোড হচ্ছে...",
     "closeEsc": "বন্ধ করুন (Esc)",

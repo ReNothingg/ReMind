@@ -13,6 +13,10 @@
   "app": {
     "menu": "Menu"
   },
+  "auth": {
+    "login": "Login",
+    "register": "Register"
+  },
   "common": {
     "loading": "Loading...",
     "closeEsc": "Close (Esc)",
