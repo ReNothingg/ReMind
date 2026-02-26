@@ -63,10 +63,19 @@ jobs:
       - name: Install backend deps + pytest
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest
+          pip install -r requirements/dev.txt -c requirements/constraints.txt
 
-      - name: Run pytest (API/auth/privacy)
-        run: pytest
+      - name: Ruff
+        run: ruff check .
+
+      - name: Black format check
+        run: black --check .
+
+      - name: Mypy
+        run: mypy app_factory.py routes utils services
+
+      - name: Run pytest with coverage threshold
+        run: pytest --cov=routes --cov=services --cov=utils --cov-report=term-missing --cov-fail-under=70
 
   frontend-unit-build:
     runs-on: ubuntu-latest
@@ -90,7 +99,10 @@ jobs:
         run: npm ci
 
       - name: Install frontend test tooling
-        run: npm install --no-save vitest jsdom
+        run: npm install --no-save vitest jsdom @vitest/coverage-v8
+
+      - name: Type check frontend (base + strict scope)
+        run: npm run typecheck
 
       - name: OpenAPI generated client is up to date
         run: npm run openapi:check
@@ -98,8 +110,8 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
-      - name: Run Vitest unit tests
-        run: npm run test:unit
+      - name: Run Vitest unit tests with coverage thresholds
+        run: npm run test:unit:coverage
 
       - name: Build frontend
         run: npm run build
@@ -125,7 +137,7 @@ jobs:
       - name: Install backend deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements/runtime.txt -c requirements/constraints.txt
 
       - name: Install frontend deps
         run: npm ci
@@ -171,7 +183,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pip-audit bandit semgrep
+          pip install -r requirements/dev.txt -c requirements/constraints.txt pip-audit bandit semgrep
           npm ci
 
       - name: Run pip-audit report

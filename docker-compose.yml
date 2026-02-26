@@ -15,6 +15,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - edge
+      - backend
+
   app:
     build:
       context: .
@@ -27,6 +31,7 @@ services:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
       - SECRET_KEY=${SECRET_KEY}
+      - SECRET_ROTATION_EPOCH=${SECRET_ROTATION_EPOCH:-0}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -34,9 +39,9 @@ services:
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
       - BACKEND_URL=${BACKEND_URL}
       - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - LOCALHOST_MODE=False
       - ALLOW_GUEST_CHATS_SAVE=False
       - VALIDATE_USER_AGENT=True
@@ -68,6 +73,9 @@ services:
         reservations:
           cpus: '0.25'
           memory: 512M
+    networks:
+      - backend
+
   worker:
     build:
       context: .
@@ -79,11 +87,12 @@ services:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
       - SECRET_KEY=${SECRET_KEY}
+      - SECRET_ROTATION_EPOCH=${SECRET_ROTATION_EPOCH:-0}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
     volumes:
       - ./database:/app/database
       - ./logs:/app/logs
@@ -104,6 +113,9 @@ services:
         limits:
           cpus: '0.80'
           memory: 2G
+    networks:
+      - backend
+
   db:
     image: postgres:15-alpine
     environment:
@@ -118,24 +130,37 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - backend
+
   redis:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
+      - ./ops/redis/users.acl:/usr/local/etc/redis/users.acl:ro
     restart: unless-stopped
     command: >
       redis-server
       --appendonly yes
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --protected-mode no
+      --protected-mode yes
       --bind 0.0.0.0
+      --requirepass ${REDIS_PASSWORD}
+      --aclfile /usr/local/etc/redis/users.acl
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - backend
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  edge:
+  backend:
+    internal: true

@@ -1,8 +1,17 @@
 groups:
   - name: remind-api-alerts
     rules:
+      - alert: ReMindInstanceDown
+        expr: up{job=~"remind|remind-app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ReMind instance is down"
+          description: "Prometheus target for ReMind is unavailable."
+
       - alert: ReMindHigh5xxRate
-        expr: sum(rate(remind_endpoint_errors_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.5
+        expr: sum(rate(remind_http_errors_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.5
         for: 10m
         labels:
           severity: critical
@@ -11,7 +20,7 @@ groups:
           description: "5xx rate exceeded threshold for /chat, /translate, /synthesize."
 
       - alert: ReMindTimeoutSpike
-        expr: sum(rate(remind_endpoint_timeouts_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.1
+        expr: sum(rate(remind_http_timeouts_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.1
         for: 10m
         labels:
           severity: critical
@@ -19,15 +28,33 @@ groups:
           summary: "Timeout spike on ReMind API"
           description: "Timeout-like responses or very slow requests exceeded threshold."
 
-      - alert: ReMindHighLatency
-        expr: (
-          sum(rate(remind_endpoint_latency_ms_sum{endpoint=~"/chat|/translate|/synthesize"}[5m]))
-          /
-          sum(rate(remind_endpoint_latency_ms_count{endpoint=~"/chat|/translate|/synthesize"}[5m]))
-        ) > 2500
+      - alert: ReMindP95LatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(remind_http_request_duration_seconds_bucket{endpoint=~"/chat|/translate|/synthesize"}[5m]))) > 2.5
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "High average latency on ReMind API"
-          description: "Average latency is above 2500ms for key endpoints."
+          summary: "High p95 latency on ReMind API"
+          description: "p95 latency is above 2.5s for key endpoints."
+
+      - alert: ReMindP99LatencyHigh
+        expr: histogram_quantile(0.99, sum by (le) (rate(remind_http_request_duration_seconds_bucket{endpoint=~"/chat|/translate|/synthesize"}[5m]))) > 5
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High p99 latency on ReMind API"
+          description: "p99 latency is above 5s for key endpoints."
+
+      - alert: ReMindErrorBudgetBurnFast
+        expr: (
+          sum(rate(remind_http_errors_total{endpoint=~"/chat|/translate|/synthesize"}[5m]))
+          /
+          clamp_min(sum(rate(remind_http_requests_total{endpoint=~"/chat|/translate|/synthesize"}[5m])), 0.001)
+        ) > 0.02
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fast error budget burn on ReMind API"
+          description: "5xx ratio exceeded 2% over 5 minutes (99% SLO budget burn)."

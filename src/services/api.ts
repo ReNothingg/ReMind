@@ -183,7 +183,7 @@ export const apiService = {
         }
     },
 
-    async listSessions(options = '') {
+    async listSessions(options: string | { idsQuery?: string; page?: number; pageSize?: number } = '') {
         const guestTokens = getGuestSessionTokens();
         const headers = Object.keys(guestTokens).length
             ? { 'X-Guest-Tokens': JSON.stringify(guestTokens) }
@@ -293,6 +293,18 @@ export const apiService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
+        });
+    },
+
+    async exportPrivacyData() {
+        return this._fetch('/api/privacy/export', { method: 'GET' });
+    },
+
+    async deletePrivacyData(deleteAccount = false) {
+        return this._fetch('/api/privacy/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delete_account: Boolean(deleteAccount) })
         });
     },
 

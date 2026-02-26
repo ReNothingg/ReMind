@@ -1,16 +1,40 @@
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
-from threading import Lock
-from typing import Dict
 
 from flask import g, has_request_context, request
-
+from prometheus_client import Counter, Histogram, generate_latest
 
 REQUEST_ID_HEADER = "X-Request-Id"
 TRACKED_ENDPOINTS = {"/chat", "/translate", "/synthesize"}
 TIMEOUT_THRESHOLD_MS = 8_000.0
+
+REQUESTS_TOTAL = Counter(
+    "remind_http_requests_total",
+    "Total tracked HTTP requests.",
+    ["endpoint", "method", "status"],
+)
+REQUEST_LATENCY_SECONDS = Histogram(
+    "remind_http_request_duration_seconds",
+    "Request latency for tracked endpoints.",
+    ["endpoint", "method"],
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 20.0),
+)
+REQUEST_ERRORS_TOTAL = Counter(
+    "remind_http_errors_total",
+    "Total 5xx responses for tracked endpoints.",
+    ["endpoint", "method"],
+)
+REQUEST_TIMEOUTS_TOTAL = Counter(
+    "remind_http_timeouts_total",
+    "Total timeout-like requests for tracked endpoints.",
+    ["endpoint", "method"],
+)
+ERROR_BUDGET_BURN_TOTAL = Counter(
+    "remind_error_budget_burn_total",
+    "Error budget burn events (5xx responses).",
+    ["endpoint", "method"],
+)
 
 
 def _is_valid_request_id(value: str) -> bool:
@@ -38,105 +62,42 @@ def get_request_id(default=None):
     return getattr(g, "request_id", default)
 
 
+def _observe_request(endpoint: str, method: str, status_code: int, duration_seconds: float) -> None:
+    status = str(int(status_code))
+    REQUESTS_TOTAL.labels(endpoint=endpoint, method=method, status=status).inc()
+    REQUEST_LATENCY_SECONDS.labels(endpoint=endpoint, method=method).observe(
+        max(0.0, duration_seconds)
+    )
+
+    if status_code >= 500:
+        REQUEST_ERRORS_TOTAL.labels(endpoint=endpoint, method=method).inc()
+        ERROR_BUDGET_BURN_TOTAL.labels(endpoint=endpoint, method=method).inc()
+
+    if status_code == 504 or (duration_seconds * 1000.0) >= TIMEOUT_THRESHOLD_MS:
+        REQUEST_TIMEOUTS_TOTAL.labels(endpoint=endpoint, method=method).inc()
+
+
 def finish_request_context(response):
     request_id = get_request_id()
     if request_id:
         response.headers.setdefault(REQUEST_ID_HEADER, request_id)
 
     started_at = getattr(g, "request_started_at", None)
-    path = request.path if has_request_context() else ""
-    if (
-        started_at is not None
-        and path in TRACKED_ENDPOINTS
-    ):
-        duration_ms = (time.perf_counter() - started_at) * 1000.0
-        metrics_registry.observe(path, response.status_code, duration_ms)
+    if started_at is None or not has_request_context():
+        return response
+
+    path = request.path
+    if path in TRACKED_ENDPOINTS:
+        duration_seconds = time.perf_counter() - started_at
+        _observe_request(
+            endpoint=path,
+            method=request.method,
+            status_code=response.status_code,
+            duration_seconds=duration_seconds,
+        )
+
     return response
 
 
-@dataclass
-class EndpointMetric:
-    request_total: int = 0
-    error_total: int = 0
-    timeout_total: int = 0
-    latency_ms_sum: float = 0.0
-    latency_ms_count: int = 0
-
-
-@dataclass
-class MetricsRegistry:
-    _data: Dict[str, EndpointMetric] = field(default_factory=dict)
-    _lock: Lock = field(default_factory=Lock)
-
-    def observe(self, endpoint: str, status_code: int, latency_ms: float) -> None:
-        with self._lock:
-            metric = self._data.get(endpoint)
-            if metric is None:
-                metric = EndpointMetric()
-                self._data[endpoint] = metric
-
-            metric.request_total += 1
-            metric.latency_ms_sum += max(0.0, latency_ms)
-            metric.latency_ms_count += 1
-
-            if status_code >= 500:
-                metric.error_total += 1
-            if status_code == 504 or latency_ms >= TIMEOUT_THRESHOLD_MS:
-                metric.timeout_total += 1
-
-    def snapshot(self) -> Dict[str, EndpointMetric]:
-        with self._lock:
-            return {
-                endpoint: EndpointMetric(
-                    request_total=value.request_total,
-                    error_total=value.error_total,
-                    timeout_total=value.timeout_total,
-                    latency_ms_sum=value.latency_ms_sum,
-                    latency_ms_count=value.latency_ms_count,
-                )
-                for endpoint, value in self._data.items()
-            }
-
-
-metrics_registry = MetricsRegistry()
-
-
-def _escape_label(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
-
-
 def export_prometheus_metrics() -> str:
-    snapshot = metrics_registry.snapshot()
-    lines = [
-        "# HELP remind_endpoint_requests_total Total requests for tracked endpoints.",
-        "# TYPE remind_endpoint_requests_total counter",
-        "# HELP remind_endpoint_errors_total Total 5xx responses for tracked endpoints.",
-        "# TYPE remind_endpoint_errors_total counter",
-        "# HELP remind_endpoint_timeouts_total Total timeout-like responses for tracked endpoints.",
-        "# TYPE remind_endpoint_timeouts_total counter",
-        "# HELP remind_endpoint_latency_ms_sum Total latency in milliseconds for tracked endpoints.",
-        "# TYPE remind_endpoint_latency_ms_sum counter",
-        "# HELP remind_endpoint_latency_ms_count Total latency samples for tracked endpoints.",
-        "# TYPE remind_endpoint_latency_ms_count counter",
-    ]
-
-    for endpoint in sorted(snapshot.keys()):
-        metric = snapshot[endpoint]
-        ep = _escape_label(endpoint)
-        lines.append(
-            f'remind_endpoint_requests_total{{endpoint="{ep}"}} {metric.request_total}'
-        )
-        lines.append(
-            f'remind_endpoint_errors_total{{endpoint="{ep}"}} {metric.error_total}'
-        )
-        lines.append(
-            f'remind_endpoint_timeouts_total{{endpoint="{ep}"}} {metric.timeout_total}'
-        )
-        lines.append(
-            f'remind_endpoint_latency_ms_sum{{endpoint="{ep}"}} {metric.latency_ms_sum:.3f}'
-        )
-        lines.append(
-            f'remind_endpoint_latency_ms_count{{endpoint="{ep}"}} {metric.latency_ms_count}'
-        )
-
-    return "\n".join(lines) + "\n"
+    return generate_latest().decode("utf-8")

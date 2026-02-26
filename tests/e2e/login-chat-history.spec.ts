@@ -27,3 +27,22 @@ test('login -> chat -> session history', async ({ page }) => {
     await historyItem.click();
     await expect(page.locator('.user-message .message-text').last()).toContainText(message);
 });
+
+test('privacy delete without CSRF is forbidden', async ({ page }) => {
+    await page.goto('/');
+
+    await page.locator('#guestAuthButtons .guest-login-btn').click();
+    await page.fill('#loginEmail', 'e2e@example.com');
+    await page.fill('#loginPassword', 'Password1!');
+    await page.locator('.auth-form button[type="submit"]').click();
+
+    await expect(page.locator('#promptInput')).toBeVisible();
+
+    const response = await page.request.post('/api/privacy/delete', {
+        data: { delete_account: false },
+    });
+
+    expect(response.status()).toBe(403);
+    const payload = await response.json();
+    expect(payload.ok).toBeFalsy();
+});

@@ -1,0 +1,32 @@
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+exclude = '''
+(
+  /(
+      \.git
+    | \.venv
+    | node_modules
+    | dist
+    | migrations/versions
+  )/
+)
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["node_modules", "dist", "migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "silent"
+check_untyped_defs = false
+warn_return_any = false
+warn_unused_ignores = true
+exclude = "(^migrations/|^dist/|^node_modules/)"
