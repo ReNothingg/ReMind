@@ -1,4 +1,4 @@
-FROM node:20-alpine AS frontend
+FROM node:25-alpine AS frontend
 WORKDIR /app
 COPY package*.json vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY src ./src
