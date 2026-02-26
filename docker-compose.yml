@@ -41,9 +41,9 @@ services:
       - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
-      - LOCALHOST_MODE=False
-      - ALLOW_GUEST_CHATS_SAVE=False
+      - CELERYOST_MODE=False
+      - ALLOW_G_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - LOCALHUEST_CHATS_SAVE=False
       - VALIDATE_USER_AGENT=True
     volumes:
       - ./database:/app/database
