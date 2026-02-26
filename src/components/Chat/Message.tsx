@@ -558,9 +558,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         }
         return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
     }, [displayContent, isUser, content, markdownEnabledForMessage]);
+    const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
 
     return (
-        <div className={`message ${isUser ? 'user-message' : 'ai-message'} ${isLoading ? 'loading' : ''} ${isError ? 'error' : ''}`} data-message-id={message.id}>
+        <div className={`message ${isUser ? 'user-message' : 'ai-message'} ${isLoading ? 'loading' : ''} ${isError ? 'error' : ''} ${showUserActions ? 'has-user-actions' : ''}`} data-message-id={message.id}>
             <div className="message-content">
                 {}
                 {(displayImages?.length > 0 || displayFiles?.length > 0) && (
@@ -845,7 +846,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 )}
 
                 {}
-                {isUser && onEdit && !isLoading && !isEditingUserMessage && (
+                {showUserActions && (
                     <div className="actions-bar">
                         <button
                             className="action-btn copy-btn"

@@ -1910,13 +1910,12 @@ html[data-theme='light'] .audio-progress-bar::-webkit-slider-track {
 }
 
 html[data-theme='light'] .action-btn {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(209, 209, 214, 0.4));
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  border: none;
 }
 
 html[data-theme='light'] .action-btn:hover {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(209, 209, 214, 0.6));
-  border-color: rgba(0, 0, 0, 0.15);
+  background: transparent;
 }
 
 html[data-theme='light'] .translation-error {

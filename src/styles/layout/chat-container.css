@@ -41,6 +41,10 @@
     forwards;
 }
 
+.user-message.has-user-actions {
+  padding-bottom: calc(var(--spacing-unit) * 9);
+}
+
 .ai-message {
   flex-direction: row;
   margin-right: 0;
@@ -214,18 +218,28 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
   opacity: 1;
   height: auto;
   overflow: visible;
-  padding: calc(var(--spacing-unit) * 1.5);
+  padding: 0;
   font-size: var(--type-small);
   letter-spacing: -0.002em;
   font-weight: 500;
 }
 
+.user-message.has-user-actions .actions-bar {
+  position: absolute;
+  right: calc(var(--spacing-unit) * 2);
+  bottom: calc(-1 * var(--spacing-unit) * 7);
+  margin-top: 0;
+  width: max-content;
+  gap: calc(var(--spacing-unit) * 1.5);
+  z-index: 2;
+}
+
 .action-btn {
-  background: rgba(var(--color-white-raw), 0.08);
-  border: 1px solid rgba(var(--color-white-raw), 0.08);
-  border-radius: var(--radius-md);
-  width: 36px;
-  height: 36px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -236,28 +250,35 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .action-btn:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-white-raw), 0.15),
-    rgba(var(--color-bg-surface-alt-raw), 0.12)
-  );
-  border-color: rgba(var(--color-white-raw), 0.15);
+  background: transparent;
   color: var(--color-text-primary);
-  transform: translateY(-2px) scale(1.05);
+  transform: translateY(-1px) scale(1.08);
 }
 
 .action-btn:active {
-  transform: translateY(-1px) scale(0.98);
+  transform: scale(0.95);
   transition-duration: 0.05s;
 }
 
 .action-btn img,
 .action-btn svg {
+  display: block;
   width: 18px;
   height: 18px;
   fill: currentColor;
   transition: all var(--transition-fast);
-  transform: scale(1.1);
+  opacity: 0.74;
+}
+
+.action-btn:hover img,
+.action-btn:hover svg {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid rgba(var(--color-accent-raw), 0.7);
+  outline-offset: 2px;
 }
 
 .action-btn.speak-btn.loading img {
@@ -265,22 +286,17 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .action-btn.speak-btn.active {
-  background: linear-gradient(135deg, var(--color-white), rgba(var(--color-white-raw), 0.9));
-  border-color: var(--color-white);
-  color: var(--color-black);
+  background: transparent;
+  color: var(--color-text-primary);
 }
 
 .action-btn.speak-btn.active img {
   filter: var(--filter-speak-btn-active);
+  opacity: 1;
 }
 
 .action-btn.speak-btn.error {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-error-raw), 0.2),
-    rgba(var(--color-error-raw), 0.1)
-  );
-  border-color: rgba(var(--color-error-raw), 0.3);
+  background: transparent;
   color: var(--color-text-error);
 }
 
@@ -289,9 +305,9 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
     contrast(0.8);
 }
 
-.action-btn .regenerate-btn:hover .copy-md-btn:hover .translate-btn:hover {
-  background: rgba(var(--color-success-raw), 0.1);
-  border-color: rgba(var(--color-success-raw), 0.3);
+.action-btn.regenerate-btn:hover,
+.action-btn.copy-md-btn:hover,
+.action-btn.translate-btn:hover {
   color: var(--color-success);
 }
 
