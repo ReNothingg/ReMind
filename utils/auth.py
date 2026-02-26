@@ -604,7 +604,16 @@ def register_auth_routes(app):
                 return redirect(url_for("login"))
             redirect_uri = f"{request.host_url.rstrip('/')}{url_for('authorize_google')}"
 
-        return oauth.google.authorize_redirect(redirect_uri)
+        google_client = getattr(oauth, "google", None)
+        if google_client is None:
+            app.logger.error("Google OAuth is not configured (missing client registration)")
+            return make_error("Google OAuth is not configured", status=503, code="oauth_unavailable")
+
+        try:
+            return google_client.authorize_redirect(redirect_uri)
+        except Exception as exc:
+            app.logger.exception(f"Failed to start Google OAuth redirect: {exc}")
+            return make_error("Failed to start Google OAuth", status=500, code="oauth_start_failed")
 
     @app.route("/login/google/callback")
     def authorize_google():
@@ -1284,10 +1293,11 @@ def setup_auth(app):
             name="google",
             client_id=GOOGLE_CLIENT_ID,
             client_secret=GOOGLE_CLIENT_SECRET,
-            server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+            authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
+            access_token_url="https://oauth2.googleapis.com/token",
+            api_base_url="https://openidconnect.googleapis.com/v1/",
             client_kwargs={"scope": "openid email profile"},
             authorize_params={"access_type": "offline", "prompt": "consent"},
-            jwks_uri="https://www.googleapis.com/oauth2/v3/certs",
         )
         app.logger.info("Google OAuth registered successfully")
     with app.app_context():
