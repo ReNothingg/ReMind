@@ -754,7 +754,21 @@ export const Utils = {
             try {
                 const renderId = `mermaid-${Date.now()}-${renderIndex++}`;
                 const result = await mermaid.render(renderId, diagramText);
-                viz.innerHTML = result?.svg || '';
+                // Safely parse the SVG string instead of assigning it directly to innerHTML
+                while (viz.firstChild) {
+                    viz.removeChild(viz.firstChild);
+                }
+
+                const svgContent = result?.svg || '';
+                if (svgContent) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+                    const parsedSvg = doc.querySelector('svg');
+                    if (parsedSvg) {
+                        viz.appendChild(parsedSvg);
+                    }
+                }
+
                 if (typeof result?.bindFunctions === 'function') {
                     result.bindFunctions(viz);
                 }
