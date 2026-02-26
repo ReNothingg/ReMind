@@ -1,3 +1,1 @@
-# Default user credentials are provided via --requirepass.
-# ACL hardening keeps command set minimal for app runtime.
 user default on ~* +@all -CONFIG -FLUSHALL -FLUSHDB -SHUTDOWN
