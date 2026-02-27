@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="30">
+    <title>ReMind Health</title>
+    {% if shared_stylesheet_url %}
+    <link rel="stylesheet" href="{{ shared_stylesheet_url }}">
+    {% endif %}
+    <link rel="stylesheet" href="/health/index.css">
+</head>
+
+<body class="health-page">
+    <main class="health-wrap">
+        <section class="health-card">
+            <div class="health-head">
+                <div>
+                    <h1 class="health-title">Состояние сервиса ReMind</h1>
+                    <p class="health-subtitle">Страница обновляется автоматически каждые 30 секунд.</p>
+                </div>
+                <span class="health-chip {{ payload.status if payload.status in ['ok', 'degraded', 'fail'] else 'unknown' }}">
+                    {{ payload.status }}
+                </span>
+            </div>
+        </section>
+
+        <section class="health-card">
+            <div class="health-grid">
+                <article class="health-metric">
+                    <p class="health-metric-label">HTTP Status</p>
+                    <p class="health-metric-value">{{ http_status }}</p>
+                </article>
+                <article class="health-metric">
+                    <p class="health-metric-label">Uptime</p>
+                    <p class="health-metric-value">{{ uptime_human }}</p>
+                </article>
+                <article class="health-metric">
+                    <p class="health-metric-label">Latency</p>
+                    <p class="health-metric-value">{{ payload.latency_ms }} ms</p>
+                </article>
+                <article class="health-metric">
+                    <p class="health-metric-label">Timestamp (UTC)</p>
+                    <p class="health-metric-value">{{ payload.timestamp }}</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="health-card">
+            <table class="health-table" aria-label="Component checks">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Status</th>
+                        <th>Reason</th>
+                        <th>Path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for check in component_checks %}
+                    <tr>
+                        <td>{{ check.name }}</td>
+                        <td>
+                            <span
+                                class="health-chip health-chip-small {{ check.status if check.status in ['ok', 'degraded', 'fail'] else 'unknown' }}">
+                                {{ check.status }}
+                            </span>
+                        </td>
+                        <td>{{ check.reason or "—" }}</td>
+                        <td>{% if check.path %}<code class="health-code">{{ check.path }}</code>{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="health-card health-actions">
+            <p class="health-actions-text">Для мониторинга и интеграций доступен сырой JSON-ответ.</p>
+            <a class="health-json-link" href="{{ raw_json_url }}">Открыть JSON</a>
+        </section>
+    </main>
+</body>
+
+</html>

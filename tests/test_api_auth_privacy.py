@@ -163,3 +163,28 @@ def test_health_full_includes_component_checks(client):
     assert 'checks' in payload
     assert 'database' in payload['checks']
     assert 'storage' in payload['checks']
+
+
+def test_health_defaults_to_json_for_api_clients(client):
+    response = client.get('/health')
+    assert response.status_code in (200, 503)
+    assert response.is_json is True
+
+
+def test_health_returns_html_for_browser_accept(client):
+    response = client.get('/health', headers={'Accept': 'text/html'})
+    assert response.status_code in (200, 503)
+    assert 'text/html' in response.headers.get('Content-Type', '')
+
+    body = response.get_data(as_text=True)
+    assert 'Состояние сервиса ReMind' in body
+    assert 'Открыть JSON' in body
+    assert '/health/index.css' in body
+
+
+def test_health_stylesheet_is_available(client):
+    response = client.get('/health/index.css')
+    assert response.status_code == 200
+    assert 'text/css' in response.headers.get('Content-Type', '')
+    body = response.get_data(as_text=True)
+    assert '.health-page' in body

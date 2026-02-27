@@ -4,7 +4,15 @@ import os
 import time
 from datetime import datetime
 
-from flask import Response, current_app, jsonify, request, send_file, send_from_directory
+from flask import (
+    Response,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    send_file,
+    send_from_directory,
+)
 from sqlalchemy import text
 
 from config import BASE_PATH
@@ -12,6 +20,63 @@ from routes.api_errors import ApiError, api_error_boundary
 from utils.auth import db
 from utils.observability import export_prometheus_metrics
 from utils.responses import logger, make_error
+
+
+def _prefer_html_health_page() -> bool:
+    format_hint = (request.args.get("format", "") or "").strip().lower()
+    if format_hint in {"json", "raw"}:
+        return False
+    if format_hint in {"html", "page"}:
+        return True
+
+    accepts = request.accept_mimetypes
+    best = accepts.best_match(["application/json", "text/html"])
+    if best != "text/html":
+        return False
+
+    return accepts["text/html"] > accepts["application/json"]
+
+
+def _format_uptime(seconds: float) -> str:
+    total_seconds = max(0, int(seconds))
+    days, rem = divmod(total_seconds, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, secs = divmod(rem, 60)
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or days:
+        parts.append(f"{hours}h")
+    if minutes or hours or days:
+        parts.append(f"{minutes}m")
+    parts.append(f"{secs}s")
+    return " ".join(parts)
+
+
+def _resolve_app_css_url() -> str | None:
+    static_folder = current_app.static_folder
+    if not static_folder:
+        return None
+
+    assets_dir = os.path.join(static_folder, "assets")
+    if not os.path.isdir(assets_dir):
+        return None
+
+    try:
+        candidates = [
+            name
+            for name in os.listdir(assets_dir)
+            if name.startswith("index-") and name.endswith(".css")
+        ]
+    except OSError:
+        return None
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda name: os.path.getmtime(os.path.join(assets_dir, name)), reverse=True)
+    return f"/assets/{candidates[0]}"
 
 
 def register_system_routes(api_bp):
@@ -43,6 +108,13 @@ def register_system_routes(api_bp):
         if not spec_path.exists():
             raise ApiError("OpenAPI contract not found", status=404, code="not_found")
         return send_file(str(spec_path), mimetype="application/json")
+
+    @api_bp.route("/health/index.css", methods=["GET"])
+    def health_stylesheet():
+        css_path = BASE_PATH / "src" / "styles" / "health" / "index.css"
+        if not css_path.exists():
+            return make_error("Health stylesheet not found", status=404, code="not_found")
+        return send_file(str(css_path), mimetype="text/css")
 
     @api_bp.route("/health", methods=["GET"])
     def health():
@@ -97,6 +169,58 @@ def register_system_routes(api_bp):
         }
         if include_full or status != "ok":
             payload["checks"] = checks
+
+        if _prefer_html_health_page():
+            component_checks = []
+
+            database_check = checks.get("database")
+            if isinstance(database_check, dict):
+                component_checks.append(
+                    {
+                        "name": "Database",
+                        "status": database_check.get("status", "unknown"),
+                        "reason": database_check.get("reason"),
+                        "path": None,
+                    }
+                )
+
+            redis_check = checks.get("redis")
+            if isinstance(redis_check, dict):
+                component_checks.append(
+                    {
+                        "name": "Redis",
+                        "status": redis_check.get("status", "unknown"),
+                        "reason": redis_check.get("reason"),
+                        "path": None,
+                    }
+                )
+
+            storage_details = checks.get("storage", {})
+            if isinstance(storage_details, dict):
+                for key, item in storage_details.items():
+                    item_data = item if isinstance(item, dict) else {}
+                    component_checks.append(
+                        {
+                            "name": key.replace("_", " ").title(),
+                            "status": item_data.get("status", "unknown"),
+                            "reason": item_data.get("reason"),
+                            "path": item_data.get("path"),
+                        }
+                    )
+
+            return (
+                render_template(
+                    "health.html",
+                    payload=payload,
+                    status=status,
+                    http_status=http_status,
+                    uptime_human=_format_uptime(payload["uptime_seconds"]),
+                    component_checks=component_checks,
+                    raw_json_url="/health?format=json&full=true",
+                    shared_stylesheet_url=_resolve_app_css_url(),
+                ),
+                http_status,
+            )
 
         return jsonify(payload), http_status
 
