@@ -3,6 +3,6 @@
 black==24.10.0
 ruff==0.9.9
 mypy==1.15.0
-pytest==8.3.4
+pytest==9.0.2
 pytest-cov==6.0.0
 types-requests==2.32.0.20241016
