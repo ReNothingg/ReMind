@@ -21,7 +21,7 @@ beautifulsoup4==4.12.3
 python-dotenv==1.0.1
 Pillow==11.1.0
 redis==5.2.1
-psycopg2-binary==2.9.10
+psycopg2-binary==2.9.11
 celery==5.4.0
 gevent==24.11.1
 python-magic==0.4.27
