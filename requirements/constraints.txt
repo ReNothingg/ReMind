@@ -23,7 +23,7 @@ Pillow==11.1.0
 redis==5.2.1
 psycopg2-binary==2.9.10
 celery==5.4.0
-gevent==24.11.1
+gevent==25.9.1
 python-magic==0.4.27
 prometheus-client==0.22.1
 
