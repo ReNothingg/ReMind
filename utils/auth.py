@@ -743,7 +743,16 @@ def register_auth_routes(app):
                 if hasattr(token_err, "description"):
                     app.logger.error(f"Error description: {token_err.description}")
                 raise
-            resp = oauth.google.get("https://www.googleapis.com/oauth2/v3/userinfo")
+            if not isinstance(token, dict) or not token.get("access_token"):
+                app.logger.error(
+                    "Google token exchange returned no access_token. "
+                    f"Token keys: {list(token.keys()) if isinstance(token, dict) else type(token)}"
+                )
+                raise RuntimeError("google_oauth_missing_access_token")
+
+            # When token is obtained via fallback flow, Authlib may not populate client token state.
+            oauth.google.token = token
+            resp = oauth.google.get("https://www.googleapis.com/oauth2/v3/userinfo", token=token)
             user_info = resp.json()
             app.logger.debug(f"User info obtained: {user_info.get('email')}")
             if "email" not in user_info:
