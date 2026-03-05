@@ -156,6 +156,8 @@ if BACKEND_URL:
     if backend_host and backend_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(backend_host)
 
+SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None
+
 TURNSTILE_SITE_KEY = os.getenv("TURNSTILE_SITE_KEY", "")
 TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY", "")
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"

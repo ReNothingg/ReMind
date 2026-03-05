@@ -587,14 +587,16 @@ def register_auth_routes(app):
         )
     @app.route("/login/google")
     def login_google():
-        from config import BACKEND_URL, ALLOWED_HOSTS, LOCALHOST_MODE
+        from config import BACKEND_URL, ALLOWED_HOSTS
 
         redirect_to_candidate = request.args.get("redirect_to") or request.headers.get("Referer") or ""
         if _is_safe_redirect_target(redirect_to_candidate, ALLOWED_HOSTS):
             session["oauth_redirect_to"] = redirect_to_candidate
 
         request_host = urlparse(request.host_url).hostname
-        prefer_request_host = LOCALHOST_MODE or _is_loopback_hostname(request_host)
+        # In production we should prefer configured backend host to avoid
+        # OAuth callback landing on an unexpected domain.
+        prefer_request_host = _is_loopback_hostname(request_host)
 
         if BACKEND_URL and not prefer_request_host:
             redirect_uri = f"{BACKEND_URL.rstrip('/')}{url_for('authorize_google')}"
@@ -623,6 +625,8 @@ def register_auth_routes(app):
             app.logger.info(f"authorize_google Host: {request.host}")
             app.logger.info(f"authorize_google Scheme: {request.scheme}")
             app.logger.info(f"authorize_google Base URL: {request.base_url}")
+            from config import ALLOWED_HOSTS
+            redirect_to = session.pop("oauth_redirect_to", None)
             try:
                 app.logger.info("Attempting to exchange code for access token...")
                 token = oauth.google.authorize_access_token()
@@ -669,8 +673,6 @@ def register_auth_routes(app):
             session["username"] = InputValidator.sanitize_output(user.username)
             regenerate_session()
             session.permanent = True
-            from config import ALLOWED_HOSTS
-            redirect_to = session.pop("oauth_redirect_to", None)
             if _is_safe_redirect_target(redirect_to, ALLOWED_HOSTS):
                 return redirect(redirect_to)
             return redirect("/")
