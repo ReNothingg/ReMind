@@ -174,6 +174,33 @@ def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:
     return _is_allowed_hostname(parsed.hostname, allowed_hosts)
 
 
+def _resolve_oauth_redirect_base(
+    request_host_url: str,
+    backend_url: str | None,
+    allowed_hosts,
+    preferred_target: str = "",
+) -> str:
+    parsed_target = urlparse(preferred_target or "")
+    if (
+        parsed_target.scheme in ("http", "https")
+        and parsed_target.netloc
+        and _is_allowed_hostname(parsed_target.hostname, allowed_hosts)
+    ):
+        return f"{parsed_target.scheme}://{parsed_target.netloc}"
+
+    request_host = urlparse(request_host_url).hostname
+    if request_host and _is_loopback_hostname(request_host):
+        return request_host_url.rstrip("/")
+
+    if backend_url:
+        return backend_url.rstrip("/")
+
+    if not _is_allowed_hostname(request_host, allowed_hosts):
+        return ""
+
+    return request_host_url.rstrip("/")
+
+
 def verify_turnstile(turnstile_response):
 
     from config import TURNSTILE_SECRET_KEY, TURNSTILE_VERIFY_URL, LOCALHOST_MODE
@@ -593,18 +620,16 @@ def register_auth_routes(app):
         if _is_safe_redirect_target(redirect_to_candidate, ALLOWED_HOSTS):
             session["oauth_redirect_to"] = redirect_to_candidate
 
-        request_host = urlparse(request.host_url).hostname
-        # In production we should prefer configured backend host to avoid
-        # OAuth callback landing on an unexpected domain.
-        prefer_request_host = _is_loopback_hostname(request_host)
-
-        if BACKEND_URL and not prefer_request_host:
-            redirect_uri = f"{BACKEND_URL.rstrip('/')}{url_for('authorize_google')}"
-        else:
-            if not _is_allowed_hostname(request_host, ALLOWED_HOSTS):
-                app.logger.warning("Blocked OAuth start due to untrusted request host")
-                return redirect(url_for("login"))
-            redirect_uri = f"{request.host_url.rstrip('/')}{url_for('authorize_google')}"
+        redirect_base = _resolve_oauth_redirect_base(
+            request_host_url=request.host_url,
+            backend_url=BACKEND_URL,
+            allowed_hosts=ALLOWED_HOSTS,
+            preferred_target=redirect_to_candidate,
+        )
+        if not redirect_base:
+            app.logger.warning("Blocked OAuth start due to untrusted request host")
+            return redirect(url_for("login"))
+        redirect_uri = f"{redirect_base}{url_for('authorize_google')}"
 
         google_client = getattr(oauth, "google", None)
         if google_client is None:

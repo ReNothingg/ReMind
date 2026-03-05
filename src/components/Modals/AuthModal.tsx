@@ -33,6 +33,16 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const googleHref = (() => {
+        try {
+            const base = new URL(googleUrl, window.location.origin);
+            base.searchParams.set('redirect_to', window.location.href);
+            return base.toString();
+        } catch (_err) {
+            const separator = googleUrl.includes('?') ? '&' : '?';
+            return `${googleUrl}${separator}redirect_to=${encodeURIComponent(window.location.href)}`;
+        }
+    })();
     useEffect(() => {
         const loadAuthConfig = async () => {
             try {
@@ -285,7 +295,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             {}
                             {googleAvailable && (
                                 <div style={{ marginTop: '10px' }}>
-                                    <a className="btn btn-google" href={googleUrl}>
+                                    <a className="btn btn-google" href={googleHref}>
                                         <i className="fab fa-google" style={{ marginRight: '8px' }}></i> Войти с Google
                                     </a>
                                 </div>
@@ -358,7 +368,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             {}
                             {googleAvailable && (
                                 <div style={{ marginTop: '10px' }}>
-                                    <a className="btn btn-google" href={googleUrl}>
+                                    <a className="btn btn-google" href={googleHref}>
                                         <i className="fab fa-google" style={{ marginRight: '8px' }}></i> Регистрация с Google
                                     </a>
                                 </div>
