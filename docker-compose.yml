@@ -75,6 +75,7 @@ services:
           memory: 512M
     networks:
       - backend
+      - edge
 
   worker:
     build:
@@ -115,6 +116,7 @@ services:
           memory: 2G
     networks:
       - backend
+      - edge
 
   db:
     image: postgres:15-alpine
