@@ -8,7 +8,7 @@ import {
 
 const MAX_FILES = 10;
 
-export const useFileHandler = () => {
+export const useFileHandler = ({ enabled = true } = {}) => {
   const [files, setFiles] = useState([]);
   const [dragCounter, setDragCounter] = useState(0); // Используется для отслеживания вложенных drag событий
   const [isDragActive, setIsDragActive] = useState(false);
@@ -55,6 +55,7 @@ export const useFileHandler = () => {
 
   const addFiles = useCallback(
     (newFiles) => {
+      if (!enabled) return;
       if (!newFiles || newFiles.length === 0) return;
       let fileList = Array.from(newFiles);
 
@@ -68,7 +69,7 @@ export const useFileHandler = () => {
 
       setFiles((prev) => [...prev, ...fileList]);
     },
-    [files.length]
+    [enabled, files.length]
   );
 
   const removeFile = useCallback((index) => {
@@ -84,17 +85,24 @@ export const useFileHandler = () => {
 
   const handleFileInputChange = useCallback(
     (e) => {
+      if (!enabled) {
+        return;
+      }
       if (e.target.files) {
         addFiles(e.target.files);
       }
     },
-    [addFiles]
+    [addFiles, enabled]
   );
 
   const handleDragEnter = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      if (!enabled) {
+        return;
+      }
 
       if (hasFileData(e)) {
         dragHasFilesRef.current = true;
@@ -108,13 +116,16 @@ export const useFileHandler = () => {
         return newCount;
       });
     },
-    [hasFileData, setOverlayState]
+    [enabled, hasFileData, setOverlayState]
   );
 
   const handleDragLeave = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!enabled) {
+        return;
+      }
       setDragCounter((prev) => {
         const newCount = prev - 1;
         if (newCount <= 0) {
@@ -125,19 +136,22 @@ export const useFileHandler = () => {
         return newCount;
       });
     },
-    [setOverlayState]
+    [enabled, setOverlayState]
   );
 
   const handleDragOver = useCallback(
     (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!enabled) {
+        return;
+      }
       if (!isDragActive && hasFileData(e)) {
         dragHasFilesRef.current = true;
         setOverlayState(true);
       }
     },
-    [hasFileData, isDragActive, setOverlayState]
+    [enabled, hasFileData, isDragActive, setOverlayState]
   );
 
   const handleDrop = useCallback(
@@ -147,11 +161,14 @@ export const useFileHandler = () => {
       dragHasFilesRef.current = false;
       setOverlayState(false);
       setDragCounter(0);
+      if (!enabled) {
+        return;
+      }
       if (e.dataTransfer?.files) {
         addFiles(e.dataTransfer.files);
       }
     },
-    [addFiles, setOverlayState]
+    [addFiles, enabled, setOverlayState]
   );
 
   return {

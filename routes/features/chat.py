@@ -59,6 +59,16 @@ def _extract_uploaded_files() -> list:
     return uploaded_files
 
 
+def _has_files_payload(value) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, (list, tuple, set, dict)):
+        return len(value) > 0
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
+
+
 def process_request_data() -> tuple[str, dict, str]:
     auth_user_id = session.get("user_id")
 
@@ -68,6 +78,12 @@ def process_request_data() -> tuple[str, dict, str]:
         user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
         model_name = data.get("model", "gemini")
         data.setdefault("files", [])
+        if auth_user_id is None and _has_files_payload(data.get("files")):
+            raise ApiError(
+                "File uploads are unavailable in guest mode.",
+                status=403,
+                code="guest_file_upload_disabled",
+            )
         _validate_message_in_payload(data)
         return user_id, data, model_name
 
@@ -81,6 +97,12 @@ def process_request_data() -> tuple[str, dict, str]:
     _validate_message_in_payload(user_data)
 
     uploaded_files = _extract_uploaded_files()
+    if auth_user_id is None and uploaded_files:
+        raise ApiError(
+            "File uploads are unavailable in guest mode.",
+            status=403,
+            code="guest_file_upload_disabled",
+        )
     processed_files = [handle_file_upload(file_storage, user_id) for file_storage in uploaded_files]
     user_data["files"] = [file_info for file_info in processed_files if file_info is not None]
 

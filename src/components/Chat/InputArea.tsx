@@ -17,6 +17,7 @@ const InputArea = ({ onSendMessage, onStop, isLoading, initialPrompt, onOpenAuth
     const { isAuthenticated } = useAuth();
     const { settings } = useSettings();
     const { t, i18n } = useTranslation();
+    const fileUploadsEnabled = isAuthenticated && !isReadOnly;
     useEffect(() => {
         if (initialPrompt && initialPrompt !== text) {
             setTimeout(() => {
@@ -47,7 +48,7 @@ const InputArea = ({ onSendMessage, onStop, isLoading, initialPrompt, onOpenAuth
         handleDragOver,
         handleDrop,
         VALID_IMAGE_MIME_TYPES
-    } = useFileHandler();
+    } = useFileHandler({ enabled: fileUploadsEnabled });
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -82,7 +83,8 @@ const InputArea = ({ onSendMessage, onStop, isLoading, initialPrompt, onOpenAuth
         if (isLoading) {
             onStop();
         } else {
-            const hasContent = text.trim() || files.length > 0 || quotes.length > 0;
+            const effectiveFiles = fileUploadsEnabled ? files : [];
+            const hasContent = text.trim() || effectiveFiles.length > 0 || quotes.length > 0;
             if (!hasContent) return;
             let fullText = text;
             if (quotes.length > 0) {
@@ -90,7 +92,7 @@ const InputArea = ({ onSendMessage, onStop, isLoading, initialPrompt, onOpenAuth
                 fullText = quotedText + (text ? '\n\n' + text : '');
             }
 
-            onSendMessage(fullText, files, {
+            onSendMessage(fullText, effectiveFiles, {
                 webSearch: false, // webSearchEnabled,
                 censorship: false // censorshipEnabled
             });
@@ -220,13 +222,14 @@ const InputArea = ({ onSendMessage, onStop, isLoading, initialPrompt, onOpenAuth
             }
         };
     }, [handleMouseUp, hideQuoteButton]);
+    const effectiveFileCount = fileUploadsEnabled ? files.length : 0;
     const sendButtonClass = isLoading
         ? 'stop-button'
-        : (text.trim() || files.length > 0 || quotes.length > 0)
+        : (text.trim() || effectiveFileCount > 0 || quotes.length > 0)
             ? 'send-mode-button'
             : 'audio-link-button';
 
-    const hasContent = Boolean(text.trim() || files.length > 0 || quotes.length > 0);
+    const hasContent = Boolean(text.trim() || effectiveFileCount > 0 || quotes.length > 0);
 
     const sendButtonTitle = isLoading
         ? t('composer.stop')

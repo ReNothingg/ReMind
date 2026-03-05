@@ -52,7 +52,7 @@ const MainLayout = () => {
     const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
 
     const { isSettingsView, clearHash } = useURLRouter();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, loading: isAuthLoading } = useAuth();
     const { settings } = useSettings();
 
     const {
@@ -203,19 +203,37 @@ const MainLayout = () => {
 
     useEffect(() => {
         const handleHashRouteChange = () => {
-            if (isSettingsView() && !isSettingsOpen) {
+            if (!isSettingsView()) {
+                return;
+            }
+            if (isAuthLoading) {
+                return;
+            }
+            if (!isAuthenticated) {
+                setSettingsOpen(false);
+                clearHash();
+                return;
+            }
+            if (!isSettingsOpen) {
                 setSettingsOpen(true);
             }
         };
 
         window.addEventListener('hashRouteChange', handleHashRouteChange as EventListener);
 
-        if (isSettingsView() && !isSettingsOpen) {
-            setTimeout(() => setSettingsOpen(true), 0);
+        if (isSettingsView() && !isAuthLoading) {
+            if (!isAuthenticated) {
+                if (isSettingsOpen) {
+                    setTimeout(() => setSettingsOpen(false), 0);
+                }
+                setTimeout(() => clearHash(), 0);
+            } else if (!isSettingsOpen) {
+                setTimeout(() => setSettingsOpen(true), 0);
+            }
         }
 
         return () => window.removeEventListener('hashRouteChange', handleHashRouteChange as EventListener);
-    }, [isSettingsView, isSettingsOpen]);
+    }, [isSettingsView, isSettingsOpen, isAuthenticated, isAuthLoading, clearHash]);
 
     useEffect(() => {
         const closeMenu = () => {

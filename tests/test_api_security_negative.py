@@ -97,7 +97,16 @@ def test_public_share_is_read_only_for_guest_chat_write(client, app, create_conf
     assert payload["error"]["code"] == "chat_read_only"
 
 
-def test_upload_validation_rejects_invalid_extension(client):
+def test_upload_validation_rejects_invalid_extension_for_authenticated_user(
+    client, create_confirmed_user, login
+):
+    _, email, password = create_confirmed_user()
+    login_response = login(email, password)
+    assert login_response.status_code == 200
+
+    csrf_token = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_token
+
     response = client.post(
         "/chat",
         data={
@@ -106,9 +115,27 @@ def test_upload_validation_rejects_invalid_extension(client):
             "file0": (io.BytesIO(b"MZ\\x00\\x01"), "payload.exe"),
         },
         content_type="multipart/form-data",
+        headers={"X-CSRF-Token": csrf_token},
     )
 
     assert response.status_code == 400
     payload = response.get_json()
     assert payload["ok"] is False
     assert payload["error"]["code"] == "missing_input"
+
+
+def test_guest_file_upload_is_forbidden(client):
+    response = client.post(
+        "/chat",
+        data={
+            "model": "echo",
+            "user_id": "guest_upload_blocked",
+            "file0": (io.BytesIO(b"fake image bytes"), "photo.png"),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 403
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "guest_file_upload_disabled"
