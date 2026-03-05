@@ -102,14 +102,14 @@ class SessionConfig:
 
 
 def configure_session(app):
-    from config import IS_PRODUCTION, SESSION_COOKIE_DOMAIN
+    from config import IS_PRODUCTION, SESSION_COOKIE_DOMAIN, SESSION_COOKIE_NAME
     app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
     app.config['SESSION_COOKIE_HTTPONLY'] = SessionConfig.COOKIE_HTTPONLY
     app.config['SESSION_COOKIE_SAMESITE'] = SessionConfig.COOKIE_SAMESITE
     app.config['SESSION_COOKIE_DOMAIN'] = SESSION_COOKIE_DOMAIN
     app.config['PERMANENT_SESSION_LIFETIME'] = SessionConfig.PERMANENT_SESSION_LIFETIME
     app.config['SESSION_REFRESH_EACH_REQUEST'] = SessionConfig.SESSION_REFRESH_EACH_REQUEST
-    app.config['SESSION_COOKIE_NAME'] = 'remind_session'
+    app.config['SESSION_COOKIE_NAME'] = SESSION_COOKIE_NAME
     @app.before_request
     def make_session_permanent():
         session.permanent = True

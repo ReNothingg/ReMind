@@ -27,6 +27,7 @@ from config import (
     IS_PRODUCTION,
     ALLOWED_HOSTS,
     SESSION_COOKIE_DOMAIN,
+    SESSION_COOKIE_NAME,
 )
 from utils.auth import setup_auth
 from utils.user_agent_validator import UserAgentValidator, log_suspicious_user_agent
@@ -83,7 +84,7 @@ def create_app():
     app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
     app.config["SESSION_COOKIE_HTTPONLY"] = True  # No JS access
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF protection
-    app.config["SESSION_COOKIE_NAME"] = "remind_session"  # Custom cookie name
+    app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
     app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN
     configure_session(app)
 

@@ -157,6 +157,7 @@ if BACKEND_URL:
         ALLOWED_HOSTS.append(backend_host)
 
 SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None
+SESSION_COOKIE_NAME = (os.getenv("SESSION_COOKIE_NAME") or "remind_session").strip() or "remind_session"
 
 TURNSTILE_SITE_KEY = os.getenv("TURNSTILE_SITE_KEY", "")
 TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY", "")
