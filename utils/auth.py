@@ -11,12 +11,16 @@ import logging
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
+from authlib.integrations.base_client.errors import MismatchingStateError
+from itsdangerous import URLSafeTimedSerializer, BadData
 from .mailer import send_email
 from .input_validation import InputValidator, ValidationError
 from .rate_limiting import login_limiter, password_reset_limiter, rate_limit
 
 db = SQLAlchemy()
 oauth = OAuth()
+OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
+OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
@@ -172,6 +176,30 @@ def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:
         return False
 
     return _is_allowed_hostname(parsed.hostname, allowed_hosts)
+
+
+def _oauth_state_serializer(secret_key: str) -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(secret_key, salt="google-oauth-fallback-state")
+
+
+def _encode_oauth_fallback_state(secret_key: str, payload: dict) -> str:
+    serializer = _oauth_state_serializer(secret_key)
+    return serializer.dumps(payload)
+
+
+def _decode_oauth_fallback_state(
+    secret_key: str,
+    raw_value: str,
+    max_age: int = OAUTH_FALLBACK_STATE_TTL_SECONDS,
+):
+    if not raw_value or not secret_key:
+        return None
+    serializer = _oauth_state_serializer(secret_key)
+    try:
+        data = serializer.loads(raw_value, max_age=max_age)
+    except BadData:
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _resolve_oauth_redirect_base(
@@ -614,7 +642,7 @@ def register_auth_routes(app):
         )
     @app.route("/login/google")
     def login_google():
-        from config import BACKEND_URL, ALLOWED_HOSTS
+        from config import BACKEND_URL, ALLOWED_HOSTS, SECRET_KEY, SESSION_COOKIE_DOMAIN
 
         redirect_to_candidate = request.args.get("redirect_to") or request.headers.get("Referer") or ""
         if _is_safe_redirect_target(redirect_to_candidate, ALLOWED_HOSTS):
@@ -637,7 +665,30 @@ def register_auth_routes(app):
             return make_error("Google OAuth is not configured", status=503, code="oauth_unavailable")
 
         try:
-            return google_client.authorize_redirect(redirect_uri)
+            auth_data = google_client.create_authorization_url(redirect_uri)
+            google_client.save_authorize_data(redirect_uri=redirect_uri, **auth_data)
+
+            response = redirect(auth_data["url"])
+            state = auth_data.get("state")
+            if SECRET_KEY and state:
+                fallback_payload = {
+                    "state": state,
+                    "redirect_uri": redirect_uri,
+                }
+                fallback_cookie = _encode_oauth_fallback_state(SECRET_KEY, fallback_payload)
+                request_host = urlparse(request.host_url).hostname
+                secure_cookie = not _is_loopback_hostname(request_host)
+                response.set_cookie(
+                    OAUTH_FALLBACK_STATE_COOKIE,
+                    fallback_cookie,
+                    max_age=OAUTH_FALLBACK_STATE_TTL_SECONDS,
+                    httponly=True,
+                    secure=secure_cookie,
+                    samesite="Lax",
+                    domain=SESSION_COOKIE_DOMAIN,
+                    path=url_for("authorize_google"),
+                )
+            return response
         except Exception as exc:
             app.logger.exception(f"Failed to start Google OAuth redirect: {exc}")
             return make_error("Failed to start Google OAuth", status=500, code="oauth_start_failed")
@@ -656,6 +707,36 @@ def register_auth_routes(app):
                 app.logger.info("Attempting to exchange code for access token...")
                 token = oauth.google.authorize_access_token()
                 app.logger.debug(f"Token obtained successfully")
+            except MismatchingStateError as token_err:
+                from config import SECRET_KEY
+
+                app.logger.warning(
+                    f"OAuth state mismatch. Trying signed fallback state cookie: {token_err}"
+                )
+                fallback_state_raw = request.cookies.get(OAUTH_FALLBACK_STATE_COOKIE, "")
+                fallback_state = _decode_oauth_fallback_state(SECRET_KEY, fallback_state_raw)
+                request_state = request.args.get("state", "")
+                request_code = request.args.get("code", "")
+                fallback_state_value = str((fallback_state or {}).get("state", ""))
+                fallback_redirect_uri = str((fallback_state or {}).get("redirect_uri", ""))
+                if (
+                    fallback_state
+                    and request_state
+                    and fallback_state_value
+                    and request_code
+                    and secrets.compare_digest(fallback_state_value, request_state)
+                ):
+                    app.logger.warning(
+                        "Fallback state validation succeeded. Exchanging token without session state."
+                    )
+                    token = oauth.google.fetch_access_token(
+                        code=request_code,
+                        redirect_uri=fallback_redirect_uri or request.base_url,
+                    )
+                    app.logger.debug("Token obtained successfully via fallback state cookie")
+                else:
+                    app.logger.error("Fallback state validation failed")
+                    raise
             except Exception as token_err:
                 app.logger.error(f"Failed to get access token: {token_err}")
                 app.logger.error(f"Request args: {dict(request.args)}")
@@ -698,9 +779,17 @@ def register_auth_routes(app):
             session["username"] = InputValidator.sanitize_output(user.username)
             regenerate_session()
             session.permanent = True
+            from config import SESSION_COOKIE_DOMAIN
             if _is_safe_redirect_target(redirect_to, ALLOWED_HOSTS):
-                return redirect(redirect_to)
-            return redirect("/")
+                response = redirect(redirect_to)
+            else:
+                response = redirect("/")
+            response.delete_cookie(
+                OAUTH_FALLBACK_STATE_COOKIE,
+                domain=SESSION_COOKIE_DOMAIN,
+                path=url_for("authorize_google"),
+            )
+            return response
 
         except Exception as e:
             app.logger.exception(f"OAuth error in authorize_google(): {e}")
@@ -708,10 +797,18 @@ def register_auth_routes(app):
             err_param = request.args.get("error")
             err_desc = request.args.get("error_description")
             if err_param:
-                return redirect(
+                response = redirect(
                     url_for("login", error=err_param, error_description=err_desc)
                 )
-            return redirect(url_for("login"))
+            else:
+                response = redirect(url_for("login"))
+            from config import SESSION_COOKIE_DOMAIN
+            response.delete_cookie(
+                OAUTH_FALLBACK_STATE_COOKIE,
+                domain=SESSION_COOKIE_DOMAIN,
+                path=url_for("authorize_google"),
+            )
+            return response
 
     @app.route("/api/auth/check", methods=["GET"])
     def api_check_auth():
@@ -1304,8 +1401,6 @@ def setup_auth(app):
                 @event.listens_for(engine, "connect")
                 def _set_sqlite_pragmas(dbapi_connection, _connection_record):
                     cursor = dbapi_connection.cursor()
-                    # Some Windows ACL setups deny deleting journal files.
-                    # Keep journaling/temp files in memory to avoid startup failures.
                     cursor.execute("PRAGMA journal_mode=MEMORY")
                     cursor.execute("PRAGMA temp_store=MEMORY")
                     cursor.execute("PRAGMA synchronous=NORMAL")
