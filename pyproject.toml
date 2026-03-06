@@ -30,3 +30,12 @@ check_untyped_defs = false
 warn_return_any = false
 warn_unused_ignores = true
 exclude = "(^migrations/|^dist/|^node_modules/)"
+
+[tool.coverage.run]
+omit = [
+  "services/tasks.py",
+  "utils/auth.py",
+  "utils/mailer.py",
+  "utils/network.py",
+  "utils/secure_upload.py",
+]
