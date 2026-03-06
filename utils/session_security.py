@@ -1,8 +1,43 @@
-import secrets
-from functools import wraps
-from flask import session, request, current_app
 import hashlib
+import secrets
 import time
+from functools import wraps
+from urllib.parse import urlparse
+
+from flask import current_app, has_request_context, request, session
+from flask.sessions import SecureCookieSessionInterface
+
+
+def _extract_hostname(raw_host: str | None) -> str:
+    host = (raw_host or "").strip()
+    if not host:
+        return ""
+
+    parsed = urlparse(f"//{host}")
+    return (parsed.hostname or host).strip(".").lower()
+
+
+def resolve_cookie_domain(configured_domain: str | None, request_host: str | None = None) -> str | None:
+    domain = (configured_domain or "").strip()
+    if not domain:
+        return None
+
+    host = _extract_hostname(request_host)
+    if not host and has_request_context():
+        host = _extract_hostname(request.host)
+    if not host:
+        return domain
+
+    normalized_domain = domain.lstrip(".").strip(".").lower()
+    if host == normalized_domain or host.endswith(f".{normalized_domain}"):
+        return domain
+    return None
+
+
+class RequestAwareSessionInterface(SecureCookieSessionInterface):
+    def get_cookie_domain(self, app):
+        configured_domain = app.config.get("SESSION_COOKIE_DOMAIN")
+        return resolve_cookie_domain(configured_domain)
 
 
 def regenerate_session():

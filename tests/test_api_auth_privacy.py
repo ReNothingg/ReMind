@@ -1,7 +1,12 @@
 import json
 from datetime import datetime, timedelta
 
+import pytest
+
+import utils.auth as auth_module
+from config import SESSION_COOKIE_NAME
 from utils.auth import ChatShare, User, UserChatHistory, db
+from utils.session_security import resolve_cookie_domain
 
 
 def test_api_auth_login_and_check(client, create_confirmed_user, login):
@@ -19,6 +24,68 @@ def test_api_auth_login_and_check(client, create_confirmed_user, login):
     check_payload = check_response.get_json()
     assert check_payload['authenticated'] is True
     assert check_payload['user']['id'] == user_id
+
+
+def test_api_login_wrong_password_for_argon2_hash_returns_401(client, app):
+    try:
+        from argon2 import PasswordHasher
+    except ImportError:
+        pytest.skip('argon2 is not installed')
+
+    with app.app_context():
+        user = User(
+            username='argon-user',
+            email='argon@example.com',
+            password=PasswordHasher().hash('Password1!'),
+            is_confirmed=True,
+        )
+        db.session.add(user)
+        db.session.commit()
+
+    response = client.post(
+        '/api/auth/login',
+        json={'email': 'argon@example.com', 'password': 'WrongPassword1!'},
+        headers={'User-Agent': 'Mozilla/5.0 (pytest)'}
+    )
+
+    assert response.status_code == 401
+    payload = response.get_json()
+    assert payload['error'] == 'РќРµРІРµСЂРЅС‹Р№ email РёР»Рё РїР°СЂРѕР»СЊ'
+
+
+def test_resolve_cookie_domain_uses_host_only_cookies_for_local_requests():
+    assert resolve_cookie_domain('.synvexai.com', '127.0.0.1:5000') is None
+    assert resolve_cookie_domain('.synvexai.com', 'chat.synvexai.com') == '.synvexai.com'
+
+
+def test_login_google_uses_host_only_cookies_on_local_host(client, monkeypatch):
+    class FakeGoogleClient:
+        def create_authorization_url(self, redirect_uri):
+            self.redirect_uri = redirect_uri
+            return {
+                'url': 'https://accounts.google.com/o/oauth2/v2/auth?state=test-state',
+                'state': 'test-state',
+            }
+
+        def save_authorize_data(self, **kwargs):
+            self.saved = kwargs
+
+    monkeypatch.setattr(auth_module.oauth, 'google', FakeGoogleClient(), raising=False)
+
+    response = client.get(
+        '/login/google?redirect_to=/health',
+        base_url='http://127.0.0.1:5000',
+        headers={'User-Agent': 'Mozilla/5.0 (pytest)'}
+    )
+
+    assert response.status_code == 302
+    assert response.headers['Location'].startswith('https://accounts.google.com/')
+
+    cookies = response.headers.getlist('Set-Cookie')
+    session_cookie = next(cookie for cookie in cookies if cookie.startswith(f'{SESSION_COOKIE_NAME}='))
+    fallback_cookie = next(cookie for cookie in cookies if cookie.startswith('oauth_state_fallback='))
+    assert 'Domain=' not in session_cookie
+    assert 'Domain=' not in fallback_cookie
 
 
 def test_chat_echo_as_guest_returns_reply_and_request_id(client):
@@ -188,3 +255,21 @@ def test_health_stylesheet_is_available(client):
     assert 'text/css' in response.headers.get('Content-Type', '')
     body = response.get_data(as_text=True)
     assert '.health-page' in body
+
+
+def test_images_route_serves_static_assets_under_images_prefix(client):
+    response = client.get('/images/prompts/prompts.json')
+
+    assert response.status_code == 200
+    assert 'application/json' in response.headers.get('Content-Type', '')
+    payload = response.get_json()
+    assert 'prompts' in payload
+
+
+def test_missing_generated_image_returns_404(client):
+    response = client.get('/images/does-not-exist.png')
+
+    assert response.status_code == 404
+    payload = response.get_json()
+    assert payload['ok'] is False
+    assert payload['error']['code'] == 'not_found'

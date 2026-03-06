@@ -35,7 +35,11 @@ from utils.responses import make_error, logger
 from utils.csrf_protection import setup_csrf_protection, add_csrf_token_to_response
 from utils.logger_config import setup_logging
 from utils.security_headers import apply_security_headers, get_safe_error_response
-from utils.session_security import configure_session, update_session_activity
+from utils.session_security import (
+    RequestAwareSessionInterface,
+    configure_session,
+    update_session_activity,
+)
 from utils.audit_log import log_audit_event, AuditEvents
 from utils.privacy import anonymize_ip
 from utils.observability import start_request_context, finish_request_context
@@ -87,6 +91,7 @@ def create_app():
     app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
     app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN
     configure_session(app)
+    app.session_interface = RequestAwareSessionInterface()
 
     app.wsgi_app = ProxyFix(
         app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1

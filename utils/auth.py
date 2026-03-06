@@ -6,7 +6,7 @@ from datetime import timedelta, datetime
 from urllib.parse import urlparse
 import requests
 import jwt
-from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask import current_app, render_template, request, redirect, url_for, flash, session, jsonify
 import logging
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,6 +16,7 @@ from itsdangerous import URLSafeTimedSerializer, BadData
 from .mailer import send_email
 from .input_validation import InputValidator, ValidationError
 from .rate_limiting import login_limiter, password_reset_limiter, rate_limit
+from .session_security import resolve_cookie_domain
 
 db = SQLAlchemy()
 oauth = OAuth()
@@ -137,6 +138,65 @@ def is_valid_password(password):
         return False
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return False
+    return True
+
+
+def _is_argon2_hash(stored_password: str) -> bool:
+    return isinstance(stored_password, str) and stored_password.startswith("$argon2")
+
+
+def _upgrade_password_hash(user, password: str, ph) -> None:
+    try:
+        user.password = ph.hash(password)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.warning(
+            "Password verified for user %s, but hash migration failed",
+            getattr(user, "id", None),
+        )
+
+
+def _verify_user_password(user, password: str) -> bool:
+    stored_password = getattr(user, "password", None)
+    if not stored_password or not password:
+        return False
+
+    if _is_argon2_hash(stored_password):
+        try:
+            from argon2 import PasswordHasher
+            from argon2.exceptions import InvalidHashError, VerifyMismatchError
+        except ImportError:
+            current_app.logger.warning(
+                "Argon2 password stored for user %s, but argon2 is unavailable",
+                getattr(user, "id", None),
+            )
+            return False
+
+        ph = PasswordHasher()
+        try:
+            password_valid = ph.verify(stored_password, password)
+        except (VerifyMismatchError, InvalidHashError):
+            return False
+
+        if password_valid and ph.check_needs_rehash(stored_password):
+            _upgrade_password_hash(user, password, ph)
+        return bool(password_valid)
+
+    try:
+        password_valid = check_password_hash(stored_password, password)
+    except ValueError:
+        return False
+
+    if not password_valid:
+        return False
+
+    try:
+        from argon2 import PasswordHasher
+    except ImportError:
+        return True
+
+    _upgrade_password_hash(user, password, PasswordHasher())
     return True
 
 
@@ -449,25 +509,7 @@ def register_auth_routes(app):
                 )
 
             user = User.query.filter_by(email=email).first()
-            password_valid = False
-            if user and user.password:
-                try:
-                    from argon2 import PasswordHasher
-                    from argon2.exceptions import VerifyMismatchError, InvalidHashError
-                    ph = PasswordHasher()
-                    try:
-                        ph.verify(user.password, password)
-                        password_valid = True
-                        if ph.check_needs_rehash(user.password):
-                            user.password = ph.hash(password)
-                            db.session.commit()
-                    except (VerifyMismatchError, InvalidHashError):
-                        if check_password_hash(user.password, password):
-                            password_valid = True
-                            user.password = ph.hash(password)
-                            db.session.commit()
-                except ImportError:
-                    password_valid = check_password_hash(user.password, password)
+            password_valid = _verify_user_password(user, password)
 
             if not user or not password_valid:
                 record_login_attempt(email, False)
@@ -671,6 +713,7 @@ def register_auth_routes(app):
             response = redirect(auth_data["url"])
             state = auth_data.get("state")
             if SECRET_KEY and state:
+                cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
                 fallback_payload = {
                     "state": state,
                     "redirect_uri": redirect_uri,
@@ -685,7 +728,7 @@ def register_auth_routes(app):
                     httponly=True,
                     secure=secure_cookie,
                     samesite="Lax",
-                    domain=SESSION_COOKIE_DOMAIN,
+                    domain=cookie_domain,
                     path=url_for("authorize_google"),
                 )
             return response
@@ -789,13 +832,14 @@ def register_auth_routes(app):
             regenerate_session()
             session.permanent = True
             from config import SESSION_COOKIE_DOMAIN
+            cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
             if _is_safe_redirect_target(redirect_to, ALLOWED_HOSTS):
                 response = redirect(redirect_to)
             else:
                 response = redirect("/")
             response.delete_cookie(
                 OAUTH_FALLBACK_STATE_COOKIE,
-                domain=SESSION_COOKIE_DOMAIN,
+                domain=cookie_domain,
                 path=url_for("authorize_google"),
             )
             return response
@@ -812,9 +856,10 @@ def register_auth_routes(app):
             else:
                 response = redirect(url_for("login"))
             from config import SESSION_COOKIE_DOMAIN
+            cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
             response.delete_cookie(
                 OAUTH_FALLBACK_STATE_COOKIE,
-                domain=SESSION_COOKIE_DOMAIN,
+                domain=cookie_domain,
                 path=url_for("authorize_google"),
             )
             return response
@@ -964,27 +1009,7 @@ def register_auth_routes(app):
                 return jsonify({"error": "Слишком много попыток входа"}), 429
 
             user = User.query.filter_by(email=email).first()
-
-            password_valid = False
-            if user and user.password:
-                try:
-                    from argon2 import PasswordHasher
-                    from argon2.exceptions import VerifyMismatchError, InvalidHashError
-
-                    ph = PasswordHasher()
-                    try:
-                        ph.verify(user.password, password)
-                        password_valid = True
-                        if ph.check_needs_rehash(user.password):
-                            user.password = ph.hash(password)
-                            db.session.commit()
-                    except (VerifyMismatchError, InvalidHashError):
-                        if check_password_hash(user.password, password):
-                            password_valid = True
-                            user.password = ph.hash(password)
-                            db.session.commit()
-                except ImportError:
-                    password_valid = check_password_hash(user.password, password)
+            password_valid = _verify_user_password(user, password)
 
             if not user or not password_valid:
                 record_login_attempt(email, False)
@@ -1424,6 +1449,7 @@ def setup_auth(app):
             name="google",
             client_id=GOOGLE_CLIENT_ID,
             client_secret=GOOGLE_CLIENT_SECRET,
+            server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
             authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
             access_token_url="https://oauth2.googleapis.com/token",
             api_base_url="https://openidconnect.googleapis.com/v1/",

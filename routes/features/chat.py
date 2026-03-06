@@ -6,6 +6,7 @@ import json
 import re
 import time
 import uuid
+from pathlib import Path
 
 from flask import Response, current_app, request, send_file, send_from_directory, session
 from werkzeug.utils import secure_filename
@@ -379,7 +380,19 @@ def register_chat_routes(api_bp):
     @api_bp.route("/images/<path:filename>")
     @api_error_boundary("image_not_found")
     def generated_image_route(filename):
-        return send_from_directory(
-            str(current_app.config["CREATE_IMAGE_FOLDER"]),
-            secure_filename(filename),
-        )
+        generated_name = secure_filename(Path(filename).name)
+        generated_dir = Path(current_app.config["CREATE_IMAGE_FOLDER"])
+        if (
+            generated_name
+            and generated_name == filename
+            and (generated_dir / generated_name).is_file()
+        ):
+            return send_from_directory(str(generated_dir), generated_name)
+
+        static_folder = current_app.static_folder
+        if static_folder:
+            static_images_dir = Path(static_folder) / "images"
+            if static_images_dir.is_dir():
+                return send_from_directory(str(static_images_dir), filename)
+
+        raise ApiError("Not found", status=404, code="not_found")

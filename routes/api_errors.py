@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Any, Callable, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
-from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
+from werkzeug.exceptions import BadRequest, HTTPException, RequestEntityTooLarge
 
 from utils.input_validation import ValidationError
 from utils.responses import logger, make_error
@@ -21,6 +21,29 @@ class ApiError(Exception):
 
 
 def _map_exception(error: Exception, fallback_code: str) -> ApiError:
+    if isinstance(error, HTTPException):
+        status = int(error.code or 500)
+        code_map = {
+            401: "auth_required",
+            403: "access_denied",
+            404: "not_found",
+            405: "method_not_allowed",
+            413: "request_entity_too_large",
+            429: "rate_limit_exceeded",
+        }
+        message_map = {
+            401: "Authentication required",
+            403: "Access denied",
+            404: "Not found",
+            405: "Method not allowed",
+            413: "File too large.",
+            429: "Too many requests",
+        }
+        return ApiError(
+            message_map.get(status, error.description or error.name),
+            status=status,
+            code=code_map.get(status, fallback_code if status >= 500 else "http_error"),
+        )
     if isinstance(error, ApiError):
         return error
     if isinstance(error, ValidationError):
