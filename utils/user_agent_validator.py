@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 class UserAgentValidator:
 
-
     def __init__(
         self,
         allowed_patterns: List[str],
@@ -17,12 +16,8 @@ class UserAgentValidator:
         enabled: bool = True,
     ):
 
-        self.allowed_patterns = [
-            re.compile(pattern, re.IGNORECASE) for pattern in allowed_patterns
-        ]
-        self.bypass_routes = [
-            re.compile(pattern, re.IGNORECASE) for pattern in bypass_routes
-        ]
+        self.allowed_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in allowed_patterns]
+        self.bypass_routes = [re.compile(pattern, re.IGNORECASE) for pattern in bypass_routes]
         self.enabled = enabled
 
     def should_bypass_validation(self, path: str) -> bool:
@@ -93,8 +88,7 @@ def get_common_user_agents() -> Dict[str, str]:
             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         ),
         "Firefox": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) "
-            "Gecko/20100101 Firefox/123.0"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) " "Gecko/20100101 Firefox/123.0"
         ),
         "Safari": (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "

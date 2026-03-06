@@ -22,6 +22,8 @@ db = SQLAlchemy()
 oauth = OAuth()
 OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
@@ -48,15 +50,15 @@ class User(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "oauth_provider": self.oauth_provider,
         }
+
+
 class UserSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     theme = db.Column(db.String(20), default="dark")
     language = db.Column(db.String(10), default="ru")
     settings_data = db.Column(db.Text, default="{}")  # JSON for additional settings
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f"<UserSettings {self.user_id}>"
@@ -75,6 +77,8 @@ class UserSettings(db.Model):
             "settings_data": self.get_settings(),
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
 class UserChatHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -82,9 +86,7 @@ class UserChatHistory(db.Model):
     title = db.Column(db.String(200), default="Новый чат")
     messages_data = db.Column(db.Text, default="[]")  # JSON array of messages
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f"<UserChatHistory {self.session_id}>"
@@ -312,6 +314,7 @@ def verify_turnstile(turnstile_response):
     from flask import current_app
 
     from config import LOCALHOST_MODE, TURNSTILE_SECRET_KEY, TURNSTILE_VERIFY_URL
+
     if LOCALHOST_MODE:
         current_app.logger.debug("Turnstile verification skipped (localhost mode)")
         return True
@@ -330,9 +333,7 @@ def verify_turnstile(turnstile_response):
         response = requests.post(TURNSTILE_VERIFY_URL, data=payload, timeout=10)
 
         if response.status_code != 200:
-            current_app.logger.error(
-                f"Turnstile API returned status {response.status_code}"
-            )
+            current_app.logger.error(f"Turnstile API returned status {response.status_code}")
             return False
 
         result = response.json()
@@ -354,9 +355,8 @@ def verify_turnstile(turnstile_response):
 
 def register_auth_routes(app):
 
-
     @app.route("/register", methods=["GET", "POST"])
-    @rate_limit(login_limiter, 'Too many registration attempts')
+    @rate_limit(login_limiter, "Too many registration attempts")
     def register():
         if request.method == "POST":
             username = request.form.get("username", "").strip()
@@ -371,52 +371,46 @@ def register_auth_routes(app):
                 )
                 from config import TURNSTILE_SITE_KEY
 
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             try:
                 username = InputValidator.validate_username(username)
             except ValidationError as e:
                 flash(str(e), "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
             try:
                 email = InputValidator.validate_email(email)
             except ValidationError as e:
                 flash(str(e), "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
             if password != confirm_password:
                 flash("Пароли не совпадают", "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
             try:
                 InputValidator.validate_password(password)
             except ValidationError as e:
                 flash(str(e), "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             user_exists = User.query.filter_by(email=email).first()
             if user_exists:
                 flash("Email уже зарегистрирован", "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             try:
                 try:
                     from argon2 import PasswordHasher
+
                     ph = PasswordHasher()
                     hashed_password = ph.hash(password)
                 except ImportError:
@@ -462,17 +456,19 @@ def register_auth_routes(app):
                 app.logger.error(f"Registration error: {str(e)}")
                 flash("Ошибка при регистрации. Пожалуйста, попробуйте позже.", "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "register.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
         from config import TURNSTILE_SITE_KEY
+
         return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
     @app.route("/confirm/<token>")
     def confirm_email(token):
         user = User.query.filter_by(confirmation_token=token).first()
-        if not user or (user.confirmation_token_expires and user.confirmation_token_expires < datetime.utcnow()):
+        if not user or (
+            user.confirmation_token_expires and user.confirmation_token_expires < datetime.utcnow()
+        ):
             if user:
                 user.confirmation_token = None
                 user.confirmation_token_expires = None
@@ -489,7 +485,7 @@ def register_auth_routes(app):
         return redirect(url_for("login"))
 
     @app.route("/login", methods=["GET", "POST"])
-    @rate_limit(login_limiter, 'Too many login attempts')
+    @rate_limit(login_limiter, "Too many login attempts")
     def login():
         from utils.audit_log import AuditEvents, log_auth_event
         from utils.brute_force import brute_force_protection, record_login_attempt
@@ -499,11 +495,15 @@ def register_auth_routes(app):
             email = request.form.get("email", "").strip()
             password = request.form.get("password", "")
             remember = True if request.form.get("remember") else False
-            is_locked, remaining = brute_force_protection.is_locked('email', email)
+            is_locked, remaining = brute_force_protection.is_locked("email", email)
             if is_locked:
-                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, 'account_locked')
-                flash(f"Слишком много попыток. Попробуйте через {remaining // 60 + 1} минут.", "danger")
+                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "account_locked")
+                flash(
+                    f"Слишком много попыток. Попробуйте через {remaining // 60 + 1} минут.",
+                    "danger",
+                )
                 from config import TURNSTILE_SITE_KEY
+
                 return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             turnstile_response = request.form.get("cf-turnstile-response")
             if not verify_turnstile(turnstile_response):
@@ -513,41 +513,34 @@ def register_auth_routes(app):
                 )
                 from config import TURNSTILE_SITE_KEY
 
-                return render_template(
-                    "login.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+                return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             try:
                 email = InputValidator.validate_email(email)
             except ValidationError:
                 record_login_attempt(email, False)
-                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, 'invalid_email')
+                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "invalid_email")
                 flash("Неверный email или пароль", "danger")
                 from config import TURNSTILE_SITE_KEY
-                return render_template(
-                    "login.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+
+                return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
             user = User.query.filter_by(email=email).first()
             password_valid = _verify_user_password(user, password)
 
             if not user or not password_valid:
                 record_login_attempt(email, False)
-                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, 'invalid_credentials')
+                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "invalid_credentials")
                 flash("Неверный email или пароль", "danger")
                 from config import TURNSTILE_SITE_KEY
 
-                return render_template(
-                    "login.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+                return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
             if not user.is_confirmed:
-                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, 'email_not_confirmed')
+                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "email_not_confirmed")
                 flash("Пожалуйста, подтвердите ваш email перед входом", "warning")
                 from config import TURNSTILE_SITE_KEY
 
-                return render_template(
-                    "login.html", turnstile_site_key=TURNSTILE_SITE_KEY
-                )
+                return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             record_login_attempt(email, True)
             log_auth_event(AuditEvents.AUTH_LOGIN_SUCCESS, email, True)
             session.clear()
@@ -567,9 +560,9 @@ def register_auth_routes(app):
                 )
                 return authorize_google()
             oauth_error = request.args.get("error")
-            oauth_error_description = request.args.get(
+            oauth_error_description = request.args.get("error_description") or request.args.get(
                 "error_description"
-            ) or request.args.get("error_description")
+            )
             if oauth_error:
                 app.logger.warning(
                     f"OAuth provider returned error on /login: {oauth_error} - {oauth_error_description}"
@@ -614,7 +607,10 @@ def register_auth_routes(app):
                     template_name="reset_password",
                     template_data=template_data,
                 )
-            flash("Если аккаунт с таким email существует, инструкции по сбросу пароля были отправлены", "success")
+            flash(
+                "Если аккаунт с таким email существует, инструкции по сбросу пароля были отправлены",
+                "success",
+            )
             return redirect(url_for("login"))
 
         return render_template("forgot_password.html")
@@ -646,6 +642,7 @@ def register_auth_routes(app):
                 return render_template("reset_password.html", token=token)
             try:
                 from argon2 import PasswordHasher
+
                 ph = PasswordHasher()
                 user.password = ph.hash(password)
             except ImportError:
@@ -696,14 +693,15 @@ def register_auth_routes(app):
         if settings:
             personalization = settings.get_settings() or {}
 
-        return render_template(
-            "profile.html", user=user, personalization=personalization
-        )
+        return render_template("profile.html", user=user, personalization=personalization)
+
     @app.route("/login/google")
     def login_google():
         from config import ALLOWED_HOSTS, BACKEND_URL, SECRET_KEY, SESSION_COOKIE_DOMAIN
 
-        redirect_to_candidate = request.args.get("redirect_to") or request.headers.get("Referer") or ""
+        redirect_to_candidate = (
+            request.args.get("redirect_to") or request.headers.get("Referer") or ""
+        )
         safe_redirect_path = _normalize_redirect_target(redirect_to_candidate, ALLOWED_HOSTS)
         if safe_redirect_path:
             session["oauth_redirect_to"] = safe_redirect_path
@@ -722,7 +720,9 @@ def register_auth_routes(app):
         google_client = getattr(oauth, "google", None)
         if google_client is None:
             app.logger.error("Google OAuth is not configured (missing client registration)")
-            return make_error("Google OAuth is not configured", status=503, code="oauth_unavailable")
+            return make_error(
+                "Google OAuth is not configured", status=503, code="oauth_unavailable"
+            )
 
         try:
             auth_data = google_client.create_authorization_url(redirect_uri)
@@ -763,6 +763,7 @@ def register_auth_routes(app):
             app.logger.info(f"authorize_google Scheme: {request.scheme}")
             app.logger.info(f"authorize_google Base URL: {request.base_url}")
             from config import ALLOWED_HOSTS
+
             redirect_to = session.pop("oauth_redirect_to", None)
             try:
                 app.logger.info("Attempting to exchange code for access token...")
@@ -844,12 +845,14 @@ def register_auth_routes(app):
                 db.session.commit()
                 flash("Ваш аккаунт связан с Google", "success")
             from utils.session_security import regenerate_session
+
             session.clear()
             session["user_id"] = user.id
             session["username"] = InputValidator.sanitize_output(user.username)
             regenerate_session()
             session.permanent = True
             from config import SESSION_COOKIE_DOMAIN
+
             cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
             safe_redirect_path = _normalize_redirect_target(redirect_to, ALLOWED_HOSTS)
             if safe_redirect_path:
@@ -868,6 +871,7 @@ def register_auth_routes(app):
             flash("Ошибка при входе через Google", "danger")
             response = redirect(url_for("login"))
             from config import SESSION_COOKIE_DOMAIN
+
             cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
             response.delete_cookie(
                 OAUTH_FALLBACK_STATE_COOKIE,
@@ -912,9 +916,7 @@ def register_auth_routes(app):
             password = data.get("password", "")
             from config import TURNSTILE_SITE_KEY
 
-            turnstile_token = data.get("turnstile_response") or data.get(
-                "cf-turnstile-response"
-            )
+            turnstile_token = data.get("turnstile_response") or data.get("cf-turnstile-response")
             if TURNSTILE_SITE_KEY and not verify_turnstile(turnstile_token):
                 return jsonify({"error": "Ошибка проверки Cloudflare Turnstile"}), 400
 
@@ -937,9 +939,7 @@ def register_auth_routes(app):
                 ph = PasswordHasher()
                 hashed_password = ph.hash(password)
             except ImportError:
-                hashed_password = generate_password_hash(
-                    password, method="pbkdf2:sha256"
-                )
+                hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
             confirmation_token = secrets.token_urlsafe(32)
             confirmation_token_expires = datetime.utcnow() + timedelta(days=7)
 
@@ -956,9 +956,7 @@ def register_auth_routes(app):
             settings = UserSettings(user_id=new_user.id)
             db.session.add(settings)
             db.session.commit()
-            confirmation_link = url_for(
-                "confirm_email", token=confirmation_token, _external=True
-            )
+            confirmation_link = url_for("confirm_email", token=confirmation_token, _external=True)
             template_data = {
                 "username": InputValidator.sanitize_output(username),
                 "confirmation_link": confirmation_link,
@@ -1002,9 +1000,8 @@ def register_auth_routes(app):
             password = data.get("password", "")
 
             from config import TURNSTILE_SITE_KEY
-            turnstile_token = data.get("turnstile_response") or data.get(
-                "cf-turnstile-response"
-            )
+
+            turnstile_token = data.get("turnstile_response") or data.get("cf-turnstile-response")
             if TURNSTILE_SITE_KEY and not verify_turnstile(turnstile_token):
                 return jsonify({"error": "Ошибка проверки Cloudflare Turnstile"}), 400
 
@@ -1029,9 +1026,7 @@ def register_auth_routes(app):
 
             if not user.is_confirmed:
                 return (
-                    jsonify(
-                        {"error": "Пожалуйста, подтвердите ваш email перед входом"}
-                    ),
+                    jsonify({"error": "Пожалуйста, подтвердите ваш email перед входом"}),
                     403,
                 )
 
@@ -1137,25 +1132,19 @@ def register_auth_routes(app):
             if "language" in data:
                 settings.language = data["language"]
             if "settings_data" in data:
-                settings.settings_data = json.dumps(
-                    data["settings_data"], ensure_ascii=False
-                )
+                settings.settings_data = json.dumps(data["settings_data"], ensure_ascii=False)
             elif data:
                 current_settings = settings.get_settings()
                 for key, value in data.items():
                     if key not in ["theme", "language"]:
                         current_settings[key] = value
-                settings.settings_data = json.dumps(
-                    current_settings, ensure_ascii=False
-                )
+                settings.settings_data = json.dumps(current_settings, ensure_ascii=False)
 
             settings.updated_at = datetime.utcnow()
             db.session.commit()
 
             return (
-                jsonify(
-                    {"message": "Настройки сохранены", "settings": settings.to_dict()}
-                ),
+                jsonify({"message": "Настройки сохранены", "settings": settings.to_dict()}),
                 200,
             )
 
@@ -1250,9 +1239,7 @@ def register_auth_routes(app):
         if not db_user_id or not isinstance(db_user_id, int):
             return jsonify({"error": "Неверная сессия"}), 401
 
-        chat = UserChatHistory.query.filter_by(
-            user_id=db_user_id, session_id=session_id
-        ).first()
+        chat = UserChatHistory.query.filter_by(user_id=db_user_id, session_id=session_id).first()
 
         if chat:
             db.session.delete(chat)
@@ -1418,9 +1405,7 @@ def register_auth_routes(app):
                         "message": "Настройки сохранены",
                         "preferences": {
                             "readingMode": user_settings.get("readingMode", False),
-                            "sessionSlugIndex": user_settings.get(
-                                "sessionSlugIndex", {}
-                            ),
+                            "sessionSlugIndex": user_settings.get("sessionSlugIndex", {}),
                         },
                     }
                 ),
@@ -1437,6 +1422,7 @@ def setup_auth(app):
     from sqlalchemy import event
 
     from config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+
     db.init_app(app)
     oauth.init_app(app)
 
@@ -1445,6 +1431,7 @@ def setup_auth(app):
         with app.app_context():
             engine = db.engine
             if not getattr(engine, "_remind_sqlite_pragmas", False):
+
                 @event.listens_for(engine, "connect")
                 def _set_sqlite_pragmas(dbapi_connection, _connection_record):
                     cursor = dbapi_connection.cursor()
@@ -1452,12 +1439,11 @@ def setup_auth(app):
                     cursor.execute("PRAGMA temp_store=MEMORY")
                     cursor.execute("PRAGMA synchronous=NORMAL")
                     cursor.close()
+
                 engine._remind_sqlite_pragmas = True
 
     if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
-        app.logger.info(
-            f"Registering Google OAuth with client_id: {GOOGLE_CLIENT_ID[:20]}..."
-        )
+        app.logger.info(f"Registering Google OAuth with client_id: {GOOGLE_CLIENT_ID[:20]}...")
         oauth.register(
             name="google",
             client_id=GOOGLE_CLIENT_ID,

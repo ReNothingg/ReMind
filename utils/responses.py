@@ -30,6 +30,7 @@ def _current_request_id() -> Optional[str]:
         return None
     return getattr(g, "request_id", None)
 
+
 def make_ok(payload: Optional[Union[dict, list, str]] = None, status: int = 200):
     if payload is None:
         payload = {}
@@ -41,6 +42,7 @@ def make_ok(payload: Optional[Union[dict, list, str]] = None, status: int = 200)
     if request_id and "request_id" not in body:
         body["request_id"] = request_id
     return jsonify(body), status
+
 
 def make_error(
     message: str,

@@ -6,8 +6,8 @@ from app_factory import create_app
 def make_celery(app):
     celery = Celery(
         app.import_name,
-        backend=app.config.get('CELERY_RESULT_BACKEND'),
-        broker=app.config.get('CELERY_BROKER_URL')
+        backend=app.config.get("CELERY_RESULT_BACKEND"),
+        broker=app.config.get("CELERY_BROKER_URL"),
     )
     celery.conf.update(app.config)
 
@@ -19,6 +19,6 @@ def make_celery(app):
     celery.Task = ContextTask
     return celery
 
+
 app = create_app()
 celery = make_celery(app)
-

@@ -4,15 +4,15 @@ import uuid
 import pytest
 from werkzeug.security import generate_password_hash
 
-os.environ['FLASK_ENV'] = 'development'
-os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-os.environ['SECRET_KEY'] = 'pytest-secret-key'
-os.environ['VALIDATE_USER_AGENT'] = 'False'
-os.environ['TURNSTILE_SITE_KEY'] = ''
-os.environ['TURNSTILE_SECRET_KEY'] = ''
-os.environ['GOOGLE_CLIENT_ID'] = ''
-os.environ['GOOGLE_CLIENT_SECRET'] = ''
-os.environ['ALLOW_GUEST_CHATS_SAVE'] = 'True'
+os.environ["FLASK_ENV"] = "development"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["SECRET_KEY"] = "pytest-secret-key"
+os.environ["VALIDATE_USER_AGENT"] = "False"
+os.environ["TURNSTILE_SITE_KEY"] = ""
+os.environ["TURNSTILE_SECRET_KEY"] = ""
+os.environ["GOOGLE_CLIENT_ID"] = ""
+os.environ["GOOGLE_CLIENT_SECRET"] = ""
+os.environ["ALLOW_GUEST_CHATS_SAVE"] = "True"
 
 from app_factory import create_app
 from utils.auth import User, UserSettings, db
@@ -23,7 +23,7 @@ from utils.input_validation import InputValidator
 def disable_email_dns_validation(monkeypatch):
     monkeypatch.setattr(
         InputValidator,
-        'validate_email',
+        "validate_email",
         staticmethod(lambda value: str(value).strip().lower()),
     )
 
@@ -51,7 +51,7 @@ def client(app):
 
 @pytest.fixture()
 def create_confirmed_user(app):
-    def _create(email: str = None, password: str = 'Password1!', username: str = None):
+    def _create(email: str = None, password: str = "Password1!", username: str = None):
         real_email = email or f"user_{uuid.uuid4().hex[:8]}@example.com"
         real_username = username or f"user_{uuid.uuid4().hex[:8]}"
 
@@ -77,9 +77,9 @@ def create_confirmed_user(app):
 def login(client):
     def _login(email: str, password: str):
         return client.post(
-            '/api/auth/login',
-            json={'email': email, 'password': password},
-            headers={'User-Agent': 'Mozilla/5.0 (pytest)'}
+            "/api/auth/login",
+            json={"email": email, "password": password},
+            headers={"User-Agent": "Mozilla/5.0 (pytest)"},
         )
 
     return _login
@@ -87,5 +87,5 @@ def login(client):
 
 @pytest.fixture()
 def csrf_token(client):
-    response = client.get('/health')
-    return response.headers.get('X-CSRF-Token')
+    response = client.get("/health")
+    return response.headers.get("X-CSRF-Token")

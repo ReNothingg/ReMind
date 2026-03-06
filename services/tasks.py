@@ -9,7 +9,7 @@ from ai_engine import get_model_function
 from utils.logger_config import logger
 
 
-@shared_task(bind=True, name='ai.generate')
+@shared_task(bind=True, name="ai.generate")
 def generate_ai_response(self, channel_id, model_name, db_user_id, user_data):
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     r = redis.from_url(redis_url)

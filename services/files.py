@@ -17,8 +17,25 @@ from utils.secure_upload import (
 )
 
 ALLOWED_FILE_EXTENSIONS = {
-    "txt", "md", "pdf", "csv", "json", "js", "py", "html", "css",
-    "c", "cpp", "h", "java", "rs", "go", "ts", "xml", "yaml", "yml",
+    "txt",
+    "md",
+    "pdf",
+    "csv",
+    "json",
+    "js",
+    "py",
+    "html",
+    "css",
+    "c",
+    "cpp",
+    "h",
+    "java",
+    "rs",
+    "go",
+    "ts",
+    "xml",
+    "yaml",
+    "yml",
 }
 
 
@@ -41,9 +58,7 @@ def handle_file_upload(file_storage, user_id):
         return None
 
     extension = (
-        safe_filename_result.rsplit(".", 1)[1].lower()
-        if "." in safe_filename_result
-        else ""
+        safe_filename_result.rsplit(".", 1)[1].lower() if "." in safe_filename_result else ""
     )
     mimetype = file_storage.mimetype or "application/octet-stream"
     is_image = mimetype.startswith("image/") and extension in ALLOWED_IMAGE_EXTENSIONS
@@ -89,9 +104,7 @@ def handle_file_upload(file_storage, user_id):
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 text = f.read(100000)  # Limit text reading to 100KB
             safe_display_name = InputValidator.sanitize_output(file_storage.filename)
-            model_part = {
-                "text": f"--- File: {safe_display_name} ---\n{text}\n--- End File ---"
-            }
+            model_part = {"text": f"--- File: {safe_display_name} ---\n{text}\n--- End File ---"}
         except Exception:
             safe_display_name = InputValidator.sanitize_output(file_storage.filename)
             model_part = {"text": f"[Binary file: {safe_display_name}]"}

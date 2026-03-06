@@ -55,12 +55,14 @@ def _get_public_base_url() -> str:
         return request.host_url.rstrip("/")
     return ""
 
+
 def _acquire_session_lock(safe_session_id: str):
     lock = SESSION_LOCKS.get(safe_session_id)
     if lock is None:
         lock = threading.Lock()
         SESSION_LOCKS[safe_session_id] = lock
     return lock
+
 
 def read_chat_file(safe_session_id: str) -> dict:
     chat_file_path = CHATS_FOLDER / f"{safe_session_id}.json"
@@ -72,17 +74,15 @@ def read_chat_file(safe_session_id: str) -> dict:
     except Exception:
         return {}
 
+
 def _generate_guest_session_token(session_id: str, timestamp: int) -> str:
     message = f"{session_id}:{timestamp}".encode("utf-8")
-    signature = hmac.new(
-        SECRET_KEY.encode("utf-8"), message, hashlib.sha256
-    ).hexdigest()
+    signature = hmac.new(SECRET_KEY.encode("utf-8"), message, hashlib.sha256).hexdigest()
     token_data = f"{session_id}:{timestamp}:{signature}"
     return base64.b64encode(token_data.encode("utf-8")).decode("utf-8")
 
-def _verify_guest_session_token(
-    token: str, session_id: str, max_age_seconds: int = 604800
-) -> bool:
+
+def _verify_guest_session_token(token: str, session_id: str, max_age_seconds: int = 604800) -> bool:
     try:
         token_data = base64.b64decode(token.encode("utf-8")).decode("utf-8")
         parts = token_data.split(":")
@@ -92,9 +92,7 @@ def _verify_guest_session_token(
         token_session_id, timestamp_str, signature = parts
 
         if token_session_id != session_id:
-            logger.warning(
-                f"Token session ID mismatch: {token_session_id} != {session_id}"
-            )
+            logger.warning(f"Token session ID mismatch: {token_session_id} != {session_id}")
             return False
 
         timestamp = int(timestamp_str)
@@ -117,11 +115,13 @@ def _verify_guest_session_token(
         logger.warning(f"Token verification failed: {e}")
         return False
 
+
 def _get_chat_access_token_from_request() -> Optional[str]:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         return auth_header[7:]
     return request.args.get("chat_token")
+
 
 def read_chat_file_secure(safe_session_id: str, require_auth: bool = False) -> dict:
     user_id = session.get("user_id")
@@ -142,12 +142,12 @@ def read_chat_file_secure(safe_session_id: str, require_auth: bool = False) -> d
 
     return read_chat_file(safe_session_id)
 
+
 def resolve_session_identifier(session_identifier: str):
     safe_identifier = secure_filename(str(session_identifier))
     share_entry = (
         ChatShare.query.filter(
-            (ChatShare.session_id == safe_identifier)
-            | (ChatShare.public_id == safe_identifier)
+            (ChatShare.session_id == safe_identifier) | (ChatShare.public_id == safe_identifier)
         ).first()
         if safe_identifier
         else None
@@ -155,9 +155,11 @@ def resolve_session_identifier(session_identifier: str):
     resolved_session_id = share_entry.session_id if share_entry else safe_identifier
     return resolved_session_id, share_entry
 
+
 def build_share_url(public_id: str) -> str:
     base = _get_public_base_url()
     return f"{base}/c/{public_id}" if base else f"/c/{public_id}"
+
 
 def write_chat_file(safe_session_id: str, data: dict):
     CHATS_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -173,6 +175,7 @@ def write_chat_file(safe_session_id: str, data: dict):
                 os.remove(tmp_path)
             except Exception:
                 pass
+
 
 def normalize_message(msg: dict) -> dict:
     try:
@@ -198,6 +201,7 @@ def normalize_message(msg: dict) -> dict:
             "timestamp": int(time.time()),
         }
 
+
 def _message_signature(msg: dict) -> str:
     try:
         role = (msg.get("role") or "").lower()
@@ -219,6 +223,7 @@ def _message_signature(msg: dict) -> str:
     except Exception:
         return f"{(msg.get('role') or 'x')}::err"
 
+
 def _generate_title_from_history(history: list) -> str:
     try:
         for msg in history:
@@ -231,6 +236,7 @@ def _generate_title_from_history(history: list) -> str:
         pass
     return "Новый чат"
 
+
 def load_chat_history(session_id: str, user_id: int = None) -> list:
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
@@ -238,9 +244,7 @@ def load_chat_history(session_id: str, user_id: int = None) -> list:
 
     if user_id and isinstance(user_id, int):
         try:
-            chat = UserChatHistory.query.filter_by(
-                user_id=user_id, session_id=session_id
-            ).first()
+            chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id).first()
 
             if chat:
                 history = chat.get_messages()
@@ -255,6 +259,7 @@ def load_chat_history(session_id: str, user_id: int = None) -> list:
     history = data.get("history", []) if isinstance(data, dict) else []
     return [normalize_message(msg) for msg in history]
 
+
 def append_messages_to_history(
     session_id: str, new_messages: list, model_name: str, user_id: int = None
 ):
@@ -268,11 +273,7 @@ def append_messages_to_history(
             current_data = {}
             if (user_id and isinstance(user_id, int)) or ALLOW_GUEST_CHATS_SAVE:
                 current_data = read_chat_file(safe_session_id)
-            history = (
-                current_data.get("history", [])
-                if isinstance(current_data, dict)
-                else []
-            )
+            history = current_data.get("history", []) if isinstance(current_data, dict) else []
 
             incoming = [normalize_message(m) for m in new_messages]
             existing_ids = {m.get("id") for m in history}
@@ -281,9 +282,7 @@ def append_messages_to_history(
             for msg in incoming:
                 if msg.get("id") not in existing_ids:
                     msg_sig = _message_signature(msg)
-                    is_duplicate = any(
-                        _message_signature(ex) == msg_sig for ex in history[-10:]
-                    )
+                    is_duplicate = any(_message_signature(ex) == msg_sig for ex in history[-10:])
                     if not is_duplicate:
                         to_append_file.append(msg)
 
@@ -296,8 +295,7 @@ def append_messages_to_history(
                     "last_updated": time.time(),
                     "model_used_in_last_message": model_name,
                     "history": history,
-                    "title": current_data.get("title")
-                    or _generate_title_from_history(history),
+                    "title": current_data.get("title") or _generate_title_from_history(history),
                 }
                 write_chat_file(safe_session_id, chat_data)
 
@@ -309,9 +307,7 @@ def append_messages_to_history(
 
                     if not chat:
                         title = _generate_title_from_history(incoming)
-                        chat = UserChatHistory(
-                            user_id=user_id, session_id=session_id, title=title
-                        )
+                        chat = UserChatHistory(user_id=user_id, session_id=session_id, title=title)
                         db.session.add(chat)
                         db.session.commit()
                         logger.info(
@@ -326,8 +322,7 @@ def append_messages_to_history(
                         if msg.get("id") not in db_existing_ids:
                             msg_sig = _message_signature(msg)
                             is_duplicate = any(
-                                _message_signature(ex) == msg_sig
-                                for ex in db_messages[-10:]
+                                _message_signature(ex) == msg_sig for ex in db_messages[-10:]
                             )
                             if not is_duplicate:
                                 to_append_db.append(msg)

@@ -94,9 +94,7 @@ EMAIL_TEMPLATES = {
 }
 
 
-def send_email(
-    to_email, subject, body, is_html=False, template_name=None, template_data=None
-):
+def send_email(to_email, subject, body, is_html=False, template_name=None, template_data=None):
     """
     Send an email using Gmail SMTP with direct credentials
 
@@ -157,9 +155,7 @@ def send_email(
 
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
-        save_email_to_file(
-            to_email, subject, body, is_html, template_name, template_data
-        )
+        save_email_to_file(to_email, subject, body, is_html, template_name, template_data)
         return False
 
 
@@ -178,9 +174,7 @@ def save_email_to_file(
                 if not template_data:
                     template_data = {}
                 template_data["year"] = datetime.now().year
-                template_data["timestamp"] = datetime.now().strftime(
-                    "%d.%m.%Y %H:%M:%S"
-                )
+                template_data["timestamp"] = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
                 content = EMAIL_TEMPLATES[template_name].format(**template_data)
                 f.write(f"Content: [HTML Template {template_name}]\n")
             else:
@@ -195,6 +189,8 @@ def save_email_to_file(
     except Exception as e:
         print(f"[ERROR SAVING EMAIL] {str(e)}")
         return False
+
+
 def test_email_sending():
     """
     Тестовая функция для проверки отправки почты
@@ -221,5 +217,7 @@ def test_email_sending():
         print("Не удалось отправить тестовое письмо, проверьте sent_emails.log")
 
     return result
+
+
 if __name__ == "__main__":
     test_email_sending()

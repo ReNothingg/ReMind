@@ -9,19 +9,19 @@ def anonymize_ip(ip_address):
     if not ip_address:
         return None
 
-    if ':' in ip_address:  # IPv6
-        parts = ip_address.split(':')
+    if ":" in ip_address:  # IPv6
+        parts = ip_address.split(":")
         if len(parts) > 2:
-            return ':'.join(parts[:3]) + '::0'
+            return ":".join(parts[:3]) + "::0"
     else:  # IPv4
-        parts = ip_address.split('.')
+        parts = ip_address.split(".")
         if len(parts) == 4:
-            return '.'.join(parts[:3]) + '.0'
+            return ".".join(parts[:3]) + ".0"
 
     return None
 
 
-def hash_for_logging(value, salt='remind_log'):
+def hash_for_logging(value, salt="remind_log"):
     if not value:
         return None
     combined = f"{salt}:{value}"
@@ -30,17 +30,17 @@ def hash_for_logging(value, salt='remind_log'):
 
 def get_user_data_locations(user_id):
     return {
-        'database': [
-            'user',
-            'user_settings',
-            'user_chat_history',
-            'chat_share',
+        "database": [
+            "user",
+            "user_settings",
+            "user_chat_history",
+            "chat_share",
         ],
-        'files': {
-            'chats': CHATS_FOLDER,
-            'uploads': UPLOAD_FOLDER,
-            'generated_images': CREATE_IMAGE_FOLDER,
-        }
+        "files": {
+            "chats": CHATS_FOLDER,
+            "uploads": UPLOAD_FOLDER,
+            "generated_images": CREATE_IMAGE_FOLDER,
+        },
     }
 
 
@@ -48,25 +48,25 @@ def export_user_data(user_id):
     from utils.auth import ChatShare, User, UserChatHistory, UserSettings
 
     export_data = {
-        'exported_at': datetime.utcnow().isoformat(),
-        'user_id': user_id,
+        "exported_at": datetime.utcnow().isoformat(),
+        "user_id": user_id,
     }
     user = User.query.get(user_id)
     if user:
-        export_data['profile'] = {
-            'username': user.username,
-            'email': user.email,
-            'created_at': user.created_at.isoformat() if user.created_at else None,
-            'is_confirmed': user.is_confirmed,
-            'oauth_provider': user.oauth_provider,
+        export_data["profile"] = {
+            "username": user.username,
+            "email": user.email,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "is_confirmed": user.is_confirmed,
+            "oauth_provider": user.oauth_provider,
         }
     settings = UserSettings.query.filter_by(user_id=user_id).first()
     if settings:
-        export_data['settings'] = settings.to_dict()
+        export_data["settings"] = settings.to_dict()
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
-    export_data['chats'] = [chat.to_dict() for chat in chats]
+    export_data["chats"] = [chat.to_dict() for chat in chats]
     shares = ChatShare.query.filter_by(user_id=user_id).all()
-    export_data['shares'] = [share.to_dict() for share in shares]
+    export_data["shares"] = [share.to_dict() for share in shares]
 
     return export_data
 
@@ -76,43 +76,44 @@ def delete_user_data(user_id, delete_account=False):
     from utils.auth import ChatShare, User, UserChatHistory, UserSettings, db
 
     results = {
-        'user_id': user_id,
-        'deleted_at': datetime.utcnow().isoformat(),
-        'items_deleted': {},
+        "user_id": user_id,
+        "deleted_at": datetime.utcnow().isoformat(),
+        "items_deleted": {},
     }
 
     try:
         shares_deleted = ChatShare.query.filter_by(user_id=user_id).delete()
-        results['items_deleted']['chat_shares'] = shares_deleted
+        results["items_deleted"]["chat_shares"] = shares_deleted
         chats = UserChatHistory.query.filter_by(user_id=user_id).all()
         chat_session_ids = [chat.session_id for chat in chats]
         chats_deleted = UserChatHistory.query.filter_by(user_id=user_id).delete()
-        results['items_deleted']['chats'] = chats_deleted
+        results["items_deleted"]["chats"] = chats_deleted
         files_deleted = 0
         for session_id in chat_session_ids:
             try:
-                safe_id = ''.join(c for c in session_id if c.isalnum() or c in '-_')
+                safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
                 chat_file = CHATS_FOLDER / f"{safe_id}.json"
                 if chat_file.exists():
                     os.remove(chat_file)
                     files_deleted += 1
             except Exception:
                 pass
-        results['items_deleted']['chat_files'] = files_deleted
+        results["items_deleted"]["chat_files"] = files_deleted
         settings_deleted = UserSettings.query.filter_by(user_id=user_id).delete()
-        results['items_deleted']['settings'] = settings_deleted
+        results["items_deleted"]["settings"] = settings_deleted
         if delete_account:
             user = User.query.get(user_id)
             if user:
                 db.session.delete(user)
-                results['items_deleted']['account'] = 1
-                results['account_deleted'] = True
+                results["items_deleted"]["account"] = 1
+                results["account_deleted"] = True
 
         db.session.commit()
-        log_audit_event(AuditEvents.DELETE_USER_DATA, {
-            'items_deleted': results['items_deleted'],
-            'account_deleted': delete_account
-        }, user_id)
+        log_audit_event(
+            AuditEvents.DELETE_USER_DATA,
+            {"items_deleted": results["items_deleted"], "account_deleted": delete_account},
+            user_id,
+        )
 
         return results
 

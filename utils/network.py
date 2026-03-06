@@ -31,7 +31,9 @@ def build_http_session() -> requests.Session:
     )
     return session
 
+
 HTTP_SESSION = build_http_session()
+
 
 def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
     try:
@@ -67,6 +69,7 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
     except Exception as e:
         logger.error(f"SSRF Check Error: {e}")
         return False, None
+
 
 def make_safe_http_request(
     url: str, method: str = "GET", timeout: int = 10, **kwargs

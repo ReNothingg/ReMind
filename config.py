@@ -39,6 +39,7 @@ def _sqlite_directory_usable(folder: Path) -> bool:
     except Exception:
         return False
 
+
 def _normalize_host_entry(value: str) -> str:
     raw = (value or "").strip()
     if not raw:
@@ -118,7 +119,7 @@ _database_url = os.getenv("DATABASE_URL")
 if _database_url:
     _db_url = _database_url.strip()
     if _db_url.startswith("sqlite:///"):
-        _sqlite_target = _db_url[len("sqlite:///"):]
+        _sqlite_target = _db_url[len("sqlite:///") :]
         if _sqlite_target and _sqlite_target != ":memory:":
             if not Path(_sqlite_target).is_absolute():
                 _sqlite_path = (BASE_PATH / _sqlite_target).resolve()
@@ -149,16 +150,16 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 
-BACKEND_URL = os.getenv(
-    "BACKEND_URL", None
-)
+BACKEND_URL = os.getenv("BACKEND_URL", None)
 if BACKEND_URL:
     backend_host = _normalize_host_entry(BACKEND_URL)
     if backend_host and backend_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(backend_host)
 
 SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None
-SESSION_COOKIE_NAME = (os.getenv("SESSION_COOKIE_NAME") or "remind_session").strip() or "remind_session"
+SESSION_COOKIE_NAME = (
+    os.getenv("SESSION_COOKIE_NAME") or "remind_session"
+).strip() or "remind_session"
 
 TURNSTILE_SITE_KEY = os.getenv("TURNSTILE_SITE_KEY", "")
 TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY", "")
@@ -170,6 +171,7 @@ if not SECRET_KEY:
         raise ValueError("SECRET_KEY must be set in production environment")
 
     import secrets
+
     SECRET_KEY = secrets.token_hex(32)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

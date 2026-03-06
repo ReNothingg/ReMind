@@ -35,9 +35,7 @@ def _load_system_prompt() -> Optional[str]:
             with open(prompt_file_path, "r", encoding="utf-8") as f:
                 prompt_content = f.read().strip()
                 if prompt_content:
-                    logger.info(
-                        f"Системный промпт успешно загружен из файла '{prompt_file_path}'."
-                    )
+                    logger.info(f"Системный промпт успешно загружен из файла '{prompt_file_path}'.")
                     return prompt_content
                 else:
                     logger.error(f"Файл системного промпта '{prompt_file_path}' пуст.")
@@ -107,9 +105,7 @@ def _prepare_new_message(
     return content_parts
 
 
-def gemini_stream(
-    user_id: str, user_message_data: Dict[str, Any]
-) -> Generator[str, None, None]:
+def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[str, None, None]:
     try:
         try:
             system_prompt = build_system_prompt(user_id, user_message_data)
@@ -170,9 +166,7 @@ def gemini_stream(
                         "по соображениям безопасности. Попробуйте переформулировать его."
                     )
                 else:
-                    logger.error(
-                        "Ответ для '{user_id}' пуст, причина блокировки не найдена."
-                    )
+                    logger.error("Ответ для '{user_id}' пуст, причина блокировки не найдена.")
                     yield (
                         "<error>Пустой ответ</error>"
                         "Модель не сгенерировала ответ. Это могло произойти из-за внутренних правил "

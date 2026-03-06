@@ -9,6 +9,7 @@ from config import DEFAULT_LANGUAGE
 
 TTS_MAX_CHARS = 1000
 
+
 def synthesize_text_segments(text: str) -> list:
     if not text.strip():
         return []

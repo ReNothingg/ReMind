@@ -17,7 +17,9 @@ def _extract_hostname(raw_host: str | None) -> str:
     return (parsed.hostname or host).strip(".").lower()
 
 
-def resolve_cookie_domain(configured_domain: str | None, request_host: str | None = None) -> str | None:
+def resolve_cookie_domain(
+    configured_domain: str | None, request_host: str | None = None
+) -> str | None:
     domain = (configured_domain or "").strip()
     if not domain:
         return None
@@ -45,25 +47,25 @@ def regenerate_session():
     session.clear()
     session.modified = True
     for key, value in session_data.items():
-        if key not in ('_id', '_fresh'):
+        if key not in ("_id", "_fresh"):
             session[key] = value
-    session['_created_at'] = time.time()
-    session['_last_activity'] = time.time()
-    session['_fingerprint'] = _generate_session_fingerprint()
+    session["_created_at"] = time.time()
+    session["_last_activity"] = time.time()
+    session["_fingerprint"] = _generate_session_fingerprint()
 
 
 def _generate_session_fingerprint():
     components = [
-        request.headers.get('User-Agent', ''),
-        request.headers.get('Accept-Language', ''),
+        request.headers.get("User-Agent", ""),
+        request.headers.get("Accept-Language", ""),
     ]
 
-    fingerprint_string = '|'.join(components)
+    fingerprint_string = "|".join(components)
     return hashlib.sha256(fingerprint_string.encode()).hexdigest()[:16]
 
 
 def verify_session_fingerprint():
-    stored_fingerprint = session.get('_fingerprint')
+    stored_fingerprint = session.get("_fingerprint")
     if not stored_fingerprint:
         return True
 
@@ -72,12 +74,12 @@ def verify_session_fingerprint():
 
 
 def update_session_activity():
-    session['_last_activity'] = time.time()
+    session["_last_activity"] = time.time()
     session.modified = True
 
 
 def check_session_timeout(max_inactive_seconds=3600):
-    last_activity = session.get('_last_activity', 0)
+    last_activity = session.get("_last_activity", 0)
     if last_activity == 0:
         return True
 
@@ -95,26 +97,17 @@ def secure_session_required(check_fingerprint=True, max_inactive_seconds=3600):
         def decorated_function(*args, **kwargs):
             from utils.audit_log import AuditEvents, log_security_event
             from utils.responses import make_error
-            if 'user_id' not in session:
-                return make_error(
-                    "Authentication required",
-                    status=401,
-                    code='auth_required'
-                )
+
+            if "user_id" not in session:
+                return make_error("Authentication required", status=401, code="auth_required")
             if not check_session_timeout(max_inactive_seconds):
-                log_security_event(AuditEvents.SESSION_INVALIDATED, {
-                    'reason': 'timeout'
-                })
+                log_security_event(AuditEvents.SESSION_INVALIDATED, {"reason": "timeout"})
                 invalidate_session()
-                return make_error(
-                    "Session expired",
-                    status=401,
-                    code='session_expired'
-                )
+                return make_error("Session expired", status=401, code="session_expired")
             if check_fingerprint and not verify_session_fingerprint():
-                log_security_event(AuditEvents.SESSION_FIXATION_ATTEMPT, {
-                    'reason': 'fingerprint_mismatch'
-                })
+                log_security_event(
+                    AuditEvents.SESSION_FIXATION_ATTEMPT, {"reason": "fingerprint_mismatch"}
+                )
                 current_app.logger.warning(
                     f"Session fingerprint mismatch for user {session.get('user_id')}"
                 )
@@ -123,13 +116,14 @@ def secure_session_required(check_fingerprint=True, max_inactive_seconds=3600):
             return view_func(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
 class SessionConfig:
     COOKIE_SECURE = True  # Only send over HTTPS
     COOKIE_HTTPONLY = True  # No JavaScript access
-    COOKIE_SAMESITE = 'Lax'  # CSRF protection
+    COOKIE_SAMESITE = "Lax"  # CSRF protection
     PERMANENT_SESSION_LIFETIME = 7 * 24 * 3600  # 7 days
     SESSION_REFRESH_EACH_REQUEST = True
     MAX_INACTIVE_SECONDS = 3600  # 1 hour
@@ -138,13 +132,15 @@ class SessionConfig:
 
 def configure_session(app):
     from config import IS_PRODUCTION, SESSION_COOKIE_DOMAIN, SESSION_COOKIE_NAME
-    app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
-    app.config['SESSION_COOKIE_HTTPONLY'] = SessionConfig.COOKIE_HTTPONLY
-    app.config['SESSION_COOKIE_SAMESITE'] = SessionConfig.COOKIE_SAMESITE
-    app.config['SESSION_COOKIE_DOMAIN'] = SESSION_COOKIE_DOMAIN
-    app.config['PERMANENT_SESSION_LIFETIME'] = SessionConfig.PERMANENT_SESSION_LIFETIME
-    app.config['SESSION_REFRESH_EACH_REQUEST'] = SessionConfig.SESSION_REFRESH_EACH_REQUEST
-    app.config['SESSION_COOKIE_NAME'] = SESSION_COOKIE_NAME
+
+    app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+    app.config["SESSION_COOKIE_HTTPONLY"] = SessionConfig.COOKIE_HTTPONLY
+    app.config["SESSION_COOKIE_SAMESITE"] = SessionConfig.COOKIE_SAMESITE
+    app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN
+    app.config["PERMANENT_SESSION_LIFETIME"] = SessionConfig.PERMANENT_SESSION_LIFETIME
+    app.config["SESSION_REFRESH_EACH_REQUEST"] = SessionConfig.SESSION_REFRESH_EACH_REQUEST
+    app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
+
     @app.before_request
     def make_session_permanent():
         session.permanent = True

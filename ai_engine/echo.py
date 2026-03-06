@@ -11,6 +11,7 @@ def echo(_, payload):
         )
     }
 
+
 def echo_stream(_, payload):
     import time
 

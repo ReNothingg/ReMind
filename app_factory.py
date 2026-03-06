@@ -81,6 +81,7 @@ def create_app():
     if ALLOWED_HOSTS:
         app.config["TRUSTED_HOSTS"] = ALLOWED_HOSTS
     import redis
+
     app.config["SESSION_TYPE"] = "redis"
     app.config["SESSION_PERMANENT"] = True
     app.config["SESSION_USE_SIGNER"] = True
@@ -93,9 +94,7 @@ def create_app():
     configure_session(app)
     app.session_interface = RequestAwareSessionInterface()
 
-    app.wsgi_app = ProxyFix(
-        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1
-    )
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
     CORS(
         app,
@@ -137,10 +136,10 @@ def create_app():
                 endpoint=request.path,
                 additional_info={"method": request.method},
             )
-            log_audit_event(AuditEvents.SECURITY_SUSPICIOUS_UA, {
-                'endpoint': request.path,
-                'method': request.method
-            })
+            log_audit_event(
+                AuditEvents.SECURITY_SUSPICIOUS_UA,
+                {"endpoint": request.path, "method": request.method},
+            )
             return make_error(error_message, status=403, code="invalid_user_agent")
         g.anonymized_ip = anonymize_ip(request.remote_addr)
 
@@ -154,9 +153,7 @@ def create_app():
 
     @app.errorhandler(413)
     def handle_request_entity_too_large(e):
-        return make_error(
-            "File too large.", status=413, code="request_entity_too_large"
-        )
+        return make_error("File too large.", status=413, code="request_entity_too_large")
 
     @app.errorhandler(401)
     def handle_401(e):
@@ -194,6 +191,7 @@ def create_app():
     @app.errorhandler(503)
     def handle_503(e):
         return make_error("Service temporarily unavailable", status=503, code="service_unavailable")
+
     app.register_blueprint(api_bp)
 
     return app

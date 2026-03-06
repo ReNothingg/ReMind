@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Tuple
 def ref_to_ts(ref: str) -> str:
     prefix = "#/components/schemas/"
     if ref.startswith(prefix):
-        name = ref[len(prefix):]
+        name = ref[len(prefix) :]
         return f'components["schemas"]["{name}"]'
     return "unknown"
 
@@ -102,7 +102,9 @@ def schema_to_ts(schema: Dict[str, Any], level: int = 0) -> str:
     return "unknown"
 
 
-def collect_parameters(path_item: Dict[str, Any], method_item: Dict[str, Any]) -> Dict[str, Dict[str, Tuple[Dict[str, Any], bool]]]:
+def collect_parameters(
+    path_item: Dict[str, Any], method_item: Dict[str, Any]
+) -> Dict[str, Dict[str, Tuple[Dict[str, Any], bool]]]:
     grouped: Dict[str, Dict[str, Tuple[Dict[str, Any], bool]]] = {
         "query": {},
         "path": {},
@@ -126,7 +128,9 @@ def collect_parameters(path_item: Dict[str, Any], method_item: Dict[str, Any]) -
     return grouped
 
 
-def render_parameters(path_item: Dict[str, Any], method_item: Dict[str, Any], level: int) -> List[str]:
+def render_parameters(
+    path_item: Dict[str, Any], method_item: Dict[str, Any], level: int
+) -> List[str]:
     grouped = collect_parameters(path_item, method_item)
     blocks: List[str] = []
     for location in ("query", "path", "header", "cookie"):
@@ -158,11 +162,11 @@ def render_request_body(method_item: Dict[str, Any], level: int) -> List[str]:
     for content_type, content_schema in content.items():
         schema = (content_schema or {}).get("schema") or {}
         body_lines.append(
-            f"{indent(level + 2)}\"{content_type}\": {schema_to_ts(schema, level + 2)};"
+            f'{indent(level + 2)}"{content_type}": {schema_to_ts(schema, level + 2)};'
         )
 
     if not body_lines:
-        body_lines.append(f"{indent(level + 2)}\"application/json\": unknown;")
+        body_lines.append(f'{indent(level + 2)}"application/json": unknown;')
 
     optional = "" if request_body.get("required") else "?"
     return [
@@ -181,14 +185,14 @@ def render_responses(method_item: Dict[str, Any], level: int) -> List[str]:
     for status_code in sorted(responses.keys(), key=lambda value: (len(str(value)), str(value))):
         response = responses[status_code] or {}
         content = response.get("content") or {}
-        lines.append(f"{indent(level + 1)}\"{status_code}\": {{")
+        lines.append(f'{indent(level + 1)}"{status_code}": {{')
 
         if content:
             lines.append(f"{indent(level + 2)}content: {{")
             for content_type in sorted(content.keys()):
                 schema = (content[content_type] or {}).get("schema") or {}
                 lines.append(
-                    f"{indent(level + 3)}\"{content_type}\": {schema_to_ts(schema, level + 3)};"
+                    f'{indent(level + 3)}"{content_type}": {schema_to_ts(schema, level + 3)};'
                 )
             lines.append(f"{indent(level + 2)}}};")
 
@@ -199,7 +203,7 @@ def render_responses(method_item: Dict[str, Any], level: int) -> List[str]:
 
 
 def render_components(spec: Dict[str, Any]) -> List[str]:
-    schemas = ((spec.get("components") or {}).get("schemas") or {})
+    schemas = (spec.get("components") or {}).get("schemas") or {}
     lines = ["export interface components {", "  schemas: {"]
     for name in sorted(schemas.keys()):
         ts_type = schema_to_ts(schemas[name], 2)

@@ -60,7 +60,9 @@ def apply_security_headers(response):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = get_permissions_policy()
     if IS_PRODUCTION:
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
@@ -73,6 +75,8 @@ def apply_security_headers(response):
         response.headers["Expires"] = "0"
 
     return response
+
+
 ERROR_TEMPLATES = {
     400: ("Bad Request", "bad_request"),
     401: ("Authentication required", "auth_required"),
