@@ -1,6 +1,7 @@
-import os
-from app_factory import create_app
 from celery import Celery
+
+from app_factory import create_app
+
 
 def make_celery(app):
     celery = Celery(
@@ -20,5 +21,4 @@ def make_celery(app):
 
 app = create_app()
 celery = make_celery(app)
-import services.tasks
 

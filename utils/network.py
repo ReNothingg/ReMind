@@ -1,12 +1,15 @@
-import socket
 import ipaddress
-import requests
+import socket
 from typing import Optional, Tuple
 from urllib.parse import urlparse
+
+import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
 from config import USER_AGENT
 from utils.responses import logger
+
 
 def build_http_session() -> requests.Session:
     session = requests.Session()

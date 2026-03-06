@@ -1,7 +1,7 @@
 import secrets
-import json
-from flask import session, request, current_app
 from functools import wraps
+
+from flask import current_app, request, session
 
 CSRF_TOKEN_LENGTH = 32
 CSRF_SESSION_KEY = '_csrf_token'

@@ -1,9 +1,9 @@
-from config import (
-    SERVER_THREADS,
-    SERVER_CONNECTION_LIMIT,
-    SERVER_CHANNEL_TIMEOUT,
-)
 from app_factory import create_app
+from config import (
+    SERVER_CHANNEL_TIMEOUT,
+    SERVER_CONNECTION_LIMIT,
+    SERVER_THREADS,
+)
 
 if __name__ == "__main__":
     app = create_app()

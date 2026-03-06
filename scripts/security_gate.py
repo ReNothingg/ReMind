@@ -4,8 +4,7 @@
 import argparse
 import json
 import pathlib
-import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 HIGH_WORDS = {"high", "critical", "error", "err"}
 

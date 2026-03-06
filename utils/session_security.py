@@ -93,8 +93,8 @@ def secure_session_required(check_fingerprint=True, max_inactive_seconds=3600):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_function(*args, **kwargs):
+            from utils.audit_log import AuditEvents, log_security_event
             from utils.responses import make_error
-            from utils.audit_log import log_security_event, AuditEvents
             if 'user_id' not in session:
                 return make_error(
                     "Authentication required",

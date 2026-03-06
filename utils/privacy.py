@@ -1,11 +1,8 @@
-import os
-import json
 import hashlib
-import shutil
+import os
 from datetime import datetime
-from flask import session
 
-from config import CHATS_FOLDER, UPLOAD_FOLDER, CREATE_IMAGE_FOLDER
+from config import CHATS_FOLDER, CREATE_IMAGE_FOLDER, UPLOAD_FOLDER
 
 
 def anonymize_ip(ip_address):
@@ -48,7 +45,7 @@ def get_user_data_locations(user_id):
 
 
 def export_user_data(user_id):
-    from utils.auth import User, UserSettings, UserChatHistory, ChatShare, db
+    from utils.auth import ChatShare, User, UserChatHistory, UserSettings
 
     export_data = {
         'exported_at': datetime.utcnow().isoformat(),
@@ -75,8 +72,8 @@ def export_user_data(user_id):
 
 
 def delete_user_data(user_id, delete_account=False):
-    from utils.auth import User, UserSettings, UserChatHistory, ChatShare, db
-    from utils.audit_log import log_audit_event, AuditEvents
+    from utils.audit_log import AuditEvents, log_audit_event
+    from utils.auth import ChatShare, User, UserChatHistory, UserSettings, db
 
     results = {
         'user_id': user_id,
@@ -125,7 +122,7 @@ def delete_user_data(user_id, delete_account=False):
 
 
 def anonymize_user_data(user_id):
-    from utils.auth import User, UserSettings, UserChatHistory, db
+    from utils.auth import User, UserChatHistory, UserSettings, db
 
     user = User.query.get(user_id)
     if not user:

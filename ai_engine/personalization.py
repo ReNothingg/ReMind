@@ -1,11 +1,12 @@
-import os
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, Optional
+
 from flask import request
 
-from utils.auth import UserSettings, User
+from utils.auth import User, UserSettings
 
 logger = logging.getLogger(__name__)
 

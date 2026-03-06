@@ -1,10 +1,12 @@
-import time
 import hashlib
-from functools import wraps
-from flask import request, session
-from collections import defaultdict
-from threading import Lock
 import os
+import time
+from collections import defaultdict
+from functools import wraps
+from threading import Lock
+
+from flask import request
+
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION = 900  # 15 minutes
 PROGRESSIVE_LOCKOUT = True  # Increase lockout time with each lockout
@@ -201,8 +203,8 @@ def check_brute_force(identifier_type='email'):
             )
 
             if is_locked:
+                from utils.audit_log import AuditEvents, log_security_event
                 from utils.responses import make_error
-                from utils.audit_log import log_security_event, AuditEvents
 
                 log_security_event(AuditEvents.SECURITY_BRUTE_FORCE, {
                     'identifier_type': identifier_type,

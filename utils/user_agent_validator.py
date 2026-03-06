@@ -1,6 +1,7 @@
-import re
 import logging
+import re
 from typing import Dict, List, Optional, Tuple
+
 from flask import request
 
 logger = logging.getLogger(__name__)

@@ -141,7 +141,7 @@ def setup_logging(app):
         logging.INFO if IS_PRODUCTION else logging.DEBUG,
     ]
 
-    for handler, level in zip(handlers, levels):
+    for handler, level in zip(handlers, levels, strict=False):
         handler.setLevel(level)
         handler.addFilter(pii_filter)
         handler.setFormatter(formatter)

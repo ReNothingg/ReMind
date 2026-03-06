@@ -1,52 +1,52 @@
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from flask import Flask, request, g
+
+from flask import Flask, g, request
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import (
+    ALLOWED_HOSTS,
+    ALLOWED_USER_AGENT_PATTERNS,
     BASE_PATH,
-    UPLOAD_FOLDER,
+    BYPASS_USER_AGENT_VALIDATION_ROUTES,
     CHATS_FOLDER,
+    CORS_ALLOW_CREDENTIALS,
+    CORS_ALLOW_HEADERS,
+    CORS_ALWAYS_SEND,
+    CORS_EXPOSE_HEADERS,
+    CORS_MAX_AGE,
+    CORS_METHODS,
+    CORS_ORIGINS,
+    CORS_SEND_WILDCARD,
     CREATE_IMAGE_FOLDER,
+    IS_PRODUCTION,
     MAX_CONTENT_LENGTH,
     SECRET_KEY,
-    CORS_ORIGINS,
-    CORS_ALLOW_HEADERS,
-    CORS_EXPOSE_HEADERS,
-    CORS_METHODS,
-    CORS_MAX_AGE,
-    CORS_ALLOW_CREDENTIALS,
-    CORS_SEND_WILDCARD,
-    CORS_ALWAYS_SEND,
-    VALIDATE_USER_AGENT,
-    ALLOWED_USER_AGENT_PATTERNS,
-    BYPASS_USER_AGENT_VALIDATION_ROUTES,
-    SQLALCHEMY_DATABASE_URI,
-    IS_PRODUCTION,
-    ALLOWED_HOSTS,
     SESSION_COOKIE_DOMAIN,
     SESSION_COOKIE_NAME,
+    SQLALCHEMY_DATABASE_URI,
+    UPLOAD_FOLDER,
+    VALIDATE_USER_AGENT,
 )
+from routes.api import api_bp
+from utils.audit_log import AuditEvents, log_audit_event
 from utils.auth import setup_auth
-from utils.user_agent_validator import UserAgentValidator, log_suspicious_user_agent
-from utils.responses import make_error, logger
-from utils.csrf_protection import setup_csrf_protection, add_csrf_token_to_response
+from utils.csrf_protection import add_csrf_token_to_response, setup_csrf_protection
 from utils.logger_config import setup_logging
-from utils.security_headers import apply_security_headers, get_safe_error_response
+from utils.observability import finish_request_context, start_request_context
+from utils.privacy import anonymize_ip
+from utils.responses import logger, make_error
+from utils.security_headers import apply_security_headers
 from utils.session_security import (
     RequestAwareSessionInterface,
     configure_session,
-    update_session_activity,
 )
-from utils.audit_log import log_audit_event, AuditEvents
-from utils.privacy import anonymize_ip
-from utils.observability import start_request_context, finish_request_context
-from routes.api import api_bp
+from utils.user_agent_validator import UserAgentValidator, log_suspicious_user_agent
+
 
 def create_app():
-    is_production = IS_PRODUCTION or not os.environ.get("FLASK_ENV")
     dist_dir = BASE_PATH / "dist"
     public_dir = BASE_PATH / "public"
     if dist_dir.exists():
@@ -155,7 +155,7 @@ def create_app():
     @app.errorhandler(413)
     def handle_request_entity_too_large(e):
         return make_error(
-            f"File too large.", status=413, code="request_entity_too_large"
+            "File too large.", status=413, code="request_entity_too_large"
         )
 
     @app.errorhandler(401)

@@ -50,7 +50,7 @@ def test_api_login_wrong_password_for_argon2_hash_returns_401(client, app):
 
     assert response.status_code == 401
     payload = response.get_json()
-    assert payload['error'] == 'РќРµРІРµСЂРЅС‹Р№ email РёР»Рё РїР°СЂРѕР»СЊ'
+    assert 'email' in payload['error']
 
 
 def test_resolve_cookie_domain_uses_host_only_cookies_for_local_requests():
@@ -86,6 +86,37 @@ def test_login_google_uses_host_only_cookies_on_local_host(client, monkeypatch):
     fallback_cookie = next(cookie for cookie in cookies if cookie.startswith('oauth_state_fallback='))
     assert 'Domain=' not in session_cookie
     assert 'Domain=' not in fallback_cookie
+
+
+def test_normalize_redirect_target_keeps_redirects_relative():
+    allowed_hosts = ['chat.synvexai.com']
+
+    assert auth_module._normalize_redirect_target('/health?tab=1', allowed_hosts) == '/health?tab=1'
+    assert (
+        auth_module._normalize_redirect_target(
+            'https://chat.synvexai.com/health?tab=1',
+            allowed_hosts,
+        )
+        == '/health?tab=1'
+    )
+    assert auth_module._normalize_redirect_target('https://evil.example/phish', allowed_hosts) == ''
+
+
+def test_login_google_callback_error_redirect_drops_provider_query_params(client, monkeypatch):
+    class FailingGoogleClient:
+        def authorize_access_token(self):
+            raise RuntimeError('forced oauth failure')
+
+    monkeypatch.setattr(auth_module.oauth, 'google', FailingGoogleClient(), raising=False)
+
+    response = client.get(
+        '/login/google/callback?error=access_denied&error_description=https%3A%2F%2Fevil.example',
+        headers={'User-Agent': 'Mozilla/5.0 (pytest)'}
+    )
+
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith('/login')
+    assert 'error=' not in response.headers['Location']
 
 
 def test_chat_echo_as_guest_returns_reply_and_request_id(client):

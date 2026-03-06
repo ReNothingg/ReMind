@@ -1,10 +1,13 @@
-import os
-import json
-import redis
 import inspect
+import json
+import os
+
+import redis
 from celery import shared_task
+
 from ai_engine import get_model_function
 from utils.logger_config import logger
+
 
 @shared_task(bind=True, name='ai.generate')
 def generate_ai_response(self, channel_id, model_name, db_user_id, user_data):

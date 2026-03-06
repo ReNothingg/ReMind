@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
 
 from flask import request, session
 from sqlalchemy import and_
@@ -20,7 +19,7 @@ from services.chat_history import (
 )
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.input_validation import InputValidator, ValidationError
-from utils.responses import logger, make_ok
+from utils.responses import make_ok
 
 
 def _safe_session_preview(messages: list) -> str:

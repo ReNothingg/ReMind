@@ -1,21 +1,21 @@
-import os
-import secrets
-import re
 import json
-from datetime import timedelta, datetime
+import re
+import secrets
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
+
 import requests
-import jwt
-from flask import current_app, render_template, request, redirect, url_for, flash, session, jsonify
-import logging
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-from authlib.integrations.flask_client import OAuth
 from authlib.integrations.base_client.errors import MismatchingStateError
-from itsdangerous import URLSafeTimedSerializer, BadData
-from .mailer import send_email
+from authlib.integrations.flask_client import OAuth
+from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask_sqlalchemy import SQLAlchemy
+from itsdangerous import BadData, URLSafeTimedSerializer
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from .input_validation import InputValidator, ValidationError
-from .rate_limiting import login_limiter, password_reset_limiter, rate_limit
+from .mailer import send_email
+from .rate_limiting import login_limiter, rate_limit
+from .responses import make_error
 from .session_security import resolve_cookie_domain
 
 db = SQLAlchemy()
@@ -64,7 +64,7 @@ class UserSettings(db.Model):
     def get_settings(self):
         try:
             return json.loads(self.settings_data) if self.settings_data else {}
-        except:
+        except (TypeError, ValueError, json.JSONDecodeError):
             return {}
 
     def to_dict(self):
@@ -92,7 +92,7 @@ class UserChatHistory(db.Model):
     def get_messages(self):
         try:
             return json.loads(self.messages_data) if self.messages_data else []
-        except:
+        except (TypeError, ValueError, json.JSONDecodeError):
             return []
 
     def set_messages(self, messages):
@@ -238,6 +238,24 @@ def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:
     return _is_allowed_hostname(parsed.hostname, allowed_hosts)
 
 
+def _normalize_redirect_target(target: str, allowed_hosts) -> str:
+    if not _is_safe_redirect_target(target, allowed_hosts):
+        return ""
+
+    parsed = urlparse(target)
+    if not parsed.netloc:
+        return target
+
+    normalized = parsed.path or "/"
+    if parsed.params:
+        normalized = f"{normalized};{parsed.params}"
+    if parsed.query:
+        normalized = f"{normalized}?{parsed.query}"
+    if parsed.fragment:
+        normalized = f"{normalized}#{parsed.fragment}"
+    return normalized
+
+
 def _oauth_state_serializer(secret_key: str) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key, salt="google-oauth-fallback-state")
 
@@ -291,8 +309,9 @@ def _resolve_oauth_redirect_base(
 
 def verify_turnstile(turnstile_response):
 
-    from config import TURNSTILE_SECRET_KEY, TURNSTILE_VERIFY_URL, LOCALHOST_MODE
     from flask import current_app
+
+    from config import LOCALHOST_MODE, TURNSTILE_SECRET_KEY, TURNSTILE_VERIFY_URL
     if LOCALHOST_MODE:
         current_app.logger.debug("Turnstile verification skipped (localhost mode)")
         return True
@@ -472,8 +491,8 @@ def register_auth_routes(app):
     @app.route("/login", methods=["GET", "POST"])
     @rate_limit(login_limiter, 'Too many login attempts')
     def login():
+        from utils.audit_log import AuditEvents, log_auth_event
         from utils.brute_force import brute_force_protection, record_login_attempt
-        from utils.audit_log import log_auth_event, AuditEvents
         from utils.session_security import regenerate_session
 
         if request.method == "POST":
@@ -544,11 +563,9 @@ def register_auth_routes(app):
             app.logger.debug(f"Login route GET args: {request.args}")
             if "code" in request.args:
                 app.logger.info(
-                    "Detected OAuth 'code' on /login; redirecting to /login/google/callback to complete authorization"
+                    "Detected OAuth 'code' on /login; processing via /login/google/callback"
                 )
-                return redirect(
-                    url_for("authorize_google", **request.args.to_dict(flat=True))
-                )
+                return authorize_google()
             oauth_error = request.args.get("error")
             oauth_error_description = request.args.get(
                 "error_description"
@@ -652,7 +669,7 @@ def register_auth_routes(app):
 
     @app.route("/logout", methods=["POST"])
     def logout():
-        from utils.audit_log import log_audit_event, AuditEvents
+        from utils.audit_log import AuditEvents, log_audit_event
         from utils.session_security import invalidate_session
 
         user_id = session.get("user_id")
@@ -684,17 +701,18 @@ def register_auth_routes(app):
         )
     @app.route("/login/google")
     def login_google():
-        from config import BACKEND_URL, ALLOWED_HOSTS, SECRET_KEY, SESSION_COOKIE_DOMAIN
+        from config import ALLOWED_HOSTS, BACKEND_URL, SECRET_KEY, SESSION_COOKIE_DOMAIN
 
         redirect_to_candidate = request.args.get("redirect_to") or request.headers.get("Referer") or ""
-        if _is_safe_redirect_target(redirect_to_candidate, ALLOWED_HOSTS):
-            session["oauth_redirect_to"] = redirect_to_candidate
+        safe_redirect_path = _normalize_redirect_target(redirect_to_candidate, ALLOWED_HOSTS)
+        if safe_redirect_path:
+            session["oauth_redirect_to"] = safe_redirect_path
 
         redirect_base = _resolve_oauth_redirect_base(
             request_host_url=request.host_url,
             backend_url=BACKEND_URL,
             allowed_hosts=ALLOWED_HOSTS,
-            preferred_target=redirect_to_candidate,
+            preferred_target=safe_redirect_path,
         )
         if not redirect_base:
             app.logger.warning("Blocked OAuth start due to untrusted request host")
@@ -749,7 +767,7 @@ def register_auth_routes(app):
             try:
                 app.logger.info("Attempting to exchange code for access token...")
                 token = oauth.google.authorize_access_token()
-                app.logger.debug(f"Token obtained successfully")
+                app.logger.debug("Token obtained successfully")
             except MismatchingStateError as token_err:
                 from config import SECRET_KEY
 
@@ -833,8 +851,9 @@ def register_auth_routes(app):
             session.permanent = True
             from config import SESSION_COOKIE_DOMAIN
             cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
-            if _is_safe_redirect_target(redirect_to, ALLOWED_HOSTS):
-                response = redirect(redirect_to)
+            safe_redirect_path = _normalize_redirect_target(redirect_to, ALLOWED_HOSTS)
+            if safe_redirect_path:
+                response = redirect(safe_redirect_path)
             else:
                 response = redirect("/")
             response.delete_cookie(
@@ -847,14 +866,7 @@ def register_auth_routes(app):
         except Exception as e:
             app.logger.exception(f"OAuth error in authorize_google(): {e}")
             flash("Ошибка при входе через Google", "danger")
-            err_param = request.args.get("error")
-            err_desc = request.args.get("error_description")
-            if err_param:
-                response = redirect(
-                    url_for("login", error=err_param, error_description=err_desc)
-                )
-            else:
-                response = redirect(url_for("login"))
+            response = redirect(url_for("login"))
             from config import SESSION_COOKIE_DOMAIN
             cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
             response.delete_cookie(
@@ -876,7 +888,7 @@ def register_auth_routes(app):
     @app.route("/api/auth/config", methods=["GET"])
     def api_auth_config():
 
-        from config import TURNSTILE_SITE_KEY, GOOGLE_CLIENT_ID
+        from config import GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY
 
         return (
             jsonify(
@@ -1422,8 +1434,9 @@ def register_auth_routes(app):
 
 def setup_auth(app):
 
-    from config import SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
     from sqlalchemy import event
+
+    from config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
     db.init_app(app)
     oauth.init_app(app)
 
@@ -1445,7 +1458,7 @@ def setup_auth(app):
         app.logger.info(
             f"Registering Google OAuth with client_id: {GOOGLE_CLIENT_ID[:20]}..."
         )
-        google = oauth.register(
+        oauth.register(
             name="google",
             client_id=GOOGLE_CLIENT_ID,
             client_secret=GOOGLE_CLIENT_SECRET,

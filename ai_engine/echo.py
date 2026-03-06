@@ -12,7 +12,7 @@ def echo(_, payload):
     }
 
 def echo_stream(_, payload):
-    import time, json
+    import time
 
     text = ""
     if isinstance(payload, dict):

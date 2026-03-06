@@ -1,7 +1,10 @@
-import io
 import base64
-from langdetect import detect, LangDetectException
-from gtts import gTTS, lang as gtts_langs
+import io
+
+from gtts import gTTS
+from gtts import lang as gtts_langs
+from langdetect import LangDetectException, detect
+
 from config import DEFAULT_LANGUAGE
 
 TTS_MAX_CHARS = 1000

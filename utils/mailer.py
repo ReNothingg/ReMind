@@ -1,9 +1,10 @@
 import logging
 import os
-from datetime import datetime
 import smtplib
-from email.mime.text import MIMEText
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from config import LOGS_FOLDER
 
 logging.basicConfig(
@@ -187,7 +188,7 @@ def save_email_to_file(
                 f.write(f"Content: {'[HTML]' if is_html else '[Plain text]'}\n")
 
             f.write(f"{content}\n")
-            f.write(f"--- END EMAIL ---\n")
+            f.write("--- END EMAIL ---\n")
 
         print(f"[EMAIL SAVED] Email to {to_email} saved to sent_emails.log")
         return True
@@ -217,7 +218,7 @@ def test_email_sending():
     if result:
         print(f"Тестовое письмо успешно отправлено на {recipient}")
     else:
-        print(f"Не удалось отправить тестовое письмо, проверьте sent_emails.log")
+        print("Не удалось отправить тестовое письмо, проверьте sent_emails.log")
 
     return result
 if __name__ == "__main__":

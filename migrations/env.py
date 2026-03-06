@@ -1,14 +1,14 @@
+import sys
 from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from pathlib import Path
 
 from alembic import context
-import sys
-from pathlib import Path
+from sqlalchemy import engine_from_config, pool
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.auth import db, User, UserSettings, UserChatHistory, ChatShare
+from utils.auth import db
+
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

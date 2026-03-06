@@ -1,6 +1,7 @@
 import logging
 from logging.config import dictConfig
 from typing import Optional, Union
+
 from flask import g, has_request_context, jsonify
 
 dictConfig(

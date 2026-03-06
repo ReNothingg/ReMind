@@ -1,8 +1,9 @@
-import re
 import json
+import re
 from html import escape as html_escape
 from urllib.parse import urlparse
-from email_validator import validate_email, EmailNotValidError
+
+from email_validator import EmailNotValidError, validate_email
 
 
 class ValidationError(Exception):
@@ -20,7 +21,7 @@ class InputValidator:
             valid = validate_email(email)
             return valid.email
         except EmailNotValidError as e:
-            raise ValidationError(f'Invalid email: {str(e)}')
+            raise ValidationError(f'Invalid email: {str(e)}') from e
 
     @staticmethod
     def validate_username(username, min_length=3, max_length=50):
@@ -72,7 +73,7 @@ class InputValidator:
                 raise ValidationError('Invalid URL: missing host')
             return url
         except Exception as e:
-            raise ValidationError(f'Invalid URL: {str(e)}')
+            raise ValidationError(f'Invalid URL: {str(e)}') from e
 
     @staticmethod
     def validate_json(data, expected_keys=None, max_size=1024*1024):
@@ -145,8 +146,8 @@ class InputValidator:
 
         try:
             int_val = int(value)
-        except (ValueError, TypeError):
-            raise ValidationError('Value must be an integer')
+        except (ValueError, TypeError) as e:
+            raise ValidationError('Value must be an integer') from e
 
         if min_val is not None and int_val < min_val:
             raise ValidationError(f'Value must be at least {min_val}')
@@ -194,6 +195,6 @@ def safe_dict_access(data, key, default=None, validator=None):
             value = validator(value)
         return value
     except ValidationError as e:
-        raise ValidationError(f'{key}: {str(e)}')
+        raise ValidationError(f'{key}: {str(e)}') from e
     except Exception as e:
-        raise ValidationError(f'{key}: Invalid value')
+        raise ValidationError(f'{key}: Invalid value') from e

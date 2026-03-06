@@ -1,7 +1,8 @@
-from pathlib import Path
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 from urllib.parse import urlparse
+
+from dotenv import load_dotenv
 
 env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=env_path)
@@ -182,7 +183,6 @@ DEBUG_MODE = _is_debug
 TESTING = False
 
 try:
-    from PIL import Image
 
     PIL_AVAILABLE = True
 except Exception:

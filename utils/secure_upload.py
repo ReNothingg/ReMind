@@ -1,10 +1,12 @@
-import os
-import mimetypes
 import hashlib
-from pathlib import Path
-from werkzeug.utils import secure_filename
-from werkzeug.datastructures import FileStorage
+import mimetypes
+import os
 import uuid
+from pathlib import Path
+
+from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
+
 ALLOWED_EXTENSIONS = {
     'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg',
     'pdf', 'txt', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
@@ -47,6 +49,13 @@ MAX_FILE_SIZES = {
     'archive': 500 * 1024 * 1024,
     'default': 50 * 1024 * 1024,
 }
+
+
+def _safe_remove(path):
+    try:
+        os.remove(str(path))
+    except OSError:
+        pass
 
 
 def get_file_type_category(extension):
@@ -145,7 +154,7 @@ def guess_mime_from_content(file_path):
 
 
 def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: str = None):
-    from utils.audit_log import log_audit_event, AuditEvents
+    from utils.audit_log import AuditEvents, log_audit_event
 
     if not file or not file.filename:
         return False, 'No file provided', None
@@ -181,14 +190,11 @@ def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: st
 
     try:
         file.save(str(temp_path))
-    except Exception as e:
-        return False, f'Failed to save file', None
+    except Exception:
+        return False, 'Failed to save file', None
     is_valid, error = validate_file_content(str(temp_path))
     if not is_valid:
-        try:
-            os.remove(str(temp_path))
-        except:
-            pass
+        _safe_remove(temp_path)
         log_audit_event(AuditEvents.FILE_UPLOAD_BLOCKED, {
             'reason': error,
             'original_name': file.filename[:100]
@@ -196,20 +202,14 @@ def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: st
         return False, error, None
     detected_mime = validate_mime_with_magic(str(temp_path))
     if not detected_mime:
-        try:
-            os.remove(str(temp_path))
-        except:
-            pass
+        _safe_remove(temp_path)
         log_audit_event(AuditEvents.FILE_UPLOAD_BLOCKED, {
             'reason': 'invalid_mime_type',
             'original_name': file.filename[:100]
         }, original_user_id)
         return False, 'Invalid file type', None
     if not is_mime_extension_match(detected_mime, extension):
-        try:
-            os.remove(str(temp_path))
-        except:
-            pass
+        _safe_remove(temp_path)
         log_audit_event(AuditEvents.FILE_UPLOAD_BLOCKED, {
             'reason': 'mime_extension_mismatch',
             'detected_mime': detected_mime,
@@ -220,12 +220,9 @@ def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: st
     try:
         final_path = upload_dir / uuid_filename
         os.rename(str(temp_path), str(final_path))
-    except Exception as e:
-        try:
-            os.remove(str(temp_path))
-        except:
-            pass
-        return False, f'Failed to finalize file', None
+    except Exception:
+        _safe_remove(temp_path)
+        return False, 'Failed to finalize file', None
     file_hash = calculate_file_hash(str(final_path))
 
     log_audit_event(AuditEvents.FILE_UPLOAD, {

@@ -1,7 +1,9 @@
 from functools import wraps
+
 from flask import request, session
+
+from utils.auth import ChatShare, UserChatHistory
 from utils.responses import make_error
-from utils.auth import UserChatHistory, ChatShare, db
 
 
 def require_auth(view_func):
@@ -54,7 +56,7 @@ def check_resource_ownership(resource_type, resource_id_arg='resource_id'):
                 try:
                     data = request.get_json(silent=True) or {}
                     resource_id = data.get(resource_id_arg)
-                except:
+                except Exception:
                     pass
 
 

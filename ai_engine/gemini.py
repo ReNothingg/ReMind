@@ -1,13 +1,16 @@
+import base64
+import io
+import logging
+import os
+from typing import Any, Dict, Generator, List, Optional, Union
+
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
 from PIL import Image
-import logging
-import base64
-import io
-from typing import Any, Dict, Generator, List, Optional, Union
-import os
-from config import GEMINI_API_KEY, GEMINI_MODEL_NAME
+
 from ai_engine.personalization import build_system_prompt
+from config import GEMINI_API_KEY, GEMINI_MODEL_NAME
+
 logger = logging.getLogger(__name__)
 try:
     if not GEMINI_API_KEY or GEMINI_API_KEY == "ВАШ_API_КЛЮЧ":

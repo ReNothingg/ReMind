@@ -1,23 +1,33 @@
 import base64
 import uuid
+
 from PIL import Image
+
 from config import (
-    UPLOAD_FOLDER,
     ALLOWED_IMAGE_EXTENSIONS,
     PIL_AVAILABLE,
-)
-from utils.secure_upload import (
-    validate_filename,
-    validate_file_content,
-    validate_mime_type,
-    is_safe_to_serve,
+    UPLOAD_FOLDER,
 )
 from utils.input_validation import InputValidator
+from utils.secure_upload import (
+    is_safe_to_serve,
+    validate_file_content,
+    validate_filename,
+    validate_mime_type,
+)
 
 ALLOWED_FILE_EXTENSIONS = {
     "txt", "md", "pdf", "csv", "json", "js", "py", "html", "css",
     "c", "cpp", "h", "java", "rs", "go", "ts", "xml", "yaml", "yml",
 }
+
+
+def _safe_unlink(filepath):
+    try:
+        filepath.unlink()
+    except OSError:
+        pass
+
 
 def handle_file_upload(file_storage, user_id):
     if not file_storage or not file_storage.filename:
@@ -48,17 +58,11 @@ def handle_file_upload(file_storage, user_id):
         return None
     is_valid, error = validate_file_content(str(filepath))
     if not is_valid:
-        try:
-            filepath.unlink()
-        except:
-            pass
+        _safe_unlink(filepath)
         return None
     is_valid, detected_mime = validate_mime_type(str(filepath))
     if not is_valid:
-        try:
-            filepath.unlink()
-        except:
-            pass
+        _safe_unlink(filepath)
         return None
     if detected_mime:
         mimetype = detected_mime
@@ -78,10 +82,7 @@ def handle_file_upload(file_storage, user_id):
                 encoded = base64.b64encode(f.read()).decode("utf-8")
             model_part = {"inline_data": {"mime_type": mimetype, "data": encoded}}
         except Exception:
-            try:
-                filepath.unlink()
-            except:
-                pass
+            _safe_unlink(filepath)
             return None
     else:
         try:
@@ -95,10 +96,7 @@ def handle_file_upload(file_storage, user_id):
             safe_display_name = InputValidator.sanitize_output(file_storage.filename)
             model_part = {"text": f"[Binary file: {safe_display_name}]"}
     if not is_safe_to_serve(str(filepath)):
-        try:
-            filepath.unlink()
-        except:
-            pass
+        _safe_unlink(filepath)
         return None
 
     return {

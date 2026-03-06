@@ -1,13 +1,14 @@
-import json
 import hashlib
+import json
 import logging
 import logging.handlers
 from datetime import datetime
-from pathlib import Path
 from functools import wraps
-from flask import request, session, g, has_request_context
 
-from config import LOGS_FOLDER, IS_PRODUCTION
+from flask import has_request_context, request, session
+
+from config import IS_PRODUCTION, LOGS_FOLDER
+
 audit_logger = logging.getLogger('remind.audit')
 audit_logger.setLevel(logging.INFO)
 _audit_handler = logging.handlers.RotatingFileHandler(
