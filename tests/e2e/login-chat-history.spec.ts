@@ -18,10 +18,16 @@ async function loginAsE2EUser(page) {
 }
 
 test('login -> chat -> session history', async ({ page }) => {
-    await page.goto('/?model=echo');
+    await page.goto('/');
 
     await loginAsE2EUser(page);
     await expect(page.locator('#promptInput')).toBeVisible();
+    const modelTrigger = page.locator('.model-btn-trigger').first();
+    await modelTrigger.click();
+    await page.locator('.model-option', { hasText: 'Echo' }).evaluate((element) => {
+        (element as HTMLElement).click();
+    });
+    await expect(modelTrigger).toContainText('Echo');
 
     const message = 'e2e smoke message';
     await page.fill('#promptInput', message);
