@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Generate TypeScript OpenAPI types for the frontend client."""
-
 import argparse
 import json
 import pathlib

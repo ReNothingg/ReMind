@@ -15,6 +15,6 @@ export default defineConfig({
         command: 'python scripts/e2e/run_server.py',
         url: 'http://127.0.0.1:5000/health',
         timeout: 120_000,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false,
     },
 });

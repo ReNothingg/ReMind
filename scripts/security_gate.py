@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Security gate: fail CI only on high-severity findings."""
-
 import argparse
 import json
 import pathlib

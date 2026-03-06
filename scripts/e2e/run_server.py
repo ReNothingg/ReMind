@@ -1,12 +1,19 @@
-#!/usr/bin/env python3
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "database" / "e2e_users.db"
 
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 
 def configure_env():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if DB_PATH.exists():
+        DB_PATH.unlink()
+
     os.environ["FLASK_ENV"] = "development"
     os.environ["VALIDATE_USER_AGENT"] = "False"
     os.environ["TURNSTILE_SITE_KEY"] = ""
@@ -31,7 +38,12 @@ def seed_e2e_user(app, generate_password_hash, user_model, settings_model, db):
                 is_confirmed=True,
             )
             db.session.add(user)
-            db.session.commit()
+        else:
+            user.username = "e2e_user"
+            user.password = generate_password_hash("Password1!")
+            user.is_confirmed = True
+
+        db.session.commit()
 
         settings = settings_model.query.filter_by(user_id=user.id).first()
         if settings is None:
@@ -45,6 +57,9 @@ if __name__ == "__main__":
 
     from app_factory import create_app
     from utils.auth import User, UserSettings, db
+    from utils.input_validation import InputValidator
+
+    InputValidator.validate_email = staticmethod(lambda value: str(value).strip().lower())
 
     app = create_app()
     seed_e2e_user(app, generate_password_hash, User, UserSettings, db)
