@@ -208,7 +208,7 @@ def guess_mime_from_content(file_path):
     return None
 
 
-def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: str = None):
+def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: str | None = None):
     from utils.audit_log import AuditEvents, log_audit_event
 
     if not file or not file.filename:

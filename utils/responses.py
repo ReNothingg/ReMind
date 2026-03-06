@@ -1,6 +1,6 @@
 import logging
 from logging.config import dictConfig
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from flask import g, has_request_context, jsonify
 
@@ -31,7 +31,7 @@ def _current_request_id() -> Optional[str]:
     return getattr(g, "request_id", None)
 
 
-def make_ok(payload: Optional[Union[dict, list, str]] = None, status: int = 200):
+def make_ok(payload: Optional[Union[dict[str, Any], list[Any], str]] = None, status: int = 200):
     if payload is None:
         payload = {}
     if isinstance(payload, dict):
@@ -48,9 +48,9 @@ def make_error(
     message: str,
     status: int = 400,
     code: Optional[str] = None,
-    extra: Optional[dict] = None,
+    extra: Optional[dict[str, Any]] = None,
 ):
-    err = {"ok": False, "error": {"message": message}}
+    err: dict[str, Any] = {"ok": False, "error": {"message": message}}
     request_id = _current_request_id()
     if request_id:
         err["request_id"] = request_id

@@ -7,8 +7,9 @@ import re
 import time
 import uuid
 from pathlib import Path
+from typing import Any, cast
 
-from flask import Response, current_app, request, send_file, send_from_directory, session
+from flask import Flask, Response, current_app, request, send_file, send_from_directory, session
 from werkzeug.utils import secure_filename
 
 from ai_engine import get_model_function
@@ -70,11 +71,11 @@ def _has_files_payload(value) -> bool:
     return True
 
 
-def process_request_data() -> tuple[str, dict, str]:
+def process_request_data() -> tuple[str, dict[str, Any], str]:
     auth_user_id = session.get("user_id")
 
     if request.is_json:
-        data = request.get_json(silent=True) or {}
+        data: dict[str, Any] = request.get_json(silent=True) or {}
         raw_identifier = str(auth_user_id) if auth_user_id else data.get("user_id", "")
         user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
         model_name = data.get("model", "gemini")
@@ -91,7 +92,7 @@ def process_request_data() -> tuple[str, dict, str]:
     if not request.form and not request.files:
         raise ApiError("Empty request", status=400, code="empty_request")
 
-    user_data = request.form.to_dict()
+    user_data: dict[str, Any] = request.form.to_dict()
     raw_identifier = str(auth_user_id) if auth_user_id else user_data.get("user_id", "")
     user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
     model_name = user_data.get("model", "gemini")
@@ -139,7 +140,9 @@ def _build_user_message_parts(original_message: str, files: list[dict]) -> list[
     return parts
 
 
-def _resolve_history(user_data: dict, resolved_session_id: str, db_user_id: int | None) -> list:
+def _resolve_history(
+    user_data: dict[str, Any], resolved_session_id: str, db_user_id: int | None
+) -> list:
     history_field = user_data.get("history")
     if isinstance(history_field, list):
         return history_field
@@ -159,7 +162,7 @@ def _stream_chat_response(
     resolved_session_id: str,
     user_message_for_history: dict,
 ):
-    captured_app = current_app._get_current_object()
+    captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
 
     def stream_generator():
         with captured_app.app_context():

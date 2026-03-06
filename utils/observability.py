@@ -43,7 +43,7 @@ def _is_valid_request_id(value: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z0-9._-]{8,128}", value))
 
 
-def resolve_request_id(incoming: str) -> str:
+def resolve_request_id(incoming: str | None) -> str:
     raw = (incoming or "").strip()
     if _is_valid_request_id(raw):
         return raw

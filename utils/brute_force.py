@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 from functools import wraps
 from threading import Lock
+from typing import DefaultDict
 
 from flask import request
 
@@ -11,8 +12,8 @@ MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION = 900  # 15 minutes
 PROGRESSIVE_LOCKOUT = True  # Increase lockout time with each lockout
 MAX_LOCKOUT_DURATION = 3600  # 1 hour maximum
-_attempt_store = defaultdict(list)
-_lockout_store = {}
+_attempt_store: DefaultDict[str, list[float]] = defaultdict(list)
+_lockout_store: dict[str, float | int] = {}
 _store_lock = Lock()
 
 

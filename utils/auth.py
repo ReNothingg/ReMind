@@ -2,6 +2,7 @@ import json
 import re
 import secrets
 from datetime import datetime, timedelta
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
@@ -18,7 +19,7 @@ from .rate_limiting import login_limiter, rate_limit
 from .responses import make_error
 from .session_security import resolve_cookie_domain
 
-db = SQLAlchemy()
+db: Any = SQLAlchemy()
 oauth = OAuth()
 OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
@@ -177,7 +178,7 @@ def _verify_user_password(user, password: str) -> bool:
 
         ph = PasswordHasher()
         try:
-            password_valid = ph.verify(stored_password, password)
+            password_valid: bool = bool(ph.verify(stored_password, password))
         except (VerifyMismatchError, InvalidHashError):
             return False
 
@@ -186,7 +187,7 @@ def _verify_user_password(user, password: str) -> bool:
         return bool(password_valid)
 
     try:
-        password_valid = check_password_hash(stored_password, password)
+        password_valid = bool(check_password_hash(stored_password, password))
     except ValueError:
         return False
 
@@ -202,7 +203,7 @@ def _verify_user_password(user, password: str) -> bool:
     return True
 
 
-def _is_allowed_hostname(hostname: str, allowed_hosts) -> bool:
+def _is_allowed_hostname(hostname: str | None, allowed_hosts) -> bool:
     if not hostname:
         return False
 

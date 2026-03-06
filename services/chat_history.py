@@ -24,7 +24,7 @@ from config import (
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.responses import logger
 
-SESSION_LOCKS = {}
+SESSION_LOCKS: dict[str, threading.Lock] = {}
 
 
 def _is_allowed_hostname(hostname: Optional[str]) -> bool:
@@ -77,7 +77,8 @@ def read_chat_file(safe_session_id: str) -> dict:
 
 def _generate_guest_session_token(session_id: str, timestamp: int) -> str:
     message = f"{session_id}:{timestamp}".encode("utf-8")
-    signature = hmac.new(SECRET_KEY.encode("utf-8"), message, hashlib.sha256).hexdigest()
+    secret_key = (SECRET_KEY or "").encode("utf-8")
+    signature = hmac.new(secret_key, message, hashlib.sha256).hexdigest()
     token_data = f"{session_id}:{timestamp}:{signature}"
     return base64.b64encode(token_data.encode("utf-8")).decode("utf-8")
 
@@ -102,9 +103,8 @@ def _verify_guest_session_token(token: str, session_id: str, max_age_seconds: in
             return False
 
         message = f"{session_id}:{timestamp}".encode("utf-8")
-        expected_signature = hmac.new(
-            SECRET_KEY.encode("utf-8"), message, hashlib.sha256
-        ).hexdigest()
+        secret_key = (SECRET_KEY or "").encode("utf-8")
+        expected_signature = hmac.new(secret_key, message, hashlib.sha256).hexdigest()
 
         if not hmac.compare_digest(signature, expected_signature):
             logger.warning(f"Token signature mismatch for session: {session_id}")
@@ -237,7 +237,7 @@ def _generate_title_from_history(history: list) -> str:
     return "Новый чат"
 
 
-def load_chat_history(session_id: str, user_id: int = None) -> list:
+def load_chat_history(session_id: str, user_id: int | None = None) -> list:
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
         return []
@@ -261,7 +261,7 @@ def load_chat_history(session_id: str, user_id: int = None) -> list:
 
 
 def append_messages_to_history(
-    session_id: str, new_messages: list, model_name: str, user_id: int = None
+    session_id: str, new_messages: list, model_name: str, user_id: int | None = None
 ):
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:

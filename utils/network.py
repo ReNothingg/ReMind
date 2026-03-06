@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 from urllib.parse import urlparse
 
 import requests
@@ -49,7 +49,7 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
             if not addr_info:
                 return False, None
 
-            ip_str = addr_info[0][4][0]
+            ip_str = cast(str, addr_info[0][4][0])
             ip_obj = ipaddress.ip_address(ip_str)
 
             if (
@@ -81,10 +81,13 @@ def make_safe_http_request(
 
     try:
         parsed = urlparse(url)
-        safe_url = url.replace(parsed.hostname, resolved_ip)
+        hostname = parsed.hostname
+        if hostname is None or resolved_ip is None:
+            return None
+        safe_url = url.replace(hostname, resolved_ip)
 
         headers = kwargs.pop("headers", {})
-        headers["Host"] = parsed.hostname
+        headers["Host"] = hostname
 
         response = HTTP_SESSION.request(
             method, safe_url, timeout=timeout, headers=headers, **kwargs

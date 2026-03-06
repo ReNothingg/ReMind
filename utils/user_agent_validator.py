@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import request
 
@@ -67,7 +67,10 @@ class UserAgentValidator:
 
 
 def log_suspicious_user_agent(
-    user_agent: Optional[str], ip: str, endpoint: str, additional_info: dict = None
+    user_agent: Optional[str],
+    ip: str,
+    endpoint: str,
+    additional_info: Optional[dict[str, Any]] = None,
 ) -> None:
     additional = additional_info or {}
 

@@ -5,10 +5,11 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import wraps
 from threading import Lock
+from typing import DefaultDict
 
 from flask import make_response, request, session
 
-rate_limit_store = defaultdict(list)
+rate_limit_store: DefaultDict[str, list[int]] = defaultdict(list)
 rate_limit_lock = Lock()
 
 
