@@ -29,7 +29,7 @@ prometheus-client==0.22.1
 
 # Dev/test/tooling pins
 black==24.10.0
-ruff==0.9.9
+ruff==0.15.5
 mypy==1.15.0
 pytest==8.3.4
 pytest-cov==6.0.0
