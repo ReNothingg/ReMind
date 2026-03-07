@@ -16,7 +16,7 @@ google-generativeai==0.8.4
 gTTS==2.5.4
 langdetect==1.0.9
 requests==2.32.3
-beautifulsoup4==4.12.3
+beautifulsoup4==4.14.3
 python-dotenv==1.0.1
 Pillow==11.1.0
 redis==5.2.1
