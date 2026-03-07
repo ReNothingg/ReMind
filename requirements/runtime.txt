@@ -10,7 +10,7 @@ alembic==1.14.1
 authlib==1.4.1
 pyjwt==2.10.1
 flask-limiter==3.10.1
-email-validator==2.2.0
+email-validator==2.3.0
 argon2-cffi==23.1.0
 google-generativeai==0.8.4
 gTTS==2.5.4
