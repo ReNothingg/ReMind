@@ -1,42 +1,3 @@
-@import url('variables.css');
-
-@import url('vendors/animate.css');
-
-@import url('base/mobile.css');
-
-@import url('layout/app-rail.css');
-@import url('layout/chat-container.css');
-@import url('layout/global-controls.css');
-
-@import url('components/ui/buttons.css');
-@import url('components/ui/input.css');
-@import url('components/ui/custom-select.css');
-@import url('components/ui/custom-select-settings.css');
-@import url('components/ui/table.css');
-@import url('components/ui/file-modal.css');
-@import url('components/ui/html-preview-modal.css');
-@import url('components/ui/image-lightbox.css');
-@import url('components/ui/toast-notifications.css');
-@import url('components/ui/sceleton-loader.css');
-@import url('components/ui/settings-modal.css');
-@import url('components/ui/user-settings.css');
-
-@import url('components/chat/formatter.css');
-@import url('components/chat/code-block.css');
-@import url('components/chat/quote.css');
-@import url('components/chat/think-block.css');
-@import url('components/chat/thinking-process.css');
-@import url('components/chat/message-attachments.css');
-@import url('components/chat/web-search-sources.css');
-@import url('components/chat/prompt-suggestions.css');
-@import url('components/chat/message-variant-nav.css');
-@import url('components/chat/translation-panel.css');
-
-@import url('components/modules/audio-player.css');
-@import url('components/modules/beatbox.css');
-@import url('components/modules/quiz.css');
-@import url('components/modules/error-display-panel.css');
-
 html {
   scroll-behavior: smooth;
   font-size: 12px;
@@ -86,6 +47,22 @@ body {
   font-weight: 500;
   line-height: 1.55;
   letter-spacing: -0.003em;
+}
+
+body.has-rail {
+  --app-rail-offset: var(--rail-width-collapsed);
+  --app-content-width-dynamic: clamp(
+    320px,
+    700px,
+    calc(100% - var(--spacing-unit) * 8 - var(--app-rail-offset))
+  );
+  --app-content-max-width-dynamic: calc(
+    100% - var(--app-rail-offset) - var(--spacing-unit) * 4
+  );
+}
+
+body.rail-open {
+  --app-rail-offset: var(--rail-width-expanded);
 }
 
 @keyframes snowFall {
@@ -244,30 +221,8 @@ main {
   max-width: 100% !important;
   box-sizing: border-box;
 
-  padding-left: 60px;
+  padding-left: var(--app-rail-offset);
   transition: padding-left var(--transition-duration-normal) var(--transition-timing-function);
-}
-
-body.rail-chat-open main {
-  padding-left: calc(var(--rail-width) + var(--history-width));
-}
-
-body.rail-chat-open .global-controls {
-  left: calc(var(--rail-width) + var(--history-width) + var(--spacing-unit) * 2);
-  right: calc(var(--spacing-unit) * 3);
-}
-
-body.rail-chat-open .main-input-area {
-  left: calc(50% + (var(--history-width) / 2) + (var(--rail-width) / 2));
-  transform: translateX(-50%);
-  width: var(--content-width-rail-open);
-  max-width: var(--content-width-rail-open-max);
-}
-
-body.rail-chat-open .chat-container {
-  width: var(--content-width-rail-open);
-  max-width: var(--content-width-rail-open-max);
-  min-width: var(--content-width-min);
 }
 
 .welcome-message {

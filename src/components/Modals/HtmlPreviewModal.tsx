@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DOMSafeUtils } from '../../utils/dom-safe';
+import ModalShell from '../UI/ModalShell';
 
 const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
     const [isLoading, setIsLoading] = useState(true);
     const { t } = useTranslation();
     const iframeRef = useRef(null);
-    const modalRef = useRef(null);
-    const overlayRef = useRef(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -20,7 +18,7 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
         if (isHtml) {
             try {
                 iframe.srcdoc = urlOrHtml || '';
-            } catch (e) {
+            } catch (_err) {
                 const blob = new Blob([urlOrHtml || ''], { type: 'text/html' });
                 iframe.src = URL.createObjectURL(blob);
             }
@@ -49,18 +47,10 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
             }
         };
 
-        const handleClickOutside = (e) => {
-            if (modalRef.current && !modalRef.current.contains(e.target) && overlayRef.current?.contains(e.target)) {
-                onClose();
-            }
-        };
-
         document.addEventListener('keydown', handleEscape);
-        document.addEventListener('click', handleClickOutside);
 
         return () => {
             document.removeEventListener('keydown', handleEscape);
-            document.removeEventListener('click', handleClickOutside);
         };
     }, [isOpen, onClose]);
 
@@ -73,45 +63,52 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
                 if (iframeRef.current) {
                     try {
                         iframeRef.current.srcdoc = '';
-                    } catch (e) {
+                    } catch (_err) {
                     }
                     iframeRef.current.src = 'about:blank';
                 }
             }, 200);
         }
+
+        return () => {
+            document.body.classList.remove('html-preview-blur');
+        };
     }, [isOpen]);
 
     if (!isOpen) return null;
 
     return (
-        <div className="html-preview-modal" ref={modalRef}>
-            <div className="html-preview-modal__overlay" ref={overlayRef}></div>
-            <div className="html-preview-content">
-                <button className="html-preview-close-btn" onClick={onClose} title={t('common.closeEsc')}>
-                    ×
-                </button>
-                <div id="htmlPreviewFrameWrap" style={{ width: '100%', height: '100%', position: 'relative' }}>
-                    {isLoading && (
-                        <div id="htmlPreviewLoading" className="html-preview-loading">
-                            {t('common.loading')}
-                        </div>
-                    )}
-                    <iframe
-                        ref={iframeRef}
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            border: 'none',
-                            display: 'block'
-                        }}
-                        sandbox="allow-forms"
-                        title="HTML Preview"
-                    />
-                </div>
+        <ModalShell
+            className="html-preview-modal px-2 py-3 sm:px-4 sm:py-6"
+            contentClassName="html-preview-content relative h-[min(92vh,860px)] w-full max-w-6xl rounded-[18px] border-border bg-surface shadow-[var(--shadow-xl)]"
+            onBackdropClick={onClose}
+        >
+            <button
+                className="html-preview-close-btn ui-icon-control absolute right-4 top-4 z-10 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                onClick={onClose}
+                title={t('common.closeEsc')}
+                type="button"
+            >
+                Г—
+            </button>
+            <div id="htmlPreviewFrameWrap" className="h-full w-full overflow-hidden rounded-[inherit]">
+                {isLoading && (
+                    <div
+                        id="htmlPreviewLoading"
+                        className="html-preview-loading absolute inset-0 z-[1] flex items-center justify-center bg-overlay/70 text-sm font-medium text-foreground"
+                    >
+                        {t('common.loading')}
+                    </div>
+                )}
+                <iframe
+                    ref={iframeRef}
+                    className="block h-full w-full border-0"
+                    sandbox="allow-forms"
+                    title="HTML Preview"
+                />
             </div>
-        </div>
+        </ModalShell>
     );
 };
 
 export default HtmlPreviewModal;
-

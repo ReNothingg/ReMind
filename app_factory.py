@@ -87,8 +87,8 @@ def create_app():
     app.config["SESSION_USE_SIGNER"] = True
     app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
-    app.config["SESSION_COOKIE_HTTPONLY"] = True  # No JS access
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF protection
+    app.config["SESSION_COOKIE_HTTPONLY"] = True 
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
     app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN
     configure_session(app)

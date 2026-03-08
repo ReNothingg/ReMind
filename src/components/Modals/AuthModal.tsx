@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
+import ModalShell from '../UI/ModalShell';
+import { cn } from '../../utils/cn';
 
 const AuthModal = ({ onClose, initialView = 'login' }) => {
     const { login } = useAuth();
     const [isLoginView, setIsLoginView] = useState(initialView === 'login');
     const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState(null); // { type: 'error' | 'success', text: '' }
+    const [message, setMessage] = useState(null);
     const [authConfig, setAuthConfig] = useState(null);
     const [googleUrl, setGoogleUrl] = useState('/login/google');
     const [googleAvailable, setGoogleAvailable] = useState(false);
@@ -15,6 +17,16 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const registerTurnstileIdRef = useRef(undefined);
     const loginContainerRef = useRef(null);
     const registerContainerRef = useRef(null);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const fieldLabelClass = 'ui-field-label';
+    const fieldInputClass = 'ui-input min-h-11 rounded-xl bg-interactive px-4 py-3 text-[0.95rem]';
+    const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-11 w-full justify-center rounded-xl px-4 py-3 text-[0.95rem] font-semibold';
+    const secondaryAuthButtonClass = 'btn btn-google flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4 py-3 text-[0.95rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
+
     const removeTurnstile = (idRef, containerRef) => {
         if (!window.turnstile) return;
         if (idRef.current !== undefined) {
@@ -29,10 +41,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             containerRef.current.innerHTML = '';
         }
     };
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [username, setUsername] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+
     const googleHref = (() => {
         try {
             const base = new URL(googleUrl, window.location.origin);
@@ -43,6 +52,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             return `${googleUrl}${separator}redirect_to=${encodeURIComponent(window.location.href)}`;
         }
     })();
+
     useEffect(() => {
         const loadAuthConfig = async () => {
             try {
@@ -61,6 +71,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         };
         loadAuthConfig();
     }, []);
+
     const waitForTurnstile = async (maxRetries = 50, delayMs = 100) => {
         for (let i = 0; i < maxRetries; i++) {
             if (window.turnstile) {
@@ -72,6 +83,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         console.warn(`Turnstile script failed to load after ${maxRetries * delayMs}ms`);
         return false;
     };
+
     useEffect(() => {
         if (!authConfig?.turnstile_site_key) return;
         let timeoutId;
@@ -83,8 +95,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             const targetRef = isLoginView ? loginContainerRef : registerContainerRef;
             const idRef = isLoginView ? loginTurnstileIdRef : registerTurnstileIdRef;
             timeoutId = setTimeout(() => {
-                if (cancelled) return;
-                if (!targetRef.current) return;
+                if (cancelled || !targetRef.current) return;
                 removeTurnstile(idRef, targetRef);
                 if (isLoginView) {
                     console.log('Rendering login Turnstile widget');
@@ -126,6 +137,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             if (timeoutId !== undefined) clearTimeout(timeoutId);
         };
     }, [authConfig, isLoginView]);
+
     useEffect(() => {
         if (!window.turnstile) return;
 
@@ -149,18 +161,18 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                     turnstileResponse = window.turnstile.getResponse(loginTurnstileIdRef.current);
                 }
-            } catch (e) {
-                console.warn('Failed to get Turnstile response', e);
+            } catch (error) {
+                console.warn('Failed to get Turnstile response', error);
             }
 
             const res = await login(email, password, turnstileResponse);
             if (res.success) {
-                setMessage({ type: 'success', text: res.message || 'Успешный вход' });
+                setMessage({ type: 'success', text: res.message || 'РЈСЃРїРµС€РЅС‹Р№ РІС…РѕРґ' });
                 try {
                     if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(loginTurnstileIdRef.current);
                     }
-                } catch (err) {
+                } catch (_err) {
                 }
                 setTimeout(() => {
                     onClose();
@@ -170,12 +182,12 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(loginTurnstileIdRef.current);
                     }
-                } catch (err) {
+                } catch (_err) {
                 }
-                setMessage({ type: 'error', text: res.error || 'Ошибка входа' });
+                setMessage({ type: 'error', text: res.error || 'РћС€РёР±РєР° РІС…РѕРґР°' });
             }
-        } catch (err) {
-            setMessage({ type: 'error', text: 'Ошибка сети или сервера' });
+        } catch (_err) {
+            setMessage({ type: 'error', text: 'РћС€РёР±РєР° СЃРµС‚Рё РёР»Рё СЃРµСЂРІРµСЂР°' });
         } finally {
             setIsLoading(false);
         }
@@ -184,19 +196,19 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const handleRegister = async (e) => {
         e.preventDefault();
         if (password !== confirmPassword) {
-            setMessage({ type: 'error', text: 'Пароли не совпадают' });
+            setMessage({ type: 'error', text: 'РџР°СЂРѕР»Рё РЅРµ СЃРѕРІРїР°РґР°СЋС‚' });
             return;
         }
         if (username.length > 100) {
-            setMessage({ type: 'error', text: 'Имя пользователя не должно превышать 100 символов' });
+            setMessage({ type: 'error', text: 'РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ РґРѕР»Р¶РЅРѕ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ' });
             return;
         }
         if (email.length > 100) {
-            setMessage({ type: 'error', text: 'Email не должен превышать 100 символов' });
+            setMessage({ type: 'error', text: 'Email РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ' });
             return;
         }
         if (password.length > 100) {
-            setMessage({ type: 'error', text: 'Пароль не должен превышать 100 символов' });
+            setMessage({ type: 'error', text: 'РџР°СЂРѕР»СЊ РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ' });
             return;
         }
 
@@ -209,18 +221,18 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
                     turnstileResponse = window.turnstile.getResponse(registerTurnstileIdRef.current);
                 }
-            } catch (e) {
-                console.warn('Failed to get Turnstile response', e);
+            } catch (error) {
+                console.warn('Failed to get Turnstile response', error);
             }
 
             const res = await authService.register(username, email, password, turnstileResponse);
             if (res.success) {
-                setMessage({ type: 'success', text: 'Регистрация успешна! Проверьте email для подтверждения.' });
+                setMessage({ type: 'success', text: 'Р РµРіРёСЃС‚СЂР°С†РёСЏ СѓСЃРїРµС€РЅР°! РџСЂРѕРІРµСЂСЊС‚Рµ email РґР»СЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ.' });
                 try {
                     if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(registerTurnstileIdRef.current);
                     }
-                } catch (err) {
+                } catch (_err) {
                 }
                 setTimeout(() => {
                     setIsLoginView(true);
@@ -231,12 +243,12 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(registerTurnstileIdRef.current);
                     }
-                } catch (err) {
+                } catch (_err) {
                 }
-                setMessage({ type: 'error', text: res.error || 'Ошибка регистрации' });
+                setMessage({ type: 'error', text: res.error || 'РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё' });
             }
-        } catch (err) {
-            setMessage({ type: 'error', text: 'Ошибка сети или сервера' });
+        } catch (_err) {
+            setMessage({ type: 'error', text: 'РћС€РёР±РєР° СЃРµС‚Рё РёР»Рё СЃРµСЂРІРµСЂР°' });
         } finally {
             setIsLoading(false);
         }
@@ -253,140 +265,183 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     };
 
     return (
-        <div className="auth-modal" style={{ display: 'flex' }}>
-            <div className="auth-modal-content">
-                <button className="auth-modal-close" onClick={onClose} aria-label="Закрыть">×</button>
+        <ModalShell
+            className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
+            contentClassName="auth-modal-content mx-auto w-full max-w-[420px] rounded-t-[20px] border-border bg-surface px-6 pb-8 pt-6 text-foreground shadow-[var(--shadow-xl)] sm:rounded-2xl sm:px-8 sm:pb-8 sm:pt-8"
+        >
+            <button
+                className="auth-modal-close ui-icon-control absolute right-4 top-4 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                onClick={onClose}
+                aria-label="Р—Р°РєСЂС‹С‚СЊ"
+                type="button"
+            >
+                Г—
+            </button>
 
-                {isLoginView ? (
-
-                    <div className="auth-form">
-                        <h2>Вход в аккаунт</h2>
-                        <form onSubmit={handleLogin}>
-                            <div className="form-group">
-                                <label htmlFor="loginEmail">Email:</label>
-                                <input
-                                    type="email"
-                                    id="loginEmail"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="loginPassword">Пароль:</label>
-                                <input
-                                    type="password"
-                                    id="loginPassword"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-
-                            {}
-                            {authConfig?.turnstile_site_key && (
-                                <div id="loginTurnstileContainer" ref={loginContainerRef} style={{ marginBottom: '10px' }}></div>
-                            )}
-
-                            <button type="submit" className="btn-primary btn-block" disabled={isLoading}>
-                                {isLoading ? 'Вход...' : 'Войти'}
-                            </button>
-
-                            {}
-                            {googleAvailable && (
-                                <div style={{ marginTop: '10px' }}>
-                                    <a className="btn btn-google" href={googleHref}>
-                                        <i className="fab fa-google" style={{ marginRight: '8px' }}></i> Войти с Google
-                                    </a>
-                                </div>
-                            )}
-                        </form>
-                        <p className="auth-switch-link">
-                            Нет аккаунта? <a href="#" onClick={switchView}>Зарегистрируйтесь</a>
-                        </p>
+            {isLoginView ? (
+                <div className="auth-form space-y-5 pr-6 sm:pr-8">
+                    <div className="space-y-1">
+                        <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
+                            Р’С…РѕРґ РІ Р°РєРєР°СѓРЅС‚
+                        </h2>
                     </div>
-                ) : (
 
-                    <div className="auth-form">
-                        <h2>Регистрация</h2>
-                        <form onSubmit={handleRegister}>
-                            <div className="form-group">
-                                <label htmlFor="regUsername">Имя пользователя:</label>
-                                <input
-                                    type="text"
-                                    id="regUsername"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    maxLength="100"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="regEmail">Email:</label>
-                                <input
-                                    type="email"
-                                    id="regEmail"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    maxLength="100"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="regPassword">Пароль:</label>
-                                <input
-                                    type="password"
-                                    id="regPassword"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    minLength="8"
-                                    maxLength="100"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="regConfirm">Повторите пароль:</label>
-                                <input
-                                    type="password"
-                                    id="regConfirm"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    maxLength="100"
-                                    required
-                                />
-                            </div>
+                    <form className="space-y-4" onSubmit={handleLogin}>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="loginEmail">Email:</label>
+                            <input
+                                className={fieldInputClass}
+                                type="email"
+                                id="loginEmail"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="loginPassword">РџР°СЂРѕР»СЊ:</label>
+                            <input
+                                className={fieldInputClass}
+                                type="password"
+                                id="loginPassword"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </div>
 
-                            {}
-                            {authConfig?.turnstile_site_key && (
-                                <div id="registerTurnstileContainer" ref={registerContainerRef} style={{ marginBottom: '10px' }}></div>
-                            )}
+                        {authConfig?.turnstile_site_key && (
+                            <div
+                                id="loginTurnstileContainer"
+                                ref={loginContainerRef}
+                                className="overflow-x-auto"
+                            />
+                        )}
 
-                            <button type="submit" className="btn-primary btn-block" disabled={isLoading}>
-                                {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
-                            </button>
+                        <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+                            {isLoading ? 'Р’С…РѕРґ...' : 'Р’РѕР№С‚Рё'}
+                        </button>
 
-                            {}
-                            {googleAvailable && (
-                                <div style={{ marginTop: '10px' }}>
-                                    <a className="btn btn-google" href={googleHref}>
-                                        <i className="fab fa-google" style={{ marginRight: '8px' }}></i> Регистрация с Google
-                                    </a>
-                                </div>
-                            )}
-                        </form>
-                        <p className="auth-switch-link">
-                            Уже есть аккаунт? <a href="#" onClick={switchView}>Войдите</a>
-                        </p>
+                        {googleAvailable && (
+                            <div className="pt-1">
+                                <a className={secondaryAuthButtonClass} href={googleHref}>
+                                    <i className="fab fa-google text-[18px] text-[#ea4335]" />
+                                    <span>Р’РѕР№С‚Рё СЃ Google</span>
+                                </a>
+                            </div>
+                        )}
+                    </form>
+
+                    <p className="auth-switch-link text-center text-sm text-muted">
+                        РќРµС‚ Р°РєРєР°СѓРЅС‚Р°?{' '}
+                        <a className="font-semibold text-[var(--color-text-link)] hover:underline" href="#" onClick={switchView}>
+                            Р—Р°СЂРµРіРёСЃС‚СЂРёСЂСѓР№С‚РµСЃСЊ
+                        </a>
+                    </p>
+                </div>
+            ) : (
+                <div className="auth-form space-y-5 pr-6 sm:pr-8">
+                    <div className="space-y-1">
+                        <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
+                            Р РµРіРёСЃС‚СЂР°С†РёСЏ
+                        </h2>
                     </div>
-                )}
 
-                {message && (
-                    <div className={`auth-message ${message.type}`} style={{ display: 'block' }}>
-                        {message.text}
-                    </div>
-                )}
-            </div>
-        </div>
+                    <form className="space-y-4" onSubmit={handleRegister}>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="regUsername">РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:</label>
+                            <input
+                                className={fieldInputClass}
+                                type="text"
+                                id="regUsername"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                maxLength="100"
+                                required
+                            />
+                        </div>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="regEmail">Email:</label>
+                            <input
+                                className={fieldInputClass}
+                                type="email"
+                                id="regEmail"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                maxLength="100"
+                                required
+                            />
+                        </div>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="regPassword">РџР°СЂРѕР»СЊ:</label>
+                            <input
+                                className={fieldInputClass}
+                                type="password"
+                                id="regPassword"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                minLength="8"
+                                maxLength="100"
+                                required
+                            />
+                        </div>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="regConfirm">РџРѕРІС‚РѕСЂРёС‚Рµ РїР°СЂРѕР»СЊ:</label>
+                            <input
+                                className={fieldInputClass}
+                                type="password"
+                                id="regConfirm"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                maxLength="100"
+                                required
+                            />
+                        </div>
+
+                        {authConfig?.turnstile_site_key && (
+                            <div
+                                id="registerTurnstileContainer"
+                                ref={registerContainerRef}
+                                className="overflow-x-auto"
+                            />
+                        )}
+
+                        <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+                            {isLoading ? 'Р РµРіРёСЃС‚СЂР°С†РёСЏ...' : 'Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊСЃСЏ'}
+                        </button>
+
+                        {googleAvailable && (
+                            <div className="pt-1">
+                                <a className={secondaryAuthButtonClass} href={googleHref}>
+                                    <i className="fab fa-google text-[18px] text-[#ea4335]" />
+                                    <span>Р РµРіРёСЃС‚СЂР°С†РёСЏ СЃ Google</span>
+                                </a>
+                            </div>
+                        )}
+                    </form>
+
+                    <p className="auth-switch-link text-center text-sm text-muted">
+                        РЈР¶Рµ РµСЃС‚СЊ Р°РєРєР°СѓРЅС‚?{' '}
+                        <a className="font-semibold text-[var(--color-text-link)] hover:underline" href="#" onClick={switchView}>
+                            Р’РѕР№РґРёС‚Рµ
+                        </a>
+                    </p>
+                </div>
+            )}
+
+            {message && (
+                <div
+                    className={cn(
+                        'auth-message mt-5 rounded-xl border px-4 py-3 text-center text-sm font-semibold',
+                        message.type === 'success'
+                            ? 'border-[rgba(var(--color-success-raw),0.4)] bg-[rgba(var(--color-success-raw),0.12)] text-success'
+                            : 'border-[rgba(var(--color-error-raw),0.35)] bg-[rgba(var(--color-error-raw),0.12)] text-danger'
+                    )}
+                >
+                    {message.text}
+                </div>
+            )}
+        </ModalShell>
     );
 };
 

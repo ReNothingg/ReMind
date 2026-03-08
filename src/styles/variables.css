@@ -1,13 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap');
 @font-face {
   font-family: 'DSEG7 Classic';
   src:
@@ -175,12 +165,15 @@
   --content-width-rail-open-max: calc(
     100% - var(--history-width) - var(--rail-width) - var(--spacing-unit) * 4
   );
-  --rail-width: 64px;
-  --history-width: 280px;
-  --rail-width-collapsed: 60px;
+  --rail-width-collapsed: 64px;
   --rail-width-expanded: 320px;
+  --rail-width: var(--rail-width-collapsed);
+  --history-width: 280px;
   --rail-btn-size: 50px;
   --rail-btn-radius: 12px;
+  --app-rail-offset: 0px;
+  --app-content-width-dynamic: var(--content-width);
+  --app-content-max-width-dynamic: var(--content-width-max);
   --list-row-pad-y: calc(var(--spacing-unit) * 2.5);
   --list-row-pad-x: calc(var(--spacing-unit) * 3);
   --list-row-gap: calc(var(--spacing-unit) * 2);

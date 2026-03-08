@@ -3,6 +3,7 @@ import { formatPlainText, formatText } from '../../utils/formatting';
 import { Utils } from '../../utils/utils';
 import { useSettings } from '../../context/SettingsContext';
 import { useTranslation } from 'react-i18next';
+import { cn } from '../../utils/cn';
 
 const LandingHero = ({ children, isReadOnly = false }) => {
     const [welcomeMessage, setWelcomeMessage] = useState(null);
@@ -45,9 +46,12 @@ const LandingHero = ({ children, isReadOnly = false }) => {
     };
 
     return (
-        <section className="landing-hero" aria-label={t('landing.ariaLabel')}>
+        <section
+            className="landing-hero ui-landing-shell"
+            aria-label={t('landing.ariaLabel')}
+        >
             {isReadOnly && (
-                <div className="readonly-banner">
+                <div className="readonly-banner ui-notice-banner ui-landing-readonly">
                     <span>{t('landing.readonlyBanner')}</span>
                 </div>
             )}
@@ -55,17 +59,20 @@ const LandingHero = ({ children, isReadOnly = false }) => {
             {welcomeMessage && (
                 <div
                     id="welcomeMessage"
-                    className="welcome-message"
+                    className="welcome-message ui-landing-welcome"
                     dangerouslySetInnerHTML={{ __html: settings.renderMarkdown ? formatText(welcomeMessage) : formatPlainText(welcomeMessage) }}
                 />
             )}
 
-            <div className="landing-composer">
+            <div className="landing-composer ui-landing-composer">
                 {children}
             </div>
 
             {settings.showSuggestions && promptSuggestions.length > 0 && (
-                <div id="promptSuggestions" className="prompt-suggestions">
+                <div
+                    id="promptSuggestions"
+                    className="prompt-suggestions ui-prompt-grid"
+                >
                     {promptSuggestions.map((group, idx) => {
                         const randomText = Array.isArray(group.text)
                             ? group.text[Math.floor(Math.random() * group.text.length)]
@@ -73,11 +80,13 @@ const LandingHero = ({ children, isReadOnly = false }) => {
                         return (
                             <button
                                 key={idx}
-                                className="prompt-suggestion"
+                                className={cn('prompt-suggestion ui-prompt-card', 'max-sm:max-w-none')}
                                 type="button"
                                 onClick={() => handleSuggestionClick(randomText)}
                             >
-                                <span className="suggestion-label">{group.label}</span>
+                                <span className="suggestion-label ui-prompt-card-label">
+                                    {group.label}
+                                </span>
                             </button>
                         );
                     })}

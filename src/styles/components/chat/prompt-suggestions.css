@@ -216,8 +216,7 @@ body.reading-mode .prompt-suggestions {
   gap: calc(var(--spacing-unit) * 2.5);
 }
 
-body.rail-open .prompt-suggestions,
-body.rail-chat-open .prompt-suggestions {
+body.has-rail .prompt-suggestions {
   max-width: 100%;
 }
 

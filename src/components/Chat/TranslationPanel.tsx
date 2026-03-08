@@ -1,8 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService } from '../../services/api';
 import { DOMSafeUtils } from '../../utils/dom-safe';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+
+const LANGUAGE_OPTIONS = [
+    { value: 'en', labelKey: 'english' },
+    { value: 'ru', labelKey: 'russian' },
+    { value: 'es', labelKey: 'spanish' },
+    { value: 'de', labelKey: 'german' },
+    { value: 'fr', labelKey: 'french' },
+    { value: 'zh-CN', labelKey: 'chinese' },
+    { value: 'ja', labelKey: 'japanese' },
+    { value: 'ko', labelKey: 'korean' },
+    { value: 'it', labelKey: 'italian' },
+    { value: 'pt', labelKey: 'portuguese' },
+    { value: 'ar', labelKey: 'arabic' },
+    { value: 'hi', labelKey: 'hindi' },
+    { value: 'bn', labelKey: 'bengali' },
+];
 
 const TranslationPanel = ({ originalText, onClose }) => {
     const { t } = useTranslation();
@@ -10,20 +26,17 @@ const TranslationPanel = ({ originalText, onClose }) => {
     const [translatedText, setTranslatedText] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [isActive, setIsActive] = useState(true);
-    const panelRef = useRef(null);
-
     useEffect(() => {
-        if (isActive && originalText) {
+        if (originalText) {
             translateText(originalText, targetLang);
         }
-    }, [targetLang, isActive]);
+    }, [targetLang, originalText]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const extractCleanText = (htmlText) => {
         if (!htmlText) return '';
         const tempDiv = document.createElement('div');
         DOMSafeUtils.setHTML(tempDiv, htmlText);
-        let cleanText = tempDiv.textContent || tempDiv.innerText || '';
+        const cleanText = tempDiv.textContent || tempDiv.innerText || '';
         return cleanText.trim();
     };
 
@@ -67,8 +80,8 @@ const TranslationPanel = ({ originalText, onClose }) => {
                 let translatedContent = preserveTextFormatting(data.translated_text);
                 if (data.fallback) {
                     translatedContent = `
-                        <div class="translation-fallback-notice">
-                            <span class="fallback-icon">⚠️</span>
+                        <div class="translation-fallback-notice ui-inline-notice">
+                            <span class="fallback-icon">вљ пёЏ</span>
                             ${t('translationPanel.fallbackNotice')}
                         </div>
                         ${translatedContent}
@@ -80,7 +93,7 @@ const TranslationPanel = ({ originalText, onClose }) => {
                 setError(t('translationPanel.errorPrefix', { message: errorMsg }));
             }
         } catch (err) {
-            console.error("Translation API error:", err);
+            console.error('Translation API error:', err);
             let errorMessage = t('translationPanel.failed');
             let errorDetails = '';
 
@@ -105,40 +118,47 @@ const TranslationPanel = ({ originalText, onClose }) => {
         }
     };
 
-    if (!isActive) return null;
-
     return (
-        <div ref={panelRef} className="translation-panel active">
-            <div className="translation-header">
+        <div className="translation-panel active ui-inline-panel px-4 py-4 text-foreground shadow-[var(--shadow-sm)]">
+            <div className="translation-header ui-panel-header">
                 <select
-                    className="language-select"
+                    className="language-select ui-select-control"
                     value={targetLang}
                     onChange={(e) => setTargetLang(e.target.value)}
                     disabled={isLoading}
                 >
-                    <option value="en">{t('translationPanel.languages.english')}</option>
-                    <option value="ru">{t('translationPanel.languages.russian')}</option>
-                    <option value="es">{t('translationPanel.languages.spanish')}</option>
-                    <option value="de">{t('translationPanel.languages.german')}</option>
-                    <option value="fr">{t('translationPanel.languages.french')}</option>
-                    <option value="zh-CN">{t('translationPanel.languages.chinese')}</option>
-                    <option value="ja">{t('translationPanel.languages.japanese')}</option>
-                    <option value="ko">{t('translationPanel.languages.korean')}</option>
-                    <option value="it">{t('translationPanel.languages.italian')}</option>
-                    <option value="pt">{t('translationPanel.languages.portuguese')}</option>
-                    <option value="ar">{t('translationPanel.languages.arabic')}</option>
-                    <option value="hi">{t('translationPanel.languages.hindi')}</option>
-                    <option value="bn">{t('translationPanel.languages.bengali')}</option>
+                    {LANGUAGE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {t(`translationPanel.languages.${option.labelKey}`)}
+                        </option>
+                    ))}
                 </select>
-                <button className="translation-close-btn" onClick={onClose} aria-label={t('translationPanel.close')}>
-                    ×
+                <button
+                    className="translation-close-btn ui-icon-control ui-icon-dismiss size-9 rounded-lg border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                    onClick={onClose}
+                    aria-label={t('translationPanel.close')}
+                    type="button"
+                >
+                    Г—
                 </button>
             </div>
-            <div className="translation-content">
-                <div className="text-column">
-                    <div className="text-content translated-text">
-                        {isLoading && <div className="translation-loader">{t('translationPanel.loading')}</div>}
-                        {error && <div className="translation-error">{error}</div>}
+
+            <div className="translation-content ui-panel-body">
+                <div className="text-column min-w-0 flex-1">
+                    <div
+                        className="text-content translated-text ui-rich-panel ui-scrollbar-thin"
+                    >
+                        {isLoading && (
+                            <div className="translation-loader ui-panel-loader">
+                                <span className="size-4 animate-spin rounded-full border-2 border-[rgba(var(--color-white-raw),0.2)] border-t-accent-brand" />
+                                <span>{t('translationPanel.loading')}</span>
+                            </div>
+                        )}
+                        {error && (
+                            <div className="translation-error ui-panel-error">
+                                {error}
+                            </div>
+                        )}
                         {translatedText && !isLoading && !error && (
                             <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(translatedText) }} />
                         )}

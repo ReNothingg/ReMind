@@ -29,9 +29,12 @@ const ChatContainer = ({ history, isLoading, onRegenerate, onEdit, onSwitchVaria
     }, [history, isLoading, settings.autoscroll]);
 
     return (
-        <div className="chat-container" id="chatContainer">
+        <div
+            className="chat-container ui-chat-stack"
+            id="chatContainer"
+        >
             {isReadOnly && (
-                <div className="readonly-banner">
+                <div className="readonly-banner ui-notice-banner">
                     <span>{t('landing.readonlyBanner')}</span>
                 </div>
             )}
@@ -44,7 +47,7 @@ const ChatContainer = ({ history, isLoading, onRegenerate, onEdit, onSwitchVaria
                     onSwitchVariant={onSwitchVariant}
                 />
             ))}
-            <div ref={chatEndRef} style={{ float: "left", clear: "both" }} />
+            <div ref={chatEndRef} className="clear-both float-left" />
         </div>
     );
 };

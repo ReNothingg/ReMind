@@ -12,7 +12,6 @@ import ImageLightbox from './components/Modals/ImageLightbox';
 import SEOHelmet from './components/UI/SEOHelmet';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
-import { GuestModal } from './components/GuestMode/GuestModeManager';
 import { notifyThinkingDone } from './utils/notifications';
 import { ALLOW_GUEST_CHATS_SAVE } from './utils/constants';
 import GlobalHeader from './features/chat/components/GlobalHeader';
@@ -40,12 +39,17 @@ interface ImageLightboxState {
     messageId: string | null;
 }
 
+const MOBILE_RAIL_MEDIA_QUERY = '(max-width: 1024px)';
+
 const MainLayout = () => {
-    const [isRailExpanded, setRailExpanded] = useState(true);
+    const [isRailExpandedDesktop, setRailExpandedDesktop] = useState(true);
+    const [isMobileRailOpen, setMobileRailOpen] = useState(false);
+    const [isMobileViewport, setIsMobileViewport] = useState(() =>
+        typeof window !== 'undefined' ? window.matchMedia(MOBILE_RAIL_MEDIA_QUERY).matches : false
+    );
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [isAuthOpen, setAuthOpen] = useState<AuthModalState>(false);
     const [htmlPreview, setHtmlPreview] = useState<HtmlPreviewState>({ isOpen: false, urlOrHtml: null, isHtml: false });
-    const [guestModalOpen, setGuestModalOpen] = useState(false);
     const [imageLightbox, setImageLightbox] = useState<ImageLightboxState>({ isOpen: false, imageSrc: null, messageId: null });
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [currentModel, setCurrentModel] = useState('gemini');
@@ -77,15 +81,45 @@ const MainLayout = () => {
         allowGuestChatsSave: ALLOW_GUEST_CHATS_SAVE,
     });
 
+    const isRailExpanded = isMobileViewport ? isMobileRailOpen : isRailExpandedDesktop;
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia(MOBILE_RAIL_MEDIA_QUERY);
+        const handleViewportChange = (event: MediaQueryListEvent) => {
+            setIsMobileViewport(event.matches);
+        };
+
+        setIsMobileViewport(mediaQuery.matches);
+        mediaQuery.addEventListener('change', handleViewportChange);
+
+        return () => mediaQuery.removeEventListener('change', handleViewportChange);
+    }, []);
+
+    useEffect(() => {
+        if (!isMobileViewport || !isAuthenticated) {
+            setMobileRailOpen(false);
+        }
+    }, [isAuthenticated, isMobileViewport]);
+
     useLayoutEffect(() => {
-        document.body.classList.toggle('has-rail', !!isAuthenticated);
-        document.body.classList.toggle('rail-open', !!isAuthenticated && !!isRailExpanded);
-    }, [isAuthenticated, isRailExpanded]);
+        const hasDesktopRail = !!isAuthenticated && !isMobileViewport;
+        const isDesktopRailOpen = hasDesktopRail && !!isRailExpandedDesktop;
+        const isMobileOverlayOpen = !!isAuthenticated && isMobileViewport && !!isMobileRailOpen;
+
+        document.body.classList.toggle('has-rail', hasDesktopRail);
+        document.body.classList.toggle('rail-open', isDesktopRailOpen);
+        document.body.classList.toggle('mobile-menu-open', isMobileOverlayOpen);
+    }, [isAuthenticated, isMobileViewport, isMobileRailOpen, isRailExpandedDesktop]);
 
     useEffect(() => {
         return () => {
             document.body.classList.remove('has-rail');
             document.body.classList.remove('rail-open');
+            document.body.classList.remove('mobile-menu-open');
         };
     }, []);
 
@@ -237,16 +271,15 @@ const MainLayout = () => {
 
     useEffect(() => {
         const closeMenu = () => {
-            document.body.classList.remove('mobile-menu-open');
+            setMobileRailOpen(false);
         };
 
         const handleOverlayClick = (event: MouseEvent) => {
-            const body = document.body;
-            const isMenuOpen = body.classList.contains('mobile-menu-open');
-            if (!isMenuOpen) {
+            if (!isMobileViewport || !isMobileRailOpen) {
                 return;
             }
 
+            const body = document.body;
             const appRail = document.getElementById('appRail');
             const globalControls = document.querySelector('.global-controls');
             const target = event.target as Node | null;
@@ -272,10 +305,8 @@ const MainLayout = () => {
         const handleTouchEnd = (event: TouchEvent) => {
             const touchEndX = event.changedTouches[0].screenX;
             const touchEndY = event.changedTouches[0].screenY;
-            const body = document.body;
-            const isMenuOpen = body.classList.contains('mobile-menu-open');
 
-            if (!isMenuOpen) {
+            if (!isMobileViewport || !isMobileRailOpen) {
                 return;
             }
 
@@ -295,7 +326,30 @@ const MainLayout = () => {
             document.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('touchend', handleTouchEnd);
         };
-    }, []);
+    }, [isMobileRailOpen, isMobileViewport]);
+
+    const handleRailToggle = useCallback(() => {
+        if (isMobileViewport) {
+            setMobileRailOpen((prev) => !prev);
+            return;
+        }
+
+        setRailExpandedDesktop((prev) => !prev);
+    }, [isMobileViewport]);
+
+    const handleSelectSession = useCallback(
+        (id: string) => {
+            loadSession(id);
+            setMobileRailOpen(false);
+        },
+        [loadSession]
+    );
+
+    const handleNewChat = useCallback(() => {
+        clearChat();
+        window.history.pushState({}, '', '/');
+        setMobileRailOpen(false);
+    }, [clearChat]);
 
     return (
         <>
@@ -304,16 +358,10 @@ const MainLayout = () => {
             {isAuthenticated && (
                 <AppRail
                     isExpanded={isRailExpanded}
-                    onToggle={() => setRailExpanded(!isRailExpanded)}
+                    onToggle={handleRailToggle}
                     sessions={sessions}
-                    onSelectSession={(id) => {
-                        loadSession(id);
-                        document.body.classList.remove('mobile-menu-open');
-                    }}
-                    onNewChat={() => {
-                        clearChat();
-                        window.history.pushState({}, '', '/');
-                    }}
+                    onSelectSession={handleSelectSession}
+                    onNewChat={handleNewChat}
                     onSettingsClick={() => setSettingsOpen(true)}
                     onSessionDeleted={() => {
                         refreshSessions();
@@ -322,28 +370,23 @@ const MainLayout = () => {
                 />
             )}
 
-            <main>
+            <main className="ui-app-main-shell">
                 <GlobalHeader
                     isAuthenticated={isAuthenticated}
-                    onMenuToggle={() => document.body.classList.toggle('mobile-menu-open')}
+                    onMenuToggle={handleRailToggle}
                     currentModel={currentModel}
                     onModelChange={setCurrentModel}
-                    onGuestModalOpen={() => setGuestModalOpen(true)}
                     onOpenAuth={() => setAuthOpen('login')}
                     onShowRegister={() => setAuthOpen('register')}
                     shareInfo={sessionAccess}
                     currentSessionId={currentSessionId}
                     isReadOnly={isReadOnly}
                     onOpenShareModal={() => setShareModalOpen(true)}
-                    onNewChat={() => {
-                        clearChat();
-                        window.history.pushState({}, '', '/');
-                        document.body.classList.remove('mobile-menu-open');
-                    }}
+                    onNewChat={handleNewChat}
                 />
 
                 {history.length === 0 ? (
-                    <div className="landing-shell">
+                    <div className="ui-empty-conversation-shell">
                         <LandingHero isReadOnly={isReadOnly}>
                             <InputArea
                                 variant="landing"
@@ -420,19 +463,6 @@ const MainLayout = () => {
                     initialView={isAuthOpen === 'register' ? 'register' : 'login'}
                 />
             )}
-
-            <GuestModal
-                isOpen={guestModalOpen}
-                onClose={() => setGuestModalOpen(false)}
-                onOpenAuth={() => {
-                    setGuestModalOpen(false);
-                    setAuthOpen('login');
-                }}
-                onShowRegister={() => {
-                    setGuestModalOpen(false);
-                    setAuthOpen('register');
-                }}
-            />
 
             <HtmlPreviewModal
                 isOpen={htmlPreview.isOpen}

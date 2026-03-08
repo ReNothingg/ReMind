@@ -2,10 +2,10 @@
   z-index: 100;
   position: fixed;
   bottom: calc(4 * var(--spacing-unit));
-  left: 50%;
+  left: calc(50% + (var(--app-rail-offset) / 2));
   transform: translateX(-50%);
-  width: var(--content-width);
-  max-width: var(--content-width-max);
+  width: var(--app-content-width-dynamic);
+  max-width: var(--app-content-max-width-dynamic);
   background: transparent;
   border: none;
   display: flex;
@@ -110,7 +110,6 @@
   height: 40px;
   width: 40px;
   min-width: 40px;
-  border-radius: calc(var(--input-area-border-radius) - 5px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,10 +121,20 @@
   background-repeat: no-repeat;
   background-size: 50%;
   margin-left: calc(var(--spacing-unit) * 0.75);
+  background-image: var(--icon-upload-url);
+  border: none;
+  outline: none;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.attach-button {
-  background-image: var(--icon-upload-url);
+.attach-button:focus,
+.attach-button:focus-visible,
+.send-button:focus,
+.send-button:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .send-button {

@@ -10,6 +10,19 @@ import { useAudio } from '../../hooks/useAudio';
 import { Utils } from '../../utils/utils';
 import TranslationPanel from './TranslationPanel';
 import { useSettings } from '../../context/SettingsContext';
+import { cn } from '../../utils/cn';
+
+const MessageActionButton = ({ className, title, onClick, children, disabled = false }) => (
+    <button
+        type="button"
+        className={cn('action-btn ui-action-button', className)}
+        title={title}
+        onClick={onClick}
+        disabled={disabled}
+    >
+        {children}
+    </button>
+);
 
 const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const { role, content, images, files, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts } = message;
@@ -559,19 +572,37 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
     }, [displayContent, isUser, content, markdownEnabledForMessage]);
     const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
+    const messageClassName = cn(
+        'message ui-message-shell',
+        isUser ? 'user-message ui-message-shell-user' : 'ai-message ui-message-shell-ai',
+        isLoading && 'loading',
+        isError && 'error',
+        showUserActions && 'has-user-actions'
+    );
+    const messageContentClassName = cn(
+        'message-content ui-message-bubble',
+        isUser ? 'ui-message-bubble-user' : 'ui-message-bubble-ai'
+    );
 
     return (
-        <div className={`message ${isUser ? 'user-message' : 'ai-message'} ${isLoading ? 'loading' : ''} ${isError ? 'error' : ''} ${showUserActions ? 'has-user-actions' : ''}`} data-message-id={message.id}>
-            <div className="message-content">
-                {}
+        <div className={messageClassName} data-message-id={message.id}>
+            <div className={messageContentClassName}>
                 {(displayImages?.length > 0 || displayFiles?.length > 0) && (
-                    <div className={`message-attachments ${isUser ? 'user-attachments' : 'ai-attachments'}`}>
+                    <div
+                        className={cn(
+                            'message-attachments mt-2.5 flex flex-wrap gap-2',
+                            isUser ? 'user-attachments' : 'ai-attachments'
+                        )}
+                    >
                         {displayImages?.map((src, idx) => {
                             const fullSrc = src.startsWith('http') ? src : `${apiService.baseURL}${src}`;
                             return (
                                 <img
                                     key={idx}
-                                    className="attached-img"
+                                    className={cn(
+                                        'attached-img max-w-full rounded-[var(--radius-md)] border border-border object-cover shadow-[var(--shadow-xs)] transition duration-150 ease-out',
+                                        !isUser && 'cursor-pointer hover:scale-[1.02]'
+                                    )}
                                     src={fullSrc}
                                     alt="attachment"
                                     onClick={() => {
@@ -599,13 +630,17 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                           (ext && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext));
 
                             return (
-                                <div key={idx} className="attachment-file-card" title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}>
-                                    <div className="attachment-card-preview">
+                                <div
+                                    key={idx}
+                                    className="attachment-file-card ui-attachment-card"
+                                    title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}
+                                >
+                                    <div className="attachment-card-preview ui-attachment-preview">
                                         {isImage && fullUrl ? (
                                             <img
                                                 src={fullUrl}
                                                 alt={fileName}
-                                                className="image-thumbnail"
+                                                className="image-thumbnail h-full w-full object-cover"
                                                 onClick={() => {
                                                     if (!isUser && window.openImageLightbox) {
                                                         window.openImageLightbox(fullUrl, message.id);
@@ -614,19 +649,19 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                 style={{ cursor: !isUser ? 'pointer' : 'default' }}
                                                 onError={(e) => {
                                                     e.target.src = iconPath;
-                                                    e.target.className = 'generic-icon';
+                                                    e.target.className = 'generic-icon size-12 object-contain opacity-60';
                                                 }}
                                             />
                                         ) : (
                                             <img
                                                 src={iconPath}
                                                 alt={fileName}
-                                                className="generic-icon"
+                                                className="generic-icon size-12 object-contain opacity-60"
                                                 onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
                                             />
                                         )}
                                     </div>
-                                    <div className="attachment-card-footer">
+                                    <div className="attachment-card-footer ui-attachment-footer">
                                         <img
                                             src={iconPath}
                                             alt="icon"
@@ -656,10 +691,9 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     </div>
                 )}
 
-                {}
                 {isGeneratingImage && (
-                    <div className="image-generation-placeholder">
-                        <div className="image-placeholder-visual">
+                    <div className="image-generation-placeholder ui-message-image-placeholder">
+                        <div className="image-placeholder-visual ui-message-image-visual">
                             <div className="shimmer-effect"></div>
                             <svg className="placeholder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -667,20 +701,18 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 <line x1="12" x2="12" y1="3" y2="15"/>
                             </svg>
                         </div>
-                        <div className="image-placeholder-caption">
+                        <div className="image-placeholder-caption ui-message-image-caption">
                             Создание изображения: <span>"{imagePrompt || ''}"</span>
                         </div>
                     </div>
                 )}
 
-                {}
                 <div
                     ref={contentRef}
-                    className="message-text"
+                    className="message-text ui-message-text"
                     dangerouslySetInnerHTML={{ __html: htmlContent }}
                 />
 
-                {}
                 {widgets.map(widget => {
                     if (widget.type === 'quiz') {
                         return <Quiz key={widget.id} initialState={widget.state} />;
@@ -701,9 +733,8 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     return null;
                 })}
 
-                {}
                 {isLoading && !displayContent && !isGeneratingImage && (
-                    <div className="live-thinking-animation">
+                    <div className="live-thinking-animation ui-message-loader">
                         <div className="thinking-loader-wrapper">
                             <img src="/icons/load.svg" alt="Loading" className="thinking-loader-icon" />
                             <div className="thinking-phrase active">Думаю...</div>
@@ -711,22 +742,29 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     </div>
                 )}
 
-                {}
                 {!isUser && hasMultipleVariants && (
-                    <div className="variants-nav">
+                    <div className="variants-nav ui-message-variants">
                         <button
-                            className="variant-btn prev-btn"
+                            type="button"
+                            className={cn(
+                                'variant-btn ui-message-variant-button prev-btn',
+                                currentVariantIndex > 0 && 'active'
+                            )}
                             title="Предыдущий ответ"
                             disabled={currentVariantIndex <= 0}
                             onClick={() => onSwitchVariant && onSwitchVariant(message.id, -1)}
                         >
                             <img src="/icons/media/prev.svg" alt="<" />
                         </button>
-                        <span className="variants-counter">
+                        <span className="variants-counter ui-message-variant-counter">
                             {(currentVariantIndex || 0) + 1}/{variants.length}
                         </span>
                         <button
-                            className="variant-btn next-btn"
+                            type="button"
+                            className={cn(
+                                'variant-btn ui-message-variant-button next-btn',
+                                (currentVariantIndex || 0) < variants.length - 1 && 'active'
+                            )}
                             title="Следующий ответ"
                             disabled={(currentVariantIndex || 0) >= variants.length - 1}
                             onClick={() => onSwitchVariant && onSwitchVariant(message.id, 1)}
@@ -735,19 +773,22 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                         </button>
                     </div>
                 )}
-
-                {}
                 {!isUser && !isLoading && (
-                    <div className="actions-bar">
-                        <button
-                            className="action-btn copy-md-btn"
+                    <div className="actions-bar ui-message-actions">
+                        <MessageActionButton
+                            className="copy-md-btn"
                             title="Копировать"
                             onClick={handleCopy}
                         >
                             <img src="/icons/ui/copy.svg" alt="Copy" />
-                        </button>
-                        <button
-                            className={`action-btn speak-btn ${audio.isVisible ? 'active' : ''} ${audio.isLoading ? 'loading' : ''} ${audio.isError ? 'error' : ''}`}
+                        </MessageActionButton>
+                        <MessageActionButton
+                            className={cn(
+                                'speak-btn',
+                                audio.isVisible ? 'active' : '',
+                                audio.isLoading ? 'loading' : '',
+                                audio.isError ? 'error' : ''
+                            )}
                             title="Озвучить"
                             onClick={() => {
                                 if (displayContent) {
@@ -756,18 +797,18 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                             }}
                         >
                             <img src="/icons/media/audio.svg" alt="Speak" />
-                        </button>
+                        </MessageActionButton>
                         {onRegenerate && (
-                            <button
-                                className="action-btn regenerate-btn"
+                            <MessageActionButton
+                                className="regenerate-btn"
                                 title="Регенерировать"
                                 onClick={() => onRegenerate(message.id)}
                             >
                                 <img src="/icons/ui/regenerate.svg" alt="Regenerate" />
-                            </button>
+                            </MessageActionButton>
                         )}
-                        <button
-                            className="action-btn translate-btn"
+                        <MessageActionButton
+                            className="translate-btn"
                             title="Перевести"
                             onClick={() => {
                                 const textToTranslate = contentRef.current?.textContent?.trim() || displayContent || '';
@@ -778,24 +819,20 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 }
                             }}
                         >
-                        <img src="/icons/ui/translate.svg" alt="Translate" />
-                        </button>
+                            <img src="/icons/ui/translate.svg" alt="Translate" />
+                        </MessageActionButton>
                     </div>
                 )}
-
-                {}
                 {!isUser && showTranslation && (
                     <TranslationPanel
                         originalText={content || ''}
                         onClose={() => setShowTranslation(false)}
                     />
                 )}
-
-                {}
                 {!isUser && audio.isVisible && (
-                    <div className={`audio-player-container ${audio.isPlaying ? 'playing' : ''} visible`}>
-                        <div className="audio-player-header">
-                            <div className="audio-player-icon">
+                    <div className={cn('audio-player-container ui-audio-player visible', audio.isPlaying && 'playing')}>
+                        <div className="audio-player-header ui-audio-player-header">
+                            <div className="audio-player-icon ui-audio-player-icon">
                                 <svg width="18" height="18" viewBox="0 0 24 24">
                                     <path d="M12 4V20M8 8V16M16 7V17M4 10V14M20 9V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                                 </svg>
@@ -806,9 +843,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                             )}
                         </div>
                         {!audio.isLoading && (
-                            <div className="audio-player-controls" style={{ display: 'flex' }}>
+                            <div className="audio-player-controls ui-audio-player-controls">
                                 <button
-                                    className="audio-play-pause-btn"
+                                    type="button"
+                                    className="audio-play-pause-btn ui-audio-play-button"
                                     title={audio.isPlaying ? "Пауза" : "Воспроизвести"}
                                     onClick={audio.togglePlayback}
                                 >
@@ -820,7 +858,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                         )}
                                     </svg>
                                 </button>
-                                <div className="audio-waveform-container">
+                                <div className="audio-waveform-container ui-audio-waveform">
                                     <canvas ref={waveformCanvasRef} className="audio-waveform" height="48" width="200"></canvas>
                                     <input
                                         type="range"
@@ -832,7 +870,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                         onChange={(e) => audio.seekAudio(parseFloat(e.target.value))}
                                     />
                                 </div>
-                                <div className="audio-time">
+                                <div className="audio-time ui-audio-time">
                                     {audio.formatTime(audio.currentTime)} / {audio.formatTime(audio.totalDuration)}
                                 </div>
                             </div>
@@ -844,46 +882,44 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                         )}
                     </div>
                 )}
-
-                {}
                 {showUserActions && (
-                    <div className="actions-bar">
-                        <button
-                            className="action-btn copy-btn"
+                    <div className="actions-bar ui-message-actions ui-user-message-actions">
+                        <MessageActionButton
+                            className="copy-btn"
                             title="Копировать"
                             onClick={handleCopy}
                         >
-                            <img src=" /icons/ui/copy.svg" alt="Copy" />
-                        </button>
-                        <button
-                            className="action-btn edit-btn"
+                            <img src="/icons/ui/copy.svg" alt="Copy" />
+                        </MessageActionButton>
+                        <MessageActionButton
+                            className="edit-btn"
                             title="Редактировать"
                             onClick={() => setIsEditingUserMessage(true)}
                         >
-                            <img src=" /icons/ui/edit.svg" alt="Edit" />
-                        </button>
+                            <img src="/icons/ui/edit.svg" alt="Edit" />
+                        </MessageActionButton>
                     </div>
                 )}
-
-                {}
                 {isUser && isEditingUserMessage && (
-                    <div className="user-message-edit-panel">
+                    <div className="user-message-edit-panel ui-edit-panel">
                         <textarea
-                            className="user-message-edit-textarea"
+                            className="user-message-edit-textarea ui-edit-textarea"
                             value={editedContent}
                             onChange={(e) => setEditedContent(e.target.value)}
                             placeholder="Отредактируйте ваше сообщение..."
                         />
-                        <div className="edit-panel-buttons">
+                        <div className="edit-panel-buttons ui-edit-actions">
                             <button
-                                className="edit-save-btn"
+                                type="button"
+                                className="edit-save-btn ui-edit-save"
                                 onClick={handleSaveEdit}
                                 disabled={!editedContent.trim() || editedContent.trim() === content}
                             >
                                 Сохранить
                             </button>
                             <button
-                                className="edit-cancel-btn"
+                                type="button"
+                                className="edit-cancel-btn ui-edit-cancel"
                                 onClick={handleCancelEdit}
                             >
                                 Отмена

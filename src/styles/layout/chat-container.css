@@ -15,9 +15,9 @@
   scroll-snap-type: y proximity;
   padding-bottom: 200px;
 
-  width: var(--content-width);
+  width: var(--app-content-width-dynamic);
   min-width: var(--content-width-min);
-  max-width: var(--content-width-max);
+  max-width: var(--app-content-max-width-dynamic);
 
   margin-left: auto !important;
   margin-right: auto !important;
