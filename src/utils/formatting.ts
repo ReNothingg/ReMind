@@ -13,6 +13,72 @@ export const escapeHtml = (unsafe) => {
         .replace(/'/g, "&#039;");
 };
 
+const CODE_LANGUAGE_ALIASES = {
+    'c++': 'cpp',
+    'c#': 'csharp',
+    html: 'markup',
+    xml: 'markup',
+    svg: 'markup',
+};
+
+const replaceControlCharacters = (value, replacement = '') => {
+    return Array.from(value || '').map((char) => (char.charCodeAt(0) < 32 ? replacement : char)).join('');
+};
+
+const normalizeFenceLanguage = (value) => {
+    const normalizedValue = (value || '').trim().toLowerCase();
+    if (!normalizedValue) return 'plaintext';
+
+    const safeValue = normalizedValue.replace(/[^a-z0-9+#._-]/g, '').slice(0, 32);
+    return safeValue || 'plaintext';
+};
+
+const normalizeFenceFilename = (value) => {
+    return replaceControlCharacters(value || '', '_')
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/[<>:"/\\|?*]/g, '_')
+        .trim()
+        .slice(0, 120);
+};
+
+const getPrismLanguage = (language) => {
+    const normalizedLanguage = normalizeFenceLanguage(language);
+    const prismLanguage = CODE_LANGUAGE_ALIASES[normalizedLanguage] || normalizedLanguage;
+    return /^[a-z0-9_-]+$/.test(prismLanguage) ? prismLanguage : 'plaintext';
+};
+
+const parseFenceInfo = (info, markdownUtils) => {
+    const languageHint = info ? markdownUtils.unescapeAll(info).trim() : '';
+    if (!languageHint) {
+        return {
+            actualLanguage: 'plaintext',
+            prismLanguage: 'plaintext',
+            filename: '',
+        };
+    }
+
+    let rawLanguage = languageHint;
+    let filename = '';
+
+    if (languageHint.includes(':')) {
+        const parts = languageHint.split(':', 2);
+        rawLanguage = parts[0].trim();
+        filename = normalizeFenceFilename(parts[1]);
+    }
+
+    const actualLanguage = normalizeFenceLanguage(rawLanguage);
+    return {
+        actualLanguage,
+        prismLanguage: getPrismLanguage(actualLanguage),
+        filename,
+    };
+};
+
+const DOMPURIFY_SHARED_OPTIONS = {
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'foreignobject', 'link', 'meta', 'base'],
+    FORBID_ATTR: ['srcdoc'],
+};
+
 const buildDiagramBlock = ({ language, filename, codeContent }) => {
     const normalizedLanguage = language === 'd3' ? 'd3js' : (language === 'mmd' ? 'mermaid' : language);
     const diagramMeta = {
@@ -62,6 +128,18 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
                 </div>
             `,
             codeLanguage: 'mermaid'
+        },
+        svg: {
+            label: 'SVG',
+            blockClass: 'svg-block',
+            preview: `
+                <div class="svg-preview-surface svg-preview-container loading">
+                    <div class="svg-preview-frame-host"></div>
+                    <div class="svg-loading">Безопасный рендер SVG...</div>
+                    <div class="svg-error" aria-live="polite"></div>
+                </div>
+            `,
+            codeLanguage: 'markup'
         }
     };
 
@@ -109,7 +187,7 @@ const md = new MarkdownIt({
 });
 const originalRender = md.render.bind(md);
 md.render = function (str, env) {
-    let toRender = str.replace(/\\\[([\s\S]+?)\\\]/g, (m, expr) => `$$${expr}$$`)
+    const toRender = str.replace(/\\\[([\s\S]+?)\\\]/g, (m, expr) => `$$${expr}$$`)
         .replace(/\\\(([^\n]+?)\\\)/g, (m, expr) => `$${expr}$`);
     let html = originalRender(toRender, env);
     try {
@@ -127,17 +205,8 @@ md.render = function (str, env) {
 md.renderer.rules.fence = (tokens, idx) => {
     const token = tokens[idx];
     const codeContent = token.content;
-    const languageHint = token.info ? md.utils.unescapeAll(token.info).trim() : '';
-    let actualLanguage = 'plaintext';
-    let filename = '';
-
-    if (languageHint.includes(':')) {
-        const parts = languageHint.split(':', 2);
-        actualLanguage = parts[0].trim().toLowerCase() || 'plaintext';
-        filename = parts[1].trim();
-    } else {
-        actualLanguage = languageHint.trim().toLowerCase() || 'plaintext';
-    }
+    const { actualLanguage, prismLanguage, filename: parsedFilename } = parseFenceInfo(token.info, md.utils);
+    let filename = parsedFilename;
 
     if (['beatbox', 'quiz', 'spinwheel'].includes(actualLanguage)) {
         const escapedState = escapeHtml(codeContent);
@@ -155,12 +224,16 @@ md.renderer.rules.fence = (tokens, idx) => {
     if (!filename) {
         filename = actualLanguage === 'plaintext' ? "Code Snippet" : (actualLanguage.charAt(0).toUpperCase() + actualLanguage.slice(1));
     }
+
+    const safeFilename = escapeHtml(filename);
+    const safeLanguage = escapeHtml(actualLanguage);
+    const safePrismLanguage = escapeHtml(prismLanguage);
     const escapedContent = escapeHtml(codeContent);
     return `
-    <div class="code-block" data-language="${actualLanguage}" data-filename="${filename}">
+    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
-            <span class="code-block-filename">${filename}</span>
+            <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
                 <button class="download-code-btn" title="Скачать файл"><img src=" /icons/ui/download.svg" alt="Download"></button>
                 <button class="copy-code-btn" title="Скопировать код"><img src=" /icons/ui/copy.svg" alt="Copy"></button>
@@ -172,7 +245,7 @@ md.renderer.rules.fence = (tokens, idx) => {
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${actualLanguage}"><code class="language-${actualLanguage}">${escapedContent}</code></pre>
+                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${escapedContent}</code></pre>
             </div>
         </div>
     </div>`;
@@ -261,11 +334,12 @@ export const formatText = (text) => {
     renderedHtml = renderedHtml
         .replace(/<li>\[ \] /g, '<li class="task-list-item"><input type="checkbox" name="task_item" disabled> ')
         .replace(/<li>\[x\] /g, '<li class="task-list-item"><input type="checkbox" name="task_item" checked disabled> ');
-    renderedHtml = renderedHtml.replace(/<table>/g, (match) => {
+    renderedHtml = renderedHtml.replace(/<table>/g, () => {
         return '<div class="table-wrapper"><button class="table-copy-btn" type="button" title="Копировать таблицу"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button><div><table>';
     });
     renderedHtml = renderedHtml.replace(/<\/table>/g, '</table></div></div>');
     return DOMPurify.sanitize(renderedHtml, {
+        ...DOMPURIFY_SHARED_OPTIONS,
         ADD_TAGS: ['svg', 'path', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'button', 'img', 'input', 'model-viewer', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
@@ -294,18 +368,8 @@ const userMd = new MarkdownIt({
 userMd.renderer.rules.fence = (tokens, idx) => {
     const token = tokens[idx];
     const codeContent = token.content || '';
-    const languageHint = token.info ? userMd.utils.unescapeAll(token.info).trim() : '';
-
-    let actualLanguage = 'plaintext';
-    let filename = '';
-
-    if (languageHint.includes(':')) {
-        const parts = languageHint.split(':', 2);
-        actualLanguage = parts[0].trim().toLowerCase() || 'plaintext';
-        filename = parts[1].trim();
-    } else {
-        actualLanguage = languageHint.trim().toLowerCase() || 'plaintext';
-    }
+    const { actualLanguage, prismLanguage, filename: parsedFilename } = parseFenceInfo(token.info, userMd.utils);
+    let filename = parsedFilename;
 
     const diagramBlock = buildDiagramBlock({
         language: actualLanguage,
@@ -320,13 +384,16 @@ userMd.renderer.rules.fence = (tokens, idx) => {
         filename = actualLanguage === 'plaintext' ? "Code Snippet" : (actualLanguage.charAt(0).toUpperCase() + actualLanguage.slice(1));
     }
 
+    const safeFilename = escapeHtml(filename);
+    const safeLanguage = escapeHtml(actualLanguage);
+    const safePrismLanguage = escapeHtml(prismLanguage);
     const escapedContent = escapeHtml(codeContent);
 
     return `
-    <div class="code-block" data-language="${actualLanguage}" data-filename="${filename}">
+    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
-            <span class="code-block-filename">${escapeHtml(filename)}</span>
+            <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
                 <button class="download-code-btn" title="Скачать файл"><img src=" /icons/ui/download.svg" alt="Download"></button>
                 <button class="copy-code-btn" title="Скопировать код"><img src=" /icons/ui/copy.svg" alt="Copy"></button>
@@ -338,7 +405,7 @@ userMd.renderer.rules.fence = (tokens, idx) => {
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers"><code class="language-${escapeHtml(actualLanguage)}">${escapedContent}</code></pre>
+                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${escapedContent}</code></pre>
             </div>
         </div>
     </div>`;
@@ -348,6 +415,7 @@ export const formatUserText = (text) => {
     if (!text) return '';
     const renderedHtml = userMd.render(text);
     return DOMPurify.sanitize(renderedHtml, {
+        ...DOMPURIFY_SHARED_OPTIONS,
         ADD_TAGS: ['svg', 'path', 'div', 'span', 'button', 'img', 'input', 'pre', 'code', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',

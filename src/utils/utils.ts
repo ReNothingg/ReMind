@@ -2,10 +2,36 @@ import { getChart } from './chartjsLoader';
 import { getD3 } from './d3Loader';
 import { getNomnoml } from './nomnomlLoader';
 import { getMermaid } from './mermaidLoader';
+import { buildSvgPreviewDocument, sanitizeSvgMarkup } from './svgPreview';
 
 
 
 let mermaidConfigured = false;
+
+const TRANSPARENT_BACKGROUND_VALUES = new Set([
+    'transparent',
+    'rgba(0, 0, 0, 0)',
+    'rgba(0,0,0,0)',
+]);
+
+const resolvePreviewBackgroundColor = (element) => {
+    let current = element instanceof Element ? element : null;
+
+    while (current) {
+        const { backgroundColor } = window.getComputedStyle(current);
+        if (backgroundColor && !TRANSPARENT_BACKGROUND_VALUES.has(backgroundColor.trim().toLowerCase())) {
+            return backgroundColor;
+        }
+        current = current.parentElement;
+    }
+
+    const rootBackground = window.getComputedStyle(document.documentElement).backgroundColor;
+    if (rootBackground && !TRANSPARENT_BACKGROUND_VALUES.has(rootBackground.trim().toLowerCase())) {
+        return rootBackground;
+    }
+
+    return '#111214';
+};
 
 const setupPanZoom = (container, target, options = {}) => {
     if (!container || !target) return;
@@ -252,6 +278,101 @@ export const Utils = {
             const target = container.querySelector('.diagram-pan-target') || container.querySelector('canvas, svg');
             if (!target) return;
             setupPanZoom(container, target);
+        });
+    },
+
+    renderSvgPreviews: () => {
+        const containers = document.querySelectorAll('.svg-preview-container');
+        if (!containers.length) return;
+
+        containers.forEach(container => {
+            const setReadyState = () => {
+                container.classList.remove('loading', 'has-error');
+            };
+
+            const setErrorState = (message) => {
+                const errorEl = container.querySelector('.svg-error');
+                container.classList.remove('loading');
+                container.classList.add('has-error');
+                if (errorEl) {
+                    errorEl.textContent = message;
+                }
+            };
+
+            try {
+                container.classList.add('loading');
+                container.classList.remove('has-error');
+
+                const host = container.querySelector('.svg-preview-frame-host');
+                const codeBlock = container.closest('.code-block');
+                const codeElement = codeBlock?.querySelector('.code-block-content code');
+
+                if (!host || !codeElement) {
+                    setErrorState('SVG code not found');
+                    return;
+                }
+
+                const sourceSvg = (codeElement.textContent || '').trim();
+                const previewBackgroundColor = resolvePreviewBackgroundColor(container);
+
+                if (!sourceSvg) {
+                    host.replaceChildren();
+                    setErrorState('SVG block is empty');
+                    delete container.dataset.svgRenderKey;
+                    return;
+                }
+
+                const renderKey = `${sourceSvg.length}:${sourceSvg.slice(0, 256)}:${previewBackgroundColor}`;
+                if (container.dataset.svgRenderKey === renderKey && host.querySelector('.svg-preview-frame')) {
+                    setReadyState();
+                    return;
+                }
+
+                const { sanitizedMarkup, error } = sanitizeSvgMarkup(sourceSvg);
+                if (!sanitizedMarkup) {
+                    host.replaceChildren();
+                    setErrorState(`SVG blocked: ${error || 'unsafe content'}`);
+                    delete container.dataset.svgRenderKey;
+                    return;
+                }
+
+                let frame = host.querySelector('.svg-preview-frame');
+                if (!(frame instanceof HTMLIFrameElement)) {
+                    frame = document.createElement('iframe');
+                    frame.className = 'svg-preview-frame';
+                    frame.title = 'SVG preview';
+                    frame.loading = 'lazy';
+                    frame.referrerPolicy = 'no-referrer';
+                    frame.setAttribute('sandbox', '');
+                    host.replaceChildren(frame);
+                }
+
+                frame.onload = () => {
+                    setReadyState();
+                };
+                frame.onerror = () => {
+                    setErrorState('Failed to load SVG preview');
+                };
+
+                frame.style.backgroundColor = previewBackgroundColor;
+                host.style.backgroundColor = previewBackgroundColor;
+                frame.srcdoc = buildSvgPreviewDocument(
+                    sanitizedMarkup,
+                    'SVG preview',
+                    previewBackgroundColor
+                );
+                container.dataset.svgRenderKey = renderKey;
+
+                requestAnimationFrame(() => {
+                    if (frame.contentDocument?.body?.childElementCount) {
+                        setReadyState();
+                    }
+                });
+            } catch (error) {
+                console.warn('SVG preview render failed:', error);
+                setErrorState('Failed to render SVG');
+                delete container.dataset.svgRenderKey;
+            }
         });
     },
 

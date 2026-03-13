@@ -352,6 +352,13 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
             }, 0);
 
             const renderVisuals = async () => {
+                if (Utils.renderSvgPreviews) {
+                    Utils.renderSvgPreviews();
+                    requestAnimationFrame(() => {
+                        Utils.renderSvgPreviews();
+                    });
+                }
+
                 if (Utils.renderCharts) {
                     await Utils.renderCharts();
                 }
@@ -375,7 +382,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
 
             renderVisuals();
         }
-    }, [displayContent, markdownEnabledForMessage, widgets]);
+    }, [displayContent, markdownEnabledForMessage, settings.theme, widgets]);
     useEffect(() => {
         if (!audio.isVisible || !waveformCanvasRef.current || !audio.waveformPoints) return;
         const canvas = waveformCanvasRef.current;
@@ -496,7 +503,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 const filename = codeBlock.dataset.filename || 'code.txt';
                 const language = codeBlock.dataset.language || 'plaintext';
                 const extension = language === 'plaintext' ? 'txt' : language;
-                Utils.downloadFile(codeText, `${filename}.${extension}`, `text/${language}`);
+                const hasExtension = filename.toLowerCase().endsWith(`.${extension}`);
+                const downloadName = hasExtension ? filename : `${filename}.${extension}`;
+                const mimeType = language === 'svg' ? 'image/svg+xml' : `text/${language}`;
+                Utils.downloadFile(codeText, downloadName, mimeType);
             } else if (target.classList.contains('toggle-code-btn')) {
                 const content = codeBlock.querySelector('.code-block-content');
                 if (!content) return;

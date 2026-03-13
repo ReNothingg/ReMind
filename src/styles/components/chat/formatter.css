@@ -324,9 +324,10 @@
   border-top: 1px solid var(--code-block-border);
 }
 
+.svg-preview-surface,
 .diagram-pan-surface {
   position: relative;
-  height: 360px;
+  height: clamp(220px, 52vw, 360px);
   border-radius: var(--radius-md);
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
@@ -339,6 +340,7 @@
 .diagram-block .chart-container,
 .diagram-block .d3-container,
 .diagram-block .nomnoml-container,
+.diagram-block .svg-preview-surface,
 .diagram-block .mermaid-container {
   margin: 0;
   padding: 0;
@@ -354,6 +356,19 @@
 
 .diagram-pan-surface.is-panning {
   cursor: grabbing !important;
+}
+
+.svg-preview-frame-host {
+  width: 100%;
+  height: 100%;
+}
+
+.svg-preview-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
 }
 
 .diagram-pan-target {
@@ -390,6 +405,8 @@
 .chart-error,
 .d3-loading,
 .d3-error,
+.svg-loading,
+.svg-error,
 .mermaid-loading,
 .mermaid-error {
   position: absolute;
@@ -408,17 +425,33 @@
 .nomnoml-error,
 .chart-error,
 .d3-error,
+.svg-error,
 .mermaid-error {
   color: var(--color-text-error);
+}
+
+.svg-loading,
+.svg-error {
+  display: none;
+}
+
+.svg-preview-surface.loading .svg-loading {
+  display: flex;
+}
+
+.svg-preview-surface.has-error .svg-error {
+  display: flex;
 }
 
 .nomnoml-error:empty,
 .chart-error:empty,
 .d3-error:empty,
+.svg-error:empty,
 .mermaid-error:empty {
   display: none;
 }
 
+.svg-preview-surface.loading .svg-preview-frame,
 .diagram-pan-surface.loading .diagram-pan-target {
   opacity: 0.4;
 }
