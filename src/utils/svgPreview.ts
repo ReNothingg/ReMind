@@ -186,7 +186,6 @@ const normalizePreviewBackground = (value?: string) => {
     const trimmedValue = (value || '').trim();
     if (!trimmedValue) return 'transparent';
 
-    // Keep the CSS injection surface narrow even though the source is computed browser CSS.
     if (!/^[#(),.%\sA-Za-z0-9\-\/]+$/.test(trimmedValue)) {
         return 'transparent';
     }

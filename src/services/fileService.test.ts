@@ -33,17 +33,13 @@ describe('fileService', () => {
         expect(fileService.validateFiles(files)).toEqual({ valid: true });
     });
 
-    it('detects text, image, and 3d model files', () => {
+    it('detects text and image files', () => {
         expect(fileService.isTextFile({ name: 'notes.md', type: 'application/octet-stream' })).toBe(true);
         expect(fileService.isTextFile({ name: 'plain.bin', type: 'text/plain' })).toBe(true);
         expect(fileService.isTextFile({ name: '', type: 'application/octet-stream' })).toBe(false);
 
         expect(fileService.isImageFile({ type: 'image/png' })).toBe(true);
         expect(fileService.isImageFile({ type: 'application/pdf' })).toBe(false);
-
-        expect(fileService.is3DModelFile({ name: 'scene.glb', type: 'application/octet-stream' })).toBe(true);
-        expect(fileService.is3DModelFile({ name: 'mesh.bin', type: 'model/gltf+json' })).toBe(true);
-        expect(fileService.is3DModelFile({ name: 'mesh.txt', type: 'text/plain' })).toBe(false);
     });
 
     it('formats file sizes with clamped decimals', () => {

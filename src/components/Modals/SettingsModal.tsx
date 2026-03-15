@@ -111,7 +111,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
         if (saved && saved !== currentLanguage) {
             i18n.changeLanguage(saved);
         }
-    }, [settings.interface_language]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [settings.interface_language]);
 
     const [activeTab, setActiveTab] = useState(() => {
         const tab = getSettingsTab();

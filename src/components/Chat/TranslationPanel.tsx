@@ -30,7 +30,7 @@ const TranslationPanel = ({ originalText, onClose }) => {
         if (originalText) {
             translateText(originalText, targetLang);
         }
-    }, [targetLang, originalText]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [targetLang, originalText]);
 
     const extractCleanText = (htmlText) => {
         if (!htmlText) return '';

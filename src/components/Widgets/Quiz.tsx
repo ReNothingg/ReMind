@@ -14,7 +14,7 @@ const Quiz = ({ initialState }) => {
     const currentCard = cards[currentIndex];
 
     const handleChoice = (choiceIndex) => {
-        if (selectedChoice !== null) return; // Block interaction
+        if (selectedChoice !== null) return;
 
         const correct = choiceIndex === currentCard.correct_index;
         setSelectedChoice(choiceIndex);

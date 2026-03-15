@@ -2,15 +2,13 @@ import { useState, useRef, useCallback } from "react";
 import {
   TEXT_FILE_EXTENSIONS,
   VALID_IMAGE_MIME_TYPES,
-  VALID_3D_MODEL_EXTENSIONS,
-  VALID_3D_MODEL_MIME_TYPES,
 } from "../utils/constants";
 
 const MAX_FILES = 10;
 
 export const useFileHandler = ({ enabled = true } = {}) => {
   const [files, setFiles] = useState([]);
-  const [dragCounter, setDragCounter] = useState(0); // Используется для отслеживания вложенных drag событий
+  const [, setDragCounter] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const dragHasFilesRef = useRef(false);
   const fileInputRef = useRef(null);
@@ -29,15 +27,6 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     const extension = file.name.split(".").pop()?.toLowerCase() || "";
     return (
       file.type.startsWith("text/") || TEXT_FILE_EXTENSIONS.includes(extension)
-    );
-  };
-
-  const is3DModelFile = (file) => {
-    if (!file?.name) return false;
-    const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    return (
-      VALID_3D_MODEL_EXTENSIONS.includes(extension) ||
-      VALID_3D_MODEL_MIME_TYPES.includes(file.type)
     );
   };
 
@@ -180,7 +169,6 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     clearFiles,
     formatFileSize,
     isTextFile,
-    is3DModelFile,
     handleFileInputChange,
     handleDragEnter,
     handleDragLeave,
@@ -188,7 +176,5 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     handleDrop,
     MAX_FILES,
     VALID_IMAGE_MIME_TYPES,
-    VALID_3D_MODEL_EXTENSIONS,
-    VALID_3D_MODEL_MIME_TYPES,
   };
 };

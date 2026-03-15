@@ -42,7 +42,7 @@ const InputArea = ({
                 }
             }, 0);
         }
-    }, [initialPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [initialPrompt]);
 
     useEffect(() => {
         if (!showDynamicWarning) return;
@@ -51,7 +51,7 @@ const InputArea = ({
         const fallback = list[0] || '';
         const warningText = Utils.getRandomPhrase(list.length > 0 ? list : [fallback], fallback);
         setDynamicWarning(warningText);
-    }, [showDynamicWarning, i18n.resolvedLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [showDynamicWarning, i18n.resolvedLanguage]);
 
     const {
         files,

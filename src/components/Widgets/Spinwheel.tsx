@@ -16,9 +16,9 @@ const Spinwheel = ({ initialState }) => {
     const [hasSpun, setHasSpun] = useState(false);
     const segments = [];
     for (let i = config.min; i <= config.max; i += config.step) segments.push(i);
-    const displaySegments = [...segments, ...segments, ...segments, ...segments, ...segments]; // ~ x5
+    const displaySegments = [...segments, ...segments, ...segments, ...segments, ...segments];
 
-    const itemHeight = 75; // Из CSS
+    const itemHeight = 75;
 
     const spin = () => {
         if (isSpinning || hasSpun) return;
@@ -29,7 +29,7 @@ const Spinwheel = ({ initialState }) => {
         const middleOffset = segments.length * 2;
         const finalIndex = middleOffset + targetIndex;
 
-        const finalPosition = finalIndex * itemHeight - (225 / 2) + (itemHeight / 2); // 225 - высота viewport
+        const finalPosition = finalIndex * itemHeight - (225 / 2) + (itemHeight / 2);
         const startPos = finalPosition - (segments.length * itemHeight * 2);
 
         if (reelRef.current) {

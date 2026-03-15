@@ -269,7 +269,7 @@ export const SettingsProvider = ({ children }) => {
             const accent = decodeURIComponent(params.get('accent'));
             updateSetting('accentColor', accent);
         }
-    }, []); // Только при монтировании
+    }, []);
 
     const updateSetting = useCallback((key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));

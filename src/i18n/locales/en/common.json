@@ -64,7 +64,11 @@
   },
   "files": {
     "removeFile": "Remove file",
-    "model3d": "3D model"
+    "preview": "Preview",
+    "code": "Code",
+    "lines": "{{count}} lines",
+    "previewAlt": "Preview of {{name}}",
+    "previewUnavailable": "Preview for file \"{{name}}\" is not available."
   },
   "share": {
     "title": "Chat sharing",

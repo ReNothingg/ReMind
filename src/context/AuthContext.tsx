@@ -29,8 +29,8 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, pass, token) => {
         const res = await authService.login(email, pass, token);
         if (res.success) {
-            await checkAuth(); // Обновить состояние
-            window.location.reload(); // Для сброса серверных сессий Flask, как в оригинале
+            await checkAuth();
+            window.location.reload();
         }
         return res;
     };

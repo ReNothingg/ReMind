@@ -16,11 +16,6 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                 setFileContent(e.target.result);
             };
             reader.readAsDataURL(file);
-        } else if (fileService.is3DModelFile(file)) {
-            setPreview('3d-model');
-            const reader = new FileReader();
-            reader.onload = (e) => setFileContent(e.target.result);
-            reader.readAsDataURL(file);
         } else if (fileService.isTextFile(file)) {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -39,12 +34,10 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
     };
 
     const isImage = fileService.isImageFile(file);
-    const is3dModel = fileService.is3DModelFile(file);
     const isText = fileService.isTextFile(file);
     const previewClass = [
         'file-card-preview',
-        isText ? 'is-text' : '',
-        is3dModel ? 'is-3d-model' : ''
+        isText ? 'is-text' : ''
     ].filter(Boolean).join(' ');
 
     return (
@@ -53,16 +46,13 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                 className={cn(
                     previewClass,
                     'file-card-preview mx-1.5 mt-1.5 flex flex-1 items-center justify-center overflow-hidden rounded-[14px] border border-[rgba(var(--color-white-raw),0.08)] bg-[rgba(var(--color-black-raw),0.2)]',
-                    isText && 'is-text items-start p-1.5 font-mono text-[0.6rem] leading-[1.35] text-muted',
-                    is3dModel && 'is-3d-model'
+                    isText && 'is-text items-start p-1.5 font-mono text-[0.6rem] leading-[1.35] text-muted'
                 )}
                 onClick={handleClick}
                 style={{ cursor: onPreview ? 'pointer' : 'default' }}
             >
                 {isImage && preview ? (
                     <img src={preview} alt={file.name} className="image-thumbnail" />
-                ) : is3dModel ? (
-                    <div className="is-3d-model text-center text-[0.68rem] font-medium text-muted">{t('files.model3d')}</div>
                 ) : isText && preview ? (
                     <pre className="max-h-[60px] overflow-hidden whitespace-pre-wrap break-all [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)]">
                         {preview.substring(5)}

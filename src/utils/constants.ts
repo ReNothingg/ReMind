@@ -1,7 +1,6 @@
 export const API_BASE_URL = (() => {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
-    const port = window.location.port ? `:${window.location.port}` : '';
 
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
         return '';
@@ -25,13 +24,6 @@ export const DEFAULT_WARNING_PHRASES = ["ReMind может допускать о
 export const TEXT_FILE_EXTENSIONS = ['txt', 'py', 'js', 'html', 'css', 'json', 'cpp', 'c', 'cs', 'java', 'php', 'rb', 'swift', 'kt', 'go', 'rs', 'ts', 'md', 'xml', 'yaml', 'yml', 'sh', 'bat', 'ps1', 'pl', 'dart', 'lua', 'r', 'scala', 'hs', 'erl', 'clj', 'ex', 'zig', 'ino'];
 
 export const VALID_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-
-export const VALID_3D_MODEL_EXTENSIONS = ['glb', 'gltf', 'obj', 'fbx', 'dae', '3ds', 'ply', 'stl'];
-export const VALID_3D_MODEL_MIME_TYPES = [
-    'model/gltf-binary', 'model/gltf+json', 'application/octet-stream', 'model/obj',
-    'application/x-obj', 'model/fbx', 'application/x-fbx', 'model/vnd.collada+xml',
-    'application/x-3ds', 'model/ply', 'application/x-ply', 'application/sla', 'application/x-stl'
-];
 
 export const INITIAL_CODE_BLOCK_MAX_HEIGHT = '200px';
 

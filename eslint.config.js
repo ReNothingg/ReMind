@@ -16,7 +16,7 @@ export default tseslint.config(
     files: ['**/*.{ts,tsx,js,jsx}'],
     settings: {
       react: {
-        version: 'detect', // Автоматически определять версию React
+        version: 'detect',
       },
     },
     languageOptions: {
@@ -24,7 +24,7 @@ export default tseslint.config(
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
-          jsx: true, // Разрешаем JSX
+          jsx: true,
         },
       },
       globals: {

@@ -63,8 +63,7 @@
     "quote": "Citar"
   },
   "files": {
-    "removeFile": "Quitar archivo",
-    "model3d": "Modelo 3D"
+    "removeFile": "Quitar archivo"
   },
   "share": {
     "title": "Compartir chat",

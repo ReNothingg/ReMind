@@ -63,8 +63,7 @@
     "quote": "Citer"
   },
   "files": {
-    "removeFile": "Retirer le fichier",
-    "model3d": "Modèle 3D"
+    "removeFile": "Retirer le fichier"
   },
   "share": {
     "title": "Partage du chat",

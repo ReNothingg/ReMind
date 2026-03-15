@@ -252,7 +252,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
 
         setEditingSessionId(sessionId);
         setEditingTitle(currentTitle);
-        setOpenMenuId(null); // Закрываем меню
+        setOpenMenuId(null);
     };
 
     const handleSaveRename = async (sessionId) => {

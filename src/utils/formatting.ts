@@ -340,7 +340,7 @@ export const formatText = (text) => {
     renderedHtml = renderedHtml.replace(/<\/table>/g, '</table></div></div>');
     return DOMPurify.sanitize(renderedHtml, {
         ...DOMPURIFY_SHARED_OPTIONS,
-        ADD_TAGS: ['svg', 'path', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'button', 'img', 'input', 'model-viewer', 'canvas'],
+        ADD_TAGS: ['svg', 'path', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'button', 'img', 'input', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
             'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
@@ -348,8 +348,7 @@ export const formatText = (text) => {
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
             'data-think-open', 'data-think-close', 'data-think-content',
-            'data-tool', 'aria-live', 'aria-label', 'role', 'stroke-width',
-            'camera-controls', 'auto-rotate', 'shadow-intensity', 'environment-image', 'exposure'
+            'data-tool', 'aria-live', 'aria-label', 'role', 'stroke-width'
         ]
     });
 };

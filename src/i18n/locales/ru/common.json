@@ -64,7 +64,11 @@
   },
   "files": {
     "removeFile": "Удалить файл",
-    "model3d": "3D модель"
+    "preview": "Просмотр",
+    "code": "Код",
+    "lines": "{{count}} строк",
+    "previewAlt": "Предпросмотр файла {{name}}",
+    "previewUnavailable": "Предпросмотр файла \"{{name}}\" недоступен."
   },
   "share": {
     "title": "Общий доступ к чату",

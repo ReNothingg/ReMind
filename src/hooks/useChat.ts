@@ -29,7 +29,7 @@ export const useChat = () => {
     });
     const [isReadOnly, setIsReadOnly] = useState(false);
     const abortControllerRef = useRef(null);
-    const messageVariantsRef = useRef(new Map()); // Для хранения вариантов сообщений
+    const messageVariantsRef = useRef(new Map());
     const slugIndexCacheRef = useRef({});
 
     const SLUG_INDEX_KEY = 'session_slug_index';
@@ -110,7 +110,7 @@ export const useChat = () => {
                         try {
                             const parsed = JSON.parse(text);
                             if (parsed.url_path || parsed.original_name || parsed.mime_type) {
-                                text = ''; // Удаляем из текста
+                                text = '';
                             }
                         } catch {
                         }
@@ -135,7 +135,7 @@ export const useChat = () => {
                         images,
                         files,
                         timestamp: msg.timestamp,
-                        parts: parts // Сохраняем полные parts для вариантов
+                        parts: parts
                     };
                 });
                 setHistory(normalized);
@@ -513,7 +513,7 @@ export const useChat = () => {
                             return {
                                 ...msg,
                                 isLoading: false,
-                                content: finalContent, // Для обратной совместимости
+                                content: finalContent,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
                                 thinkingTime: finalData.thinkingTime,
@@ -631,7 +631,7 @@ export const useChat = () => {
                             return {
                                 ...msg,
                                 isLoading: false,
-                                content: newVariant.content, // Для обратной совместимости
+                                content: newVariant.content,
                                 images: newVariant.images,
                                 sources: newVariant.sources,
                                 thinkingTime: newVariant.thinkingTime,
