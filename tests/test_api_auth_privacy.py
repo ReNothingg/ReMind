@@ -1,8 +1,10 @@
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
+import services.chat_history as chat_history
 import utils.auth as auth_module
 from config import SESSION_COOKIE_NAME
 from utils.auth import ChatShare, User, UserChatHistory, db
@@ -131,6 +133,47 @@ def test_chat_echo_as_guest_returns_reply_and_request_id(client):
     assert payload["ok"] is True
     assert payload["reply"] == "hello from pytest"
     assert response.headers.get("X-Request-Id")
+
+
+def test_chat_demo_image_stream_returns_image_and_persists_history(
+    client, app, monkeypatch, tmp_path
+):
+    generated_dir = tmp_path / "generated_images"
+    chats_dir = tmp_path / "chats"
+    generated_dir.mkdir()
+    chats_dir.mkdir()
+
+    monkeypatch.setattr(chat_history, "CHATS_FOLDER", chats_dir)
+    app.config["CREATE_IMAGE_FOLDER"] = str(generated_dir)
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Draw a bright demo skyline at sunset",
+            "model": "demo_image",
+            "user_id": "demo_image_session",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type", "").startswith("text/event-stream")
+
+    body = response.get_data(as_text=True)
+    assert '"status": "generating_image"' in body
+    assert '"/images/' in body
+
+    history = chat_history.load_chat_history("demo_image_session")
+    assert len(history) == 2
+
+    assistant_message = history[-1]
+    image_parts = [part["image"] for part in assistant_message["parts"] if "image" in part]
+    assert image_parts
+    assert any(
+        part.get("text") == "Тестовое изображение готово." for part in assistant_message["parts"]
+    )
+
+    image_name = Path(image_parts[0]["url_path"]).name
+    assert (generated_dir / image_name).is_file()
 
 
 def test_list_sessions_paginated_with_public_share(client, app, create_confirmed_user, login):

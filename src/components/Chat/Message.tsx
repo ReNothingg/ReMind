@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { fileService } from '../../services/fileService';
@@ -23,6 +24,85 @@ const MessageActionButton = ({ className, title, onClick, children, disabled = f
         {children}
     </button>
 );
+
+const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false);
+    const { t } = useTranslation();
+
+    useEffect(() => {
+        setIsLoaded(false);
+        setHasError(false);
+    }, [src]);
+
+    const imageContent = (
+        <>
+            {!hasError && (
+                <>
+                    {!isLoaded && (
+                        <span className="message-image-loader" aria-hidden="true">
+                            <span className="message-image-loader-shimmer" />
+                        </span>
+                    )}
+                    <img
+                        className="attached-img message-image-element"
+                        src={src}
+                        alt={alt}
+                        loading="lazy"
+                        decoding="async"
+                        onLoad={() => setIsLoaded(true)}
+                        onError={() => {
+                            setHasError(true);
+                            setIsLoaded(false);
+                        }}
+                    />
+                </>
+            )}
+            {hasError && (
+                <span className="message-image-fallback">
+                    <span className="message-image-fallback-title">
+                        {t('chatImage.unavailableTitle', { defaultValue: 'Превью недоступно' })}
+                    </span>
+                    <span className="message-image-fallback-subtitle">
+                        {t('chatImage.unavailableDescription', {
+                            defaultValue: 'Изображение не удалось загрузить.',
+                        })}
+                    </span>
+                </span>
+            )}
+            {isInteractive && !hasError && (
+                <span className="message-image-overlay" aria-hidden="true">
+                    <span className="message-image-overlay-chip">
+                        {t('chatImage.open', { defaultValue: 'Открыть' })}
+                    </span>
+                </span>
+            )}
+        </>
+    );
+
+    return (
+        <div className={cn('message-image-card', isLoaded && 'is-loaded', hasError && 'is-error')}>
+            {isInteractive ? (
+                <button
+                    type="button"
+                    className="message-image-button is-interactive"
+                    onClick={() => {
+                        if (window.openImageLightbox) {
+                            window.openImageLightbox(src, messageId);
+                        }
+                    }}
+                    aria-label="Open image preview"
+                >
+                    {imageContent}
+                </button>
+            ) : (
+                <div className="message-image-button is-static" role="img" aria-label={alt}>
+                    {imageContent}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const { role, content, images, files, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts } = message;
@@ -595,35 +675,46 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     );
 
     return (
-        <div className={messageClassName} data-message-id={message.id}>
+        <div
+            className={messageClassName}
+            data-message-id={message.id}
+            data-raw-content={isUser ? (content || '') : undefined}
+        >
             <div className={messageContentClassName}>
-                {(displayImages?.length > 0 || displayFiles?.length > 0) && (
+                {displayImages?.length > 0 && (
+                    <div
+                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
+                        data-count={displayImages.length}
+                    >
+                        {displayImages.map((src, idx) => {
+                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
+                            if (!imagePath) {
+                                return null;
+                            }
+
+                            const fullSrc = imagePath.startsWith('http')
+                                ? imagePath
+                                : `${apiService.baseURL}${imagePath}`;
+                            return (
+                                <MessageImageAttachment
+                                    key={`${message.id}-image-${idx}`}
+                                    src={fullSrc}
+                                    alt={`Chat image ${idx + 1}`}
+                                    messageId={message.id}
+                                    isInteractive={!isUser}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
+
+                {displayFiles?.length > 0 && (
                     <div
                         className={cn(
                             'message-attachments mt-2.5 flex flex-wrap gap-2',
                             isUser ? 'user-attachments' : 'ai-attachments'
                         )}
                     >
-                        {displayImages?.map((src, idx) => {
-                            const fullSrc = src.startsWith('http') ? src : `${apiService.baseURL}${src}`;
-                            return (
-                                <img
-                                    key={idx}
-                                    className={cn(
-                                        'attached-img max-w-full rounded-[var(--radius-md)] border border-border object-cover shadow-[var(--shadow-xs)] transition duration-150 ease-out',
-                                        !isUser && 'cursor-pointer hover:scale-[1.02]'
-                                    )}
-                                    src={fullSrc}
-                                    alt="attachment"
-                                    onClick={() => {
-                                        if (!isUser && window.openImageLightbox) {
-                                            window.openImageLightbox(fullSrc, message.id);
-                                        }
-                                    }}
-                                    style={{ cursor: !isUser ? 'pointer' : 'default' }}
-                                />
-                            );
-                        })}
                         {displayFiles?.map((f, idx) => {
                             const file = f.file || f;
                             if (!file || typeof file === 'string' || (!file.url_path && !file.original_name && !file.name)) {

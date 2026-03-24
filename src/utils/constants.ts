@@ -1,12 +1,11 @@
 export const API_BASE_URL = (() => {
     const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
 
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
         return '';
     }
 
-    return `${protocol}//${hostname}`;
+    return window.location.origin;
 })();
 
 export const ALLOW_GUEST_CHATS_SAVE = false;

@@ -17,6 +17,37 @@
     "login": "Login",
     "register": "Register"
   },
+  "authModal": {
+    "loginTitle": "Sign in to your account",
+    "registerTitle": "Create an account",
+    "fields": {
+      "email": "Email:",
+      "password": "Password:",
+      "username": "Username:",
+      "confirmPassword": "Confirm password:"
+    },
+    "actions": {
+      "loginLoading": "Signing in...",
+      "loginWithGoogle": "Sign in with Google",
+      "registerLoading": "Creating account...",
+      "registerWithGoogle": "Sign up with Google"
+    },
+    "switch": {
+      "noAccount": "Don't have an account?",
+      "haveAccount": "Already have an account?"
+    },
+    "messages": {
+      "loginSuccess": "Successfully signed in",
+      "loginError": "Login failed",
+      "registerSuccess": "Registration successful. Check your email to confirm your account.",
+      "registerError": "Registration failed",
+      "passwordsMismatch": "Passwords do not match",
+      "usernameTooLong": "Username must not exceed 100 characters",
+      "emailTooLong": "Email must not exceed 100 characters",
+      "passwordTooLong": "Password must not exceed 100 characters",
+      "requestError": "Network or server error"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "closeEsc": "Close (Esc)",
@@ -93,6 +124,10 @@
     "gemini": {
       "desc": "General-purpose Google model",
       "badge": "Beta"
+    },
+    "demoImage": {
+      "desc": "Always returns a generated demo image",
+      "badge": "Demo"
     },
     "echo": {
       "desc": "Echo bot for testing"
@@ -308,6 +343,49 @@
       "arabic": "Arabic",
       "hindi": "Hindi",
       "bengali": "Bengali"
+    }
+  },
+  "chatImage": {
+    "open": "Open",
+    "unavailableTitle": "Preview unavailable",
+    "unavailableDescription": "The image could not be loaded."
+  },
+  "imageLightbox": {
+    "badge": "Preview",
+    "title": "Image preview",
+    "demoTitle": "ReMind demo image",
+    "subtitle": "Review the full image, regenerate it in another style, or download the file.",
+    "previewAlt": "Image preview",
+    "close": "Close",
+    "styleLabel": "Style",
+    "promptLabel": "Original prompt",
+    "promptFallback": "The original prompt is unavailable for this image.",
+    "actions": {
+      "regenerate": "Regenerate",
+      "regenerating": "Generating...",
+      "download": "Download"
+    },
+    "styles": {
+      "realistic": "Realistic",
+      "cartoon": "Cartoon",
+      "anime": "Anime",
+      "oilPainting": "Oil painting",
+      "watercolor": "Watercolor",
+      "pencilSketch": "Pencil sketch"
+    },
+    "details": {
+      "style": "Style: {{style}}",
+      "resolution": "{{width}} x {{height}} px"
+    },
+    "errors": {
+      "missingSourceMessage": "Could not find the original user message.",
+      "missingPrompt": "No source prompt was found for image regeneration.",
+      "missingResult": "The model did not return a new image.",
+      "missingImage": "No image is available for download.",
+      "regenerateFailed": "Could not regenerate the image: {{message}}",
+      "downloadFailed": "Could not download the image. The original file will be opened in a new tab.",
+      "previewTitle": "Image preview unavailable",
+      "previewDescription": "Check the file path or regenerate the image."
     }
   },
   "quiz": {

@@ -440,6 +440,15 @@ export const useChat = () => {
                         return;
                     }
 
+                    if (data.reply_part || data.images) {
+                        setHistory(prev => prev.map(msg => {
+                            if (msg.id === aiMsgId) {
+                                return { ...msg, isGeneratingImage: false };
+                            }
+                            return msg;
+                        }));
+                    }
+
                     if (firstChunk) {
                         setHistory(prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
@@ -448,6 +457,15 @@ export const useChat = () => {
                             return msg;
                         }));
                         firstChunk = false;
+                    }
+
+                    if (data.images) {
+                        setHistory(prev => prev.map(msg => {
+                            if (msg.id === aiMsgId) {
+                                return { ...msg, images: data.images, isLoading: true };
+                            }
+                            return msg;
+                        }));
                     }
 
                     if (data.reply_part) {
@@ -513,6 +531,7 @@ export const useChat = () => {
                             return {
                                 ...msg,
                                 isLoading: false,
+                                isGeneratingImage: false,
                                 content: finalContent,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
@@ -532,6 +551,7 @@ export const useChat = () => {
                             return {
                                 ...msg,
                                 isLoading: false,
+                                isGeneratingImage: false,
                                 isError: true,
                                 content: fullReply + `\n\n[Ошибка: ${err?.message || 'неизвестная ошибка'}]`
                             };

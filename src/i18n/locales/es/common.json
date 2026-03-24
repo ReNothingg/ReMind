@@ -17,6 +17,37 @@
     "login": "Iniciar sesión",
     "register": "Registrarse"
   },
+  "authModal": {
+    "loginTitle": "Iniciar sesi\u00f3n en tu cuenta",
+    "registerTitle": "Crear una cuenta",
+    "fields": {
+      "email": "Email:",
+      "password": "Contrase\u00f1a:",
+      "username": "Nombre de usuario:",
+      "confirmPassword": "Confirma la contrase\u00f1a:"
+    },
+    "actions": {
+      "loginLoading": "Iniciando sesi\u00f3n...",
+      "loginWithGoogle": "Iniciar sesi\u00f3n con Google",
+      "registerLoading": "Creando cuenta...",
+      "registerWithGoogle": "Registrarse con Google"
+    },
+    "switch": {
+      "noAccount": "\u00bfNo tienes una cuenta?",
+      "haveAccount": "\u00bfYa tienes una cuenta?"
+    },
+    "messages": {
+      "loginSuccess": "Inicio de sesi\u00f3n correcto",
+      "loginError": "Error al iniciar sesi\u00f3n",
+      "registerSuccess": "Registro completado. Revisa tu correo electr\u00f3nico para confirmar la cuenta.",
+      "registerError": "Error al registrarse",
+      "passwordsMismatch": "Las contrase\u00f1as no coinciden",
+      "usernameTooLong": "El nombre de usuario no debe superar los 100 caracteres",
+      "emailTooLong": "El correo electr\u00f3nico no debe superar los 100 caracteres",
+      "passwordTooLong": "La contrase\u00f1a no debe superar los 100 caracteres",
+      "requestError": "Error de red o del servidor"
+    }
+  },
   "common": {
     "loading": "Cargando...",
     "closeEsc": "Cerrar (Esc)",

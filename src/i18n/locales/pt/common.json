@@ -17,6 +17,37 @@
     "login": "Iniciar sessão",
     "register": "Registar-se"
   },
+  "authModal": {
+    "loginTitle": "Entrar na sua conta",
+    "registerTitle": "Criar uma conta",
+    "fields": {
+      "email": "Email:",
+      "password": "Senha:",
+      "username": "Nome de usu\u00e1rio:",
+      "confirmPassword": "Confirme a senha:"
+    },
+    "actions": {
+      "loginLoading": "Entrando...",
+      "loginWithGoogle": "Entrar com Google",
+      "registerLoading": "Criando conta...",
+      "registerWithGoogle": "Registrar-se com Google"
+    },
+    "switch": {
+      "noAccount": "N\u00e3o tem uma conta?",
+      "haveAccount": "J\u00e1 tem uma conta?"
+    },
+    "messages": {
+      "loginSuccess": "Login realizado com sucesso",
+      "loginError": "Falha no login",
+      "registerSuccess": "Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta.",
+      "registerError": "Falha no cadastro",
+      "passwordsMismatch": "As senhas n\u00e3o coincidem",
+      "usernameTooLong": "O nome de usu\u00e1rio n\u00e3o deve exceder 100 caracteres",
+      "emailTooLong": "O email n\u00e3o deve exceder 100 caracteres",
+      "passwordTooLong": "A senha n\u00e3o deve exceder 100 caracteres",
+      "requestError": "Erro de rede ou do servidor"
+    }
+  },
   "common": {
     "loading": "A carregar...",
     "closeEsc": "Fechar (Esc)",

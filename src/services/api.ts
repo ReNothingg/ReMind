@@ -143,17 +143,24 @@ export const apiService = {
                                     continue;
                                 }
 
-                                if (data.reply || data.end_of_stream) {
+                                const shouldEmitPart = ['reply_part', 'status', 'images', 'sources', 'thinkingTime']
+                                    .some((key) => key in data);
+
+                                if (shouldEmitPart && onPart) {
+                                    onPart(data);
+                                }
+
+                                if ('reply' in data || data.end_of_stream) {
                                     finalData = { ...finalData, ...data };
                                 }
-                                if (data.reply_part) {
-                                    if (onPart) onPart(data);
-                                    if (data.sources) finalData.sources = data.sources;
-                                    if (data.images) finalData.images = data.images;
-                                    if (data.thinkingTime) finalData.thinkingTime = data.thinkingTime;
-                                }
-                                if (data.sessionId) finalData.sessionId = data.sessionId;
-                                if (data.sessionSlug) finalData.sessionSlug = data.sessionSlug;
+
+                                if ('sources' in data) finalData.sources = data.sources;
+                                if ('images' in data) finalData.images = data.images;
+                                if ('thinkingTime' in data) finalData.thinkingTime = data.thinkingTime;
+                                if ('status' in data) finalData.status = data.status;
+                                if ('sessionId' in data) finalData.sessionId = data.sessionId;
+                                if ('sessionSlug' in data) finalData.sessionSlug = data.sessionSlug;
+
                                 const known = ['reply', 'reply_part', 'end_of_stream', 'images', 'sources', 'thinkingTime', 'status', 'aborted', 'sessionId', 'sessionSlug'];
                                 Object.keys(data).forEach(k => {
                                     if (!known.includes(k)) {

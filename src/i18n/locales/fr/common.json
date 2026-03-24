@@ -17,6 +17,37 @@
     "login": "Se connecter",
     "register": "S'inscrire"
   },
+  "authModal": {
+    "loginTitle": "Connectez-vous \u00e0 votre compte",
+    "registerTitle": "Cr\u00e9er un compte",
+    "fields": {
+      "email": "E-mail:",
+      "password": "Mot de passe:",
+      "username": "Nom d'utilisateur:",
+      "confirmPassword": "Confirmez le mot de passe:"
+    },
+    "actions": {
+      "loginLoading": "Connexion...",
+      "loginWithGoogle": "Se connecter avec Google",
+      "registerLoading": "Cr\u00e9ation du compte...",
+      "registerWithGoogle": "S'inscrire avec Google"
+    },
+    "switch": {
+      "noAccount": "Vous n'avez pas de compte ?",
+      "haveAccount": "Vous avez d\u00e9j\u00e0 un compte ?"
+    },
+    "messages": {
+      "loginSuccess": "Connexion r\u00e9ussie",
+      "loginError": "\u00c9chec de la connexion",
+      "registerSuccess": "Inscription r\u00e9ussie. V\u00e9rifiez votre e-mail pour confirmer le compte.",
+      "registerError": "\u00c9chec de l'inscription",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "usernameTooLong": "Le nom d'utilisateur ne doit pas d\u00e9passer 100 caract\u00e8res",
+      "emailTooLong": "L'e-mail ne doit pas d\u00e9passer 100 caract\u00e8res",
+      "passwordTooLong": "Le mot de passe ne doit pas d\u00e9passer 100 caract\u00e8res",
+      "requestError": "Erreur r\u00e9seau ou serveur"
+    }
+  },
   "common": {
     "loading": "Chargement...",
     "closeEsc": "Fermer (Esc)",

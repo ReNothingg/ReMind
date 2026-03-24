@@ -17,5 +17,9 @@ def get_model_function(model_name: str):
         from .echo import echo_stream
 
         return echo_stream
+    elif model_name_lower == "demo_image":
+        from .demo_image import demo_image_stream
+
+        return demo_image_stream
 
     return None

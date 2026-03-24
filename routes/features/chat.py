@@ -140,6 +140,53 @@ def _build_user_message_parts(original_message: str, files: list[dict]) -> list[
     return parts
 
 
+def _coerce_image_parts(images: Any) -> list[dict[str, str]]:
+    if isinstance(images, str):
+        raw_images = [images]
+    elif isinstance(images, (list, tuple)):
+        raw_images = list(images)
+    else:
+        return []
+
+    normalized_images: list[dict[str, str]] = []
+    for image in raw_images:
+        if isinstance(image, str):
+            url_path = image.strip()
+            mime_type = ""
+            original_name = ""
+        elif isinstance(image, dict):
+            url_path = str(
+                image.get("url_path") or image.get("url") or image.get("path") or ""
+            ).strip()
+            mime_type = str(image.get("mime_type") or "").strip()
+            original_name = str(image.get("original_name") or "").strip()
+        else:
+            continue
+
+        if not url_path:
+            continue
+
+        image_part = {"url_path": url_path}
+        if mime_type:
+            image_part["mime_type"] = mime_type
+        if original_name:
+            image_part["original_name"] = original_name
+        normalized_images.append(image_part)
+
+    return normalized_images
+
+
+def _build_model_message_parts(reply_text: str, images: Any) -> list[dict]:
+    parts: list[dict] = []
+    if reply_text:
+        parts.append({"text": reply_text})
+
+    for image_part in _coerce_image_parts(images):
+        parts.append({"image": image_part})
+
+    return parts
+
+
 def _resolve_history(
     user_data: dict[str, Any], resolved_session_id: str, db_user_id: int | None
 ) -> list:
@@ -211,7 +258,8 @@ def _stream_chat_response(
                 yield f"data: {json.dumps({'error': 'stream_failed'})}\n\n"
 
             finally:
-                model_parts = [{"text": full_response}] if full_response else []
+                reply_text = str(final_data.get("reply") or full_response or "")
+                model_parts = _build_model_message_parts(reply_text, final_data.get("images"))
                 new_messages_batch = [
                     user_message_for_history,
                     {"role": "model", "parts": model_parts},
@@ -292,11 +340,13 @@ def register_chat_routes(api_bp):
             )
 
         model_output = model_func(db_user_id, user_data)
-        model_parts = []
-        if isinstance(model_output, dict) and model_output.get("reply"):
-            model_parts.append({"text": str(model_output.get("reply"))})
-        elif not isinstance(model_output, dict):
-            model_parts.append({"text": str(model_output)})
+        if isinstance(model_output, dict):
+            model_parts = _build_model_message_parts(
+                str(model_output.get("reply") or ""),
+                model_output.get("images"),
+            )
+        else:
+            model_parts = _build_model_message_parts(str(model_output), None)
 
         new_messages_batch = [user_message_for_history, {"role": "model", "parts": model_parts}]
         append_messages_to_history(resolved_session_id, new_messages_batch, model_name, db_user_id)

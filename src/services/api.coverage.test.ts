@@ -92,12 +92,14 @@ describe('apiService coverage', () => {
                 .mockResolvedValueOnce({
                     done: false,
                     value: encoder.encode(
+                        'data: {"status":"generating_image","prompt":"demo skyline"}\n\n' +
                         'data: {"reply_part":"Hello","sources":["s1"],"sessionId":"abc"}\n\n',
                     ),
                 })
                 .mockResolvedValueOnce({
                     done: false,
                     value: encoder.encode(
+                        'data: {"images":["/images/demo.png"]}\n\n' +
                         'data: {"widget_update":{"kind":"status"}}\n\n' +
                         'data: {"reply":"Hello world","end_of_stream":true,"sessionSlug":"hello-world","thinkingTime":12}\n\n',
                     ),
@@ -119,11 +121,14 @@ describe('apiService coverage', () => {
 
         await apiService.chat(new FormData(), undefined, { onPart, onWidgetUpdate, onComplete });
 
+        expect(onPart).toHaveBeenCalledWith(expect.objectContaining({ status: 'generating_image' }));
         expect(onPart).toHaveBeenCalledWith(expect.objectContaining({ reply_part: 'Hello' }));
+        expect(onPart).toHaveBeenCalledWith(expect.objectContaining({ images: ['/images/demo.png'] }));
         expect(onWidgetUpdate).toHaveBeenCalledWith({ kind: 'status' });
         expect(onComplete).toHaveBeenCalledWith(
             expect.objectContaining({
                 reply: 'Hello world',
+                images: ['/images/demo.png'],
                 sessionId: 'abc',
                 sessionSlug: 'hello-world',
                 thinkingTime: 12,

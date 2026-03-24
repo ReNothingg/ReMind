@@ -1,56 +1,119 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiService } from '../../services/api';
 import { Utils } from '../../utils/utils';
 import ModalShell from '../UI/ModalShell';
+import CustomSelect from '../UI/CustomSelect';
 import { cn } from '../../utils/cn';
+
+const getSourceUserMessageElement = (messageElement) => {
+    if (!messageElement) {
+        return null;
+    }
+
+    let userMessageElement = messageElement.previousElementSibling;
+
+    while (userMessageElement && !userMessageElement.classList.contains('user-message')) {
+        userMessageElement = userMessageElement.previousElementSibling;
+    }
+
+    return userMessageElement;
+};
+
+const getSourcePrompt = (messageElement) => {
+    const userMessageElement = getSourceUserMessageElement(messageElement);
+    return (
+        userMessageElement?.dataset?.rawContent ||
+        userMessageElement?.textContent ||
+        ''
+    ).trim();
+};
+
+const normalizeModelName = (modelName) => {
+    if (!modelName) {
+        return '';
+    }
+
+    return modelName
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
 
 const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel, sessionId }) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [hasImageError, setHasImageError] = useState(false);
     const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
     const [imageStyle, setImageStyle] = useState('realistic');
-    const imageRef = useRef(null);
+    const [imageMeta, setImageMeta] = useState<{ width: number; height: number } | null>(null);
+    const imageRef = useRef<HTMLImageElement | null>(null);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (isOpen && imageSrc) {
             setCurrentImageSrc(imageSrc);
+            setHasImageError(false);
+            setImageMeta(null);
         }
     }, [isOpen, imageSrc]);
 
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+
         return () => {
             document.body.style.overflow = '';
         };
     }, [isOpen]);
 
     useEffect(() => {
-        const handleEscape = (e) => {
-            if (e.key === 'Escape' && isOpen) {
+        const handleEscape = (event) => {
+            if (event.key === 'Escape' && isOpen) {
                 onClose();
             }
         };
+
         document.addEventListener('keydown', handleEscape);
         return () => document.removeEventListener('keydown', handleEscape);
     }, [isOpen, onClose]);
 
+    const translate = (key, defaultValue, options = {}) => t(key, { defaultValue, ...options });
+    const sourcePrompt = getSourcePrompt(messageElement);
+    const styleOptions = [
+        { value: 'realistic', label: translate('imageLightbox.styles.realistic', 'Realistic') },
+        { value: 'cartoon', label: translate('imageLightbox.styles.cartoon', 'Cartoon') },
+        { value: 'anime', label: translate('imageLightbox.styles.anime', 'Anime') },
+        { value: 'oil_painting', label: translate('imageLightbox.styles.oilPainting', 'Oil painting') },
+        { value: 'watercolor', label: translate('imageLightbox.styles.watercolor', 'Watercolor') },
+        { value: 'pencil_sketch', label: translate('imageLightbox.styles.pencilSketch', 'Pencil sketch') },
+    ];
+    const activeStyleLabel =
+        styleOptions.find((option) => option.value === imageStyle)?.label || imageStyle;
+    const modelLabel =
+        currentModel === 'demo_image'
+            ? 'Image Demo'
+            : normalizeModelName(currentModel);
+
     const handleRegenerate = async () => {
-        if (!messageElement || isLoading) return;
-        let userMessageElement = messageElement.previousElementSibling;
-        while (userMessageElement && !userMessageElement.classList.contains('user-message')) {
-            userMessageElement = userMessageElement.previousElementSibling;
-        }
-        if (!userMessageElement) {
-            Utils.showPopupWarning?.('РќРµ РЅР°Р№РґРµРЅРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РґР»СЏ СЂРµРіРµРЅРµСЂР°С†РёРё.');
+        if (isLoading) {
             return;
         }
 
-        const userMessageText = userMessageElement.dataset?.rawContent || userMessageElement.textContent || '';
-        if (!userMessageText.trim()) {
-            Utils.showPopupWarning?.('РќРµС‚ С‚РµРєСЃС‚Р° РґР»СЏ СЂРµРіРµРЅРµСЂР°С†РёРё РёР·РѕР±СЂР°Р¶РµРЅРёСЏ.');
+        if (!getSourceUserMessageElement(messageElement)) {
+            Utils.showPopupWarning?.(
+                translate(
+                    'imageLightbox.errors.missingSourceMessage',
+                    'Could not find the original user message.'
+                )
+            );
+            return;
+        }
+
+        if (!sourcePrompt) {
+            Utils.showPopupWarning?.(
+                translate(
+                    'imageLightbox.errors.missingPrompt',
+                    'No source prompt was found for image regeneration.'
+                )
+            );
             return;
         }
 
@@ -58,22 +121,18 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
 
         try {
             const formData = new FormData();
-            formData.append('message', userMessageText);
-            formData.append('model', currentModel || 'mindart');
+            formData.append('message', sourcePrompt);
+            formData.append('model', currentModel || 'demo_image');
             formData.append('image_style', imageStyle);
             formData.append('regenerate_image_only', 'true');
             formData.append('user_id', sessionId || '');
 
-            const response = await fetch(`${apiService.baseURL}/chat`, {
-                method: 'POST',
-                body: formData
+            const result = await new Promise((resolve, reject) => {
+                apiService.chat(formData, undefined, {
+                    onComplete: resolve,
+                    onError: reject,
+                }).catch(reject);
             });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.statusText}`);
-            }
-
-            const result = await response.json();
 
             let imagePath = null;
             if (Array.isArray(result?.images)) {
@@ -83,18 +142,39 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
             }
 
             if (!imagePath) {
-                throw new Error('РЎРµСЂРІРµСЂ РЅРµ РІРµСЂРЅСѓР» РЅРѕРІРѕРµ РёР·РѕР±СЂР°Р¶РµРЅРёРµ.');
+                throw new Error(
+                    translate(
+                        'imageLightbox.errors.missingResult',
+                        'The model did not return a new image.'
+                    )
+                );
             }
 
-            const fullUrl = imagePath.startsWith('http') ? imagePath : `${apiService.baseURL}${imagePath}`;
+            const fullUrl = imagePath.startsWith('http')
+                ? imagePath
+                : `${apiService.baseURL}${imagePath}`;
+            const previousSrc = currentImageSrc;
+
             setCurrentImageSrc(fullUrl);
-            const imgEl = messageElement.querySelector('.attached-img');
-            if (imgEl) {
-                imgEl.src = fullUrl;
-            }
+            setHasImageError(false);
+            setImageMeta(null);
+
+            messageElement?.querySelectorAll('.attached-img').forEach((imgEl) => {
+                if (imgEl instanceof HTMLImageElement && (!previousSrc || imgEl.src === previousSrc)) {
+                    imgEl.src = fullUrl;
+                }
+            });
         } catch (error) {
             console.error('Failed to regenerate image:', error);
-            Utils.showPopupWarning?.(`РќРµ СѓРґР°Р»РѕСЃСЊ СЂРµРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РёР·РѕР±СЂР°Р¶РµРЅРёРµ: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            Utils.showPopupWarning?.(
+                translate(
+                    'imageLightbox.errors.regenerateFailed',
+                    'Could not regenerate the image: {{message}}',
+                    { message: errorMessage }
+                )
+            );
         } finally {
             setIsLoading(false);
         }
@@ -102,137 +182,283 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
 
     const handleDownload = async () => {
         if (!currentImageSrc) {
-            Utils.showPopupWarning?.('РќРµС‚ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ РґР»СЏ СЃРєР°С‡РёРІР°РЅРёСЏ.');
+            Utils.showPopupWarning?.(
+                translate(
+                    'imageLightbox.errors.missingImage',
+                    'No image is available for download.'
+                )
+            );
             return;
         }
 
         try {
             const response = await fetch(currentImageSrc);
-            if (!response.ok) throw new Error(`РћС€РёР±РєР° СЃРµС‚Рё: ${response.statusText}`);
+            if (!response.ok) {
+                throw new Error(response.statusText);
+            }
+
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
+
             a.style.display = 'none';
             a.href = url;
+
             let ext = 'jpg';
             try {
                 if (blob.type && blob.type.includes('/')) {
-                    ext = blob.type.split('/').pop();
+                    ext = blob.type.split('/').pop() || ext;
                 } else {
                     const parsed = new URL(currentImageSrc);
                     const pathExt = (parsed.pathname.split('.').pop() || '').toLowerCase();
-                    if (pathExt) ext = pathExt;
+                    if (pathExt) {
+                        ext = pathExt;
+                    }
                 }
-            } catch (_err) { }
+            } catch (_error) {
+            }
+
             a.download = `remind-art-${Date.now()}.${ext}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             a.remove();
         } catch (error) {
-            console.error('РћС€РёР±РєР° СЃРєР°С‡РёРІР°РЅРёСЏ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ:', error);
-            Utils.showPopupWarning?.('РќРµ СѓРґР°Р»РѕСЃСЊ СЃРєР°С‡Р°С‚СЊ РёР·РѕР±СЂР°Р¶РµРЅРёРµ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРѕС…СЂР°РЅРёС‚СЊ РµРіРѕ С‡РµСЂРµР· РєРѕРЅС‚РµРєСЃС‚РЅРѕРµ РјРµРЅСЋ (РїСЂР°РІС‹Р№ РєР»РёРє).');
+            console.error('Failed to download image:', error);
+
+            Utils.showPopupWarning?.(
+                translate(
+                    'imageLightbox.errors.downloadFailed',
+                    'Could not download the image. The original file will be opened in a new tab.'
+                )
+            );
             window.open(currentImageSrc, '_blank');
         }
     };
 
-    if (!isOpen) return null;
+    const handleImageLoad = () => {
+        setHasImageError(false);
+
+        if (!imageRef.current) {
+            setImageMeta(null);
+            return;
+        }
+
+        setImageMeta({
+            width: imageRef.current.naturalWidth,
+            height: imageRef.current.naturalHeight,
+        });
+    };
+
+    const handleImageError = () => {
+        setHasImageError(true);
+        setImageMeta(null);
+    };
+
+    if (!isOpen) {
+        return null;
+    }
 
     return (
         <ModalShell
-            className="image-lightbox active px-3 py-4 sm:px-5 sm:py-8"
-            contentClassName="w-full max-w-[min(92vw,1200px)] overflow-visible border-transparent bg-transparent shadow-none"
+            className="image-lightbox active px-3 py-4 sm:px-4 sm:py-6"
+            contentClassName="w-full max-w-[min(900px,calc(100vw-32px))] overflow-visible border-transparent bg-transparent shadow-none"
             onBackdropClick={onClose}
         >
-            <div className="lightbox-image-wrapper relative flex min-h-[50vh] items-center justify-center rounded-[28px] border border-white/10 bg-black/30 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm">
-                <img
-                    ref={imageRef}
-                    id="lightboxImage"
-                    className="lightbox-image max-h-[70vh] w-auto max-w-full rounded-[20px] object-contain"
-                    src={currentImageSrc}
-                    alt="Lightbox"
-                />
-                <div
-                    className={cn(
-                        'lightbox-loader absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/35 opacity-0 transition duration-200 ease-out',
-                        isLoading && 'visible opacity-100'
-                    )}
-                >
-                    <div className="spinner size-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
-                </div>
-            </div>
-
-            <button
-                className="lightbox-close-btn ui-icon-control absolute right-0 top-0 z-10 size-11 -translate-y-1/2 translate-x-1/2 rounded-full border-white/15 bg-black/45 text-white hover:bg-black/60"
-                onClick={onClose}
-                aria-label="Р—Р°РєСЂС‹С‚СЊ"
-                type="button"
+            <section
+                className="image-lightbox-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-label={translate(
+                    currentModel === 'demo_image'
+                        ? 'imageLightbox.demoTitle'
+                        : 'imageLightbox.title',
+                    currentModel === 'demo_image' ? 'ReMind demo image' : 'Image preview'
+                )}
             >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-            </button>
+                <div className="image-lightbox-header">
+                    <div className="image-lightbox-heading">
+                        <span className="ui-badge image-lightbox-badge">
+                            {translate('imageLightbox.badge', 'Preview')}
+                        </span>
+                        <div className="image-lightbox-copy">
+                            <h2 className="image-lightbox-title">
+                                {translate(
+                                    currentModel === 'demo_image'
+                                        ? 'imageLightbox.demoTitle'
+                                        : 'imageLightbox.title',
+                                    currentModel === 'demo_image'
+                                        ? 'ReMind demo image'
+                                        : 'Image preview'
+                                )}
+                            </h2>
+                            <p className="image-lightbox-subtitle">
+                                {translate(
+                                    'imageLightbox.subtitle',
+                                    'Review the full image, regenerate it in another style, or download the file.'
+                                )}
+                            </p>
+                        </div>
+                    </div>
 
-            <div className="lightbox-controls mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/35 p-4 text-white backdrop-blur-sm md:flex-row md:items-center md:justify-between">
-                <div className="lightbox-style-group">
-                    <div className="lightbox-select-wrapper">
-                        <select
-                            id="lightboxStyleSelect"
-                            value={imageStyle}
-                            onChange={(e) => setImageStyle(e.target.value)}
-                            disabled={isLoading}
-                            className="min-w-52 rounded-xl border border-white/15 bg-white/8 px-3 py-2.5 text-sm font-medium text-white outline-none transition duration-200 ease-out hover:bg-white/12 focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    <div className="image-lightbox-header-actions">
+                        <div className="image-lightbox-meta-cluster">
+                            {modelLabel && (
+                                <span className="ui-badge image-lightbox-meta-badge">
+                                    {modelLabel}
+                                </span>
+                            )}
+                            {imageMeta && (
+                                <span className="ui-badge image-lightbox-meta-badge">
+                                    {translate(
+                                        'imageLightbox.details.resolution',
+                                        '{{width}} x {{height}} px',
+                                        imageMeta
+                                    )}
+                                </span>
+                            )}
+                        </div>
+
+                        <button
+                            className="lightbox-close-btn ui-icon-control rounded-xl border-transparent bg-transparent text-muted hover:bg-interactive hover:text-foreground"
+                            onClick={onClose}
+                            aria-label={translate('imageLightbox.close', 'Close')}
+                            type="button"
                         >
-                            <option value="realistic">Р РµР°Р»РёСЃС‚РёС‡РЅС‹Р№</option>
-                            <option value="cartoon">РњСѓР»СЊС‚СЏС€РЅС‹Р№</option>
-                            <option value="anime">РђРЅРёРјРµ</option>
-                            <option value="oil_painting">РњР°СЃР»СЏРЅР°СЏ Р¶РёРІРѕРїРёСЃСЊ</option>
-                            <option value="watercolor">РђРєРІР°СЂРµР»СЊ</option>
-                            <option value="pencil_sketch">РљР°СЂР°РЅРґР°С€РЅС‹Р№ РЅР°Р±СЂРѕСЃРѕРє</option>
-                        </select>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                <div className="lightbox-btn-group flex flex-col gap-2 sm:flex-row">
-                    <button
-                        id="lightboxRegenerateBtn"
-                        className={cn(
-                            'lightbox-btn inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition duration-200 ease-out',
-                            isLoading
-                                ? 'loading border-white/12 bg-white/8 text-white/70'
-                                : 'border-white/15 bg-white/10 text-white hover:bg-white/16'
+                <div className="lightbox-image-wrapper image-lightbox-stage">
+                    <div className="image-lightbox-stage-inner">
+                        <img
+                            ref={imageRef}
+                            id="lightboxImage"
+                            className={cn(
+                                'lightbox-image',
+                                hasImageError && 'opacity-0'
+                            )}
+                            src={currentImageSrc}
+                            alt={translate('imageLightbox.previewAlt', 'Image preview')}
+                            onLoad={handleImageLoad}
+                            onError={handleImageError}
+                        />
+
+                        {hasImageError && (
+                            <div className="image-lightbox-empty-state">
+                                <div className="image-lightbox-empty-card">
+                                    <div className="image-lightbox-empty-title">
+                                        {translate(
+                                            'imageLightbox.errors.previewTitle',
+                                            'Image preview unavailable'
+                                        )}
+                                    </div>
+                                    <div className="image-lightbox-empty-description">
+                                        {translate(
+                                            'imageLightbox.errors.previewDescription',
+                                            'Check the file path or regenerate the image.'
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                        onClick={handleRegenerate}
-                        disabled={isLoading}
-                        title="Р РµРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РёР·РѕР±СЂР°Р¶РµРЅРёРµ"
-                        type="button"
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                            <path d="M21 3v5h-5" />
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                            <path d="M3 21v-5h5" />
-                        </svg>
-                        <span>{isLoading ? 'Р“РµРЅРµСЂР°С†РёСЏ...' : 'Р РµРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ'}</span>
-                    </button>
-                    <button
-                        id="lightboxDownloadBtn"
-                        className="lightbox-btn inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 ease-out hover:bg-white/16"
-                        onClick={handleDownload}
-                        disabled={isLoading}
-                        title="РЎРєР°С‡Р°С‚СЊ РёР·РѕР±СЂР°Р¶РµРЅРёРµ"
-                        type="button"
-                    >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" x2="12" y1="15" y2="3" />
-                        </svg>
-                        <span>РЎРєР°С‡Р°С‚СЊ</span>
-                    </button>
+
+                        <div
+                            className={cn('lightbox-loader', isLoading && 'visible')}
+                            aria-hidden={!isLoading}
+                        >
+                            <div className="spinner size-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <div className="image-lightbox-footer">
+                    <div className="image-lightbox-context-card">
+                        <div className="image-lightbox-context-label">
+                            {translate('imageLightbox.promptLabel', 'Original prompt')}
+                        </div>
+                        <div className="image-lightbox-context-text">
+                            {sourcePrompt ||
+                                translate(
+                                    'imageLightbox.promptFallback',
+                                    'The original prompt is unavailable for this image.'
+                                )}
+                        </div>
+                        <div className="image-lightbox-context-meta">
+                            <span className="ui-badge image-lightbox-context-badge">
+                                {translate(
+                                    'imageLightbox.details.style',
+                                    'Style: {{style}}',
+                                    { style: activeStyleLabel }
+                                )}
+                            </span>
+                            {imageMeta && (
+                                <span className="ui-badge image-lightbox-context-badge">
+                                    {translate(
+                                        'imageLightbox.details.resolution',
+                                        '{{width}} x {{height}} px',
+                                        imageMeta
+                                    )}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="lightbox-controls image-lightbox-controls">
+                        <CustomSelect
+                            className="image-lightbox-style-select"
+                            label={translate('imageLightbox.styleLabel', 'Style')}
+                            value={imageStyle}
+                            onChange={setImageStyle}
+                            options={styleOptions}
+                            disabled={isLoading}
+                        />
+
+                        <div className="image-lightbox-actions">
+                            <button
+                                id="lightboxRegenerateBtn"
+                                className="lightbox-btn ui-button-secondary image-lightbox-action-button"
+                                onClick={handleRegenerate}
+                                disabled={isLoading}
+                                title={translate('imageLightbox.actions.regenerate', 'Regenerate')}
+                                type="button"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                                    <path d="M21 3v5h-5" />
+                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                                    <path d="M3 21v-5h5" />
+                                </svg>
+                                <span>
+                                    {isLoading
+                                        ? translate('imageLightbox.actions.regenerating', 'Generating...')
+                                        : translate('imageLightbox.actions.regenerate', 'Regenerate')}
+                                </span>
+                            </button>
+
+                            <button
+                                id="lightboxDownloadBtn"
+                                className="lightbox-btn ui-button-secondary image-lightbox-action-button"
+                                onClick={handleDownload}
+                                disabled={isLoading || !currentImageSrc}
+                                title={translate('imageLightbox.actions.download', 'Download')}
+                                type="button"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" x2="12" y1="15" y2="3" />
+                                </svg>
+                                <span>{translate('imageLightbox.actions.download', 'Download')}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </ModalShell>
     );
 };

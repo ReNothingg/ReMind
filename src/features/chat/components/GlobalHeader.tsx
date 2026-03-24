@@ -102,7 +102,7 @@ function ModelSelector({
                 aria-controls={isAuthenticated ? dropdownId : undefined}
             >
                 <span className="model-btn-name ui-toolbar-trigger-label">
-                    {isAuthenticated ? activeModel.name : 'Gemini'}
+                    {activeModel.name}
                 </span>
                 <svg
                     className={cn(
@@ -209,6 +209,12 @@ export default function GlobalHeader({
     };
     const models: ModelOption[] = [
         defaultModel,
+        {
+            id: 'demo_image',
+            name: 'Image Demo',
+            desc: t('models.demoImage.desc', { defaultValue: 'Always returns a generated demo image' }),
+            badge: t('models.demoImage.badge', { defaultValue: 'Demo' }),
+        },
         { id: 'echo', name: 'Echo', desc: t('models.echo.desc') },
     ];
 

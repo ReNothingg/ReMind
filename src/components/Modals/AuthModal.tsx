@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
@@ -6,6 +7,7 @@ import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
 
 const AuthModal = ({ onClose, initialView = 'login' }) => {
+    const { t } = useTranslation();
     const { login } = useAuth();
     const [isLoginView, setIsLoginView] = useState(initialView === 'login');
     const [isLoading, setIsLoading] = useState(false);
@@ -167,7 +169,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
             const res = await login(email, password, turnstileResponse);
             if (res.success) {
-                setMessage({ type: 'success', text: res.message || 'РЈСЃРїРµС€РЅС‹Р№ РІС…РѕРґ' });
+                setMessage({ type: 'success', text: res.message || t('authModal.messages.loginSuccess') });
                 try {
                     if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(loginTurnstileIdRef.current);
@@ -184,10 +186,10 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     }
                 } catch (_err) {
                 }
-                setMessage({ type: 'error', text: res.error || 'РћС€РёР±РєР° РІС…РѕРґР°' });
+                setMessage({ type: 'error', text: res.error || t('authModal.messages.loginError') });
             }
         } catch (_err) {
-            setMessage({ type: 'error', text: 'РћС€РёР±РєР° СЃРµС‚Рё РёР»Рё СЃРµСЂРІРµСЂР°' });
+            setMessage({ type: 'error', text: t('authModal.messages.requestError') });
         } finally {
             setIsLoading(false);
         }
@@ -196,19 +198,19 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const handleRegister = async (e) => {
         e.preventDefault();
         if (password !== confirmPassword) {
-            setMessage({ type: 'error', text: 'РџР°СЂРѕР»Рё РЅРµ СЃРѕРІРїР°РґР°СЋС‚' });
+            setMessage({ type: 'error', text: t('authModal.messages.passwordsMismatch') });
             return;
         }
         if (username.length > 100) {
-            setMessage({ type: 'error', text: 'РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ РґРѕР»Р¶РЅРѕ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ' });
+            setMessage({ type: 'error', text: t('authModal.messages.usernameTooLong') });
             return;
         }
         if (email.length > 100) {
-            setMessage({ type: 'error', text: 'Email РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ' });
+            setMessage({ type: 'error', text: t('authModal.messages.emailTooLong') });
             return;
         }
         if (password.length > 100) {
-            setMessage({ type: 'error', text: 'РџР°СЂРѕР»СЊ РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 100 СЃРёРјРІРѕР»РѕРІ' });
+            setMessage({ type: 'error', text: t('authModal.messages.passwordTooLong') });
             return;
         }
 
@@ -227,7 +229,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
             const res = await authService.register(username, email, password, turnstileResponse);
             if (res.success) {
-                setMessage({ type: 'success', text: 'Р РµРіРёСЃС‚СЂР°С†РёСЏ СѓСЃРїРµС€РЅР°! РџСЂРѕРІРµСЂСЊС‚Рµ email РґР»СЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ.' });
+                setMessage({ type: 'success', text: res.message || t('authModal.messages.registerSuccess') });
                 try {
                     if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(registerTurnstileIdRef.current);
@@ -245,10 +247,10 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     }
                 } catch (_err) {
                 }
-                setMessage({ type: 'error', text: res.error || 'РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё' });
+                setMessage({ type: 'error', text: res.error || t('authModal.messages.registerError') });
             }
         } catch (_err) {
-            setMessage({ type: 'error', text: 'РћС€РёР±РєР° СЃРµС‚Рё РёР»Рё СЃРµСЂРІРµСЂР°' });
+            setMessage({ type: 'error', text: t('authModal.messages.requestError') });
         } finally {
             setIsLoading(false);
         }
@@ -272,23 +274,23 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             <button
                 className="auth-modal-close ui-icon-control absolute right-4 top-4 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                 onClick={onClose}
-                aria-label="Р—Р°РєСЂС‹С‚СЊ"
+                aria-label={t('translationPanel.close')}
                 type="button"
             >
-                Г—
+                x
             </button>
 
             {isLoginView ? (
                 <div className="auth-form space-y-5 pr-6 sm:pr-8">
                     <div className="space-y-1">
                         <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
-                            Р’С…РѕРґ РІ Р°РєРєР°СѓРЅС‚
+                            {t('authModal.loginTitle')}
                         </h2>
                     </div>
 
                     <form className="space-y-4" onSubmit={handleLogin}>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="loginEmail">Email:</label>
+                            <label className={fieldLabelClass} htmlFor="loginEmail">{t('authModal.fields.email')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="email"
@@ -299,7 +301,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             />
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="loginPassword">РџР°СЂРѕР»СЊ:</label>
+                            <label className={fieldLabelClass} htmlFor="loginPassword">{t('authModal.fields.password')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="password"
@@ -319,23 +321,23 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                         )}
 
                         <button type="submit" className={primaryButtonClass} disabled={isLoading}>
-                            {isLoading ? 'Р’С…РѕРґ...' : 'Р’РѕР№С‚Рё'}
+                            {isLoading ? t('authModal.actions.loginLoading') : t('auth.login')}
                         </button>
 
                         {googleAvailable && (
                             <div className="pt-1">
                                 <a className={secondaryAuthButtonClass} href={googleHref}>
                                     <i className="fab fa-google text-[18px] text-[#ea4335]" />
-                                    <span>Р’РѕР№С‚Рё СЃ Google</span>
+                                    <span>{t('authModal.actions.loginWithGoogle')}</span>
                                 </a>
                             </div>
                         )}
                     </form>
 
                     <p className="auth-switch-link text-center text-sm text-muted">
-                        РќРµС‚ Р°РєРєР°СѓРЅС‚Р°?{' '}
+                        {t('authModal.switch.noAccount')}{' '}
                         <a className="font-semibold text-[var(--color-text-link)] hover:underline" href="#" onClick={switchView}>
-                            Р—Р°СЂРµРіРёСЃС‚СЂРёСЂСѓР№С‚РµСЃСЊ
+                            {t('auth.register')}
                         </a>
                     </p>
                 </div>
@@ -343,13 +345,13 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 <div className="auth-form space-y-5 pr-6 sm:pr-8">
                     <div className="space-y-1">
                         <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
-                            Р РµРіРёСЃС‚СЂР°С†РёСЏ
+                            {t('authModal.registerTitle')}
                         </h2>
                     </div>
 
                     <form className="space-y-4" onSubmit={handleRegister}>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regUsername">РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:</label>
+                            <label className={fieldLabelClass} htmlFor="regUsername">{t('authModal.fields.username')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="text"
@@ -361,7 +363,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             />
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regEmail">Email:</label>
+                            <label className={fieldLabelClass} htmlFor="regEmail">{t('authModal.fields.email')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="email"
@@ -373,7 +375,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             />
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regPassword">РџР°СЂРѕР»СЊ:</label>
+                            <label className={fieldLabelClass} htmlFor="regPassword">{t('authModal.fields.password')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="password"
@@ -386,7 +388,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             />
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regConfirm">РџРѕРІС‚РѕСЂРёС‚Рµ РїР°СЂРѕР»СЊ:</label>
+                            <label className={fieldLabelClass} htmlFor="regConfirm">{t('authModal.fields.confirmPassword')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="password"
@@ -407,23 +409,23 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                         )}
 
                         <button type="submit" className={primaryButtonClass} disabled={isLoading}>
-                            {isLoading ? 'Р РµРіРёСЃС‚СЂР°С†РёСЏ...' : 'Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊСЃСЏ'}
+                            {isLoading ? t('authModal.actions.registerLoading') : t('auth.register')}
                         </button>
 
                         {googleAvailable && (
                             <div className="pt-1">
                                 <a className={secondaryAuthButtonClass} href={googleHref}>
                                     <i className="fab fa-google text-[18px] text-[#ea4335]" />
-                                    <span>Р РµРіРёСЃС‚СЂР°С†РёСЏ СЃ Google</span>
+                                    <span>{t('authModal.actions.registerWithGoogle')}</span>
                                 </a>
                             </div>
                         )}
                     </form>
 
                     <p className="auth-switch-link text-center text-sm text-muted">
-                        РЈР¶Рµ РµСЃС‚СЊ Р°РєРєР°СѓРЅС‚?{' '}
+                        {t('authModal.switch.haveAccount')}{' '}
                         <a className="font-semibold text-[var(--color-text-link)] hover:underline" href="#" onClick={switchView}>
-                            Р’РѕР№РґРёС‚Рµ
+                            {t('auth.login')}
                         </a>
                     </p>
                 </div>
