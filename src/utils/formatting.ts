@@ -1,7 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
-import 'prismjs/plugins/line-numbers/prism-line-numbers'; // Import CSS for this too if needed
+import 'prismjs/plugins/line-numbers/prism-line-numbers'; 
 import katex from 'katex';
 
 export const escapeHtml = (unsafe) => {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export interface SessionSummary {
     session_id: string;
@@ -18,6 +18,35 @@ interface ListSessionsResponse {
 interface UseSessionListOptions {
     isAuthenticated: boolean;
     allowGuestChatsSave: boolean;
+}
+
+const GUEST_SESSIONS_KEY = 'guest_chat_history_ids';
+
+function readGuestSessionIds(): string[] {
+    try {
+        const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return [...new Set(parsed.filter((value): value is string => typeof value === 'string' && value.length > 0))];
+    } catch {
+        return [];
+    }
+}
+
+function orderGuestSessions(sessions: SessionSummary[], guestIds: string[]): SessionSummary[] {
+    if (guestIds.length === 0) {
+        return sessions;
+    }
+
+    const byId = new Map(sessions.map((session) => [session.session_id, session]));
+    const ordered = guestIds
+        .map((id) => byId.get(id))
+        .filter((session): session is SessionSummary => Boolean(session));
+    const remaining = sessions.filter((session) => !guestIds.includes(session.session_id));
+
+    return [...ordered, ...remaining];
 }
 
 function getGuestSessionTokens(): Record<string, string> {
@@ -82,38 +111,60 @@ async function loadAllPages(idsQuery = ''): Promise<SessionSummary[]> {
 
 export function useSessionList({ isAuthenticated, allowGuestChatsSave }: UseSessionListOptions) {
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
+    const refreshRequestIdRef = useRef(0);
 
     const refreshSessions = useCallback(async () => {
+        const requestId = refreshRequestIdRef.current + 1;
+        refreshRequestIdRef.current = requestId;
+
         try {
             if (isAuthenticated) {
                 const userSessions = await loadAllPages();
-                setSessions(userSessions);
+                if (refreshRequestIdRef.current === requestId) {
+                    setSessions(userSessions);
+                }
                 return;
             }
 
             if (!allowGuestChatsSave) {
-                setSessions([]);
+                if (refreshRequestIdRef.current === requestId) {
+                    setSessions([]);
+                }
                 return;
             }
 
             try {
-                const guestIds = JSON.parse(localStorage.getItem('guest_chat_history_ids') || '[]') as string[];
+                const guestIds = readGuestSessionIds();
                 if (guestIds.length === 0) {
-                    setSessions([]);
+                    if (refreshRequestIdRef.current === requestId) {
+                        setSessions([]);
+                    }
                     return;
                 }
                 const query = guestIds.join(',');
                 const guestSessions = await loadAllPages(query);
-                setSessions(guestSessions);
+                if (refreshRequestIdRef.current === requestId) {
+                    setSessions(orderGuestSessions(guestSessions, guestIds));
+                }
             } catch (error) {
                 console.warn('Failed to load guest sessions', error);
-                setSessions([]);
+                if (refreshRequestIdRef.current === requestId) {
+                    setSessions([]);
+                }
             }
         } catch (error) {
             console.error('Failed to load sessions', error);
-            setSessions([]);
+            if (refreshRequestIdRef.current === requestId) {
+                setSessions([]);
+            }
         }
     }, [allowGuestChatsSave, isAuthenticated]);
+
+    const removeSession = useCallback((sessionId: string) => {
+        setSessions((previousSessions) =>
+            previousSessions.filter((session) => session.session_id !== sessionId)
+        );
+    }, []);
 
     const onSessionRenamed = useCallback((sessionId: string, newTitle: string) => {
         setSessions((previousSessions) =>
@@ -126,6 +177,7 @@ export function useSessionList({ isAuthenticated, allowGuestChatsSave }: UseSess
     return {
         sessions,
         refreshSessions,
+        removeSession,
         onSessionRenamed,
     };
 }

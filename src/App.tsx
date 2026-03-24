@@ -76,7 +76,7 @@ const MainLayout = () => {
         disableSharing,
     } = useChat();
 
-    const { sessions, refreshSessions, onSessionRenamed } = useSessionList({
+    const { sessions, refreshSessions, removeSession, onSessionRenamed } = useSessionList({
         isAuthenticated,
         allowGuestChatsSave: ALLOW_GUEST_CHATS_SAVE,
     });
@@ -154,11 +154,16 @@ const MainLayout = () => {
         const wasLoading = wasLoadingRef.current;
         wasLoadingRef.current = isLoading;
 
-        if (wasLoading && !isLoading && settings.notifyOnThinkingDone && notifyOnDoneRef.current) {
-            notifyThinkingDone();
-            notifyOnDoneRef.current = false;
+        if (wasLoading && !isLoading) {
+            if (settings.notifyOnThinkingDone && notifyOnDoneRef.current) {
+                notifyThinkingDone();
+                notifyOnDoneRef.current = false;
+            }
+            if (currentSessionId) {
+                setTimeout(() => refreshSessions(), 0);
+            }
         }
-    }, [isLoading, settings.notifyOnThinkingDone]);
+    }, [currentSessionId, isLoading, refreshSessions, settings.notifyOnThinkingDone]);
 
     useEffect(() => {
         const handleRouteChange = () => {
@@ -166,13 +171,13 @@ const MainLayout = () => {
             if (path.startsWith('/c/')) {
                 const slug = decodeURIComponent(path.split('/c/')[1]);
                 if (slug) {
-                    loadSession(slug);
+                    loadSession(slug, { historyMode: 'replace' });
                 } else {
-                    clearChat();
+                    clearChat({ historyMode: 'none' });
                 }
                 return;
             }
-            clearChat();
+            clearChat({ historyMode: 'none' });
         };
 
         handleRouteChange();
@@ -185,7 +190,7 @@ const MainLayout = () => {
         (text: string, files: File[], options = {}) => {
             const path = window.location.pathname;
             if (path === '/' || !path.startsWith('/c/')) {
-                clearChat();
+                clearChat({ historyMode: 'none' });
             }
 
             notifyOnDoneRef.current = true;
@@ -339,15 +344,18 @@ const MainLayout = () => {
 
     const handleSelectSession = useCallback(
         (id: string) => {
-            loadSession(id);
+            if (id === currentSessionId && window.location.pathname.startsWith('/c/')) {
+                setMobileRailOpen(false);
+                return;
+            }
+            loadSession(id, { historyMode: 'push' });
             setMobileRailOpen(false);
         },
-        [loadSession]
+        [currentSessionId, loadSession]
     );
 
     const handleNewChat = useCallback(() => {
-        clearChat();
-        window.history.pushState({}, '', '/');
+        clearChat({ historyMode: 'push' });
         setMobileRailOpen(false);
     }, [clearChat]);
 
@@ -360,10 +368,15 @@ const MainLayout = () => {
                     isExpanded={isRailExpanded}
                     onToggle={handleRailToggle}
                     sessions={sessions}
+                    currentSessionId={currentSessionId}
                     onSelectSession={handleSelectSession}
                     onNewChat={handleNewChat}
                     onSettingsClick={() => setSettingsOpen(true)}
-                    onSessionDeleted={() => {
+                    onSessionDeleted={(sessionId) => {
+                        removeSession(sessionId);
+                        if (sessionId === currentSessionId) {
+                            clearChat({ historyMode: 'replace' });
+                        }
                         refreshSessions();
                     }}
                     onSessionRenamed={onSessionRenamed}

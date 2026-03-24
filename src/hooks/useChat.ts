@@ -1,9 +1,29 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
+
+const DEFAULT_SESSION_ACCESS = {
+    isPublic: false,
+    isOwner: false,
+    publicId: null,
+    shareUrl: null,
+    readOnly: false
+};
+
+const SLUG_INDEX_KEY = 'session_slug_index';
+const SESSION_ID_KEY = 'session_id';
+const SESSION_SLUG_KEY = 'session_slug';
+const GUEST_SESSIONS_KEY = 'guest_chat_history_ids';
+const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
+
+function createDefaultSessionAccess() {
+    return { ...DEFAULT_SESSION_ACCESS };
+}
+
 function generateSessionId() {
     return crypto.randomUUID();
 }
+
 function slugify(text) {
     return (text || '').toString()
         .normalize('NFKD')
@@ -15,29 +35,82 @@ function slugify(text) {
         .replace(/^-+|-+$/g, '');
 }
 
+function normalizeHistoryMessage(msg) {
+    const parts = msg.parts || [];
+    let text = parts.find((part) => part.text)?.text || '';
+
+    if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed.url_path || parsed.original_name || parsed.mime_type) {
+                text = '';
+            }
+        } catch {
+        }
+    }
+
+    text = text.replace(/---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi, '');
+    text = text.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
+
+    const images = parts.filter((part) => part.image).map((part) => part.image.url_path || part.image) || [];
+    const files = parts.filter((part) => part.file).map((part) => ({
+        file: {
+            url_path: part.file.url_path || part.file,
+            original_name: part.file.original_name || part.file.name || 'file',
+            mime_type: part.file.mime_type || 'application/octet-stream',
+            size: part.file.size || 0
+        }
+    })) || [];
+
+    return {
+        id: msg.id || Math.random().toString(36).substr(2, 9),
+        role: msg.role,
+        content: text.trim(),
+        images,
+        files,
+        timestamp: msg.timestamp,
+        parts
+    };
+}
+
 export const useChat = () => {
     const [history, setHistory] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
-    const [sessionAccess, setSessionAccess] = useState({
-        isPublic: false,
-        isOwner: false,
-        publicId: null,
-        shareUrl: null,
-        readOnly: false
-    });
+    const [sessionAccess, setSessionAccess] = useState(createDefaultSessionAccess);
     const [isReadOnly, setIsReadOnly] = useState(false);
     const abortControllerRef = useRef(null);
     const messageVariantsRef = useRef(new Map());
     const slugIndexCacheRef = useRef({});
+    const sessionLoadRequestIdRef = useRef(0);
+    const activeChatRequestIdRef = useRef(0);
+    const currentSessionIdRef = useRef(null);
+    const currentSessionSlugRef = useRef(null);
 
-    const SLUG_INDEX_KEY = 'session_slug_index';
-    const SESSION_ID_KEY = 'session_id';
-    const SESSION_SLUG_KEY = 'session_slug';
-    const GUEST_SESSIONS_KEY = 'guest_chat_history_ids';
-    const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
-    const loadSlugIndex = useCallback(async () => {
+    const updateSessionIdentity = useCallback((sessionId, slug) => {
+        currentSessionIdRef.current = sessionId;
+        currentSessionSlugRef.current = slug;
+        setCurrentSessionId(sessionId);
+        setCurrentSessionSlug(slug);
+    }, []);
+
+    const syncBrowserPath = useCallback((path, historyMode = 'replace') => {
+        if (historyMode === 'none' || !path) return;
+
+        if (historyMode === 'push') {
+            if (window.location.pathname !== path) {
+                window.history.pushState({}, '', path);
+            }
+            return;
+        }
+
+        if (window.location.pathname !== path) {
+            window.history.replaceState({}, '', path);
+        }
+    }, []);
+
+    const loadSlugIndex = useCallback(() => {
         try {
             const raw = localStorage.getItem(SLUG_INDEX_KEY);
             slugIndexCacheRef.current = raw ? JSON.parse(raw) : {};
@@ -57,29 +130,54 @@ export const useChat = () => {
         slugIndexCacheRef.current[slug] = sessionId;
         saveSlugIndex();
     }, [saveSlugIndex]);
-    const sessionIdToSlug = useCallback((sessionId) => {
-        const knownSlug = Object.keys(slugIndexCacheRef.current).find(
-            slug => slugIndexCacheRef.current[slug] === sessionId
-        );
-        if (knownSlug) return knownSlug;
-        return slugify(sessionId);
-    }, []);
+    const sessionIdToSlug = useCallback((sessionId) => slugify(sessionId), []);
     const slugToSessionId = useCallback((slug) => {
         const indexed = slugIndexCacheRef.current[slug];
         if (indexed) return indexed;
         return slug;
     }, []);
+
+    const syncPersistedCurrentSession = useCallback((sessionId, slug) => {
+        if (!ALLOW_GUEST_CHATS_SAVE) return;
+        try {
+            if (sessionId) {
+                localStorage.setItem(SESSION_ID_KEY, sessionId);
+            } else {
+                localStorage.removeItem(SESSION_ID_KEY);
+            }
+
+            if (slug) {
+                localStorage.setItem(SESSION_SLUG_KEY, slug);
+            } else {
+                localStorage.removeItem(SESSION_SLUG_KEY);
+            }
+        } catch (error) {
+            console.warn('Failed to persist current session', error);
+        }
+    }, []);
+
     const addGuestSession = useCallback((sessionId) => {
         if (!ALLOW_GUEST_CHATS_SAVE || !sessionId) return;
         try {
             const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
-            let list = raw ? JSON.parse(raw) : [];
-            list = list.filter(id => id !== sessionId);
-            list.unshift(sessionId);
-            if (list.length > 50) list.length = 50;
-            localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(list));
+            const parsed = raw ? JSON.parse(raw) : [];
+            const list = Array.isArray(parsed) ? parsed : [];
+            const nextList = [sessionId, ...list.filter((id) => id !== sessionId)].slice(0, 50);
+            localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(nextList));
         } catch (e) {
-            console.warn("Guest session storage error", e);
+            console.warn('Guest session storage error', e);
+        }
+    }, []);
+
+    const removeGuestSession = useCallback((sessionId) => {
+        if (!ALLOW_GUEST_CHATS_SAVE || !sessionId) return;
+        try {
+            const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
+            const parsed = raw ? JSON.parse(raw) : [];
+            const list = Array.isArray(parsed) ? parsed : [];
+            localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(list.filter((id) => id !== sessionId)));
+        } catch (e) {
+            console.warn('Guest session removal error', e);
         }
     }, []);
 
@@ -91,56 +189,111 @@ export const useChat = () => {
             tokens[sessionId] = token;
             localStorage.setItem(GUEST_SESSION_TOKENS_KEY, JSON.stringify(tokens));
         } catch (e) {
-            console.warn("Guest session token storage error", e);
+            console.warn('Guest session token storage error', e);
         }
     }, []);
+
+    const removeGuestSessionToken = useCallback((sessionId) => {
+        if (!ALLOW_GUEST_CHATS_SAVE || !sessionId) return;
+        try {
+            const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
+            const tokens = raw ? JSON.parse(raw) : {};
+            if (!tokens || typeof tokens !== 'object' || !(sessionId in tokens)) {
+                return;
+            }
+            delete tokens[sessionId];
+            localStorage.setItem(GUEST_SESSION_TOKENS_KEY, JSON.stringify(tokens));
+        } catch (e) {
+            console.warn('Guest session token removal error', e);
+        }
+    }, []);
+
     useEffect(() => {
         loadSlugIndex();
     }, [loadSlugIndex]);
-    const loadSession = useCallback(async (sessionIdOrSlug) => {
+
+    const resetConversationState = useCallback(() => {
+        setHistory([]);
+        updateSessionIdentity(null, null);
+        setSessionAccess(createDefaultSessionAccess());
+        setIsReadOnly(false);
+        messageVariantsRef.current.clear();
+    }, [updateSessionIdentity]);
+
+    const abortActiveChatRequest = useCallback((invalidate = false) => {
+        if (invalidate) {
+            activeChatRequestIdRef.current += 1;
+        }
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+    }, []);
+
+    const syncSessionIdentity = useCallback((sessionId, slug, options = {}) => {
+        if (!sessionId) return;
+
+        const {
+            previousSessionId = null,
+            historyMode = 'replace',
+            persistToGuestHistory = true
+        } = options;
+
+        updateSessionIdentity(sessionId, slug);
+        registerSessionSlug(sessionId, slug);
+        syncPersistedCurrentSession(sessionId, slug);
+
+        if (persistToGuestHistory) {
+            addGuestSession(sessionId);
+            if (previousSessionId && previousSessionId !== sessionId) {
+                removeGuestSession(previousSessionId);
+                removeGuestSessionToken(previousSessionId);
+            }
+        }
+
+        syncBrowserPath(`/c/${encodeURIComponent(slug)}`, historyMode);
+    }, [
+        addGuestSession,
+        registerSessionSlug,
+        removeGuestSession,
+        removeGuestSessionToken,
+        syncBrowserPath,
+        syncPersistedCurrentSession,
+        updateSessionIdentity
+    ]);
+
+    useEffect(() => () => {
+        sessionLoadRequestIdRef.current += 1;
+        abortActiveChatRequest(true);
+    }, [abortActiveChatRequest]);
+
+    const loadSession = useCallback(async (sessionIdOrSlug, options = {}) => {
+        const { historyMode = 'replace', clearHistory = true } = options;
+        const loadRequestId = sessionLoadRequestIdRef.current + 1;
+        sessionLoadRequestIdRef.current = loadRequestId;
+
+        abortActiveChatRequest(true);
         setIsLoading(true);
+
+        if (clearHistory) {
+            setHistory([]);
+            setSessionAccess(createDefaultSessionAccess());
+            setIsReadOnly(false);
+            messageVariantsRef.current.clear();
+        }
+
         try {
-            const sessionId = slugToSessionId(sessionIdOrSlug);
-            const data = await apiService.getSessionHistory(sessionId);
-            if (data && data.history) {
-                const normalized = data.history.map(msg => {
-                    const parts = msg.parts || [];
-                    let text = parts.find(p => p.text)?.text || '';
-                    if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
-                        try {
-                            const parsed = JSON.parse(text);
-                            if (parsed.url_path || parsed.original_name || parsed.mime_type) {
-                                text = '';
-                            }
-                        } catch {
-                        }
-                    }
-                    text = text.replace(/---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi, '');
-                    text = text.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
+            const requestedSessionId = slugToSessionId(sessionIdOrSlug);
+            const data = await apiService.getSessionHistory(requestedSessionId);
 
-                    const images = parts.filter(p => p.image).map(p => p.image.url_path || p.image) || [];
-                    const files = parts.filter(p => p.file).map(p => ({
-                        file: {
-                            url_path: p.file.url_path || p.file,
-                            original_name: p.file.original_name || p.file.name || 'file',
-                            mime_type: p.file.mime_type || 'application/octet-stream',
-                            size: p.file.size || 0
-                        }
-                    })) || [];
+            if (sessionLoadRequestIdRef.current !== loadRequestId) {
+                return;
+            }
 
-                    return {
-                        id: msg.id || Math.random().toString(36).substr(2, 9),
-                        role: msg.role,
-                        content: text.trim(),
-                        images,
-                        files,
-                        timestamp: msg.timestamp,
-                        parts: parts
-                    };
-                });
-                setHistory(normalized);
-                const resolvedSessionId = data.session_id || sessionId;
-
+            if (data && Array.isArray(data.history)) {
+                const normalized = data.history.map(normalizeHistoryMessage);
+                const resolvedSessionId = data.session_id || requestedSessionId;
+                const slug = data.public_id || sessionIdToSlug(resolvedSessionId);
                 const accessState = {
                     isPublic: !!data.is_public,
                     isOwner: !!data.is_owner,
@@ -149,73 +302,49 @@ export const useChat = () => {
                     readOnly: !!(data.read_only || (data.is_public && !data.is_owner))
                 };
 
+                setHistory(normalized);
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
-
-                setCurrentSessionId(resolvedSessionId);
-                const slug = data.public_id || sessionIdToSlug(resolvedSessionId);
-                setCurrentSessionSlug(slug);
-                registerSessionSlug(resolvedSessionId, slug);
-                const path = window.location.pathname;
-                if (!path.startsWith(`/c/${encodeURIComponent(slug)}`)) {
-                    window.history.replaceState({}, '', `/c/${encodeURIComponent(slug)}`);
-                }
-                if (ALLOW_GUEST_CHATS_SAVE) {
-                    localStorage.setItem(SESSION_ID_KEY, sessionId);
-                    localStorage.setItem(SESSION_SLUG_KEY, slug);
-                    addGuestSession(sessionId);
-                }
-            } else {
-                setHistory([]);
-                setSessionAccess({
-                    isPublic: false,
-                    isOwner: false,
-                    publicId: null,
-                    shareUrl: null,
-                    readOnly: false
-                });
-                setIsReadOnly(false);
+                syncSessionIdentity(resolvedSessionId, slug, { historyMode });
+                return;
             }
+
+            resetConversationState();
+            syncPersistedCurrentSession(null, null);
+            syncBrowserPath('/', 'replace');
         } catch (e) {
-            console.error("Failed to load session", e);
-            setHistory([]);
-            setSessionAccess({
-                isPublic: false,
-                isOwner: false,
-                publicId: null,
-                shareUrl: null,
-                readOnly: false
-            });
-            setIsReadOnly(false);
+            if (sessionLoadRequestIdRef.current !== loadRequestId) {
+                return;
+            }
+
+            console.error('Failed to load session', e);
+            resetConversationState();
+            syncPersistedCurrentSession(null, null);
+            syncBrowserPath('/', 'replace');
         } finally {
-            setIsLoading(false);
+            if (sessionLoadRequestIdRef.current === loadRequestId) {
+                setIsLoading(false);
+            }
         }
-    }, [slugToSessionId, sessionIdToSlug, addGuestSession]);
-    const clearChat = useCallback(() => {
-        setHistory([]);
-        setCurrentSessionId(null);
-        setCurrentSessionSlug(null);
-        setSessionAccess({
-            isPublic: false,
-            isOwner: false,
-            publicId: null,
-            shareUrl: null,
-            readOnly: false
-        });
-        setIsReadOnly(false);
-        messageVariantsRef.current.clear();
-        if (window.location.pathname !== '/') {
-            window.history.pushState({}, '', '/');
-        }
-        if (!ALLOW_GUEST_CHATS_SAVE) return;
-        try {
-            const newSessionId = generateSessionId();
-            localStorage.setItem(SESSION_ID_KEY, newSessionId);
-            addGuestSession(newSessionId);
-        } catch (error) {
-            console.warn('Failed to create new guest session', error);
-        }
-    }, [addGuestSession]);
+    }, [
+        abortActiveChatRequest,
+        resetConversationState,
+        sessionIdToSlug,
+        slugToSessionId,
+        syncBrowserPath,
+        syncPersistedCurrentSession,
+        syncSessionIdentity
+    ]);
+
+    const clearChat = useCallback((options = {}) => {
+        const { historyMode = 'push' } = options;
+        sessionLoadRequestIdRef.current += 1;
+        abortActiveChatRequest(true);
+        resetConversationState();
+        syncPersistedCurrentSession(null, null);
+        setIsLoading(false);
+        syncBrowserPath('/', historyMode);
+    }, [abortActiveChatRequest, resetConversationState, syncBrowserPath, syncPersistedCurrentSession]);
     const buildHistoryForAPI = useCallback((untilIndex = null) => {
         const historyArray = [];
         const stopIndex = untilIndex !== null ? untilIndex : history.length;
@@ -320,31 +449,38 @@ export const useChat = () => {
     }, [history]);
     const sendMessage = useCallback(async (text, files = [], model = 'gemini', options = {}) => {
         const { webSearch = false, censorship = false, ...metadata } = options;
-        if (!text.trim() && files.length === 0) return;
+        if ((!text || !text.trim()) && files.length === 0) return;
         if (isReadOnly) {
             console.warn('Attempt to send message in read-only chat is blocked.');
             return;
         }
 
+        sessionLoadRequestIdRef.current += 1;
+
+        const chatRequestId = activeChatRequestIdRef.current + 1;
+        activeChatRequestIdRef.current = chatRequestId;
+
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
         setIsLoading(true);
-        let sessionId = currentSessionId;
+        let sessionId = currentSessionIdRef.current;
         const path = window.location.pathname;
         const isNewChat = path === '/' || !path.startsWith('/c/');
 
         if (!sessionId || isNewChat) {
             sessionId = generateSessionId();
             const slug = sessionIdToSlug(sessionId);
-            setCurrentSessionId(sessionId);
-            setCurrentSessionSlug(slug);
+            updateSessionIdentity(sessionId, slug);
+            setSessionAccess(createDefaultSessionAccess());
+            setIsReadOnly(false);
             registerSessionSlug(sessionId, slug);
+            syncPersistedCurrentSession(sessionId, slug);
+            addGuestSession(sessionId);
 
-            if (ALLOW_GUEST_CHATS_SAVE) {
-                localStorage.setItem(SESSION_ID_KEY, sessionId);
-                localStorage.setItem(SESSION_SLUG_KEY, slug);
-                addGuestSession(sessionId);
-            }
             if (isNewChat) {
-                window.history.pushState({}, '', `/c/${encodeURIComponent(slug)}`);
+                syncBrowserPath(`/c/${encodeURIComponent(slug)}`, 'push');
             }
         }
         const userMsg = {
@@ -364,8 +500,6 @@ export const useChat = () => {
         };
 
         setHistory(prev => [...prev, userMsg, aiMsg]);
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
 
         const formData = new FormData();
         formData.append('message', text);
@@ -428,7 +562,7 @@ export const useChat = () => {
         try {
             await apiService.chat(formData, abortControllerRef.current.signal, {
                 onPart: (data) => {
-                    if (!data) return;
+                    if (activeChatRequestIdRef.current !== chatRequestId || !data) return;
                     if (data.status === 'generating_image') {
                         setHistory(prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
@@ -479,44 +613,42 @@ export const useChat = () => {
                     }
                 },
                 onWidgetUpdate: (widgetData) => {
-                    if (widgetData?.tag) {
-                        setHistory(prev => prev.map(msg => {
-                            if (msg.id === aiMsgId) {
-                                return {
-                                    ...msg,
-                                    widgetUpdate: {
-                                        tag: widgetData.tag,
-                                        state: widgetData.state
-                                    }
-                                };
-                            }
-                            return msg;
-                        }));
+                    if (activeChatRequestIdRef.current !== chatRequestId || !widgetData?.tag) {
+                        return;
                     }
+                    setHistory(prev => prev.map(msg => {
+                        if (msg.id === aiMsgId) {
+                            return {
+                                ...msg,
+                                widgetUpdate: {
+                                    tag: widgetData.tag,
+                                    state: widgetData.state
+                                }
+                            };
+                        }
+                        return msg;
+                    }));
                 },
                 onComplete: (finalData) => {
+                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                        return;
+                    }
                     if (finalData?.aborted) {
                         fullReply += '\n\n_[Генерация остановлена]_';
                     }
 
-                    if (finalData?.sessionId && finalData.sessionId !== sessionId) {
-                        const newSessionId = finalData.sessionId;
-                        const slug = finalData.sessionSlug || sessionIdToSlug(newSessionId);
-                        setCurrentSessionId(newSessionId);
-                        setCurrentSessionSlug(slug);
-                        registerSessionSlug(newSessionId, slug);
+                    const resolvedSessionId = finalData?.sessionId || sessionId;
+                    const resolvedSlug = finalData?.sessionSlug
+                        || (resolvedSessionId === currentSessionIdRef.current ? currentSessionSlugRef.current : null)
+                        || sessionIdToSlug(resolvedSessionId);
 
-                        if (ALLOW_GUEST_CHATS_SAVE) {
-                            localStorage.setItem(SESSION_ID_KEY, newSessionId);
-                            localStorage.setItem(SESSION_SLUG_KEY, slug);
-                            addGuestSession(newSessionId);
-                        }
-                        window.history.pushState({}, '', `/c/${encodeURIComponent(slug)}`);
-                    }
+                    syncSessionIdentity(resolvedSessionId, resolvedSlug, {
+                        previousSessionId: sessionId,
+                        historyMode: 'replace'
+                    });
 
                     if (finalData?.session_token) {
-                        const tokenSessionId = finalData.sessionId || sessionId;
-                        storeGuestSessionToken(tokenSessionId, finalData.session_token);
+                        storeGuestSessionToken(resolvedSessionId, finalData.session_token);
                     }
 
                     const finalContent = finalData.reply || fullReply;
@@ -542,10 +674,14 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
+                    abortControllerRef.current = null;
                     setIsLoading(false);
                 },
                 onError: (err) => {
-                    console.error("Chat error", err);
+                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                        return;
+                    }
+                    console.error('Chat error', err);
                     setHistory(prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -553,20 +689,37 @@ export const useChat = () => {
                                 isLoading: false,
                                 isGeneratingImage: false,
                                 isError: true,
-                                content: fullReply + `\n\n[Ошибка: ${err?.message || 'неизвестная ошибка'}]`
+                                content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
                             };
                         }
                         return msg;
                     }));
+                    abortControllerRef.current = null;
                     setIsLoading(false);
                 }
             });
         } catch (e) {
+            if (activeChatRequestIdRef.current !== chatRequestId) {
+                return;
+            }
             if (e.name !== 'AbortError') {
+                abortControllerRef.current = null;
                 setIsLoading(false);
             }
         }
-    }, [currentSessionId, history, sessionIdToSlug, registerSessionSlug, addGuestSession, buildHistoryForAPI]);
+    }, [
+        addGuestSession,
+        buildHistoryForAPI,
+        history,
+        isReadOnly,
+        registerSessionSlug,
+        sessionIdToSlug,
+        storeGuestSessionToken,
+        syncBrowserPath,
+        syncPersistedCurrentSession,
+        syncSessionIdentity,
+        updateSessionIdentity
+    ]);
 
     const stopGeneration = useCallback(() => {
         if (abortControllerRef.current) {
@@ -586,6 +739,14 @@ export const useChat = () => {
         const userMessage = history[userIndex];
         const historyBefore = buildHistoryForAPI(userIndex);
 
+        sessionLoadRequestIdRef.current += 1;
+
+        const chatRequestId = activeChatRequestIdRef.current + 1;
+        activeChatRequestIdRef.current = chatRequestId;
+
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        abortControllerRef.current = new AbortController();
+
         setIsLoading(true);
         setHistory(prev => prev.map(msg => {
             if (msg.id === aiMessageId) {
@@ -595,13 +756,10 @@ export const useChat = () => {
         }));
         setHistory(prev => prev.slice(0, aiIndex + 1));
 
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
-
         const formData = new FormData();
         formData.append('message', userMessage.content);
         formData.append('model', model);
-        formData.append('user_id', currentSessionId || generateSessionId());
+        formData.append('user_id', currentSessionIdRef.current || generateSessionId());
         formData.append('history', JSON.stringify(historyBefore));
 
         let fullReply = '';
@@ -609,33 +767,38 @@ export const useChat = () => {
         try {
             await apiService.chat(formData, abortControllerRef.current.signal, {
                 onPart: (data) => {
-                    if (data.reply_part) {
-                        fullReply += data.reply_part;
-                        setHistory(prev => prev.map(msg => {
-                            if (msg.id === aiMessageId) {
-                                return { ...msg, content: fullReply, isLoading: true };
-                            }
-                            return msg;
-                        }));
+                    if (activeChatRequestIdRef.current !== chatRequestId || !data?.reply_part) {
+                        return;
                     }
+                    fullReply += data.reply_part;
+                    setHistory(prev => prev.map(msg => {
+                        if (msg.id === aiMessageId) {
+                            return { ...msg, content: fullReply, isLoading: true };
+                        }
+                        return msg;
+                    }));
                 },
                 onWidgetUpdate: (widgetData) => {
-                    if (widgetData?.tag) {
-                        setHistory(prev => prev.map(msg => {
-                            if (msg.id === aiMessageId) {
-                                return {
-                                    ...msg,
-                                    widgetUpdate: {
-                                        tag: widgetData.tag,
-                                        state: widgetData.state
-                                    }
-                                };
-                            }
-                            return msg;
-                        }));
+                    if (activeChatRequestIdRef.current !== chatRequestId || !widgetData?.tag) {
+                        return;
                     }
+                    setHistory(prev => prev.map(msg => {
+                        if (msg.id === aiMessageId) {
+                            return {
+                                ...msg,
+                                widgetUpdate: {
+                                    tag: widgetData.tag,
+                                    state: widgetData.state
+                                }
+                            };
+                        }
+                        return msg;
+                    }));
                 },
                 onComplete: (finalData) => {
+                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                        return;
+                    }
                     setHistory(prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             const newVariant = {
@@ -661,29 +824,38 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
+                    abortControllerRef.current = null;
                     setIsLoading(false);
                 },
                 onError: (err) => {
+                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                        return;
+                    }
                     setHistory(prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             return {
                                 ...msg,
                                 isLoading: false,
                                 isError: true,
-                                content: fullReply + `\n\n[Ошибка: ${err?.message || 'неизвестная ошибка'}]`
+                                content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
                             };
                         }
                         return msg;
                     }));
+                    abortControllerRef.current = null;
                     setIsLoading(false);
                 }
             });
         } catch (e) {
+            if (activeChatRequestIdRef.current !== chatRequestId) {
+                return;
+            }
             if (e.name !== 'AbortError') {
+                abortControllerRef.current = null;
                 setIsLoading(false);
             }
         }
-    }, [history, isLoading, currentSessionId, buildHistoryForAPI, isReadOnly]);
+    }, [history, isLoading, buildHistoryForAPI, isReadOnly]);
     const switchVariant = useCallback((aiMessageId, direction) => {
         setHistory(prev => {
             const aiIndex = prev.findIndex(msg => msg.id === aiMessageId);
@@ -720,6 +892,14 @@ export const useChat = () => {
         const userIndex = history.findIndex(msg => msg.id === userMessageId);
         if (userIndex === -1 || history[userIndex].role !== 'user') return;
 
+        sessionLoadRequestIdRef.current += 1;
+
+        const chatRequestId = activeChatRequestIdRef.current + 1;
+        activeChatRequestIdRef.current = chatRequestId;
+
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        abortControllerRef.current = new AbortController();
+
         setIsLoading(true);
         setHistory(prev => prev.map(msg => {
             if (msg.id === userMessageId) {
@@ -747,14 +927,11 @@ export const useChat = () => {
 
         setHistory(prev => [...prev, aiMsg]);
 
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
-
         const historyBefore = buildHistoryForAPI(userIndex);
         const formData = new FormData();
         formData.append('message', newText);
         formData.append('model', model);
-        formData.append('user_id', currentSessionId || generateSessionId());
+        formData.append('user_id', currentSessionIdRef.current || generateSessionId());
         formData.append('history', JSON.stringify(historyBefore));
 
         let fullReply = '';
@@ -762,33 +939,38 @@ export const useChat = () => {
         try {
             await apiService.chat(formData, abortControllerRef.current.signal, {
                 onPart: (data) => {
-                    if (data.reply_part) {
-                        fullReply += data.reply_part;
-                        setHistory(prev => prev.map(msg => {
-                            if (msg.id === aiMsgId) {
-                                return { ...msg, content: fullReply, isLoading: true };
-                            }
-                            return msg;
-                        }));
+                    if (activeChatRequestIdRef.current !== chatRequestId || !data?.reply_part) {
+                        return;
                     }
+                    fullReply += data.reply_part;
+                    setHistory(prev => prev.map(msg => {
+                        if (msg.id === aiMsgId) {
+                            return { ...msg, content: fullReply, isLoading: true };
+                        }
+                        return msg;
+                    }));
                 },
                 onWidgetUpdate: (widgetData) => {
-                    if (widgetData?.tag) {
-                        setHistory(prev => prev.map(msg => {
-                            if (msg.id === aiMsgId) {
-                                return {
-                                    ...msg,
-                                    widgetUpdate: {
-                                        tag: widgetData.tag,
-                                        state: widgetData.state
-                                    }
-                                };
-                            }
-                            return msg;
-                        }));
+                    if (activeChatRequestIdRef.current !== chatRequestId || !widgetData?.tag) {
+                        return;
                     }
+                    setHistory(prev => prev.map(msg => {
+                        if (msg.id === aiMsgId) {
+                            return {
+                                ...msg,
+                                widgetUpdate: {
+                                    tag: widgetData.tag,
+                                    state: widgetData.state
+                                }
+                            };
+                        }
+                        return msg;
+                    }));
                 },
                 onComplete: (finalData) => {
+                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                        return;
+                    }
                     setHistory(prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -801,33 +983,45 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
+                    abortControllerRef.current = null;
                     setIsLoading(false);
                 },
                 onError: (err) => {
+                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                        return;
+                    }
                     setHistory(prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
                                 isLoading: false,
                                 isError: true,
-                                content: fullReply + `\n\n[Ошибка: ${err?.message || 'неизвестная ошибка'}]`
+                                content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
                             };
                         }
                         return msg;
                     }));
+                    abortControllerRef.current = null;
                     setIsLoading(false);
                 }
             });
         } catch (e) {
+            if (activeChatRequestIdRef.current !== chatRequestId) {
+                return;
+            }
             if (e.name !== 'AbortError') {
+                abortControllerRef.current = null;
                 setIsLoading(false);
             }
         }
-    }, [history, isLoading, currentSessionId, buildHistoryForAPI, isReadOnly]);
+    }, [history, isLoading, buildHistoryForAPI, isReadOnly]);
 
     const enableSharing = useCallback(async () => {
-        if (!currentSessionId) return null;
-        const data = await apiService.toggleShare(currentSessionId, true);
+        const sessionId = currentSessionIdRef.current;
+        if (!sessionId) return null;
+        const data = await apiService.toggleShare(sessionId, true);
+        const resolvedSessionId = data?.session_id || sessionId;
+        const slug = data?.public_id || sessionIdToSlug(resolvedSessionId);
         const accessState = {
             isPublic: !!data?.is_public,
             isOwner: true,
@@ -837,15 +1031,20 @@ export const useChat = () => {
         };
         setSessionAccess(accessState);
         setIsReadOnly(accessState.readOnly);
-        if (data?.session_id) {
-            setCurrentSessionId(data.session_id);
-        }
+        syncSessionIdentity(resolvedSessionId, slug, {
+            previousSessionId: sessionId,
+            historyMode: 'replace',
+            persistToGuestHistory: false
+        });
         return data;
-    }, [currentSessionId]);
+    }, [sessionIdToSlug, syncSessionIdentity]);
 
     const disableSharing = useCallback(async () => {
-        if (!currentSessionId) return null;
-        const data = await apiService.toggleShare(currentSessionId, false);
+        const sessionId = currentSessionIdRef.current;
+        if (!sessionId) return null;
+        const data = await apiService.toggleShare(sessionId, false);
+        const resolvedSessionId = data?.session_id || sessionId;
+        const slug = sessionIdToSlug(resolvedSessionId);
         const accessState = {
             isPublic: false,
             isOwner: true,
@@ -855,11 +1054,13 @@ export const useChat = () => {
         };
         setSessionAccess(accessState);
         setIsReadOnly(false);
-        if (data?.session_id) {
-            setCurrentSessionId(data.session_id);
-        }
+        syncSessionIdentity(resolvedSessionId, slug, {
+            previousSessionId: sessionId,
+            historyMode: 'replace',
+            persistToGuestHistory: false
+        });
         return data;
-    }, [currentSessionId]);
+    }, [sessionIdToSlug, syncSessionIdentity]);
 
     return {
         history,

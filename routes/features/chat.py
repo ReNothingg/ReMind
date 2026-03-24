@@ -74,10 +74,24 @@ def _has_files_payload(value) -> bool:
 def process_request_data() -> tuple[str, dict[str, Any], str]:
     auth_user_id = session.get("user_id")
 
+    def resolve_session_id(raw_identifier: Any) -> str:
+        if raw_identifier is None or not str(raw_identifier).strip():
+            if auth_user_id is not None:
+                raise ApiError(
+                    "Session ID is required for authenticated chats.",
+                    status=400,
+                    code="missing_session_id",
+                )
+            return f"guest_{uuid.uuid4().hex}"
+
+        safe_identifier = secure_filename(str(raw_identifier))[:200]
+        if not safe_identifier:
+            raise ApiError("Invalid session ID", status=400, code="invalid_session_id")
+        return safe_identifier
+
     if request.is_json:
         data: dict[str, Any] = request.get_json(silent=True) or {}
-        raw_identifier = str(auth_user_id) if auth_user_id else data.get("user_id", "")
-        user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
+        session_id = resolve_session_id(data.get("user_id"))
         model_name = data.get("model", "gemini")
         data.setdefault("files", [])
         if auth_user_id is None and _has_files_payload(data.get("files")):
@@ -87,14 +101,13 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
                 code="guest_file_upload_disabled",
             )
         _validate_message_in_payload(data)
-        return user_id, data, model_name
+        return session_id, data, model_name
 
     if not request.form and not request.files:
         raise ApiError("Empty request", status=400, code="empty_request")
 
     user_data: dict[str, Any] = request.form.to_dict()
-    raw_identifier = str(auth_user_id) if auth_user_id else user_data.get("user_id", "")
-    user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
+    session_id = resolve_session_id(user_data.get("user_id"))
     model_name = user_data.get("model", "gemini")
     _validate_message_in_payload(user_data)
 
@@ -105,7 +118,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             status=403,
             code="guest_file_upload_disabled",
         )
-    processed_files = [handle_file_upload(file_storage, user_id) for file_storage in uploaded_files]
+    processed_files = [handle_file_upload(file_storage, session_id) for file_storage in uploaded_files]
     user_data["files"] = [file_info for file_info in processed_files if file_info is not None]
 
     if "meta" in user_data and isinstance(user_data["meta"], str):
@@ -114,7 +127,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         except json.JSONDecodeError:
             user_data["meta"] = {}
 
-    return user_id, user_data, model_name
+    return session_id, user_data, model_name
 
 
 def _build_user_message_parts(original_message: str, files: list[dict]) -> list[dict]:

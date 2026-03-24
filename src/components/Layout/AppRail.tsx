@@ -113,7 +113,7 @@ const RailMenuItem = ({ children, className, danger = false, icon, ...props }) =
     </button>
 );
 
-const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, onSettingsClick, onSessionDeleted, onSessionRenamed }) => {
+const AppRail = ({ isExpanded, onToggle, sessions, currentSessionId, onNewChat, onSelectSession, onSettingsClick, onSessionDeleted, onSessionRenamed }) => {
     const { t } = useTranslation();
     const { isAuthenticated } = useAuth();
     const { settings } = useSettings();
@@ -227,6 +227,12 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
         e.stopPropagation();
         try {
             await apiService.deleteSession(sessionId);
+            setLocalSessions((prevSessions) => prevSessions.filter((session) => session.session_id !== sessionId));
+            setFavorites((prevFavorites) => prevFavorites.filter((id) => id !== sessionId));
+            if (editingSessionId === sessionId) {
+                setEditingSessionId(null);
+                setEditingTitle('');
+            }
             if (onSessionDeleted) {
                 onSessionDeleted(sessionId);
             }
@@ -236,6 +242,12 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                     let list = raw ? JSON.parse(raw) : [];
                     list = list.filter(id => id !== sessionId);
                     localStorage.setItem('guest_chat_history_ids', JSON.stringify(list));
+                    const rawTokens = localStorage.getItem('guest_chat_tokens');
+                    const tokens = rawTokens ? JSON.parse(rawTokens) : {};
+                    if (tokens && typeof tokens === 'object' && sessionId in tokens) {
+                        delete tokens[sessionId];
+                        localStorage.setItem('guest_chat_tokens', JSON.stringify(tokens));
+                    }
                 } catch (e) {
                     console.warn('Failed to update guest sessions list', e);
                 }
@@ -470,6 +482,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                                 key={session.session_id}
                                 className={cn(
                                     'chat-history-item ui-rail-item',
+                                    currentSessionId === session.session_id && 'active ui-rail-item-active',
                                     isFavorite && 'favorite ui-rail-item-favorite'
                                 )}
                                 title={title}

@@ -8,6 +8,7 @@ import services.chat_history as chat_history
 import utils.auth as auth_module
 from config import SESSION_COOKIE_NAME
 from utils.auth import ChatShare, User, UserChatHistory, db
+from utils.rate_limiting import rate_limit_store
 from utils.session_security import resolve_cookie_domain
 
 
@@ -133,6 +134,58 @@ def test_chat_echo_as_guest_returns_reply_and_request_id(client):
     assert payload["ok"] is True
     assert payload["reply"] == "hello from pytest"
     assert response.headers.get("X-Request-Id")
+
+
+def test_chat_authenticated_uses_requested_session_id(client, app, create_confirmed_user, login):
+    rate_limit_store.clear()
+    try:
+        user_id, email, password = create_confirmed_user()
+        login_response = login(email, password)
+        assert login_response.status_code == 200
+
+        csrf_value = client.get("/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}).headers.get(
+            "X-CSRF-Token"
+        )
+        assert csrf_value
+
+        request_headers = {
+            "User-Agent": "Mozilla/5.0 (pytest)",
+            "X-CSRF-Token": csrf_value,
+        }
+        session_a = "user_session_alpha_1234567890"
+        session_b = "user_session_beta_1234567890"
+
+        first_response = client.post(
+            "/chat",
+            json={"message": "first message", "model": "echo", "user_id": session_a},
+            headers=request_headers,
+        )
+        second_response = client.post(
+            "/chat",
+            json={"message": "second message", "model": "echo", "user_id": session_b},
+            headers=request_headers,
+        )
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+
+        with app.app_context():
+            first_chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_a).first()
+            second_chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_b).first()
+
+            assert first_chat is not None
+            assert second_chat is not None
+            assert first_chat.session_id == session_a
+            assert second_chat.session_id == session_b
+
+            first_messages = first_chat.get_messages()
+            second_messages = second_chat.get_messages()
+
+            assert first_messages[0]["parts"][0]["text"] == "first message"
+            assert second_messages[0]["parts"][0]["text"] == "second message"
+            assert first_messages != second_messages
+    finally:
+        rate_limit_store.clear()
 
 
 def test_chat_demo_image_stream_returns_image_and_persists_history(
