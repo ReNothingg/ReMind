@@ -53,7 +53,7 @@ const setupPanZoom = (container, target, options = {}) => {
     target.style.transformOrigin = '0 0';
     target.style.transition = 'none';
 
-    let state = {
+    const state = {
         panning: false,
         scale: 1,
         x: 0,
@@ -417,7 +417,7 @@ export const Utils = {
                     return;
                 }
 
-                let chartData = JSON.parse(codeElement.textContent || '{}');
+                const chartData = JSON.parse(codeElement.textContent || '{}');
                 if (!chartData.type || !chartData.data) {
                     if (loadingEl) loadingEl.style.display = 'none';
                     if (errorEl) {
@@ -496,7 +496,7 @@ export const Utils = {
                     }
                 });
                 canvas.__chartInstance = chart;
-            } catch (e) {
+            } catch {
                 console.warn('Chart.js rendering error:', e);
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
@@ -558,7 +558,7 @@ export const Utils = {
             let config;
             try {
                 config = JSON.parse(codeElement.textContent || '{}');
-            } catch (e) {
+            } catch {
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
                     errorEl.textContent = 'Неверный JSON для D3';

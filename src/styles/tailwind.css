@@ -648,68 +648,6 @@
     @apply w-full;
   }
 
-  .ui-prompt-grid {
-    @apply relative z-[var(--z-content)] mx-auto flex w-full max-w-[900px] flex-wrap justify-center gap-3 px-1 py-2;
-    box-sizing: border-box;
-    opacity: 1;
-    transition: opacity var(--transition-normal);
-  }
-
-  .ui-prompt-grid.hidden {
-    @apply pointer-events-none opacity-0;
-  }
-
-  .ui-prompt-card {
-    @apply inline-flex min-h-11 max-w-[200px] flex-[1_1_calc(50%-8px)] items-center justify-center gap-2 rounded-md border px-4 py-3 text-center text-[0.9rem] font-medium text-muted transition duration-200 ease-out sm:flex-none;
-    background: rgba(var(--color-white-raw), 0.04);
-    border-color: rgba(var(--color-white-raw), 0.08);
-    white-space: normal;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    box-sizing: border-box;
-    flex-shrink: 0;
-    user-select: none;
-    backdrop-filter: blur(8px);
-    animation: suggestion-fade-in 0.3s ease-out backwards;
-  }
-
-  .ui-prompt-card:hover {
-    background: rgba(var(--color-white-raw), 0.08);
-    border-color: rgba(var(--color-accent-raw), 0.3);
-    color: var(--color-text-primary);
-  }
-
-  .ui-prompt-card:active {
-    background: rgba(var(--color-white-raw), 0.06);
-  }
-
-  .ui-prompt-card:focus,
-  .ui-prompt-card:focus-visible {
-    outline: none;
-    border-color: rgba(var(--color-accent-raw), 0.4);
-    box-shadow: none;
-  }
-
-  .ui-prompt-card-label {
-    @apply block text-center text-[0.9rem] font-medium leading-[1.3] tracking-[-0.003em];
-  }
-
-  .ui-prompt-card:nth-child(1) {
-    animation-delay: 0.05s;
-  }
-
-  .ui-prompt-card:nth-child(2) {
-    animation-delay: 0.1s;
-  }
-
-  .ui-prompt-card:nth-child(3) {
-    animation-delay: 0.15s;
-  }
-
-  .ui-prompt-card:nth-child(4) {
-    animation-delay: 0.2s;
-  }
-
   .ui-selection-quote-button {
     @apply inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-[0.85rem] font-semibold leading-none whitespace-nowrap text-foreground transition duration-200 ease-out;
     background: rgba(30, 32, 35, 0.95);
@@ -1263,18 +1201,6 @@
     background: var(--scrollbar-thumb-bg-hover);
   }
 
-  @media (max-width: 1024px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 2.5);
-      padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 1);
-    }
-
-    .ui-prompt-card {
-      padding: calc(var(--spacing-unit) * 1.75) calc(var(--spacing-unit) * 3);
-      font-size: 0.88rem;
-    }
-  }
-
   @media (max-width: 768px) {
     .ui-guest-inline-actions {
       gap: 8px;
@@ -1305,84 +1231,6 @@
 
     .ui-guest-modal-title {
       font-size: 24px;
-    }
-  }
-
-  @media (max-width: 1024px) and (min-width: 481px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 2);
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1.5);
-      max-width: 100%;
-    }
-
-    .ui-prompt-card {
-      flex: 0 1 calc(50% - var(--spacing-unit));
-      min-width: unset;
-      max-width: unset;
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
-      font-size: 0.87rem;
-    }
-  }
-
-  @media (max-width: 768px) and (min-width: 481px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 1.5);
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1.5);
-      max-width: 100%;
-    }
-
-    .ui-prompt-card {
-      flex: 1 1 calc(50% - calc(var(--spacing-unit) * 0.75));
-      min-width: 120px;
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
-      font-size: 0.85rem;
-    }
-
-    .ui-prompt-card-label {
-      font-size: 0.85rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .ui-prompt-grid {
-      max-width: 100%;
-      flex-wrap: wrap;
-      gap: calc(var(--spacing-unit) * 1);
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1);
-    }
-
-    .ui-prompt-card {
-      flex: 1 1 calc(50% - calc(var(--spacing-unit) * 0.5));
-      min-height: 44px;
-      min-width: unset;
-      max-width: unset;
-      gap: calc(var(--spacing-unit) * 1.5);
-      padding: calc(var(--spacing-unit) * 1.25) calc(var(--spacing-unit) * 1.5);
-      font-size: 0.8rem;
-    }
-
-    .ui-prompt-card-label {
-      font-size: 0.8rem;
-      line-height: 1.2;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 0.75);
-      padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 0.75);
-    }
-
-    .ui-prompt-card {
-      flex: 1 1 100%;
-      min-height: 40px;
-      gap: calc(var(--spacing-unit) * 1);
-      padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5);
-      font-size: 0.78rem;
-    }
-
-    .ui-prompt-card-label {
-      font-size: 0.78rem;
     }
   }
 
@@ -1430,57 +1278,4 @@
     }
   }
 
-  @media (prefers-contrast: more) {
-    .ui-prompt-card {
-      border-color: rgba(var(--color-white-raw), 0.15);
-      background: rgba(var(--color-white-raw), 0.06);
-    }
-
-    .ui-prompt-card:hover {
-      border-color: rgba(var(--color-accent-raw), 0.5);
-      background: rgba(var(--color-white-raw), 0.12);
-    }
-  }
-
-  body.compact-mode .ui-prompt-grid {
-    gap: calc(var(--spacing-unit) * 2);
-  }
-
-  body.compact-mode .ui-prompt-card {
-    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
-    font-size: 0.85rem;
-  }
-
-  body.has-rail .ui-prompt-grid {
-    max-width: 100%;
-  }
-
-  html[data-theme='light'] .ui-prompt-card {
-    background: rgba(var(--color-white-raw), 0.5);
-    border-color: var(--color-border-subtle);
-    color: var(--color-text-secondary);
-  }
-
-  html[data-theme='light'] .ui-prompt-card:hover {
-    background: rgba(var(--color-white-raw), 0.7);
-    border-color: var(--color-border-focus);
-    color: var(--color-text-primary);
-  }
-
-  html[data-theme='light'] .ui-prompt-card:focus,
-  html[data-theme='light'] .ui-prompt-card:focus-visible {
-    border-color: var(--color-border-focus);
-  }
-}
-
-@keyframes suggestion-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }

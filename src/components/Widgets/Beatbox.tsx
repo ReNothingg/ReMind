@@ -40,6 +40,13 @@ const Beatbox = ({ initialState }) => {
     const [openAdsrPanel, setOpenAdsrPanel] = useState(null);
     const [draggedTrackIndex, setDraggedTrackIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
+    const stopScheduler = () => {
+        if (schedulerTimerRef.current) {
+            clearInterval(schedulerTimerRef.current);
+            schedulerTimerRef.current = null;
+        }
+    };
+
     useEffect(() => { tracksRef.current = tracks; }, [tracks]);
     useEffect(() => { metaRef.current = meta; }, [meta]);
     useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -220,13 +227,6 @@ const Beatbox = ({ initialState }) => {
     };
 
 
-
-    const stopScheduler = () => {
-        if (schedulerTimerRef.current) {
-            clearInterval(schedulerTimerRef.current);
-            schedulerTimerRef.current = null;
-        }
-    };
 
     const startScheduler = () => {
         if (schedulerTimerRef.current) return;
@@ -426,7 +426,7 @@ const Beatbox = ({ initialState }) => {
                                                 onClick={(e) => handleInstrumentButtonClick(e, trackIndex)}
                                             >
                                                 <img
-                                                    src={` /icons/instruments/${instrument.icon}.svg`}
+                                                    src={`/icons/instruments/${instrument.icon}.svg`}
                                                     alt={instrument.name}
                                                     onError={(e) => e.target.style.display='none'}
                                                 />
@@ -515,7 +515,7 @@ const Beatbox = ({ initialState }) => {
                                 onClick={() => changeInstrument(type)}
                             >
                                 <img
-                                    src={` /icons/instruments/${INSTRUMENT_MAP[type].icon}.svg`}
+                                    src={`/icons/instruments/${INSTRUMENT_MAP[type].icon}.svg`}
                                     alt={INSTRUMENT_MAP[type].name}
                                     width="20"
                                 />

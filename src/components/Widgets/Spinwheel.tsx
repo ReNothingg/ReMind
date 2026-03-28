@@ -1,22 +1,30 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const Spinwheel = ({ initialState }) => {
     const { t } = useTranslation();
-    const config = {
+    const config = useMemo(() => ({
         min: initialState?.range?.min || 1,
         max: initialState?.range?.max || 100,
         step: initialState?.range?.step || 1,
         target: initialState?.number || 50,
         spinTime: initialState?.behavior?.spin_time_ms || 4200
-    };
+    }), [initialState]);
 
     const reelRef = useRef(null);
     const [isSpinning, setIsSpinning] = useState(false);
     const [hasSpun, setHasSpun] = useState(false);
-    const segments = [];
-    for (let i = config.min; i <= config.max; i += config.step) segments.push(i);
-    const displaySegments = [...segments, ...segments, ...segments, ...segments, ...segments];
+    const segments = useMemo(() => {
+        const values = [];
+        for (let i = config.min; i <= config.max; i += config.step) {
+            values.push(i);
+        }
+        return values;
+    }, [config.max, config.min, config.step]);
+    const displaySegments = useMemo(
+        () => [...segments, ...segments, ...segments, ...segments, ...segments],
+        [segments]
+    );
 
     const itemHeight = 75;
 
@@ -52,7 +60,7 @@ const Spinwheel = ({ initialState }) => {
              const pos = (segments.length * 2 + startIdx) * itemHeight - (225/2) + (itemHeight/2);
              reelRef.current.style.transform = `translateY(-${pos}px)`;
         }
-    }, []);
+    }, [config.min, hasSpun, segments]);
 
     return (
         <div className={`spin-wheel-container ${isSpinning ? 'spinning' : ''}`}>

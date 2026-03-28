@@ -25,6 +25,7 @@ const DEFAULT_CONFIG = {
 };
 
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function sanitizeHtml(html, options = {}) {
     if (!html || typeof html !== 'string') {
         return '';
@@ -47,4 +48,5 @@ export function SafeHtmlRenderer({ html, className = '', ...props }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export default sanitizeHtml;

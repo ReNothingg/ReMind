@@ -13,11 +13,12 @@ DB_PATH: Path = BASE_PATH / "database"
 
 UPLOAD_FOLDER: Path = DB_PATH / "uploads"
 CHATS_FOLDER: Path = DB_PATH / "chats"
+TELEGRAM_CHATS_FOLDER: Path = DB_PATH / "telegram_chats"
 CREATE_IMAGE_FOLDER: Path = DB_PATH / "generated_images"
 
 LOGS_FOLDER: Path = BASE_PATH / "logs"
 
-for folder in [UPLOAD_FOLDER, CHATS_FOLDER, CREATE_IMAGE_FOLDER, LOGS_FOLDER]:
+for folder in [UPLOAD_FOLDER, CHATS_FOLDER, TELEGRAM_CHATS_FOLDER, CREATE_IMAGE_FOLDER, LOGS_FOLDER]:
     folder.mkdir(parents=True, exist_ok=True)
 
 try:
@@ -176,6 +177,8 @@ if not SECRET_KEY:
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_BOT_DEFAULT_MODEL = os.getenv("TELEGRAM_BOT_DEFAULT_MODEL", "gemini").strip() or "gemini"
 
 _flask_debug = os.getenv("FLASK_DEBUG", "0")
 _is_debug = _flask_debug == "1" or _flask_debug.lower() == "true"

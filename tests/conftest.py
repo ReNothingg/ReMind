@@ -51,13 +51,20 @@ def client(app):
 
 @pytest.fixture()
 def create_confirmed_user(app):
-    def _create(email: str = None, password: str = "Password1!", username: str = None):
+    def _create(
+        email: str = None,
+        password: str = "Password1!",
+        username: str = None,
+        name: str = None,
+    ):
         real_email = email or f"user_{uuid.uuid4().hex[:8]}@example.com"
         real_username = username or f"user_{uuid.uuid4().hex[:8]}"
+        real_name = name if name is not None else real_username
 
         with app.app_context():
             user = User(
                 username=real_username,
+                name=real_name,
                 email=real_email,
                 password=generate_password_hash(password),
                 is_confirmed=True,

@@ -31,8 +31,12 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
     const { t } = useTranslation();
 
     useEffect(() => {
-        setIsLoaded(false);
-        setHasError(false);
+        const frame = window.requestAnimationFrame(() => {
+            setIsLoaded(false);
+            setHasError(false);
+        });
+
+        return () => window.cancelAnimationFrame(frame);
     }, [src]);
 
     const imageContent = (

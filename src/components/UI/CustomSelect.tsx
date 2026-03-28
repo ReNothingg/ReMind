@@ -15,7 +15,6 @@ const CustomSelect = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const dropdownRef = useRef(null);
-  const selectedOptionRef = useRef(null);
   const selectedOption = options.find(opt => opt.value === value);
   const displayText = selectedOption?.label || placeholder || t('common.selectOption');
   useEffect(() => {

@@ -5,6 +5,13 @@ import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
 import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
+import {
+    firstAccountFieldError,
+    localizeAccountError,
+    type AccountFieldErrors,
+    validateAccountName,
+    validateUsername,
+} from '../../utils/accountValidation';
 
 const AuthModal = ({ onClose, initialView = 'login' }) => {
     const { t } = useTranslation();
@@ -21,8 +28,10 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const registerContainerRef = useRef(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
 
     const fieldLabelClass = 'ui-field-label';
     const fieldInputClass = 'ui-input min-h-11 rounded-xl bg-interactive px-4 py-3 text-[0.95rem]';
@@ -49,7 +58,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             const base = new URL(googleUrl, window.location.origin);
             base.searchParams.set('redirect_to', window.location.href);
             return base.toString();
-        } catch (_err) {
+        } catch {
             const separator = googleUrl.includes('?') ? '&' : '?';
             return `${googleUrl}${separator}redirect_to=${encodeURIComponent(window.location.href)}`;
         }
@@ -156,6 +165,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         e.preventDefault();
         setIsLoading(true);
         setMessage(null);
+        setFieldErrors({});
 
         try {
             let turnstileResponse = null;
@@ -174,7 +184,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(loginTurnstileIdRef.current);
                     }
-                } catch (_err) {
+                } catch {
                 }
                 setTimeout(() => {
                     onClose();
@@ -184,11 +194,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(loginTurnstileIdRef.current);
                     }
-                } catch (_err) {
+                } catch {
                 }
                 setMessage({ type: 'error', text: res.error || t('authModal.messages.loginError') });
             }
-        } catch (_err) {
+        } catch {
             setMessage({ type: 'error', text: t('authModal.messages.requestError') });
         } finally {
             setIsLoading(false);
@@ -197,8 +207,32 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setFieldErrors({});
+
+        const nextFieldErrors: AccountFieldErrors = {};
+        const nameError = validateAccountName(name, t, { required: true });
+        const usernameError = validateUsername(username, t);
+
+        if (nameError) {
+            nextFieldErrors.name = nameError;
+        }
+        if (usernameError) {
+            nextFieldErrors.username = usernameError;
+        }
+
+        const firstError = firstAccountFieldError(nextFieldErrors);
+        if (firstError) {
+            setFieldErrors(nextFieldErrors);
+            setMessage({ type: 'error', text: firstError });
+            return;
+        }
+
         if (password !== confirmPassword) {
             setMessage({ type: 'error', text: t('authModal.messages.passwordsMismatch') });
+            return;
+        }
+        if (name.length > 100) {
+            setMessage({ type: 'error', text: t('settings.account.validation.nameLength') });
             return;
         }
         if (username.length > 100) {
@@ -227,29 +261,32 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 console.warn('Failed to get Turnstile response', error);
             }
 
-            const res = await authService.register(username, email, password, turnstileResponse);
+            const res = await authService.register(name.trim(), username.trim(), email, password, turnstileResponse);
             if (res.success) {
+                setFieldErrors({});
                 setMessage({ type: 'success', text: res.message || t('authModal.messages.registerSuccess') });
                 try {
                     if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(registerTurnstileIdRef.current);
                     }
-                } catch (_err) {
+                } catch {
                 }
                 setTimeout(() => {
                     setIsLoginView(true);
                     setMessage(null);
                 }, 2000);
             } else {
+                const localizedError = localizeAccountError(res.error, res.field, t);
+                setFieldErrors(localizedError.fieldErrors);
                 try {
                     if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(registerTurnstileIdRef.current);
                     }
-                } catch (_err) {
+                } catch {
                 }
-                setMessage({ type: 'error', text: res.error || t('authModal.messages.registerError') });
+                setMessage({ type: 'error', text: localizedError.message || t('authModal.messages.registerError') });
             }
-        } catch (_err) {
+        } catch {
             setMessage({ type: 'error', text: t('authModal.messages.requestError') });
         } finally {
             setIsLoading(false);
@@ -260,8 +297,10 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         e.preventDefault();
         setIsLoginView(!isLoginView);
         setMessage(null);
+        setFieldErrors({});
         setEmail('');
         setPassword('');
+        setName('');
         setUsername('');
         setConfirmPassword('');
     };
@@ -351,16 +390,40 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
                     <form className="space-y-4" onSubmit={handleRegister}>
                         <div className="form-group flex flex-col gap-1.5">
+                            <label className={fieldLabelClass} htmlFor="regName">{t('authModal.fields.name')}</label>
+                            <input
+                                className={fieldInputClass}
+                                type="text"
+                                id="regName"
+                                value={name}
+                                onChange={(e) => {
+                                    setName(e.target.value);
+                                    setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                                }}
+                                maxLength="100"
+                                required
+                            />
+                            {fieldErrors.name && (
+                                <p className="text-sm font-medium text-danger">{fieldErrors.name}</p>
+                            )}
+                        </div>
+                        <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="regUsername">{t('authModal.fields.username')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="text"
                                 id="regUsername"
                                 value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                maxLength="100"
+                                onChange={(e) => {
+                                    setUsername(e.target.value);
+                                    setFieldErrors((prev) => ({ ...prev, username: undefined }));
+                                }}
+                                maxLength="50"
                                 required
                             />
+                            {fieldErrors.username && (
+                                <p className="text-sm font-medium text-danger">{fieldErrors.username}</p>
+                            )}
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="regEmail">{t('authModal.fields.email')}</label>

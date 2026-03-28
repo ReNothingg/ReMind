@@ -45,6 +45,15 @@ export const AuthProvider = ({ children }) => {
         return res;
     };
 
+    const deleteAccount = async () => {
+        const res = await authService.deleteAccount();
+        if (res.success) {
+            setIsAuthenticated(false);
+            setUser(null);
+        }
+        return res;
+    };
+
     const updateProfile = async (profileData) => {
         const res = await authService.updateProfile(profileData);
         if (res.success && res.user) {
@@ -78,6 +87,7 @@ export const AuthProvider = ({ children }) => {
             logout,
             checkAuth,
             updateProfile,
+            deleteAccount,
             getSettings,
             updateSettings,
             getPreferences,
@@ -88,4 +98,5 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

@@ -9,26 +9,34 @@ import ToggleSwitch from '../UI/ToggleSwitch';
 import { requestNotificationPermission } from '../../utils/notifications';
 import { showToast } from '../../utils/toast';
 import { cn } from '../../utils/cn';
+import {
+    firstAccountFieldError,
+    localizeAccountError,
+    type AccountFieldErrors,
+    validateAccountName,
+    validateUsername,
+} from '../../utils/accountValidation';
 
-const SettingsTabButton = ({ active, onClick, children }) => (
+const SettingsTabButton = ({ active, icon, label, onClick }) => (
     <button
         type="button"
         className={cn(
-            'settings-tab flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[0.92rem] font-medium transition duration-200 ease-out md:justify-start',
-            active
-                ? 'active bg-interactive text-foreground'
-                : 'text-foreground/70 hover:bg-interactive hover:text-foreground'
+            'settings-tab',
+            active && 'active'
         )}
         onClick={onClick}
     >
-        {children}
+        <span className="settings-tab-icon" aria-hidden="true">
+            {icon}
+        </span>
+        <span className="settings-tab-label">{label}</span>
     </button>
 );
 
 const SettingsPane = ({ children, dataPane, className = '' }) => (
     <div
         className={cn(
-            'settings-pane active ui-scrollbar-thin h-full overflow-x-hidden overflow-y-auto pr-1 sm:pr-2',
+            'settings-pane active ui-scrollbar-thin',
             className
         )}
         data-pane={dataPane}
@@ -38,14 +46,14 @@ const SettingsPane = ({ children, dataPane, className = '' }) => (
 );
 
 const SettingGroup = ({ title, description, children, className = '' }) => (
-    <section className={cn('setting-group border-b border-border py-3 last:border-b-0', className)}>
+    <section className={cn('setting-group', className)}>
         {title && (
-            <h4 className="setting-group-title mb-2 text-base font-semibold text-foreground">
+            <h4 className="setting-group-title">
                 {title}
             </h4>
         )}
         {description && (
-            <p className="setting-group-description mb-3 text-sm leading-6 text-muted">
+            <p className="setting-group-description">
                 {description}
             </p>
         )}
@@ -56,8 +64,8 @@ const SettingGroup = ({ title, description, children, className = '' }) => (
 const SettingControlGroup = ({ children, className = '', withDivider = false }) => (
     <div
         className={cn(
-            'setting-control-group flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between',
-            withDivider && 'border-t border-border',
+            'setting-control-group',
+            withDivider && 'with-divider',
             className
         )}
     >
@@ -66,20 +74,20 @@ const SettingControlGroup = ({ children, className = '', withDivider = false }) 
 );
 
 const SettingField = ({ label, hint, children, className = '', withDivider = false }) => (
-    <div className={cn('setting-field flex flex-col gap-1.5 py-2', withDivider && 'border-t border-border pt-4', className)}>
-        <label className="text-sm font-medium text-foreground">{label}</label>
+    <div className={cn('setting-field', withDivider && 'with-divider', className)}>
+        <label className="setting-field-label ui-field-label">{label}</label>
         {children}
-        {hint && <span className="text-xs leading-5 text-subtle">{hint}</span>}
+        {hint && <span className="setting-field-hint">{hint}</span>}
     </div>
 );
 
 const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDivider = false }) => (
-    <div className={cn('setting-toggle flex items-start justify-between gap-4 py-3', withDivider && 'border-t border-border')}>
-        <div className="setting-toggle-label min-w-0 space-y-1">
-            <div className="setting-toggle-title text-[0.92rem] font-medium text-foreground">
+    <div className={cn('setting-toggle', withDivider && 'with-divider')}>
+        <div className="setting-toggle-label">
+            <div className="setting-toggle-title">
                 {title}
             </div>
-            <p className="setting-toggle-description text-[0.82rem] leading-5 text-muted">
+            <p className="setting-toggle-description">
                 {description}
             </p>
         </div>
@@ -90,13 +98,13 @@ const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDi
 const SettingsModal = ({ onClose, onOpenAuth }) => {
     const { t, i18n } = useTranslation();
     const { settings, updateSetting } = useSettings();
-    const { user, isAuthenticated, logout, updateProfile } = useAuth();
+    const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
     const { getSettingsTab, navigateToSettings } = useURLRouter();
 
     const FONT_SIZE_MIN_PX = 10;
     const FONT_SIZE_MAX_PX = 24;
     const FONT_SIZE_STEP_PX = 2;
-    const settingsInputClass = 'settings-input ui-input min-h-10 rounded-xl bg-interactive px-3.5 py-2.5';
+    const settingsInputClass = 'settings-input ui-input min-h-11 rounded-xl bg-surface-alt px-4 py-3 text-[0.95rem]';
 
     const normalizeLanguage = (value) => {
         const candidate = String(value || '').toLowerCase();
@@ -111,20 +119,25 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
         if (saved && saved !== currentLanguage) {
             i18n.changeLanguage(saved);
         }
-    }, [settings.interface_language]);
+    }, [currentLanguage, i18n, settings.interface_language]);
 
     const [activeTab, setActiveTab] = useState(() => {
         const tab = getSettingsTab();
         return tab || 'appearance';
     });
+    const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [deleteConfirmation, setDeleteConfirmation] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
     const [profileMessage, setProfileMessage] = useState(null);
 
     useEffect(() => {
-        if (user && user.username) {
-            setUsername(user.username);
-        }
+        setName(user?.name || '');
+        setUsername(user?.username || '');
+        setFieldErrors({});
+        setDeleteConfirmation('');
     }, [user]);
 
     useEffect(() => {
@@ -167,18 +180,75 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
 
         setIsSavingProfile(true);
         setProfileMessage(null);
+        setFieldErrors({});
+
+        const nextFieldErrors: AccountFieldErrors = {};
+        const nameError = validateAccountName(name, t);
+        const usernameError = validateUsername(username, t);
+
+        if (nameError) {
+            nextFieldErrors.name = nameError;
+        }
+        if (usernameError) {
+            nextFieldErrors.username = usernameError;
+        }
+
+        const firstError = firstAccountFieldError(nextFieldErrors);
+        if (firstError) {
+            setFieldErrors(nextFieldErrors);
+            setProfileMessage({ type: 'error', text: firstError });
+            setIsSavingProfile(false);
+            return;
+        }
 
         try {
-            const res = await updateProfile({ username });
+            const res = await updateProfile({ name: name.trim(), username: username.trim() });
             if (res.success) {
+                setFieldErrors({});
                 setProfileMessage({ type: 'success', text: t('settings.account.profileUpdated') });
             } else {
-                setProfileMessage({ type: 'error', text: res.error || t('settings.account.updateError') });
+                const localizedError = localizeAccountError(res.error, res.field, t);
+                setFieldErrors(localizedError.fieldErrors);
+                setProfileMessage({ type: 'error', text: localizedError.message || t('settings.account.updateError') });
             }
         } catch (err) {
             setProfileMessage({ type: 'error', text: err.message });
         } finally {
             setIsSavingProfile(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!isAuthenticated || !user?.username) return;
+
+        if (deleteConfirmation.trim() !== user.username) {
+            setProfileMessage({
+                type: 'error',
+                text: t('settings.account.delete.confirmationMismatch', { username: user.username })
+            });
+            return;
+        }
+
+        setIsDeletingAccount(true);
+        setProfileMessage(null);
+
+        try {
+            const res = await deleteAccount();
+            if (res.success) {
+                showToast(t('settings.account.delete.success'), { type: 'success' });
+                onClose();
+                window.location.assign('/');
+                return;
+            }
+
+            setProfileMessage({
+                type: 'error',
+                text: res.error || t('settings.account.delete.error')
+            });
+        } catch (err) {
+            setProfileMessage({ type: 'error', text: err.message || t('settings.account.delete.error') });
+        } finally {
+            setIsDeletingAccount(false);
         }
     };
 
@@ -252,145 +322,222 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
         }
     ];
 
+    const normalizedAccountName = String(user?.name || '').trim();
+    const accountDisplayName =
+        normalizedAccountName || user?.username || user?.email || t('settings.account.status.guest');
+    const accountProfileDetails = [
+        { key: 'name', label: t('settings.account.fields.name'), value: normalizedAccountName || t('settings.account.unavailable') },
+        { key: 'username', label: t('settings.account.fields.username'), value: user?.username || t('settings.account.unavailable') },
+    ];
+
     const renderAccountTab = () => (
-        <SettingsPane dataPane="account">
-            <SettingGroup className="account-overview">
-                <div className="account-pane-header flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                        <h4 className="setting-group-title text-base font-semibold text-foreground">
-                            {t('settings.account.title')}
-                        </h4>
-                        <p className="account-pane-description max-w-2xl text-sm leading-6 text-muted">
-                            {t('settings.account.description')}
-                        </p>
+        <SettingsPane dataPane="account" className="account-pane">
+            <div className="account-shell">
+                <section className="account-section account-section-header">
+                    <div className="account-pane-header">
+                        <div className="space-y-1">
+                            <h4 className="setting-group-title">
+                                {t('settings.account.title')}
+                            </h4>
+                            <p className="account-pane-description">
+                                {t('settings.account.description')}
+                            </p>
+                        </div>
+                        {isAuthenticated && (
+                            <div className="account-header-badge">
+                                {accountDisplayName}
+                            </div>
+                        )}
                     </div>
-                    <span
+                </section>
+
+                {profileMessage && (
+                    <p
                         className={cn(
-                            'account-status-chip inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]',
-                            isAuthenticated
-                                ? 'status-success border-[rgba(var(--color-success-raw),0.28)] bg-[rgba(var(--color-success-raw),0.12)] text-success'
-                                : 'status-guest border-border-strong bg-interactive text-muted'
+                            'account-message is-visible',
+                            profileMessage.type === 'success' ? 'success' : 'error'
                         )}
                     >
-                        {isAuthenticated ? t('settings.account.status.authorized') : t('settings.account.status.guest')}
-                    </span>
-                </div>
+                        {profileMessage.text}
+                    </p>
+                )}
 
-                <dl className="account-summary mt-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-border bg-surface-alt/70 px-4 py-3">
-                        <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-subtle">
-                            {t('settings.account.fields.status')}
-                        </dt>
-                        <dd className="mt-2 text-sm font-medium text-foreground">
-                            {isAuthenticated ? t('settings.account.signedIn') : t('settings.account.guestMode')}
-                        </dd>
-                    </div>
-                    <div className="rounded-xl border border-border bg-surface-alt/70 px-4 py-3">
-                        <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-subtle">
-                            {t('settings.account.fields.email')}
-                        </dt>
-                        <dd className="mt-2 break-all text-sm font-medium text-foreground">
-                            {user?.email || t('settings.account.unavailable')}
-                        </dd>
-                    </div>
-                    <div className="rounded-xl border border-border bg-surface-alt/70 px-4 py-3">
-                        <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-subtle">
-                            {t('settings.account.fields.id')}
-                        </dt>
-                        <dd className="mt-2 text-sm font-medium text-foreground">
-                            {user?.id || '-'}
-                        </dd>
-                    </div>
-                </dl>
-            </SettingGroup>
-
-            <SettingGroup className="account-controls">
                 {!isAuthenticated ? (
-                    <div className="account-auth-cta flex flex-col gap-4 rounded-2xl border border-border bg-surface-alt/60 p-4 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-1">
-                            <h5 className="text-sm font-semibold text-foreground">
-                                {t('settings.account.ctaTitle')}
-                            </h5>
-                            <p className="text-sm leading-6 text-muted">
-                                {t('settings.account.ctaDescription')}
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            className="btn-primary ui-button-primary min-h-10 rounded-xl px-4 py-2.5"
-                            onClick={() => { onClose(); onOpenAuth(); }}
-                        >
-                            {t('settings.account.signInOrRegister')}
-                        </button>
+                    <div className="account-layout account-layout-guest">
+                        <section className="account-card account-card-accent">
+                            <div className="account-card-head">
+                                <h5 className="account-card-title">{t('settings.account.ctaTitle')}</h5>
+                                <p className="account-card-copy">{t('settings.account.ctaDescription')}</p>
+                            </div>
+                            <div className="account-actions">
+                                <button
+                                    type="button"
+                                    className="btn-primary ui-button-primary min-h-11 rounded-xl px-5 py-3"
+                                    onClick={() => { onClose(); onOpenAuth(); }}
+                                >
+                                    {t('settings.account.signInOrRegister')}
+                                </button>
+                            </div>
+                        </section>
+
+                        <section className="account-card account-card-muted">
+                            <div className="account-card-head">
+                                <h5 className="account-card-title">{t('settings.account.guestMode')}</h5>
+                                <p className="account-card-copy">{t('settings.account.ctaDescription')}</p>
+                            </div>
+                        </section>
                     </div>
                 ) : (
-                    <form className="account-form space-y-1" onSubmit={handleSaveProfile}>
-                        <SettingField label={t('settings.account.fields.username')} className="account-field">
-                            <input
-                                className={settingsInputClass}
-                                type="text"
-                                id="accountUsernameInput"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                maxLength="50"
-                                required
-                            />
-                        </SettingField>
+                    <div className="account-layout">
+                        <div className="account-column account-column-side">
+                            <section className="account-card account-card-profile">
+                                <div className="account-card-head">
+                                    <h5 className="account-card-title">{accountDisplayName}</h5>
+                                    <p className="account-card-copy">{t('settings.account.fields.username')}</p>
+                                </div>
+                                <div className="account-detail-list">
+                                    {accountProfileDetails.map((item) => (
+                                        <div key={item.key} className="account-detail-row">
+                                            <span className="account-detail-label">{item.label}</span>
+                                            <span className="account-detail-value">{item.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
 
-                        <SettingField
-                            label="Email"
-                            hint={t('settings.account.emailReadonlyHint')}
-                            className="account-field"
-                            withDivider
-                        >
-                            <input
-                                className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
-                                type="email"
-                                id="accountEmailInput"
-                                value={user?.email || ''}
-                                disabled
-                            />
-                        </SettingField>
-
-                        <div className="account-actions flex flex-col gap-2 border-t border-border pt-4 sm:flex-row">
-                            <button
-                                type="submit"
-                                className="btn-primary account-save-btn ui-button-primary min-h-10 rounded-xl px-4 py-2.5"
-                                disabled={isSavingProfile}
-                            >
-                                {isSavingProfile ? t('settings.account.saving') : t('settings.account.saveChanges')}
-                            </button>
-                            <button
-                                type="button"
-                                className="account-secondary-btn ui-button-secondary min-h-10 rounded-xl px-4 py-2.5"
-                                onClick={logout}
-                            >
-                                {t('settings.account.signOut')}
-                            </button>
+                            <section className="account-card">
+                                <div className="account-card-head">
+                                    <h5 className="account-card-title">{t('settings.account.signOut')}</h5>
+                                    <p className="account-card-copy">{t('settings.account.fields.username')}: {user?.username || t('settings.account.unavailable')}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="account-secondary-btn ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                    onClick={logout}
+                                >
+                                    {t('settings.account.signOut')}
+                                </button>
+                            </section>
                         </div>
 
-                        {profileMessage && (
-                            <p
-                                className={cn(
-                                    'account-message is-visible rounded-xl border px-4 py-3 text-sm font-medium',
-                                    profileMessage.type === 'success'
-                                        ? 'border-[rgba(var(--color-success-raw),0.3)] bg-[rgba(var(--color-success-raw),0.12)] text-success'
-                                        : 'border-[rgba(var(--color-error-raw),0.28)] bg-[rgba(var(--color-error-raw),0.12)] text-danger'
-                                )}
-                            >
-                                {profileMessage.text}
-                            </p>
-                        )}
-                    </form>
+                        <div className="account-column account-column-main">
+                            <form className="account-card account-form-card" onSubmit={handleSaveProfile}>
+                                <div className="account-card-head">
+                                    <h5 className="account-card-title">{t('settings.account.saveChanges')}</h5>
+                                    <p className="account-card-copy">{t('settings.account.description')}</p>
+                                </div>
+
+                                <div className="account-form-grid">
+                                    <SettingField
+                                        label={t('settings.account.fields.name')}
+                                        hint={t('settings.account.nameHint')}
+                                        className="account-field"
+                                    >
+                                        <input
+                                            className={settingsInputClass}
+                                            type="text"
+                                            id="accountNameInput"
+                                            value={name}
+                                            onChange={(e) => {
+                                                setName(e.target.value);
+                                                setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                                            }}
+                                            maxLength="100"
+                                        />
+                                        {fieldErrors.name && (
+                                            <span className="text-xs leading-5 text-danger">{fieldErrors.name}</span>
+                                        )}
+                                    </SettingField>
+
+                                    <SettingField
+                                        label={t('settings.account.fields.username')}
+                                        hint={t('settings.account.usernameHint')}
+                                        className="account-field"
+                                    >
+                                        <input
+                                            className={settingsInputClass}
+                                            type="text"
+                                            id="accountUsernameInput"
+                                            value={username}
+                                            onChange={(e) => {
+                                                setUsername(e.target.value);
+                                                setFieldErrors((prev) => ({ ...prev, username: undefined }));
+                                            }}
+                                            maxLength="50"
+                                            required
+                                        />
+                                        {fieldErrors.username && (
+                                            <span className="text-xs leading-5 text-danger">{fieldErrors.username}</span>
+                                        )}
+                                    </SettingField>
+
+                                    <SettingField
+                                        label={t('settings.account.fields.email')}
+                                        hint={t('settings.account.emailReadonlyHint')}
+                                        className="account-field account-field-full"
+                                    >
+                                        <input
+                                            className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
+                                            type="email"
+                                            id="accountEmailInput"
+                                            value={user?.email || ''}
+                                            disabled
+                                        />
+                                    </SettingField>
+                                </div>
+
+                                <div className="account-actions">
+                                    <button
+                                        type="submit"
+                                        className="btn-primary account-save-btn ui-button-primary min-h-11 rounded-xl px-5 py-3"
+                                        disabled={isSavingProfile}
+                                    >
+                                        {isSavingProfile ? t('settings.account.saving') : t('settings.account.saveChanges')}
+                                    </button>
+                                </div>
+                            </form>
+
+                            <section className="account-card account-danger-card">
+                                <div className="account-card-head">
+                                    <h5 className="account-card-title">{t('settings.account.delete.title')}</h5>
+                                    <p className="account-card-copy">{t('settings.account.delete.description')}</p>
+                                </div>
+                                <SettingField
+                                    label={t('settings.account.delete.confirmLabel')}
+                                    hint={t('settings.account.delete.confirmHint', { username: user?.username || '' })}
+                                    className="account-field"
+                                >
+                                    <input
+                                        className={settingsInputClass}
+                                        type="text"
+                                        id="accountDeleteConfirmationInput"
+                                        value={deleteConfirmation}
+                                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                                        placeholder={t('settings.account.delete.confirmPlaceholder')}
+                                    />
+                                </SettingField>
+                                <button
+                                    type="button"
+                                    className="account-delete-btn ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                    onClick={handleDeleteAccount}
+                                    disabled={isDeletingAccount}
+                                >
+                                    {isDeletingAccount
+                                        ? t('settings.account.delete.actionLoading')
+                                        : t('settings.account.delete.action')}
+                                </button>
+                            </section>
+                        </div>
+                    </div>
                 )}
-            </SettingGroup>
+            </div>
         </SettingsPane>
     );
 
     return (
         <ModalShell
-            className="user-settings-modal active px-2 py-3 sm:px-4 sm:py-6"
-            contentClassName="user-settings-content flex h-[85vh] min-h-[560px] w-full max-w-[1000px] flex-col rounded-[18px] border-border bg-surface shadow-[var(--shadow-xl)]"
+            className="user-settings-modal active items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
+            contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface shadow-[var(--shadow-xl)] sm:h-[85vh] sm:min-h-[560px] sm:rounded-[18px]"
             onBackdropClick={onClose}
         >
             <div className="user-settings-header flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
@@ -411,24 +558,23 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
             </div>
 
             <div className="user-settings-body flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-                <div className="settings-tabs ui-scrollbar-thin flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-page p-2 md:w-60 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:bg-surface-alt md:p-3">
+                <div className="settings-tabs ui-scrollbar-thin">
                     {tabs.map((tab) => (
                         <SettingsTabButton
                             key={tab.id}
                             active={activeTab === tab.id}
+                            icon={tab.icon}
+                            label={tab.label}
                             onClick={() => handleTabChange(tab.id)}
-                        >
-                            {tab.icon}
-                            <span>{tab.label}</span>
-                        </SettingsTabButton>
+                        />
                     ))}
                 </div>
 
-                <div className="settings-content min-h-0 flex-1 overflow-hidden bg-surface px-4 py-4 sm:px-5">
+                <div className="settings-content">
                     {activeTab === 'account' && renderAccountTab()}
 
                     {activeTab === 'appearance' && (
-                        <SettingsPane>
+                        <SettingsPane dataPane="appearance" className="settings-pane-standard">
                             <SettingGroup title={t('settings.appearance.themeGroup')}>
                                 <SettingControlGroup className="items-start">
                                     <CustomSelect
@@ -488,7 +634,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                     )}
 
                     {activeTab === 'personalization' && isAuthenticated && (
-                        <SettingsPane dataPane="personalization">
+                        <SettingsPane dataPane="personalization" className="settings-pane-standard">
                             <SettingGroup
                                 title={t('settings.personalization.title')}
                                 description={t('settings.personalization.description')}
@@ -532,7 +678,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                     )}
 
                     {activeTab === 'interface' && (
-                        <SettingsPane>
+                        <SettingsPane dataPane="interface" className="settings-pane-standard">
                             <SettingGroup title={t('settings.interfaceLanguage.title')}>
                                 <SettingControlGroup className="items-start">
                                     <CustomSelect
@@ -563,13 +709,6 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                     description={t('settings.interface.showChatPreview.description')}
                                     checked={settings.showChatPreview}
                                     onClick={() => updateSetting('showChatPreview', !settings.showChatPreview)}
-                                />
-                                <SettingToggle
-                                    title={t('settings.interface.showSuggestions.title')}
-                                    description={t('settings.interface.showSuggestions.description')}
-                                    checked={settings.showSuggestions}
-                                    onClick={() => updateSetting('showSuggestions', !settings.showSuggestions)}
-                                    withDivider
                                 />
                                 <SettingToggle
                                     title={t('settings.interface.autocomplete.title')}
@@ -629,7 +768,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                     )}
 
                     {activeTab === 'accessibility' && (
-                        <SettingsPane>
+                        <SettingsPane dataPane="accessibility" className="settings-pane-standard">
                             <SettingGroup title={t('settings.accessibility.typographyGroup')}>
                                 <SettingControlGroup className="items-start">
                                     <CustomSelect

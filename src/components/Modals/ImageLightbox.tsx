@@ -125,7 +125,7 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
             formData.append('model', currentModel || 'demo_image');
             formData.append('image_style', imageStyle);
             formData.append('regenerate_image_only', 'true');
-            formData.append('user_id', sessionId || '');
+            formData.append('session_id', sessionId || '');
 
             const result = await new Promise((resolve, reject) => {
                 apiService.chat(formData, undefined, {
@@ -215,7 +215,7 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
                         ext = pathExt;
                     }
                 }
-            } catch (_error) {
+            } catch {
             }
 
             a.download = `remind-art-${Date.now()}.${ext}`;
@@ -292,12 +292,6 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
                                         : 'Image preview'
                                 )}
                             </h2>
-                            <p className="image-lightbox-subtitle">
-                                {translate(
-                                    'imageLightbox.subtitle',
-                                    'Review the full image, regenerate it in another style, or download the file.'
-                                )}
-                            </p>
                         </div>
                     </div>
 

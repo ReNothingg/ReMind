@@ -186,7 +186,7 @@ const normalizePreviewBackground = (value?: string) => {
     const trimmedValue = (value || '').trim();
     if (!trimmedValue) return 'transparent';
 
-    if (!/^[#(),.%\sA-Za-z0-9\-\/]+$/.test(trimmedValue)) {
+    if (!/^[#(),.%\sA-Za-z0-9/-]+$/.test(trimmedValue)) {
         return 'transparent';
     }
 

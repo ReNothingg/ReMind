@@ -1,263 +1,408 @@
-import { apiService, getCsrfToken } from './api';
-import { ApiClientError, apiAuthCheck, apiAuthLogin } from './openapiClient';
+import { apiAuthCheck, apiAuthLogin } from './openapiClient';
+import { ApiClientError, extractApiErrorMessage, requestJson } from './http';
+import type { AccountFieldName } from '../utils/accountValidation';
 
-const buildCsrfHeaders = (headers = {}) => {
-    const token = getCsrfToken();
-    if (!token) return headers;
-    return { ...headers, 'X-CSRF-Token': token };
+type AuthUser = {
+    id: number;
+    username: string;
+    name?: string | null;
+    email: string;
+    is_confirmed: boolean;
+    created_at?: string | null;
+    oauth_provider?: string | null;
 };
 
+type AuthCheckResult = {
+    authenticated: boolean;
+    user: AuthUser | null;
+};
+
+type LoginResult =
+    | { success: true; message: string; user: AuthUser }
+    | { success: false; error: string };
+
+type RegisterResponse = {
+    message?: string;
+    user_id?: number;
+    error?: string;
+    field?: AccountFieldName;
+};
+
+type LogoutResponse = {
+    success: boolean;
+    message?: string;
+    error?: string;
+};
+
+type ProfileResponse = {
+    user?: AuthUser;
+    error?: string;
+    field?: AccountFieldName;
+    [key: string]: unknown;
+};
+
+type SettingsResponse = {
+    theme?: string;
+    language?: string;
+    settings_data?: Record<string, unknown>;
+    settings?: Record<string, unknown>;
+    error?: string;
+    [key: string]: unknown;
+};
+
+type PreferencesResponse = {
+    preferences?: Record<string, unknown>;
+};
+
+type FavoritesResponse = {
+    favorites?: string[];
+};
+
+type DeleteAccountResponse = {
+    deleted?: {
+        account_deleted?: boolean;
+        [key: string]: unknown;
+    };
+    error?: string;
+};
+
+type SuccessResult<T extends string, TValue> =
+    | { success: true } & Record<T, TValue>
+    | { success: false; error?: string; field?: AccountFieldName };
+
+const MAX_FIELD_LENGTH = 100;
+
+function validateLength(value: string, message: string): string | null {
+    return value.length > MAX_FIELD_LENGTH ? message : null;
+}
+
+function logFailure(scope: string, error: unknown): void {
+    console.error(`${scope} failed:`, error);
+}
+
+function isGenericTransportMessage(message: string): boolean {
+    return /^HTTP error: \d+$/.test(message.trim());
+}
+
+function buildFailureResult(
+    error?: string,
+    field?: AccountFieldName
+): { success: false; error?: string; field?: AccountFieldName } {
+    return error ? { success: false, error, ...(field ? { field } : {}) } : { success: false };
+}
+
+function extractOptionalField(error: unknown): AccountFieldName | undefined {
+    if (!(error instanceof ApiClientError) || !error.data || typeof error.data !== 'object') {
+        return undefined;
+    }
+
+    const field = (error.data as { field?: unknown }).field;
+    return typeof field === 'string' ? (field as AccountFieldName) : undefined;
+}
+
+function extractOptionalErrorMessage(error: unknown, fallback: string): string | undefined {
+    const message = extractApiErrorMessage(error, fallback);
+    if (!message || message === fallback || isGenericTransportMessage(message)) {
+        return undefined;
+    }
+    return message;
+}
+
+async function requestAuthJson<TResponse>(
+    path: string,
+    options: RequestInit = {}
+): Promise<TResponse> {
+    return requestJson<TResponse>(path, options);
+}
+
 export const authService = {
-    async checkAuth() {
+    async checkAuth(): Promise<AuthCheckResult> {
         try {
             const data = await apiAuthCheck();
             return { authenticated: data.authenticated, user: data.user || null };
         } catch (error) {
-            console.error('Auth check failed:', error);
+            logFailure('Auth check', error);
+            return { authenticated: false, user: null };
         }
-
-        return { authenticated: false, user: null };
     },
 
-    async login(email, password, turnstileResponse) {
+    async login(
+        email: string,
+        password: string,
+        turnstileResponse: string | null
+    ): Promise<LoginResult> {
         try {
             const data = await apiAuthLogin({
                 email,
                 password,
-                turnstile_response: turnstileResponse
+                turnstile_response: turnstileResponse,
             });
             return { success: true, message: data.message, user: data.user };
         } catch (error) {
-            console.error('Login failed:', error);
-            if (error instanceof ApiClientError) {
-                const apiError = (error.data && (error.data.error?.message || error.data.error)) || error.message;
-                return { success: false, error: apiError || 'Ошибка при входе' };
-            }
-            return { success: false, error: error.message };
+            logFailure('Login', error);
+            return {
+                success: false,
+                error: extractApiErrorMessage(error, 'Ошибка при входе'),
+            };
         }
     },
 
-    async register(username, email, password, turnstileResponse) {
-        try {
-            if (username.length > 100) {
-                return { success: false, error: 'Имя пользователя не должно превышать 100 символов' };
-            }
-            if (email.length > 100) {
-                return { success: false, error: 'Email не должен превышать 100 символов' };
-            }
-            if (password.length > 100) {
-                return { success: false, error: 'Пароль не должен превышать 100 символов' };
-            }
+    async register(
+        name: string,
+        username: string,
+        email: string,
+        password: string,
+        turnstileResponse: string | null
+    ): Promise<
+        | { success: true; message?: string; user_id?: number }
+        | { success: false; error: string; field?: AccountFieldName }
+    > {
+        const nameError = validateLength(name, 'Name must not exceed 100 characters');
+        if (nameError) {
+            return { success: false, error: nameError, field: 'name' };
+        }
 
-            const response = await fetch(`${apiService.baseURL}/api/auth/register`, {
+        const usernameError = validateLength(
+            username,
+            'Имя пользователя не должно превышать 100 символов'
+        );
+        if (usernameError) {
+            return { success: false, error: usernameError, field: 'username' };
+        }
+
+        const emailError = validateLength(email, 'Email не должен превышать 100 символов');
+        if (emailError) {
+            return { success: false, error: emailError, field: 'email' };
+        }
+
+        const passwordError = validateLength(
+            password,
+            'Пароль не должен превышать 100 символов'
+        );
+        if (passwordError) {
+            return { success: false, error: passwordError, field: 'password' };
+        }
+
+        try {
+            const data = await requestAuthJson<RegisterResponse>('/api/auth/register', {
                 method: 'POST',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify({ username, email, password, turnstile_response: turnstileResponse })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    username,
+                    email,
+                    password,
+                    turnstile_response: turnstileResponse,
+                }),
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                return { success: true, message: data.message, user_id: data.user_id };
-            } else {
-                return { success: false, error: data.error };
+            const result: { success: true; message?: string; user_id?: number } = {
+                success: true,
+            };
+            if (data.message !== undefined) {
+                result.message = data.message;
             }
+            if (data.user_id !== undefined) {
+                result.user_id = data.user_id;
+            }
+            return result;
         } catch (error) {
-            console.error('Register failed:', error);
-            return { success: false, error: error.message };
+            logFailure('Register', error);
+            const registerError = extractApiErrorMessage(error, 'Registration failed');
+            const registerField = extractOptionalField(error);
+            if (registerField) {
+                return { success: false, error: registerError, field: registerField };
+            }
+            return { success: false, error: extractApiErrorMessage(error, 'Ошибка при регистрации') };
         }
     },
 
-    async logout() {
+    async logout(): Promise<LogoutResponse> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/logout`, {
+            await requestAuthJson<unknown>('/api/auth/logout', {
                 method: 'POST',
-                credentials: 'include',
-                headers: buildCsrfHeaders()
+            });
+            return { success: true, message: 'Успешный выход' };
+        } catch (error) {
+            logFailure('Logout', error);
+            return { success: false, error: 'Ошибка при выходе' };
+        }
+    },
+
+    async deleteAccount(): Promise<SuccessResult<'deleted', NonNullable<DeleteAccountResponse['deleted']>>> {
+        try {
+            const data = await requestAuthJson<DeleteAccountResponse>('/api/privacy/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delete_account: true }),
             });
 
-            if (response.ok) {
-                return { success: true, message: 'Успешный выход' };
+            if (data.deleted) {
+                return { success: true, deleted: data.deleted };
             }
-        } catch (error) {
-            console.error('Logout failed:', error);
-        }
 
-        return { success: false, error: 'Ошибка при выходе' };
+            return buildFailureResult(data.error);
+        } catch (error) {
+            logFailure('Delete account', error);
+            return {
+                success: false,
+                error: extractApiErrorMessage(error, 'Failed to delete account'),
+            };
+        }
     },
 
-    async getProfile() {
+    async getProfile(): Promise<ProfileResponse> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/profile`, {
+            return await requestAuthJson<ProfileResponse>('/api/auth/profile', {
                 method: 'GET',
-                credentials: 'include'
             });
-
-            if (response.ok) {
-                return await response.json();
-            } else {
-                return { error: 'Failed to get profile' };
-            }
         } catch (error) {
-            console.error('Get profile failed:', error);
-            return { error: error.message };
+            logFailure('Get profile', error);
+            return { error: extractOptionalErrorMessage(error, 'Failed to get profile') || 'Failed to get profile' };
         }
     },
 
-    async updateProfile(profileData) {
+    async updateProfile(
+        profileData: Record<string, unknown>
+    ): Promise<SuccessResult<'user', AuthUser>> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/profile`, {
+            const data = await requestAuthJson<ProfileResponse>('/api/auth/profile', {
                 method: 'PUT',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify(profileData)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(profileData),
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (data.user) {
                 return { success: true, user: data.user };
-            } else {
-                return { success: false, error: data.error };
             }
+
+            return buildFailureResult(data.error, data.field);
         } catch (error) {
-            console.error('Update profile failed:', error);
-            return { success: false, error: error.message };
+            logFailure('Update profile', error);
+            const field = extractOptionalField(error);
+            return {
+                success: false,
+                error: extractApiErrorMessage(error, 'Failed to update profile'),
+                ...(field ? { field } : {}),
+            };
         }
     },
 
-    async getSettings() {
+    async getSettings(): Promise<SettingsResponse> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/settings`, {
+            return await requestAuthJson<SettingsResponse>('/api/auth/settings', {
                 method: 'GET',
-                credentials: 'include'
             });
-
-            if (response.ok) {
-                return await response.json();
-            } else {
-                return { error: 'Failed to get settings' };
-            }
         } catch (error) {
-            console.error('Get settings failed:', error);
-            return { error: error.message };
+            logFailure('Get settings', error);
+            return { error: extractOptionalErrorMessage(error, 'Failed to get settings') || 'Failed to get settings' };
         }
     },
 
-    async updateSettings(settingsData) {
+    async updateSettings(
+        settingsData: Record<string, unknown>
+    ): Promise<SuccessResult<'settings', Record<string, unknown>>> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/auth/settings`, {
+            const data = await requestAuthJson<SettingsResponse>('/api/auth/settings', {
                 method: 'PUT',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify(settingsData)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settingsData),
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (data.settings) {
                 return { success: true, settings: data.settings };
-            } else {
-                const err = (data && (data.error?.message || data.error)) || 'Ошибка при обновлении настроек';
-                return { success: false, error: err };
             }
+
+            return {
+                success: false,
+                error:
+                    typeof data.error === 'string'
+                        ? data.error
+                        : 'Ошибка при обновлении настроек',
+            };
         } catch (error) {
-            console.error('Update settings failed:', error);
-            return { success: false, error: error.message };
+            logFailure('Update settings', error);
+            return {
+                success: false,
+                error: extractApiErrorMessage(error, 'Ошибка при обновлении настроек'),
+            };
         }
     },
 
-    async getPreferences() {
+    async getPreferences(): Promise<Record<string, unknown>> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/user/preferences`, {
+            const data = await requestAuthJson<PreferencesResponse>('/api/user/preferences', {
                 method: 'GET',
-                credentials: 'include'
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                return data.preferences || {};
-            }
-            return {};
+            return data.preferences || {};
         } catch (error) {
-            console.error('Get preferences failed:', error);
+            logFailure('Get preferences', error);
             return {};
         }
     },
 
-    async updatePreferences(preferences) {
+    async updatePreferences(
+        preferences: Record<string, unknown>
+    ): Promise<SuccessResult<'preferences', Record<string, unknown>>> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/user/preferences`, {
+            const data = await requestAuthJson<PreferencesResponse>('/api/user/preferences', {
                 method: 'PUT',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify(preferences)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(preferences),
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                return { success: true, preferences: data.preferences || {} };
-            }
-            return { success: false };
+            return { success: true, preferences: data.preferences || {} };
         } catch (error) {
-            console.error('Update preferences failed:', error);
-            return { success: false, error: error.message };
+            logFailure('Update preferences', error);
+            return buildFailureResult(
+                extractOptionalErrorMessage(error, 'Failed to update preferences')
+            );
         }
     },
-    async getFavorites() {
+
+    async getFavorites(): Promise<string[]> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/user/favorites`, {
+            const data = await requestAuthJson<FavoritesResponse>('/api/user/favorites', {
                 method: 'GET',
-                credentials: 'include'
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                return data.favorites || [];
-            }
-            return [];
+            return data.favorites || [];
         } catch (error) {
-            console.error('Get favorites failed:', error);
+            logFailure('Get favorites', error);
             return [];
         }
     },
-    async addFavorite(sessionId) {
+
+    async addFavorite(sessionId: string): Promise<SuccessResult<'favorites', string[]>> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/user/favorites`, {
+            const data = await requestAuthJson<FavoritesResponse>('/api/user/favorites', {
                 method: 'POST',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify({ session_id: sessionId })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId }),
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                return { success: true, favorites: data.favorites || [] };
-            }
-            return { success: false };
+            return { success: true, favorites: data.favorites || [] };
         } catch (error) {
-            console.error('Add favorite failed:', error);
-            return { success: false, error: error.message };
+            logFailure('Add favorite', error);
+            return buildFailureResult(
+                extractOptionalErrorMessage(error, 'Failed to add favorite')
+            );
         }
     },
-    async removeFavorite(sessionId) {
+
+    async removeFavorite(sessionId: string): Promise<SuccessResult<'favorites', string[]>> {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/user/favorites`, {
+            const data = await requestAuthJson<FavoritesResponse>('/api/user/favorites', {
                 method: 'DELETE',
-                headers: buildCsrfHeaders({ 'Content-Type': 'application/json' }),
-                credentials: 'include',
-                body: JSON.stringify({ session_id: sessionId })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId }),
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                return { success: true, favorites: data.favorites || [] };
-            }
-            return { success: false };
+            return { success: true, favorites: data.favorites || [] };
         } catch (error) {
-            console.error('Remove favorite failed:', error);
-            return { success: false, error: error.message };
+            logFailure('Remove favorite', error);
+            return buildFailureResult(
+                extractOptionalErrorMessage(error, 'Failed to remove favorite')
+            );
         }
-    }
+    },
 };

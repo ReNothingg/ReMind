@@ -61,6 +61,10 @@ def _extract_uploaded_files() -> list:
     return uploaded_files
 
 
+def _extract_session_identifier(payload: dict[str, Any]) -> Any:
+    return payload.get("session_id") or payload.get("user_id")
+
+
 def _has_files_payload(value) -> bool:
     if value is None:
         return False
@@ -91,8 +95,9 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
 
     if request.is_json:
         data: dict[str, Any] = request.get_json(silent=True) or {}
-        session_id = resolve_session_id(data.get("user_id"))
+        session_id = resolve_session_id(_extract_session_identifier(data))
         model_name = data.get("model", "gemini")
+        data["session_id"] = session_id
         data.setdefault("files", [])
         if auth_user_id is None and _has_files_payload(data.get("files")):
             raise ApiError(
@@ -107,8 +112,9 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         raise ApiError("Empty request", status=400, code="empty_request")
 
     user_data: dict[str, Any] = request.form.to_dict()
-    session_id = resolve_session_id(user_data.get("user_id"))
+    session_id = resolve_session_id(_extract_session_identifier(user_data))
     model_name = user_data.get("model", "gemini")
+    user_data["session_id"] = session_id
     _validate_message_in_payload(user_data)
 
     uploaded_files = _extract_uploaded_files()
@@ -260,6 +266,7 @@ def _stream_chat_response(
                     yield f"data: {json.dumps({'reply_part': chunk_str})}\n\n"
 
                 final_data["reply"] = full_response
+                final_data["sessionId"] = resolved_session_id
                 if db_user_id is None and ALLOW_GUEST_CHATS_SAVE:
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
@@ -294,19 +301,12 @@ def _stream_chat_response(
 
 
 def _maybe_return_direct_image(model_output):
-    is_direct_image = "DirectImageResponse" in str(type(model_output))
-    if not is_direct_image:
-        try:
-            from ai_engine.MindArt import DirectImageResponse
-
-            is_direct_image = isinstance(model_output, DirectImageResponse)
-        except ImportError:
-            is_direct_image = False
-
-    if not is_direct_image:
+    image_bytes = getattr(model_output, "image_bytes", None)
+    mime_type = getattr(model_output, "mime_type", None)
+    if not isinstance(image_bytes, (bytes, bytearray)) or not isinstance(mime_type, str):
         return None
 
-    return send_file(io.BytesIO(model_output.image_bytes), mimetype=model_output.mime_type)
+    return send_file(io.BytesIO(image_bytes), mimetype=mime_type)
 
 
 def register_chat_routes(api_bp):
@@ -377,6 +377,7 @@ def register_chat_routes(api_bp):
             response_data["session_token"] = _generate_guest_session_token(
                 resolved_session_id, int(time.time())
             )
+        response_data["sessionId"] = resolved_session_id
 
         return make_ok(response_data)
 

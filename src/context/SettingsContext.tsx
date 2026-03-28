@@ -43,7 +43,6 @@ const DEFAULT_SETTINGS = {
     codeWrap: true,
     compactMode: false,
     showChatPreview: true,
-    showSuggestions: true,
     autocomplete: true,
     autoscroll: true,
     notifyOnThinkingDone: false,
@@ -248,28 +247,11 @@ export const SettingsProvider = ({ children }) => {
         const prevAuthState = lastAuthStateRef.current;
         lastAuthStateRef.current = isAuthenticated;
 
-        if (isAuthenticated && !prevAuthState) {
-            setTimeout(() => loadSettingsFromDB(), 0);
-        } else if (!isAuthenticated && prevAuthState) {
+        if (!isAuthenticated && prevAuthState) {
             pendingSavesRef.current = {};
         }
-    }, [isAuthenticated, loadSettingsFromDB]);
-    useEffect(() => {
-        if (isAuthenticated) {
-            setTimeout(() => loadSettingsFromDB(), 0);
-        }
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('theme')) {
-            const theme = decodeURIComponent(params.get('theme'));
-            if (['light', 'dark', 'system'].includes(theme)) {
-                updateSetting('theme', theme);
-            }
-        }
-        if (params.get('accent')) {
-            const accent = decodeURIComponent(params.get('accent'));
-            updateSetting('accentColor', accent);
-        }
-    }, []);
+        return undefined;
+    }, [isAuthenticated]);
 
     const updateSetting = useCallback((key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -282,10 +264,56 @@ export const SettingsProvider = ({ children }) => {
             pendingSavesRef.current[key] = value;
             clearTimeout(saveDebounceTimerRef.current);
             saveDebounceTimerRef.current = setTimeout(() => {
-                saveToDB();
+                void saveToDB();
             }, 500);
         }
     }, [isAuthenticated, saveToDB]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            const timer = window.setTimeout(() => {
+                void loadSettingsFromDB();
+            }, 0);
+            return () => window.clearTimeout(timer);
+        }
+
+        return undefined;
+    }, [isAuthenticated, loadSettingsFromDB]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const updates = [];
+        const theme = params.get('theme');
+        if (theme) {
+            const decodedTheme = decodeURIComponent(theme);
+            if (['light', 'dark', 'system'].includes(decodedTheme)) {
+                updates.push(['theme', decodedTheme]);
+            }
+        }
+
+        const accent = params.get('accent');
+        if (accent) {
+            updates.push(['accentColor', decodeURIComponent(accent)]);
+        }
+
+        if (updates.length === 0) {
+            return undefined;
+        }
+
+        const frame = window.requestAnimationFrame(() => {
+            updates.forEach(([key, value]) => {
+                updateSetting(key, value);
+            });
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [updateSetting]);
+
+    useEffect(() => () => {
+        if (saveDebounceTimerRef.current) {
+            clearTimeout(saveDebounceTimerRef.current);
+        }
+    }, []);
 
     return (
         <SettingsContext.Provider value={{ settings, updateSetting }}>
@@ -294,4 +322,5 @@ export const SettingsProvider = ({ children }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSettings = () => useContext(SettingsContext);

@@ -1,92 +1,6 @@
-import { API_BASE_URL } from '../utils/constants';
 import type { paths } from '../generated/openapi';
-
-const CSRF_COOKIE_KEY = 'csrf_token';
-const CSRF_HEADER_KEY = 'X-CSRF-Token';
-const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
-
-export class ApiClientError extends Error {
-    status?: number;
-    data?: unknown;
-}
-
-function getCookie(name: string): string {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) {
-        return parts.pop()?.split(';').shift() || '';
-    }
-    return '';
-}
-
-function withCsrfHeaders(method: string, headers: Headers): Headers {
-    if (SAFE_METHODS.includes(method.toUpperCase())) {
-        return headers;
-    }
-    if (headers.has(CSRF_HEADER_KEY)) {
-        return headers;
-    }
-    const token = getCookie(CSRF_COOKIE_KEY);
-    if (token) {
-        headers.set(CSRF_HEADER_KEY, token);
-    }
-    return headers;
-}
-
-function buildQueryString(query?: Record<string, unknown>): string {
-    if (!query) return '';
-    const params = new URLSearchParams();
-    Object.entries(query).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === '') return;
-        params.set(key, String(value));
-    });
-    const serialized = params.toString();
-    return serialized ? `?${serialized}` : '';
-}
-
-type RequestInitExt = RequestInit & {
-    query?: Record<string, unknown>;
-};
-
-async function requestJson<TResponse>(path: string, options: RequestInitExt = {}): Promise<TResponse> {
-    const baseURL = API_BASE_URL || '';
-    const method = (options.method || 'GET').toUpperCase();
-    const headers = withCsrfHeaders(method, new Headers(options.headers || {}));
-    const queryString = buildQueryString(options.query);
-    const url = `${baseURL}${path}${queryString}`;
-
-    const response = await fetch(url, {
-        ...options,
-        method,
-        headers,
-        credentials: options.credentials || 'include',
-    });
-
-    if (!response.ok) {
-        let data: unknown = null;
-        try {
-            data = await response.json();
-        } catch (_error) {
-            try {
-                data = await response.text();
-            } catch (_innerError) {
-                data = null;
-            }
-        }
-        const err = new ApiClientError(
-            (data as { error?: string })?.error || `HTTP error: ${response.status}`
-        );
-        err.status = response.status;
-        err.data = data;
-        throw err;
-    }
-
-    if (response.status === 204) {
-        return null as TResponse;
-    }
-
-    return response.json() as Promise<TResponse>;
-}
+export { ApiClientError } from './http';
+import { requestJson, type RequestJsonOptions } from './http';
 
 export type AuthCheckResponse = paths['/api/auth/check']['get']['responses']['200']['content']['application/json'];
 export type AuthLoginRequest = paths['/api/auth/login']['post']['requestBody']['content']['application/json'];
@@ -116,16 +30,16 @@ export function apiAuthLogin(payload: AuthLoginRequest): Promise<AuthLoginRespon
 export function apiListSessions(query: ListSessionsQuery = {}, headers?: HeadersInit): Promise<ListSessionsResponse> {
     return requestJson<ListSessionsResponse>('/sessions', {
         method: 'GET',
-        headers,
         query,
-    });
+        ...(headers ? { headers } : {}),
+    } satisfies RequestJsonOptions);
 }
 
 export function apiGetSessionHistory(sessionId: string, headers?: HeadersInit): Promise<SessionHistoryResponse> {
     return requestJson<SessionHistoryResponse>(`/sessions/${encodeURIComponent(sessionId)}/history`, {
         method: 'GET',
-        headers,
-    });
+        ...(headers ? { headers } : {}),
+    } satisfies RequestJsonOptions);
 }
 
 export function apiTranslate(payload: TranslateRequest): Promise<TranslateResponse> {

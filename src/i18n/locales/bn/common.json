@@ -18,34 +18,35 @@
     "register": "রেজিস্টার"
   },
   "authModal": {
-    "loginTitle": "\u0986\u09aa\u09a8\u09be\u09b0 \u0985\u09cd\u09af\u09be\u0995\u09be\u0989\u09a8\u09cd\u099f\u09c7 \u09b8\u09be\u0987\u09a8 \u0987\u09a8 \u0995\u09b0\u09c1\u09a8",
-    "registerTitle": "\u0985\u09cd\u09af\u09be\u0995\u09be\u0989\u09a8\u09cd\u099f \u09a4\u09c8\u09b0\u09bf \u0995\u09b0\u09c1\u09a8",
+    "loginTitle": "আপনার অ্যাকাউন্টে সাইন ইন করুন",
+    "registerTitle": "অ্যাকাউন্ট তৈরি করুন",
     "fields": {
       "email": "Email:",
-      "password": "\u09aa\u09be\u09b8\u0993\u09af\u09bc\u09be\u09b0\u09cd\u09a1:",
-      "username": "\u09ac\u09cd\u09af\u09ac\u09b9\u09be\u09b0\u0995\u09be\u09b0\u09c0\u09b0 \u09a8\u09be\u09ae:",
-      "confirmPassword": "\u09aa\u09be\u09b8\u0993\u09af\u09bc\u09be\u09b0\u09cd\u09a1 \u09a8\u09bf\u09b6\u09cd\u099a\u09bf\u09a4 \u0995\u09b0\u09c1\u09a8:"
+      "password": "পাসওয়ার্ড:",
+      "username": "ব্যবহারকারীর নাম:",
+      "confirmPassword": "পাসওয়ার্ড নিশ্চিত করুন:",
+      "name": "???:"
     },
     "actions": {
-      "loginLoading": "\u09b8\u09be\u0987\u09a8 \u0987\u09a8 \u0995\u09b0\u09be \u09b9\u099a\u09cd\u099b\u09c7...",
-      "loginWithGoogle": "Google \u09a6\u09bf\u09af\u09bc\u09c7 \u09b8\u09be\u0987\u09a8 \u0987\u09a8 \u0995\u09b0\u09c1\u09a8",
-      "registerLoading": "\u0985\u09cd\u09af\u09be\u0995\u09be\u0989\u09a8\u09cd\u099f \u09a4\u09c8\u09b0\u09bf \u0995\u09b0\u09be \u09b9\u099a\u09cd\u099b\u09c7...",
-      "registerWithGoogle": "Google \u09a6\u09bf\u09af\u09bc\u09c7 \u09b8\u09be\u0987\u09a8 \u0986\u09aa \u0995\u09b0\u09c1\u09a8"
+      "loginLoading": "সাইন ইন করা হচ্ছে...",
+      "loginWithGoogle": "Google দিয়ে সাইন ইন করুন",
+      "registerLoading": "অ্যাকাউন্ট তৈরি করা হচ্ছে...",
+      "registerWithGoogle": "Google দিয়ে সাইন আপ করুন"
     },
     "switch": {
-      "noAccount": "\u0986\u09aa\u09a8\u09be\u09b0 \u0995\u09bf \u0985\u09cd\u09af\u09be\u0995\u09be\u0989\u09a8\u09cd\u099f \u09a8\u09c7\u0987?",
-      "haveAccount": "\u0986\u09aa\u09a8\u09be\u09b0 \u0995\u09bf \u0986\u0997\u09c7 \u09a5\u09c7\u0995\u09c7\u0987 \u0985\u09cd\u09af\u09be\u0995\u09be\u0989\u09a8\u09cd\u099f \u0986\u099b\u09c7?"
+      "noAccount": "আপনার কি অ্যাকাউন্ট নেই?",
+      "haveAccount": "আপনার কি আগে থেকেই অ্যাকাউন্ট আছে?"
     },
     "messages": {
-      "loginSuccess": "\u09b8\u09ab\u09b2\u09ad\u09be\u09ac\u09c7 \u09b8\u09be\u0987\u09a8 \u0987\u09a8 \u09b9\u09af\u09bc\u09c7\u099b\u09c7",
-      "loginError": "\u09b8\u09be\u0987\u09a8 \u0987\u09a8 \u09ac\u09cd\u09af\u09b0\u09cd\u09a5",
-      "registerSuccess": "\u09a8\u09bf\u09ac\u09a8\u09cd\u09a7\u09a8 \u09b8\u09ab\u09b2 \u09b9\u09af\u09bc\u09c7\u099b\u09c7\u0964 \u0985\u09cd\u09af\u09be\u0995\u09be\u0989\u09a8\u09cd\u099f \u09a8\u09bf\u09b6\u09cd\u099a\u09bf\u09a4 \u0995\u09b0\u09a4\u09c7 \u0986\u09aa\u09a8\u09be\u09b0 \u0987\u09ae\u09c7\u0987\u09b2 \u09a6\u09c7\u0996\u09c1\u09a8\u0964",
-      "registerError": "\u09a8\u09bf\u09ac\u09a8\u09cd\u09a7\u09a8 \u09ac\u09cd\u09af\u09b0\u09cd\u09a5",
-      "passwordsMismatch": "\u09aa\u09be\u09b8\u0993\u09af\u09bc\u09be\u09b0\u09cd\u09a1 \u09ae\u09bf\u09b2\u099b\u09c7 \u09a8\u09be",
-      "usernameTooLong": "\u09ac\u09cd\u09af\u09ac\u09b9\u09be\u09b0\u0995\u09be\u09b0\u09c0\u09b0 \u09a8\u09be\u09ae 100 \u0985\u0995\u09cd\u09b7\u09b0\u09c7\u09b0 \u09ac\u09c7\u09b6\u09bf \u09b9\u09a4\u09c7 \u09aa\u09be\u09b0\u09ac\u09c7 \u09a8\u09be",
-      "emailTooLong": "Email 100 \u0985\u0995\u09cd\u09b7\u09b0\u09c7\u09b0 \u09ac\u09c7\u09b6\u09bf \u09b9\u09a4\u09c7 \u09aa\u09be\u09b0\u09ac\u09c7 \u09a8\u09be",
-      "passwordTooLong": "\u09aa\u09be\u09b8\u0993\u09af\u09bc\u09be\u09b0\u09cd\u09a1 100 \u0985\u0995\u09cd\u09b7\u09b0\u09c7\u09b0 \u09ac\u09c7\u09b6\u09bf \u09b9\u09a4\u09c7 \u09aa\u09be\u09b0\u09ac\u09c7 \u09a8\u09be",
-      "requestError": "\u09a8\u09c7\u099f\u0993\u09af\u09bc\u09be\u09b0\u09cd\u0995 \u0985\u09a5\u09ac\u09be \u09b8\u09be\u09b0\u09cd\u09ad\u09be\u09b0 \u09a4\u09cd\u09b0\u09c1\u099f\u09bf"
+      "loginSuccess": "সফলভাবে সাইন ইন হয়েছে",
+      "loginError": "সাইন ইন ব্যর্থ",
+      "registerSuccess": "নিবন্ধন সফল হয়েছে। অ্যাকাউন্ট নিশ্চিত করতে আপনার ইমেইল দেখুন।",
+      "registerError": "নিবন্ধন ব্যর্থ",
+      "passwordsMismatch": "পাসওয়ার্ড মিলছে না",
+      "usernameTooLong": "ব্যবহারকারীর নাম 100 অক্ষরের বেশি হতে পারবে না",
+      "emailTooLong": "Email 100 অক্ষরের বেশি হতে পারবে না",
+      "passwordTooLong": "পাসওয়ার্ড 100 অক্ষরের বেশি হতে পারবে না",
+      "requestError": "নেটওয়ার্ক অথবা সার্ভার ত্রুটি"
     }
   },
   "common": {
@@ -180,7 +181,8 @@
         "status": "অবস্থা",
         "email": "ইমেল",
         "id": "আইডি",
-        "username": "ব্যবহারকারীর নাম"
+        "username": "ব্যবহারকারীর নাম",
+        "name": "???"
       },
       "signedIn": "আপনি সাইন ইন করেছেন",
       "guestMode": "আপনি অতিথি মোড ব্যবহার করছেন",
@@ -193,7 +195,21 @@
       "saveChanges": "পরিবর্তন সংরক্ষণ করুন",
       "signOut": "সাইন আউট",
       "profileUpdated": "প্রোফাইল আপডেট হয়েছে",
-      "updateError": "আপডেট ব্যর্থ"
+      "updateError": "আপডেট ব্যর্থ",
+      "nameHint": "???? ?????? ??? ?? ????? AI ????????????? ??? ??????? ????",
+      "usernameHint": "3-50 ?????: ????, ??????, ??????????? ??? ???????",
+      "delete": {
+        "title": "?????????? ???? ?????",
+        "description": "??? ????? ????????, ??????, ?????? ??? ?????? ??? ????? ??????????? ???? ?????",
+        "confirmLabel": "???? ???? ??????? ????",
+        "confirmHint": "????? ??????? ???????????? ??? ?????: {{username}}",
+        "confirmPlaceholder": "????? ???????????? ??? ?????",
+        "confirmationMismatch": "?????????? ????? ????? ??????? ???????????? ??? ?????",
+        "action": "?????????? ???? ?????",
+        "actionLoading": "?????????? ???? ???? ?????...",
+        "success": "?????????? ???? ???? ??????",
+        "error": "?????????? ????? ??????"
+      }
     },
     "appearance": {
       "themeGroup": "থিম",
@@ -248,10 +264,6 @@
       "showChatPreview": {
         "title": "প্রিভিউ দেখান",
         "description": "চ্যাট তালিকায় শেষ বার্তা দেখান।"
-      },
-      "showSuggestions": {
-        "title": "সাজেশন দেখান",
-        "description": "স্টার্ট পেজে প্রম্পট সাজেশন দেখান।"
       },
       "autocomplete": {
         "title": "অটো-কমপ্লিট",

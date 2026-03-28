@@ -21,6 +21,7 @@
     "loginTitle": "Sign in to your account",
     "registerTitle": "Create an account",
     "fields": {
+      "name": "Name:",
       "email": "Email:",
       "password": "Password:",
       "username": "Username:",
@@ -187,6 +188,7 @@
       },
       "fields": {
         "status": "Status",
+        "name": "Name",
         "email": "Email",
         "id": "ID",
         "username": "Username"
@@ -197,12 +199,37 @@
       "ctaTitle": "Sign in or create a profile",
       "ctaDescription": "Sign in to save settings and history.",
       "signInOrRegister": "Sign in or sign up",
+      "nameHint": "Used in AI personalization when no nickname is set.",
+      "usernameHint": "3-50 characters: letters, numbers, underscore, and hyphen.",
       "emailReadonlyHint": "Email can't be changed.",
       "saving": "Saving...",
       "saveChanges": "Save changes",
       "signOut": "Sign out",
       "profileUpdated": "Profile updated",
-      "updateError": "Update failed"
+      "updateError": "Update failed",
+      "validation": {
+        "nameRequired": "Enter your name",
+        "nameLength": "Name must be 1-100 characters",
+        "nameInvalidCharacters": "Name contains invalid characters",
+        "usernameRequired": "Enter a username",
+        "usernameLength": "Username must be 3-50 characters",
+        "usernameCharset": "Username can only contain letters, numbers, underscore, and hyphen",
+        "usernameStartsWith": "Username cannot start with underscore or hyphen",
+        "usernameTaken": "This username is already taken",
+        "emailTaken": "This email is already registered"
+      },
+      "delete": {
+        "title": "Delete account",
+        "description": "This permanently removes your profile, settings, history, and shared chats.",
+        "confirmLabel": "Confirm deletion",
+        "confirmHint": "Type your current username: {{username}}",
+        "confirmPlaceholder": "Enter your username",
+        "confirmationMismatch": "Enter your current username to delete the account",
+        "action": "Delete account",
+        "actionLoading": "Deleting account...",
+        "success": "Account deleted",
+        "error": "Failed to delete account"
+      }
     },
     "appearance": {
       "themeGroup": "Theme",
@@ -257,10 +284,6 @@
       "showChatPreview": {
         "title": "Show preview",
         "description": "Show the last message in the chat list."
-      },
-      "showSuggestions": {
-        "title": "Show suggestions",
-        "description": "Show prompt suggestions on the start page."
       },
       "autocomplete": {
         "title": "Autocomplete",

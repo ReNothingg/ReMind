@@ -1,6 +1,7 @@
 import json
 import re
 import secrets
+import unicodedata
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
@@ -9,6 +10,7 @@ import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.flask_client import OAuth
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from sqlalchemy import func, inspect, text
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import BadData, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -28,6 +30,7 @@ OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=True)
     is_confirmed = db.Column(db.Boolean, default=False)
@@ -46,6 +49,7 @@ class User(db.Model):
         return {
             "id": self.id,
             "username": self.username,
+            "name": self.name,
             "email": self.email,
             "is_confirmed": self.is_confirmed,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -142,6 +146,58 @@ def is_valid_password(password):
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return False
     return True
+
+
+def _is_username_taken(username: str, exclude_user_id: int | None = None) -> bool:
+    query = User.query.filter(func.lower(User.username) == username.lower())
+    if exclude_user_id is not None:
+        query = query.filter(User.id != exclude_user_id)
+    return query.first() is not None
+
+
+def _validate_unique_username(username: str, exclude_user_id: int | None = None) -> str:
+    normalized = InputValidator.validate_username(username)
+    if _is_username_taken(normalized, exclude_user_id=exclude_user_id):
+        raise ValidationError("Username is already taken")
+    return normalized
+
+
+def _normalize_username_candidate(value: str | None) -> str:
+    if not value:
+        return ""
+
+    normalized = unicodedata.normalize("NFKD", str(value))
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii").lower()
+    candidate = re.sub(r"[^a-z0-9_-]+", "_", ascii_value)
+    candidate = re.sub(r"_+", "_", candidate).strip("_-")
+
+    if len(candidate) < 3:
+        return ""
+
+    return candidate[:50].strip("_-")
+
+
+def _build_unique_username(*candidates: str | None) -> str:
+    normalized_candidates = []
+    for candidate in candidates:
+        normalized = _normalize_username_candidate(candidate)
+        if normalized and normalized not in normalized_candidates:
+            normalized_candidates.append(normalized)
+
+    if not normalized_candidates:
+        normalized_candidates = [f"user_{secrets.token_hex(4)}"]
+
+    for base in normalized_candidates:
+        for suffix_index in range(1000):
+            suffix = "" if suffix_index == 0 else f"_{suffix_index}"
+            trimmed_base = base[: max(3, 50 - len(suffix))].strip("_-")
+            candidate = f"{trimmed_base}{suffix}".strip("_-")
+            if len(candidate) < 3:
+                continue
+            if not _is_username_taken(candidate):
+                return candidate
+
+    return f"user_{secrets.token_hex(6)}"[:50]
 
 
 def _is_argon2_hash(stored_password: str) -> bool:
@@ -374,7 +430,7 @@ def register_auth_routes(app):
 
                 return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
             try:
-                username = InputValidator.validate_username(username)
+                username = _validate_unique_username(username)
             except ValidationError as e:
                 flash(str(e), "danger")
                 from config import TURNSTILE_SITE_KEY
@@ -422,6 +478,7 @@ def register_auth_routes(app):
 
                 new_user = User(
                     username=username,
+                    name=username,
                     email=email,
                     password=hashed_password,
                     confirmation_token=confirmation_token,
@@ -827,9 +884,20 @@ def register_auth_routes(app):
             user = User.query.filter_by(email=email).first()
 
             if not user:
-                username = user_info.get("name", email.split("@")[0])
+                account_name = (
+                    user_info.get("name")
+                    or user_info.get("given_name")
+                    or email.split("@")[0]
+                )
+                username = _build_unique_username(
+                    user_info.get("preferred_username"),
+                    user_info.get("given_name"),
+                    user_info.get("name"),
+                    email.split("@")[0],
+                )
                 new_user = User(
                     username=username,
+                    name=account_name,
                     email=email,
                     is_confirmed=True,
                     oauth_provider="google",
@@ -843,6 +911,12 @@ def register_auth_routes(app):
                 user.oauth_provider = "google"
                 user.oauth_id = google_id
                 user.is_confirmed = True
+                if not user.name:
+                    user.name = (
+                        user_info.get("name")
+                        or user_info.get("given_name")
+                        or user.username
+                    )
                 db.session.commit()
                 flash("Ваш аккаунт связан с Google", "success")
             from utils.session_security import regenerate_session
@@ -913,6 +987,7 @@ def register_auth_routes(app):
         try:
             data = request.get_json(silent=True) or {}
             username = data.get("username", "")
+            name = data.get("name", "")
             email = data.get("email", "")
             password = data.get("password", "")
             from config import TURNSTILE_SITE_KEY
@@ -925,11 +1000,24 @@ def register_auth_routes(app):
                 return jsonify({"error": "Все поля обязательны"}), 400
 
             try:
-                username = InputValidator.validate_username(username)
+                username = _validate_unique_username(username)
                 email = InputValidator.validate_email(email)
                 InputValidator.validate_password(password)
+                account_name = (
+                    InputValidator.validate_name(name)
+                    if isinstance(name, str) and name.strip()
+                    else username
+                )
             except ValidationError as e:
-                return jsonify({"error": str(e)}), 400
+                message = str(e)
+                field = "username"
+                if message.startswith("Name "):
+                    field = "name"
+                elif message.startswith("Password "):
+                    field = "password"
+                elif "email" in message.lower():
+                    field = "email"
+                return jsonify({"error": message, "field": field}), 400
 
             user_exists = User.query.filter_by(email=email).first()
             if user_exists:
@@ -946,6 +1034,7 @@ def register_auth_routes(app):
 
             new_user = User(
                 username=username,
+                name=account_name,
                 email=email,
                 password=hashed_password,
                 confirmation_token=confirmation_token,
@@ -1088,11 +1177,26 @@ def register_auth_routes(app):
                 return jsonify({"error": "Пользователь не найден"}), 404
 
             if "username" in data:
-                user.username = InputValidator.validate_username(data["username"])
+                user.username = _validate_unique_username(
+                    data["username"], exclude_user_id=user.id
+                )
+                session["username"] = InputValidator.sanitize_output(user.username)
+            if "name" in data:
+                raw_name = data.get("name")
+                user.name = (
+                    InputValidator.validate_name(raw_name)
+                    if isinstance(raw_name, str) and raw_name.strip()
+                    else None
+                )
 
             db.session.commit()
 
             return jsonify({"message": "Профиль обновлен", "user": user.to_dict()}), 200
+
+        except ValidationError as e:
+            db.session.rollback()
+            field = "username" if "Username" in str(e) else "name"
+            return jsonify({"error": str(e), "field": field}), 400
 
         except Exception as e:
             db.session.rollback()
@@ -1459,5 +1563,18 @@ def setup_auth(app):
         app.logger.info("Google OAuth registered successfully")
     with app.app_context():
         db.create_all()
+        inspector = inspect(db.engine)
+        if "user" in inspector.get_table_names():
+            user_columns = {column["name"] for column in inspector.get_columns("user")}
+            if "name" not in user_columns:
+                with db.engine.begin() as connection:
+                    connection.execute(text('ALTER TABLE "user" ADD COLUMN name VARCHAR(100)'))
+                    connection.execute(
+                        text(
+                            'UPDATE "user" SET name = username '
+                            "WHERE name IS NULL OR TRIM(name) = ''"
+                        )
+                    )
+                app.logger.info("Added missing user.name column to existing database")
         app.logger.info("Database tables created successfully")
     register_auth_routes(app)

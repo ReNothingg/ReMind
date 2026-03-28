@@ -13,7 +13,7 @@ from utils.session_security import resolve_cookie_domain
 
 
 def test_api_auth_login_and_check(client, create_confirmed_user, login):
-    user_id, email, password = create_confirmed_user()
+    user_id, email, password = create_confirmed_user(name="Ada Lovelace")
 
     login_response = login(email, password)
     assert login_response.status_code == 200
@@ -27,6 +27,43 @@ def test_api_auth_login_and_check(client, create_confirmed_user, login):
     check_payload = check_response.get_json()
     assert check_payload["authenticated"] is True
     assert check_payload["user"]["id"] == user_id
+    assert check_payload["user"]["name"] == "Ada Lovelace"
+
+
+def test_api_update_profile_returns_validation_errors_and_updates_name(
+    client, app, create_confirmed_user, login
+):
+    user_id, email, password = create_confirmed_user(username="valid_user", name="Old Name")
+
+    login_response = login(email, password)
+    assert login_response.status_code == 200
+    csrf_value = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    invalid_response = client.put(
+        "/api/auth/profile",
+        json={"username": "bad name"},
+        headers={"User-Agent": "Mozilla/5.0 (pytest)", "X-CSRF-Token": csrf_value},
+    )
+    assert invalid_response.status_code == 400
+    invalid_payload = invalid_response.get_json()
+    assert invalid_payload["field"] == "username"
+    assert "Username can only contain" in invalid_payload["error"]
+
+    update_response = client.put(
+        "/api/auth/profile",
+        json={"username": "updated_user", "name": "Ada Lovelace"},
+        headers={"User-Agent": "Mozilla/5.0 (pytest)", "X-CSRF-Token": csrf_value},
+    )
+    assert update_response.status_code == 200
+    updated_payload = update_response.get_json()
+    assert updated_payload["user"]["username"] == "updated_user"
+    assert updated_payload["user"]["name"] == "Ada Lovelace"
+
+    with app.app_context():
+        refreshed_user = User.query.get(user_id)
+        assert refreshed_user.username == "updated_user"
+        assert refreshed_user.name == "Ada Lovelace"
 
 
 def test_api_login_wrong_password_for_argon2_hash_returns_401(client, app):
@@ -342,6 +379,34 @@ def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user,
         assert user_exists is not None
         assert chats_count == 0
         assert shares_count == 0
+
+
+def test_privacy_delete_account_removes_user_and_clears_session(
+    client, app, create_confirmed_user, login
+):
+    user_id, email, password = create_confirmed_user(name="Delete Me")
+
+    login_response = login(email, password)
+    assert login_response.status_code == 200
+
+    csrf_value = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    delete_response = client.post(
+        "/api/privacy/delete",
+        json={"delete_account": True},
+        headers={"X-CSRF-Token": csrf_value},
+    )
+    assert delete_response.status_code == 200
+    deleted_payload = delete_response.get_json()["deleted"]
+    assert deleted_payload["account_deleted"] is True
+
+    with app.app_context():
+        assert User.query.get(user_id) is None
+
+    check_response = client.get("/api/auth/check")
+    payload = check_response.get_json()
+    assert payload["authenticated"] is False
 
 
 def test_health_full_includes_component_checks(client):

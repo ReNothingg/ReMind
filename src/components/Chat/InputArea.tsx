@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
@@ -16,12 +16,11 @@ const InputArea = ({
     onOpenAuth,
     isReadOnly = false,
     variant = 'default',
-    showDynamicWarning = true,
+    showDynamicWarning = false,
 }) => {
     const [text, setText] = useState(initialPrompt || '');
     const [quotes, setQuotes] = useState([]);
     const [fileModal, setFileModal] = useState({ isOpen: false, file: null, content: null });
-    const [dynamicWarning, setDynamicWarning] = useState('');
     const [expanded, setExpanded] = useState(false);
 
     const textareaRef = useRef(null);
@@ -29,29 +28,30 @@ const InputArea = ({
 
     const { isAuthenticated } = useAuth();
     const { settings } = useSettings();
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
 
     const fileUploadsEnabled = isAuthenticated && !isReadOnly;
 
     useEffect(() => {
-        if (initialPrompt && initialPrompt !== text) {
-            setTimeout(() => {
-                setText(initialPrompt);
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                }
-            }, 0);
+        if (!initialPrompt) {
+            return;
         }
+
+        const frame = window.requestAnimationFrame(() => {
+            setText((currentText) => (currentText === initialPrompt ? currentText : initialPrompt));
+            textareaRef.current?.focus();
+        });
+
+        return () => window.cancelAnimationFrame(frame);
     }, [initialPrompt]);
 
-    useEffect(() => {
+    const dynamicWarning = useMemo(() => {
         if (!showDynamicWarning) return;
         const phrases = t('warnings.dynamicPhrases', { returnObjects: true });
         const list = Array.isArray(phrases) ? phrases : [phrases].filter(Boolean);
         const fallback = list[0] || '';
-        const warningText = Utils.getRandomPhrase(list.length > 0 ? list : [fallback], fallback);
-        setDynamicWarning(warningText);
-    }, [showDynamicWarning, i18n.resolvedLanguage]);
+        return Utils.getRandomPhrase(list.length > 0 ? list : [fallback], fallback);
+    }, [showDynamicWarning, t]);
 
     const {
         files,
@@ -76,10 +76,16 @@ const InputArea = ({
     useEffect(() => {
         const el = textareaRef.current;
         if (!el) return;
-        const threshold = 110;
-        const scrollHeight = el.scrollHeight;
-        setExpanded(scrollHeight > threshold || el.clientHeight > threshold);
-    }, [text]);
+
+        const frame = window.requestAnimationFrame(() => {
+            const threshold = 110;
+            const scrollHeight = el.scrollHeight;
+            const nextExpanded = scrollHeight > threshold || el.clientHeight > threshold;
+            setExpanded((current) => (current === nextExpanded ? current : nextExpanded));
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [text, quotes]);
 
     useEffect(() => {
         document.addEventListener('dragenter', handleDragEnter);

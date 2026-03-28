@@ -93,17 +93,18 @@ const MainLayout = () => {
             setIsMobileViewport(event.matches);
         };
 
-        setIsMobileViewport(mediaQuery.matches);
         mediaQuery.addEventListener('change', handleViewportChange);
 
         return () => mediaQuery.removeEventListener('change', handleViewportChange);
     }, []);
 
     useEffect(() => {
-        if (!isMobileViewport || !isAuthenticated) {
-            setMobileRailOpen(false);
+        if (isMobileRailOpen && (!isMobileViewport || !isAuthenticated)) {
+            const frame = window.requestAnimationFrame(() => setMobileRailOpen(false));
+            return () => window.cancelAnimationFrame(frame);
         }
-    }, [isAuthenticated, isMobileViewport]);
+        return undefined;
+    }, [isAuthenticated, isMobileRailOpen, isMobileViewport]);
 
     useLayoutEffect(() => {
         const hasDesktopRail = !!isAuthenticated && !isMobileViewport;

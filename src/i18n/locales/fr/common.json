@@ -18,34 +18,35 @@
     "register": "S'inscrire"
   },
   "authModal": {
-    "loginTitle": "Connectez-vous \u00e0 votre compte",
-    "registerTitle": "Cr\u00e9er un compte",
+    "loginTitle": "Connectez-vous à votre compte",
+    "registerTitle": "Créer un compte",
     "fields": {
       "email": "E-mail:",
       "password": "Mot de passe:",
       "username": "Nom d'utilisateur:",
-      "confirmPassword": "Confirmez le mot de passe:"
+      "confirmPassword": "Confirmez le mot de passe:",
+      "name": "Nom :"
     },
     "actions": {
       "loginLoading": "Connexion...",
       "loginWithGoogle": "Se connecter avec Google",
-      "registerLoading": "Cr\u00e9ation du compte...",
+      "registerLoading": "Création du compte...",
       "registerWithGoogle": "S'inscrire avec Google"
     },
     "switch": {
       "noAccount": "Vous n'avez pas de compte ?",
-      "haveAccount": "Vous avez d\u00e9j\u00e0 un compte ?"
+      "haveAccount": "Vous avez déjà un compte ?"
     },
     "messages": {
-      "loginSuccess": "Connexion r\u00e9ussie",
-      "loginError": "\u00c9chec de la connexion",
-      "registerSuccess": "Inscription r\u00e9ussie. V\u00e9rifiez votre e-mail pour confirmer le compte.",
-      "registerError": "\u00c9chec de l'inscription",
+      "loginSuccess": "Connexion réussie",
+      "loginError": "Échec de la connexion",
+      "registerSuccess": "Inscription réussie. Vérifiez votre e-mail pour confirmer le compte.",
+      "registerError": "Échec de l'inscription",
       "passwordsMismatch": "Les mots de passe ne correspondent pas",
-      "usernameTooLong": "Le nom d'utilisateur ne doit pas d\u00e9passer 100 caract\u00e8res",
-      "emailTooLong": "L'e-mail ne doit pas d\u00e9passer 100 caract\u00e8res",
-      "passwordTooLong": "Le mot de passe ne doit pas d\u00e9passer 100 caract\u00e8res",
-      "requestError": "Erreur r\u00e9seau ou serveur"
+      "usernameTooLong": "Le nom d'utilisateur ne doit pas dépasser 100 caractères",
+      "emailTooLong": "L'e-mail ne doit pas dépasser 100 caractères",
+      "passwordTooLong": "Le mot de passe ne doit pas dépasser 100 caractères",
+      "requestError": "Erreur réseau ou serveur"
     }
   },
   "common": {
@@ -180,7 +181,8 @@
         "status": "Statut",
         "email": "Email",
         "id": "ID",
-        "username": "Nom d'utilisateur"
+        "username": "Nom d'utilisateur",
+        "name": "Nom"
       },
       "signedIn": "Vous êtes connecté",
       "guestMode": "Vous utilisez le mode invité",
@@ -193,7 +195,21 @@
       "saveChanges": "Enregistrer les modifications",
       "signOut": "Se déconnecter",
       "profileUpdated": "Profil mis à jour",
-      "updateError": "Échec de la mise à jour"
+      "updateError": "Échec de la mise à jour",
+      "nameHint": "Utilis? pour la personnalisation de l'IA lorsqu'aucun surnom n'est d?fini.",
+      "usernameHint": "3 ? 50 caract?res : lettres, chiffres, tiret bas et trait d'union.",
+      "delete": {
+        "title": "Supprimer le compte",
+        "description": "Cela supprime d?finitivement votre profil, vos param?tres, votre historique et les discussions partag?es.",
+        "confirmLabel": "Confirmer la suppression",
+        "confirmHint": "Saisissez votre nom d'utilisateur actuel : {{username}}",
+        "confirmPlaceholder": "Saisissez votre nom d'utilisateur",
+        "confirmationMismatch": "Saisissez votre nom d'utilisateur actuel pour supprimer le compte",
+        "action": "Supprimer le compte",
+        "actionLoading": "Suppression du compte...",
+        "success": "Compte supprim?",
+        "error": "?chec de la suppression du compte"
+      }
     },
     "appearance": {
       "themeGroup": "Thème",
@@ -248,10 +264,6 @@
       "showChatPreview": {
         "title": "Afficher l'aperçu",
         "description": "Afficher le dernier message dans la liste des chats."
-      },
-      "showSuggestions": {
-        "title": "Afficher les suggestions",
-        "description": "Afficher des suggestions de prompts sur la page d'accueil."
       },
       "autocomplete": {
         "title": "Autocomplétion",

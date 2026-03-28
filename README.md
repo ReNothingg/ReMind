@@ -215,3 +215,10 @@ docker compose up --build
 ## Лицензия
 
 Проект распространяется под **GNU AGPLv3**. Подробности: [LICENSE](LICENSE).
+## Telegram Bot
+
+- `python -m telegram_bot` запускает отдельный long-polling процесс бота на `aiogram`.
+- Нужны переменные `TELEGRAM_BOT_TOKEN` и рабочий `GEMINI_API_KEY`.
+- История Telegram-чатов хранится отдельно в `database/telegram_chats`, поэтому не зависит от `ALLOW_GUEST_CHATS_SAVE`.
+- В персонализацию модели для Telegram передаются `telegram_id`, `is_premium`, `username`, `first_name`, `last_name`.
+- Команды бота: `/start`, `/new`, `/history`, `/current`.

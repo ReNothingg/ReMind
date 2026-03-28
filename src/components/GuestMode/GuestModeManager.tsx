@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import ModalShell from '../UI/ModalShell';
-import GuestButtons from '../../features/chat/components/GuestButtons';
 
 const guestModalPrimaryButtonClass =
     'ui-button-primary ui-guest-button-primary w-full rounded-xl px-5 py-3 text-[0.95rem] font-semibold';

@@ -3,8 +3,7 @@ body.guest-mode .app-rail {
 }
 
 body.guest-mode .model-selector-new,
-body.guest-mode .new-chat-btn,
-body.guest-mode #promptSuggestions {
+body.guest-mode .new-chat-btn {
   display: none !important;
 }
 

@@ -23,8 +23,9 @@
     "fields": {
       "email": "Email:",
       "password": "Senha:",
-      "username": "Nome de usu\u00e1rio:",
-      "confirmPassword": "Confirme a senha:"
+      "username": "Nome de usuário:",
+      "confirmPassword": "Confirme a senha:",
+      "name": "Nome:"
     },
     "actions": {
       "loginLoading": "Entrando...",
@@ -33,18 +34,18 @@
       "registerWithGoogle": "Registrar-se com Google"
     },
     "switch": {
-      "noAccount": "N\u00e3o tem uma conta?",
-      "haveAccount": "J\u00e1 tem uma conta?"
+      "noAccount": "Não tem uma conta?",
+      "haveAccount": "Já tem uma conta?"
     },
     "messages": {
       "loginSuccess": "Login realizado com sucesso",
       "loginError": "Falha no login",
       "registerSuccess": "Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta.",
       "registerError": "Falha no cadastro",
-      "passwordsMismatch": "As senhas n\u00e3o coincidem",
-      "usernameTooLong": "O nome de usu\u00e1rio n\u00e3o deve exceder 100 caracteres",
-      "emailTooLong": "O email n\u00e3o deve exceder 100 caracteres",
-      "passwordTooLong": "A senha n\u00e3o deve exceder 100 caracteres",
+      "passwordsMismatch": "As senhas não coincidem",
+      "usernameTooLong": "O nome de usuário não deve exceder 100 caracteres",
+      "emailTooLong": "O email não deve exceder 100 caracteres",
+      "passwordTooLong": "A senha não deve exceder 100 caracteres",
       "requestError": "Erro de rede ou do servidor"
     }
   },
@@ -180,7 +181,8 @@
         "status": "Estado",
         "email": "Email",
         "id": "ID",
-        "username": "Nome de utilizador"
+        "username": "Nome de utilizador",
+        "name": "Nome"
       },
       "signedIn": "Tem sessão iniciada",
       "guestMode": "Está a usar o modo convidado",
@@ -193,7 +195,21 @@
       "saveChanges": "Guardar alterações",
       "signOut": "Terminar sessão",
       "profileUpdated": "Perfil atualizado",
-      "updateError": "Falha na atualização"
+      "updateError": "Falha na atualização",
+      "nameHint": "Usado na personaliza??o de IA quando n?o existe uma alcunha definida.",
+      "usernameHint": "3-50 caracteres: letras, n?meros, underscore e h?fen.",
+      "delete": {
+        "title": "Eliminar conta",
+        "description": "Isto remove permanentemente o seu perfil, defini??es, hist?rico e conversas partilhadas.",
+        "confirmLabel": "Confirmar elimina??o",
+        "confirmHint": "Escreva o seu nome de utilizador atual: {{username}}",
+        "confirmPlaceholder": "Introduza o seu nome de utilizador",
+        "confirmationMismatch": "Introduza o seu nome de utilizador atual para eliminar a conta",
+        "action": "Eliminar conta",
+        "actionLoading": "A eliminar conta...",
+        "success": "Conta eliminada",
+        "error": "Falha ao eliminar a conta"
+      }
     },
     "appearance": {
       "themeGroup": "Tema",
@@ -248,10 +264,6 @@
       "showChatPreview": {
         "title": "Mostrar pré-visualização",
         "description": "Mostrar a última mensagem na lista de chats."
-      },
-      "showSuggestions": {
-        "title": "Mostrar sugestões",
-        "description": "Mostrar sugestões de prompts na página inicial."
       },
       "autocomplete": {
         "title": "Autocompletar",

@@ -18,34 +18,35 @@
     "register": "注册"
   },
   "authModal": {
-    "loginTitle": "\u767b\u5f55\u8d26\u6237",
-    "registerTitle": "\u521b\u5efa\u8d26\u6237",
+    "loginTitle": "登录账户",
+    "registerTitle": "创建账户",
     "fields": {
       "email": "Email:",
-      "password": "\u5bc6\u7801:",
-      "username": "\u7528\u6237\u540d:",
-      "confirmPassword": "\u786e\u8ba4\u5bc6\u7801:"
+      "password": "密码:",
+      "username": "用户名:",
+      "confirmPassword": "确认密码:",
+      "name": "???"
     },
     "actions": {
-      "loginLoading": "\u767b\u5f55\u4e2d...",
-      "loginWithGoogle": "\u4f7f\u7528 Google \u767b\u5f55",
-      "registerLoading": "\u6ce8\u518c\u4e2d...",
-      "registerWithGoogle": "\u4f7f\u7528 Google \u6ce8\u518c"
+      "loginLoading": "登录中...",
+      "loginWithGoogle": "使用 Google 登录",
+      "registerLoading": "注册中...",
+      "registerWithGoogle": "使用 Google 注册"
     },
     "switch": {
-      "noAccount": "\u8fd8\u6ca1\u6709\u8d26\u6237\uff1f",
-      "haveAccount": "\u5df2\u6709\u8d26\u6237\uff1f"
+      "noAccount": "还没有账户？",
+      "haveAccount": "已有账户？"
     },
     "messages": {
-      "loginSuccess": "\u767b\u5f55\u6210\u529f",
-      "loginError": "\u767b\u5f55\u5931\u8d25",
-      "registerSuccess": "\u6ce8\u518c\u6210\u529f\u3002\u8bf7\u68c0\u67e5\u90ae\u7bb1\u4ee5\u786e\u8ba4\u8d26\u6237\u3002",
-      "registerError": "\u6ce8\u518c\u5931\u8d25",
-      "passwordsMismatch": "\u4e24\u6b21\u8f93\u5165\u7684\u5bc6\u7801\u4e0d\u4e00\u81f4",
-      "usernameTooLong": "\u7528\u6237\u540d\u4e0d\u80fd\u8d85\u8fc7 100 \u4e2a\u5b57\u7b26",
-      "emailTooLong": "Email \u4e0d\u80fd\u8d85\u8fc7 100 \u4e2a\u5b57\u7b26",
-      "passwordTooLong": "\u5bc6\u7801\u4e0d\u80fd\u8d85\u8fc7 100 \u4e2a\u5b57\u7b26",
-      "requestError": "\u7f51\u7edc\u6216\u670d\u52a1\u5668\u9519\u8bef"
+      "loginSuccess": "登录成功",
+      "loginError": "登录失败",
+      "registerSuccess": "注册成功。请检查邮箱以确认账户。",
+      "registerError": "注册失败",
+      "passwordsMismatch": "两次输入的密码不一致",
+      "usernameTooLong": "用户名不能超过 100 个字符",
+      "emailTooLong": "Email 不能超过 100 个字符",
+      "passwordTooLong": "密码不能超过 100 个字符",
+      "requestError": "网络或服务器错误"
     }
   },
   "common": {
@@ -180,7 +181,8 @@
         "status": "状态",
         "email": "邮箱",
         "id": "ID",
-        "username": "用户名"
+        "username": "用户名",
+        "name": "??"
       },
       "signedIn": "你已登录",
       "guestMode": "你正在使用访客模式",
@@ -193,7 +195,21 @@
       "saveChanges": "保存更改",
       "signOut": "退出登录",
       "profileUpdated": "资料已更新",
-      "updateError": "更新失败"
+      "updateError": "更新失败",
+      "nameHint": "????????? AI ??????????",
+      "usernameHint": "3-50 ??????????????????",
+      "delete": {
+        "title": "????",
+        "description": "??????????????????????????",
+        "confirmLabel": "????",
+        "confirmHint": "??????????{{username}}",
+        "confirmPlaceholder": "???????",
+        "confirmationMismatch": "???????????????",
+        "action": "????",
+        "actionLoading": "??????...",
+        "success": "?????",
+        "error": "??????"
+      }
     },
     "appearance": {
       "themeGroup": "主题",
@@ -248,10 +264,6 @@
       "showChatPreview": {
         "title": "显示预览",
         "description": "在聊天列表中显示最后一条消息。"
-      },
-      "showSuggestions": {
-        "title": "显示建议",
-        "description": "在开始页显示提示建议。"
       },
       "autocomplete": {
         "title": "自动补全",

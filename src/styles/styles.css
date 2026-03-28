@@ -2135,8 +2135,7 @@ body.reading-mode {
 }
 
 body.reading-mode .main-input-area,
-body.reading-mode .global-controls,
-body.reading-mode .prompt-suggestions {
+body.reading-mode .global-controls {
   display: none !important;
 }
 

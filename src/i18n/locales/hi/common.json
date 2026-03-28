@@ -18,34 +18,35 @@
     "register": "रजिस्टर"
   },
   "authModal": {
-    "loginTitle": "\u0905\u092a\u0928\u0947 \u0916\u093e\u0924\u0947 \u092e\u0947\u0902 \u0938\u093e\u0907\u0928 \u0907\u0928 \u0915\u0930\u0947\u0902",
-    "registerTitle": "\u0916\u093e\u0924\u093e \u092c\u0928\u093e\u090f\u0902",
+    "loginTitle": "अपने खाते में साइन इन करें",
+    "registerTitle": "खाता बनाएं",
     "fields": {
       "email": "Email:",
-      "password": "\u092a\u093e\u0938\u0935\u0930\u094d\u0921:",
-      "username": "\u0909\u092a\u092f\u094b\u0917\u0915\u0930\u094d\u0924\u093e \u0928\u093e\u092e:",
-      "confirmPassword": "\u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u0926\u094b\u092c\u093e\u0930\u093e \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902:"
+      "password": "पासवर्ड:",
+      "username": "उपयोगकर्ता नाम:",
+      "confirmPassword": "पासवर्ड दोबारा दर्ज करें:",
+      "name": "???:"
     },
     "actions": {
-      "loginLoading": "\u0938\u093e\u0907\u0928 \u0907\u0928 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...",
-      "loginWithGoogle": "Google \u0938\u0947 \u0938\u093e\u0907\u0928 \u0907\u0928 \u0915\u0930\u0947\u0902",
-      "registerLoading": "\u0916\u093e\u0924\u093e \u092c\u0928\u093e\u092f\u093e \u091c\u093e \u0930\u0939\u093e \u0939\u0948...",
-      "registerWithGoogle": "Google \u0938\u0947 \u0938\u093e\u0907\u0928 \u0905\u092a \u0915\u0930\u0947\u0902"
+      "loginLoading": "साइन इन हो रहा है...",
+      "loginWithGoogle": "Google से साइन इन करें",
+      "registerLoading": "खाता बनाया जा रहा है...",
+      "registerWithGoogle": "Google से साइन अप करें"
     },
     "switch": {
-      "noAccount": "\u0915\u094d\u092f\u093e \u0906\u092a\u0915\u093e \u0916\u093e\u0924\u093e \u0928\u0939\u0940\u0902 \u0939\u0948?",
-      "haveAccount": "\u0915\u094d\u092f\u093e \u0906\u092a\u0915\u0947 \u092a\u093e\u0938 \u092a\u0939\u0932\u0947 \u0938\u0947 \u0916\u093e\u0924\u093e \u0939\u0948?"
+      "noAccount": "क्या आपका खाता नहीं है?",
+      "haveAccount": "क्या आपके पास पहले से खाता है?"
     },
     "messages": {
-      "loginSuccess": "\u0938\u092b\u0932\u0924\u093e\u092a\u0942\u0930\u094d\u0935\u0915 \u0938\u093e\u0907\u0928 \u0907\u0928 \u0915\u093f\u092f\u093e \u0917\u092f\u093e",
-      "loginError": "\u0938\u093e\u0907\u0928 \u0907\u0928 \u0935\u093f\u092b\u0932",
-      "registerSuccess": "\u092a\u0902\u091c\u0940\u0915\u0930\u0923 \u0938\u092b\u0932 \u0930\u0939\u093e\u0964 \u0916\u093e\u0924\u093e \u092a\u0941\u0937\u094d\u091f\u093f \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0905\u092a\u0928\u093e \u0908\u092e\u0947\u0932 \u091c\u093e\u0902\u091a\u0947\u0902\u0964",
-      "registerError": "\u092a\u0902\u091c\u0940\u0915\u0930\u0923 \u0935\u093f\u092b\u0932",
-      "passwordsMismatch": "\u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u092e\u0947\u0932 \u0928\u0939\u0940\u0902 \u0916\u093e\u0924\u0947",
-      "usernameTooLong": "\u0909\u092a\u092f\u094b\u0917\u0915\u0930\u094d\u0924\u093e \u0928\u093e\u092e 100 \u0935\u0930\u094d\u0923\u094b\u0902 \u0938\u0947 \u0905\u0927\u093f\u0915 \u0928\u0939\u0940\u0902 \u0939\u094b\u0928\u093e \u091a\u093e\u0939\u093f\u090f",
-      "emailTooLong": "Email 100 \u0935\u0930\u094d\u0923\u094b\u0902 \u0938\u0947 \u0905\u0927\u093f\u0915 \u0928\u0939\u0940\u0902 \u0939\u094b\u0928\u093e \u091a\u093e\u0939\u093f\u090f",
-      "passwordTooLong": "\u092a\u093e\u0938\u0935\u0930\u094d\u0921 100 \u0935\u0930\u094d\u0923\u094b\u0902 \u0938\u0947 \u0905\u0927\u093f\u0915 \u0928\u0939\u0940\u0902 \u0939\u094b\u0928\u093e \u091a\u093e\u0939\u093f\u090f",
-      "requestError": "\u0928\u0947\u091f\u0935\u0930\u094d\u0915 \u092f\u093e \u0938\u0930\u094d\u0935\u0930 \u0924\u094d\u0930\u0941\u091f\u093f"
+      "loginSuccess": "सफलतापूर्वक साइन इन किया गया",
+      "loginError": "साइन इन विफल",
+      "registerSuccess": "पंजीकरण सफल रहा। खाता पुष्टि करने के लिए अपना ईमेल जांचें।",
+      "registerError": "पंजीकरण विफल",
+      "passwordsMismatch": "पासवर्ड मेल नहीं खाते",
+      "usernameTooLong": "उपयोगकर्ता नाम 100 वर्णों से अधिक नहीं होना चाहिए",
+      "emailTooLong": "Email 100 वर्णों से अधिक नहीं होना चाहिए",
+      "passwordTooLong": "पासवर्ड 100 वर्णों से अधिक नहीं होना चाहिए",
+      "requestError": "नेटवर्क या सर्वर त्रुटि"
     }
   },
   "common": {
@@ -180,7 +181,8 @@
         "status": "स्थिति",
         "email": "ईमेल",
         "id": "आईडी",
-        "username": "यूज़रनेम"
+        "username": "यूज़रनेम",
+        "name": "???"
       },
       "signedIn": "आप साइन इन हैं",
       "guestMode": "आप अतिथि मोड का उपयोग कर रहे हैं",
@@ -193,7 +195,21 @@
       "saveChanges": "परिवर्तन सहेजें",
       "signOut": "साइन आउट",
       "profileUpdated": "प्रोफ़ाइल अपडेट हो गई",
-      "updateError": "अपडेट विफल"
+      "updateError": "अपडेट विफल",
+      "nameHint": "??? ??? ????? ??? ???? ??, ?? AI ?????????? ??? ???? ????? ?????",
+      "usernameHint": "3-50 ????: ?????, ???, ????????? ?? ???????",
+      "delete": {
+        "title": "???? ?????",
+        "description": "???? ???? ?????????, ????????, ?????? ?? ???? ??? ?????? ??? ?? ?? ???????",
+        "confirmLabel": "????? ?? ?????? ????",
+        "confirmHint": "???? ??????? ???????? ?????: {{username}}",
+        "confirmPlaceholder": "???? ???????? ???? ????",
+        "confirmationMismatch": "???? ????? ?? ??? ???? ??????? ???????? ???? ????",
+        "action": "???? ?????",
+        "actionLoading": "???? ????? ?? ??? ??...",
+        "success": "???? ??? ???? ???",
+        "error": "???? ????? ???? ?? ???"
+      }
     },
     "appearance": {
       "themeGroup": "थीम",
@@ -248,10 +264,6 @@
       "showChatPreview": {
         "title": "प्रीव्यू दिखाएं",
         "description": "चैट सूची में अंतिम संदेश दिखाएं।"
-      },
-      "showSuggestions": {
-        "title": "सुझाव दिखाएं",
-        "description": "स्टार्ट पेज पर प्रॉम्प्ट सुझाव दिखाएं।"
       },
       "autocomplete": {
         "title": "ऑटोकम्प्लीट",

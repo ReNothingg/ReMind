@@ -504,7 +504,7 @@ export const useChat = () => {
         const formData = new FormData();
         formData.append('message', text);
         formData.append('model', model);
-        formData.append('user_id', sessionId);
+        formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
         formData.append('webSearch', String(webSearch));
         formData.append('censorship', String(censorship));
@@ -759,7 +759,7 @@ export const useChat = () => {
         const formData = new FormData();
         formData.append('message', userMessage.content);
         formData.append('model', model);
-        formData.append('user_id', currentSessionIdRef.current || generateSessionId());
+        formData.append('session_id', currentSessionIdRef.current || generateSessionId());
         formData.append('history', JSON.stringify(historyBefore));
 
         let fullReply = '';
@@ -855,7 +855,7 @@ export const useChat = () => {
                 setIsLoading(false);
             }
         }
-    }, [history, isLoading, buildHistoryForAPI, isReadOnly]);
+    }, [history, isLoading, buildHistoryForAPI]);
     const switchVariant = useCallback((aiMessageId, direction) => {
         setHistory(prev => {
             const aiIndex = prev.findIndex(msg => msg.id === aiMessageId);
@@ -931,7 +931,7 @@ export const useChat = () => {
         const formData = new FormData();
         formData.append('message', newText);
         formData.append('model', model);
-        formData.append('user_id', currentSessionIdRef.current || generateSessionId());
+        formData.append('session_id', currentSessionIdRef.current || generateSessionId());
         formData.append('history', JSON.stringify(historyBefore));
 
         let fullReply = '';

@@ -55,6 +55,7 @@ def export_user_data(user_id):
     if user:
         export_data["profile"] = {
             "username": user.username,
+            "name": user.name,
             "email": user.email,
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "is_confirmed": user.is_confirmed,
@@ -114,6 +115,8 @@ def delete_user_data(user_id, delete_account=False):
             {"items_deleted": results["items_deleted"], "account_deleted": delete_account},
             user_id,
         )
+        if delete_account:
+            log_audit_event(AuditEvents.DELETE_ACCOUNT, {"account_deleted": True}, user_id)
 
         return results
 
@@ -130,6 +133,7 @@ def anonymize_user_data(user_id):
         return False
     anonymous_id = hashlib.sha256(str(user_id).encode()).hexdigest()[:12]
     user.username = f"deleted_user_{anonymous_id}"
+    user.name = "Deleted User"
     user.email = f"{anonymous_id}@deleted.invalid"
     user.password = None
     user.confirmation_token = None

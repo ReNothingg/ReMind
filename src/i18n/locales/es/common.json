@@ -18,33 +18,34 @@
     "register": "Registrarse"
   },
   "authModal": {
-    "loginTitle": "Iniciar sesi\u00f3n en tu cuenta",
+    "loginTitle": "Iniciar sesión en tu cuenta",
     "registerTitle": "Crear una cuenta",
     "fields": {
       "email": "Email:",
-      "password": "Contrase\u00f1a:",
+      "password": "Contraseña:",
       "username": "Nombre de usuario:",
-      "confirmPassword": "Confirma la contrase\u00f1a:"
+      "confirmPassword": "Confirma la contraseña:",
+      "name": "Nombre:"
     },
     "actions": {
-      "loginLoading": "Iniciando sesi\u00f3n...",
-      "loginWithGoogle": "Iniciar sesi\u00f3n con Google",
+      "loginLoading": "Iniciando sesión...",
+      "loginWithGoogle": "Iniciar sesión con Google",
       "registerLoading": "Creando cuenta...",
       "registerWithGoogle": "Registrarse con Google"
     },
     "switch": {
-      "noAccount": "\u00bfNo tienes una cuenta?",
-      "haveAccount": "\u00bfYa tienes una cuenta?"
+      "noAccount": "¿No tienes una cuenta?",
+      "haveAccount": "¿Ya tienes una cuenta?"
     },
     "messages": {
-      "loginSuccess": "Inicio de sesi\u00f3n correcto",
-      "loginError": "Error al iniciar sesi\u00f3n",
-      "registerSuccess": "Registro completado. Revisa tu correo electr\u00f3nico para confirmar la cuenta.",
+      "loginSuccess": "Inicio de sesión correcto",
+      "loginError": "Error al iniciar sesión",
+      "registerSuccess": "Registro completado. Revisa tu correo electrónico para confirmar la cuenta.",
       "registerError": "Error al registrarse",
-      "passwordsMismatch": "Las contrase\u00f1as no coinciden",
+      "passwordsMismatch": "Las contraseñas no coinciden",
       "usernameTooLong": "El nombre de usuario no debe superar los 100 caracteres",
-      "emailTooLong": "El correo electr\u00f3nico no debe superar los 100 caracteres",
-      "passwordTooLong": "La contrase\u00f1a no debe superar los 100 caracteres",
+      "emailTooLong": "El correo electrónico no debe superar los 100 caracteres",
+      "passwordTooLong": "La contraseña no debe superar los 100 caracteres",
       "requestError": "Error de red o del servidor"
     }
   },
@@ -180,7 +181,8 @@
         "status": "Estado",
         "email": "Correo",
         "id": "ID",
-        "username": "Usuario"
+        "username": "Usuario",
+        "name": "Nombre"
       },
       "signedIn": "Has iniciado sesión",
       "guestMode": "Estás en modo invitado",
@@ -193,7 +195,21 @@
       "saveChanges": "Guardar cambios",
       "signOut": "Cerrar sesión",
       "profileUpdated": "Perfil actualizado",
-      "updateError": "Error al actualizar"
+      "updateError": "Error al actualizar",
+      "nameHint": "Se usa en la personalizaci?n de IA cuando no hay un apodo definido.",
+      "usernameHint": "3-50 caracteres: letras, n?meros, guion bajo y guion.",
+      "delete": {
+        "title": "Eliminar cuenta",
+        "description": "Esto elimina permanentemente tu perfil, ajustes, historial y chats compartidos.",
+        "confirmLabel": "Confirmar eliminaci?n",
+        "confirmHint": "Escribe tu nombre de usuario actual: {{username}}",
+        "confirmPlaceholder": "Introduce tu nombre de usuario",
+        "confirmationMismatch": "Introduce tu nombre de usuario actual para eliminar la cuenta",
+        "action": "Eliminar cuenta",
+        "actionLoading": "Eliminando cuenta...",
+        "success": "Cuenta eliminada",
+        "error": "No se pudo eliminar la cuenta"
+      }
     },
     "appearance": {
       "themeGroup": "Tema",
@@ -248,10 +264,6 @@
       "showChatPreview": {
         "title": "Mostrar vista previa",
         "description": "Muestra el último mensaje en la lista de chats."
-      },
-      "showSuggestions": {
-        "title": "Mostrar sugerencias",
-        "description": "Muestra sugerencias de prompts en la página de inicio."
       },
       "autocomplete": {
         "title": "Autocompletar",
