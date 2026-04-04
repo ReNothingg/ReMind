@@ -1,11 +1,7 @@
-<p align="center">
-  <img src="public/icons/branding/logo.svg" alt="ReMind logo" width="120" />
-</p>
-
 <h1 align="center">ReMind</h1>
 
 <p align="center">
-  AI-платформа для общения с LLM, работы с историей чатов, мультимодальными вложениями и расширенной безопасностью.
+  <img src="public/icons/branding/logo-192.png" alt="ReMind logo" width="120" />
 </p>
 
 <p align="center">
@@ -15,6 +11,11 @@
   <a href="https://github.com/ReNothingg/ReMind/stargazers"><img src="https://img.shields.io/github/stars/ReNothingg/ReMind" alt="Stars" /></a>
   <a href="https://github.com/ReNothingg/ReMind/pulls"><img src="https://img.shields.io/github/issues-pr/ReNothingg/ReMind" alt="Open PRs" /></a>
 </p>
+
+<p align="center">
+  ReMind для всех. Даже для тех, кто еще не понял, зачем.
+</p>
+
 
 ## О проекте
 
@@ -215,10 +216,3 @@ docker compose up --build
 ## Лицензия
 
 Проект распространяется под **GNU AGPLv3**. Подробности: [LICENSE](LICENSE).
-## Telegram Bot
-
-- `python -m telegram_bot` запускает отдельный long-polling процесс бота на `aiogram`.
-- Нужны переменные `TELEGRAM_BOT_TOKEN` и рабочий `GEMINI_API_KEY`.
-- История Telegram-чатов хранится отдельно в `database/telegram_chats`, поэтому не зависит от `ALLOW_GUEST_CHATS_SAVE`.
-- В персонализацию модели для Telegram передаются `telegram_id`, `is_premium`, `username`, `first_name`, `last_name`.
-- Команды бота: `/start`, `/new`, `/history`, `/current`.
