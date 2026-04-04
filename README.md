@@ -1,92 +1,128 @@
 <h1 align="center">ReMind</h1>
 
 <p align="center">
-  <img src="public/icons/branding/logo-192.png" alt="ReMind logo" width="120" />
+  <img src="public/icons/branding/logo-192.png" alt="ReMind logo" width="96" />
+</p>
+
+<p align="center">
+  <strong>Full-stack AI chat platform with streaming replies, secure file handling, shared sessions, privacy controls, and a production-ready Flask + React stack.</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/ReNothingg/ReMind/actions/workflows/ci.yml"><img src="https://github.com/ReNothingg/ReMind/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License: AGPLv3" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-0f766e.svg" alt="License: AGPLv3" /></a>
+  <img src="https://img.shields.io/badge/status-beta-f59e0b" alt="Status: beta" />
   <a href="https://github.com/ReNothingg/ReMind/issues"><img src="https://img.shields.io/github/issues/ReNothingg/ReMind" alt="Open Issues" /></a>
   <a href="https://github.com/ReNothingg/ReMind/stargazers"><img src="https://img.shields.io/github/stars/ReNothingg/ReMind" alt="Stars" /></a>
-  <a href="https://github.com/ReNothingg/ReMind/pulls"><img src="https://img.shields.io/github/issues-pr/ReNothingg/ReMind" alt="Open PRs" /></a>
 </p>
 
 <p align="center">
-  ReMind для всех. Даже для тех, кто еще не понял, зачем.
+  <img src="https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11" />
+  <img src="https://img.shields.io/badge/react-19-20232A?logo=react&logoColor=61DAFB" alt="React 19" />
+  <img src="https://img.shields.io/badge/vite-7-646CFF?logo=vite&logoColor=white" alt="Vite 7" />
+  <img src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose" />
+  <img src="https://img.shields.io/badge/openapi-included-16a34a" alt="OpenAPI included" />
 </p>
 
+<p align="center">
+  <a href="#overview">Обзор</a> •
+  <a href="#features">Возможности</a> •
+  <a href="#quick-start">Быстрый старт</a> •
+  <a href="#docker">Docker</a> •
+  <a href="#quality">Качество</a> •
+</p>
 
-## О проекте
+<p align="center">
+  <img src="public/images/banners/main-banner.png" alt="ReMind interface preview" width="1000" />
+</p>
 
-ReMind объединяет backend на Flask и frontend на React/Vite в единое приложение с акцентом на:
+<a id="overview"></a>
 
-- безопасную обработку пользовательских запросов и файлов;
-- удобную работу с сессиями и историей диалогов;
-- потоковый ответ модели (SSE);
-- готовность к production-развертыванию через Docker Compose.
+## Обзор
 
-Текущий статус: `beta`.
+ReMind это full-stack AI-приложение с React/Vite frontend, Flask API, очередями на Celery и инфраструктурой под Docker Compose. Репозиторий собран не как демо-лендинг, а как рабочая база для продукта: сессии, шаринг чатов, авторизация, приватность, observability, OpenAPI, тесты и security-проверки уже лежат в одном месте.
 
-## Навигация
+Проект сейчас в статусе `beta`. Он включает:
 
-- [Основные возможности](#основные-возможности)
-- [Технологический стек](#технологический-стек)
-- [Архитектура](#архитектура)
-- [Быстрый старт](#быстрый-старт)
-- [Запуск в Docker](#запуск-в-docker)
-- [Конфигурация окружения](#конфигурация-окружения)
-- [API (кратко)](#api-кратко)
-- [Качество и процессы](#качество-и-процессы)
-- [Структура репозитория](#структура-репозитория)
-- [Известные технические ограничения](#известные-технические-ограничения)
-- [Лицензия](#лицензия)
+- веб-интерфейс для диалога с AI-моделями;
+- backend с SSE-стримингом, историей чатов и приватными/public share-ссылками;
+- безопасную загрузку файлов и медиа-обработку;
+- Telegram bot, использующий тот же сервисный слой;
+- CI/CD-проверки, health/metrics endpoints и deployment через Docker Compose.
 
-## Основные возможности
+## Что уже есть в репозитории
 
-- Чат с AI-моделью через `/chat` с поддержкой streaming/SSE.
-- Управление сессиями и историями (`/sessions`, `/sessions/<id>/history`).
-- Публичный/приватный доступ к чатам и share-ссылки (`/sessions/<id>/share`, `/c/<public_id>`).
-- Встроенная auth-система: регистрация, вход, профиль, настройки, избранное.
-- OAuth через Google (при наличии ключей).
-- Безопасная загрузка файлов: валидация имени, MIME-типа и содержимого.
-- Перевод текста (`/translate`) и синтез речи (`/synthesize`).
-- GDPR-операции: экспорт и удаление пользовательских данных.
-- Мультиязычный интерфейс (локали в `src/i18n/locales`).
+| Область | Что внутри |
+|---|---|
+| Web app | React 19, TypeScript, Vite 7, guest/auth режимы, мультиязычность, модальные окна, виджеты, медиа-просмотр |
+| API | Flask, SSE-чат, auth/profile/settings, sessions, privacy export/delete, OpenAPI contract |
+| Security | CSRF, rate limiting, secure uploads, security headers, user-agent validation, audit logging |
+| AI layer | `gemini`, локальный `echo` для smoke-тестов, `demo_image` для проверки image pipeline |
+| Background jobs | Redis + Celery worker |
+| Operations | Nginx, Dockerfile, Docker Compose, health page, `/metrics`, GitHub Actions, security gate |
+| Extensions | Telegram bot на `aiogram` |
+
+<a id="features"></a>
+
+## Возможности
+
+- Потоковый AI-чат через `POST /chat` с SSE-ответами.
+- История диалогов, список сессий, удаление и восстановление контекста.
+- Публичные read-only ссылки на чаты через `/sessions/<id>/share` и `/c/<public_id>`.
+- Guest mode и auth mode в одном приложении.
+- Регистрация, логин, профиль, настройки, избранное и Google OAuth.
+- Безопасная загрузка файлов с валидацией имени, MIME-типа и содержимого.
+- Перевод текста и синтез речи через отдельные API endpoints.
+- Privacy flows: экспорт и удаление пользовательских данных.
+- HTML/JSON health-check страница и Prometheus metrics.
+- Telegram bot для работы с тем же chat service.
 
 ## Технологический стек
 
 | Слой | Технологии |
 |---|---|
-| Frontend | React 19, TypeScript, Vite 7, i18next, Chart.js, D3, Mermaid |
-| Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-Session, Authlib |
-| AI / Integrations | Gemini API, gTTS |
-| Data / Queue | SQLite/PostgreSQL, Redis, Celery |
+| Frontend | React 19, TypeScript, Vite 7, i18next, Chart.js, D3, Mermaid, Nomnoml |
+| Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-Session, Authlib, Waitress, Gunicorn |
+| AI / Media | Gemini API, Pillow, gTTS |
+| Storage / Queue | SQLite или PostgreSQL, Redis, Celery |
 | Infra | Docker, Docker Compose, Nginx |
-| CI | GitHub Actions (`.github/workflows/ci.yml`) |
+| Quality | Ruff, Black, MyPy, Pytest, Vitest, Playwright, GitHub Actions |
 
 ## Архитектура
 
 ```mermaid
-graph LR
+graph TD
   UI[React + Vite SPA] -->|HTTP / SSE| API[Flask API]
-  API --> AUTH[Auth & Session Layer]
-  API --> FILES[Secure File Pipeline]
-  API --> AI[AI Engine]
-  API --> DB[(SQLite / PostgreSQL)]
+  TG[Telegram Bot] --> SRV[Shared Services]
+  API --> SRV
+  API --> AUTH[Auth + Session Layer]
+  API --> FILES[Secure Upload Pipeline]
+  SRV --> AI[Gemini / Echo / Demo Image]
+  SRV --> DB[(SQLite / PostgreSQL)]
   API --> REDIS[(Redis)]
   REDIS --> CELERY[Celery Worker]
-  NGINX[Nginx Reverse Proxy] --> API
+  NGINX[Nginx] --> API
 ```
 
 Ключевые точки входа:
 
-- `app_factory.py`: сборка и конфигурация Flask-приложения.
-- `routes/api.py`: chat/session/media/privacy API.
-- `utils/auth.py`: auth endpoints, user profile/settings.
-- `src/`: клиентская SPA-часть.
+- `app_factory.py` собирает Flask-приложение и middleware/безопасность.
+- `routes/features/` содержит feature-oriented API модули.
+- `services/` и `ai_engine/` держат историю, файлы, voice и adapters к моделям.
+- `src/` это клиентская SPA.
+- `telegram_bot/` использует тот же backend/service слой.
+
+<a id="quick-start"></a>
 
 ## Быстрый старт
+
+### Требования
+
+- Python `3.11`
+- Node.js `20+`
+- Redis `7+`
+- Git
+- `GEMINI_API_KEY` для Gemini, перевода и основного AI-флоу
 
 ### 1. Клонирование
 
@@ -97,7 +133,7 @@ cd ReMind
 
 ### 2. Установка зависимостей
 
-PowerShell (Windows):
+PowerShell:
 
 ```powershell
 python -m venv .venv
@@ -107,7 +143,7 @@ npm ci
 Copy-Item .env.example .env
 ```
 
-Bash (Linux/macOS):
+Bash:
 
 ```bash
 python3 -m venv .venv
@@ -119,11 +155,23 @@ cp .env.example .env
 
 ### 3. Настройка `.env`
 
-Минимум для локального запуска:
+Минимум для локального старта:
 
 - `SECRET_KEY`
-- `GEMINI_API_KEY` (если нужен production-like AI/перевод)
 - `REDIS_URL`
+- `CELERY_BROKER_URL`
+- `CELERY_RESULT_BACKEND`
+- `GEMINI_API_KEY` для Gemini-сценариев
+
+Если вы запускаете локальный Redis без пароля, удобно сразу заменить значения из `.env.example` на:
+
+```env
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/1
+CELERY_RESULT_BACKEND=redis://localhost:6379/1
+```
+
+Если `GEMINI_API_KEY` пока нет, для локального smoke-теста UI и стриминга можно использовать модели `echo` и `demo_image`.
 
 ### 4. Запуск backend
 
@@ -131,88 +179,168 @@ cp .env.example .env
 python main.py
 ```
 
-Backend по умолчанию стартует на `http://127.0.0.1:5000`.
+Backend поднимается на `http://127.0.0.1:5000`.
 
-### 5. Запуск frontend в dev-режиме
+### 5. Запуск frontend
 
 ```bash
 npm run dev
 ```
 
-## Запуск в Docker
+Vite dev server работает на `http://127.0.0.1:5173` и проксирует API на backend.
 
-### 1. Подготовьте `.env`
+### 6. Дополнительно
 
-Обязательно задайте:
+Celery worker:
+
+```bash
+celery -A celery_worker.celery worker --loglevel=info --concurrency=2
+```
+
+Telegram bot:
+
+```bash
+python -m telegram_bot
+```
+
+Требуется `TELEGRAM_BOT_TOKEN`.
+
+<a id="docker"></a>
+
+## Docker Compose
+
+Для полного production-like запуска в репозитории уже есть `Dockerfile`, `docker-compose.yml` и `nginx.conf`.
+
+### Что нужно задать в `.env`
 
 - `SECRET_KEY`
-- `GEMINI_API_KEY`
 - `DB_PASSWORD`
+- `REDIS_PASSWORD`
+- `GEMINI_API_KEY`
 
-### 2. Запуск
+### Запуск
 
 ```bash
 docker compose up --build
 ```
 
-Контейнеры:
+Поднимутся сервисы:
 
-- `nginx` (80/443)
-- `app` (Flask)
-- `worker` (Celery)
-- `db` (PostgreSQL)
-- `redis` (Redis)
+- `nginx`
+- `app`
+- `worker`
+- `db`
+- `redis`
+
+Это основной путь для проверки полной связки: Flask API, статика frontend-сборки, PostgreSQL, Redis и Celery.
 
 ## Конфигурация окружения
 
-Основные переменные (`.env.example`):
-
 | Переменная | Назначение |
 |---|---|
-| `SECRET_KEY` | Ключ подписи сессий и CSRF |
-| `GEMINI_API_KEY`, `GEMINI_MODEL_NAME` | AI-провайдер |
-| `DATABASE_URL` | Подключение к базе |
-| `REDIS_URL` | Session storage / limiter storage |
-| `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` | Очередь фоновых задач |
+| `SECRET_KEY` | Подпись сессий, CSRF и внутренние токены |
+| `DATABASE_URL` | SQLite/PostgreSQL для приложения |
+| `REDIS_URL` | Redis для сессий, rate limiting и части runtime-инфраструктуры |
+| `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` | Конфигурация фоновых задач |
+| `GEMINI_API_KEY`, `GEMINI_MODEL_NAME` | Основной AI provider |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile |
+| `BACKEND_URL` | Canonical backend URL для share links и redirect logic |
 | `CORS_ORIGINS` | Разрешенные origin'ы |
-| `VALIDATE_USER_AGENT` | Проверка User-Agent |
-| `ALLOW_GUEST_CHATS_SAVE` | Разрешение сохранения гостевых сессий |
+| `ALLOW_GUEST_CHATS_SAVE` | Разрешает персистить гостевые чаты |
+| `VALIDATE_USER_AGENT` | Включает проверку User-Agent паттернов |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_DEFAULT_MODEL` | Telegram bot integration |
 
-## API (кратко)
+## Локальные и тестовые модели
 
-| Группа | Эндпоинты |
+| Модель | Для чего нужна |
 |---|---|
-| Chat | `POST /chat` |
-| Sessions | `GET/POST /sessions`, `GET /sessions/<id>/history`, `POST /sessions/<id>/share`, `DELETE /sessions/<id>` |
-| Auth/Profile | `/api/auth/*`, `/api/user/*`, `/api/chat-history*` |
-| Tools | `POST /translate`, `POST /synthesize`, `POST /get-link-metadata` |
-| Health | `GET /health` |
-| Privacy | `GET /api/privacy/export`, `POST /api/privacy/delete` |
+| `gemini` | Основной production-oriented сценарий |
+| `echo` | Быстрый smoke-test UI, SSE и истории без внешнего AI |
+| `demo_image` | Проверка image flow без внешнего генератора |
 
-## Качество и процессы
+Это удобно для локальной разработки, когда нужно прогнать UX и transport layer, не упираясь в внешний API.
 
-Репозиторий оформлен в production-friendly формате:
+## API и контракт
+
+Полезные entrypoints:
+
+- `POST /chat`
+- `GET/POST /sessions`
+- `GET /sessions/<id>/history`
+- `POST /sessions/<id>/share`
+- `GET /api/privacy/export`
+- `POST /api/privacy/delete`
+- `GET /health`
+- `GET /metrics`
+- `GET /openapi.json`
+
+OpenAPI-спека лежит в [`openapi/openapi.json`](openapi/openapi.json), а TypeScript client генерируется в `src/generated/openapi.ts` через:
+
+```bash
+npm run openapi:check
+```
+
+<a id="quality"></a>
+
+## Качество и CI
+
+Репозиторий уже оформлен как нормальная рабочая база, а не как один файл `main.py`.
+
+Для полного локального quality-run установите dev-зависимости:
+
+```bash
+pip install -r requirements/dev.txt -c requirements/constraints.txt
+```
+
+### Основные локальные проверки
+
+```bash
+ruff check .
+black --check .
+mypy app_factory.py routes utils services
+pytest --cov=routes --cov=services --cov=utils --cov-report=term-missing --cov-fail-under=70
+npm run typecheck
+npm run openapi:check
+npm run lint
+npm run test:unit:coverage
+npm run build
+```
+
+E2E:
+
+```bash
+npm run test:e2e:install
+npm run test:e2e
+```
+
+### Что делает CI
+
+- сканирует tracked files на очевидные секреты;
+- гоняет Ruff, Black, MyPy и Pytest;
+- проверяет frontend typecheck, lint, unit tests и build;
+- запускает Playwright e2e;
+- прогоняет security pipeline через `pip-audit`, `npm audit`, `bandit` и `semgrep`.
+
+## Документы репозитория
 
 - [Contributing Guide](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Support Guide](SUPPORT.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Governance](GOVERNANCE.md)
 - [Pull Request Template](.github/pull_request_template.md)
 - [Issue Templates](.github/ISSUE_TEMPLATE/)
 - [CODEOWNERS](.github/CODEOWNERS)
 
-Базовые проверки в CI:
+<a id="structure"></a>
 
-- secret pattern scan (tracked files)
-- frontend lint (`npm run lint`)
-- frontend build (`npm run build`)
-- Python syntax check (`py_compile`)
+## Ограничения и текущее состояние
 
----
+- Проект еще в `beta`, поэтому UX и часть внутренней архитектуры продолжают меняться.
+- Без `GEMINI_API_KEY` основной AI-флоу будет ограничен, но локальные `echo` и `demo_image` остаются полезны для smoke-тестов.
+- Для локальной разработки SQLite подходит нормально, но для shared/public deployment лучше использовать PostgreSQL + Redis.
 
 ## Лицензия
 
-Проект распространяется под **GNU AGPLv3**. Подробности: [LICENSE](LICENSE).
+Проект распространяется под **GNU AGPLv3**. Подробности в [LICENSE](LICENSE).
