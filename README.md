@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Full-stack AI chat platform with streaming replies, secure file handling, shared sessions, privacy controls, and a production-ready Flask + React stack.</strong>
+  <strong>AI-платформа для общения с LLM, работы с историей чатов, мультимодальными вложениями и расширенной безопасностью.</strong>
 </p>
 
 <p align="center">
