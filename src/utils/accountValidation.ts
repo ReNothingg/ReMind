@@ -7,6 +7,17 @@ function normalizeValue(value: string): string {
     return String(value || '').trim();
 }
 
+function containsUnsafeNameCharacters(value: string): boolean {
+    for (const char of value || '') {
+        const code = char.charCodeAt(0);
+        if (code <= 31 || code === 127 || char === '<' || char === '>') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export function validateAccountName(
     value: string,
     t: TranslateFunction,
@@ -22,7 +33,7 @@ export function validateAccountName(
         return t('settings.account.validation.nameLength');
     }
 
-    if (/[\u0000-\u001f\u007f<>]/.test(normalized)) {
+    if (containsUnsafeNameCharacters(normalized)) {
         return t('settings.account.validation.nameInvalidCharacters');
     }
 

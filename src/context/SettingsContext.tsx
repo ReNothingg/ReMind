@@ -49,8 +49,8 @@ const DEFAULT_SETTINGS = {
     requireCtrlEnterToSend: false,
     snowBackground: false,
     autoSave: true,
-    fontFamily: "'Nunito', 'SF Pro Text', 'Ubuntu', 'Segoe UI', sans-serif",
-    fontSize: '12px',
+    fontFamily: "'Manrope', 'Inter', 'Segoe UI', sans-serif",
+    fontSize: '16px',
     keyboardSupport: true,
     highContrast: false,
     interface_language: detectInterfaceLanguage(),
@@ -110,10 +110,10 @@ export const SettingsProvider = ({ children }) => {
         }
         if (typeof merged.fontSize === 'string' && merged.fontSize.trim().endsWith('rem')) {
             const remMap = {
-                '0.875rem': '12px',
-                '1rem': '14px',
-                '1.125rem': '16px',
-                '1.25rem': '18px'
+                '0.875rem': '14px',
+                '1rem': '16px',
+                '1.125rem': '18px',
+                '1.25rem': '20px'
             };
             merged.fontSize = remMap[merged.fontSize.trim()] || DEFAULT_SETTINGS.fontSize;
         }

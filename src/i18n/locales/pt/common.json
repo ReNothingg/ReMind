@@ -196,12 +196,12 @@
       "signOut": "Terminar sessão",
       "profileUpdated": "Perfil atualizado",
       "updateError": "Falha na atualização",
-      "nameHint": "Usado na personaliza??o de IA quando n?o existe uma alcunha definida.",
-      "usernameHint": "3-50 caracteres: letras, n?meros, underscore e h?fen.",
+      "nameHint": "Usado na personalização de IA quando não existe uma alcunha definida.",
+      "usernameHint": "3-50 caracteres: letras, números, underscore e hífen.",
       "delete": {
         "title": "Eliminar conta",
-        "description": "Isto remove permanentemente o seu perfil, defini??es, hist?rico e conversas partilhadas.",
-        "confirmLabel": "Confirmar elimina??o",
+        "description": "Isto remove permanentemente o seu perfil, definições, histórico e conversas partilhadas.",
+        "confirmLabel": "Confirmar eliminação",
         "confirmHint": "Escreva o seu nome de utilizador atual: {{username}}",
         "confirmPlaceholder": "Introduza o seu nome de utilizador",
         "confirmationMismatch": "Introduza o seu nome de utilizador atual para eliminar a conta",
@@ -209,6 +209,17 @@
         "actionLoading": "A eliminar conta...",
         "success": "Conta eliminada",
         "error": "Falha ao eliminar a conta"
+      },
+      "validation": {
+        "nameRequired": "Introduza o seu nome",
+        "nameLength": "O nome deve ter entre 1 e 100 caracteres",
+        "nameInvalidCharacters": "O nome contém caracteres inválidos",
+        "usernameRequired": "Introduza um nome de utilizador",
+        "usernameLength": "O nome de utilizador deve ter entre 3 e 50 caracteres",
+        "usernameCharset": "O nome de utilizador só pode conter letras, números, underscore e hífen",
+        "usernameStartsWith": "O nome de utilizador não pode começar com underscore ou hífen",
+        "usernameTaken": "Este nome de utilizador já está em uso",
+        "emailTaken": "Este email já está registado"
       }
     },
     "appearance": {

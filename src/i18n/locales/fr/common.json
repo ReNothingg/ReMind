@@ -196,19 +196,30 @@
       "signOut": "Se déconnecter",
       "profileUpdated": "Profil mis à jour",
       "updateError": "Échec de la mise à jour",
-      "nameHint": "Utilis? pour la personnalisation de l'IA lorsqu'aucun surnom n'est d?fini.",
-      "usernameHint": "3 ? 50 caract?res : lettres, chiffres, tiret bas et trait d'union.",
+      "nameHint": "Utilisé pour la personnalisation de l'IA lorsqu'aucun surnom n'est défini.",
+      "usernameHint": "3 à 50 caractères : lettres, chiffres, tiret bas et trait d'union.",
       "delete": {
         "title": "Supprimer le compte",
-        "description": "Cela supprime d?finitivement votre profil, vos param?tres, votre historique et les discussions partag?es.",
+        "description": "Cela supprime définitivement votre profil, vos paramètres, votre historique et les discussions partagées.",
         "confirmLabel": "Confirmer la suppression",
         "confirmHint": "Saisissez votre nom d'utilisateur actuel : {{username}}",
         "confirmPlaceholder": "Saisissez votre nom d'utilisateur",
         "confirmationMismatch": "Saisissez votre nom d'utilisateur actuel pour supprimer le compte",
         "action": "Supprimer le compte",
         "actionLoading": "Suppression du compte...",
-        "success": "Compte supprim?",
-        "error": "?chec de la suppression du compte"
+        "success": "Compte supprimé",
+        "error": "Échec de la suppression du compte"
+      },
+      "validation": {
+        "nameRequired": "Saisissez votre nom",
+        "nameLength": "Le nom doit contenir entre 1 et 100 caractères",
+        "nameInvalidCharacters": "Le nom contient des caractères non valides",
+        "usernameRequired": "Saisissez un nom d'utilisateur",
+        "usernameLength": "Le nom d'utilisateur doit contenir entre 3 et 50 caractères",
+        "usernameCharset": "Le nom d'utilisateur ne peut contenir que des lettres, des chiffres, un tiret bas et un trait d'union",
+        "usernameStartsWith": "Le nom d'utilisateur ne peut pas commencer par un tiret bas ou un trait d'union",
+        "usernameTaken": "Ce nom d'utilisateur est déjà pris",
+        "emailTaken": "Cette adresse e-mail est déjà enregistrée"
       }
     },
     "appearance": {

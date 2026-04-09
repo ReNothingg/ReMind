@@ -25,7 +25,7 @@
       "password": "密码:",
       "username": "用户名:",
       "confirmPassword": "确认密码:",
-      "name": "???"
+      "name": "姓名:"
     },
     "actions": {
       "loginLoading": "登录中...",
@@ -171,8 +171,8 @@
       "pt": "Português"
     },
     "account": {
-      "title": "账号管理",
-      "description": "查看个人资料状态并更新你的详细信息。",
+      "title": "账户管理",
+      "description": "查看个人资料状态并更新你的信息。",
       "status": {
         "authorized": "已登录",
         "guest": "访客"
@@ -182,7 +182,7 @@
         "email": "邮箱",
         "id": "ID",
         "username": "用户名",
-        "name": "??"
+        "name": "姓名"
       },
       "signedIn": "你已登录",
       "guestMode": "你正在使用访客模式",
@@ -190,25 +190,36 @@
       "ctaTitle": "登录或创建资料",
       "ctaDescription": "登录以保存设置和历史记录。",
       "signInOrRegister": "登录或注册",
+      "nameHint": "未设置昵称时，该姓名会用于 AI 个性化。",
+      "usernameHint": "3-50 个字符：字母、数字、下划线和连字符。",
       "emailReadonlyHint": "邮箱无法更改。",
       "saving": "保存中...",
       "saveChanges": "保存更改",
       "signOut": "退出登录",
       "profileUpdated": "资料已更新",
       "updateError": "更新失败",
-      "nameHint": "????????? AI ??????????",
-      "usernameHint": "3-50 ??????????????????",
+      "validation": {
+        "nameRequired": "请输入姓名",
+        "nameLength": "姓名长度必须为 1 到 100 个字符",
+        "nameInvalidCharacters": "姓名包含无效字符",
+        "usernameRequired": "请输入用户名",
+        "usernameLength": "用户名长度必须为 3 到 50 个字符",
+        "usernameCharset": "用户名只能包含字母、数字、下划线和连字符",
+        "usernameStartsWith": "用户名不能以下划线或连字符开头",
+        "usernameTaken": "该用户名已被使用",
+        "emailTaken": "该邮箱已被注册"
+      },
       "delete": {
-        "title": "????",
-        "description": "??????????????????????????",
-        "confirmLabel": "????",
-        "confirmHint": "??????????{{username}}",
-        "confirmPlaceholder": "???????",
-        "confirmationMismatch": "???????????????",
-        "action": "????",
-        "actionLoading": "??????...",
-        "success": "?????",
-        "error": "??????"
+        "title": "删除账户",
+        "description": "这将永久删除你的资料、设置、历史记录和已共享聊天。",
+        "confirmLabel": "确认删除",
+        "confirmHint": "请输入你当前的用户名：{{username}}",
+        "confirmPlaceholder": "输入你的用户名",
+        "confirmationMismatch": "请输入当前用户名以删除账户",
+        "action": "删除账户",
+        "actionLoading": "正在删除账户...",
+        "success": "账户已删除",
+        "error": "删除账户失败"
       }
     },
     "appearance": {

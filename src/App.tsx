@@ -1,21 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
-import AppRail from './components/Layout/AppRail';
-import ChatContainer from './components/Chat/ChatContainer';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
-import SettingsModal from './components/Modals/SettingsModal';
-import AuthModal from './components/Modals/AuthModal';
-import HtmlPreviewModal from './components/Modals/HtmlPreviewModal';
-import ImageLightbox from './components/Modals/ImageLightbox';
 import SEOHelmet from './components/UI/SEOHelmet';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
 import { ALLOW_GUEST_CHATS_SAVE } from './utils/constants';
 import GlobalHeader from './features/chat/components/GlobalHeader';
-import ShareModal from './features/share/components/ShareModal';
 import { useSessionList } from './features/sessions/hooks/useSessionList';
 
 type AuthModalState = false | 'login' | 'register';
@@ -40,6 +33,13 @@ interface ImageLightboxState {
 }
 
 const MOBILE_RAIL_MEDIA_QUERY = '(max-width: 1024px)';
+const AppRail = lazy(() => import('./components/Layout/AppRail'));
+const ChatContainer = lazy(() => import('./components/Chat/ChatContainer'));
+const SettingsModal = lazy(() => import('./components/Modals/SettingsModal'));
+const AuthModal = lazy(() => import('./components/Modals/AuthModal'));
+const HtmlPreviewModal = lazy(() => import('./components/Modals/HtmlPreviewModal'));
+const ImageLightbox = lazy(() => import('./components/Modals/ImageLightbox'));
+const ShareModal = lazy(() => import('./features/share/components/ShareModal'));
 
 const MainLayout = () => {
     const [isRailExpandedDesktop, setRailExpandedDesktop] = useState(true);
@@ -365,23 +365,25 @@ const MainLayout = () => {
             <SEOHelmet />
 
             {isAuthenticated && (
-                <AppRail
-                    isExpanded={isRailExpanded}
-                    onToggle={handleRailToggle}
-                    sessions={sessions}
-                    currentSessionId={currentSessionId}
-                    onSelectSession={handleSelectSession}
-                    onNewChat={handleNewChat}
-                    onSettingsClick={() => setSettingsOpen(true)}
-                    onSessionDeleted={(sessionId) => {
-                        removeSession(sessionId);
-                        if (sessionId === currentSessionId) {
-                            clearChat({ historyMode: 'replace' });
-                        }
-                        refreshSessions();
-                    }}
-                    onSessionRenamed={onSessionRenamed}
-                />
+                <Suspense fallback={null}>
+                    <AppRail
+                        isExpanded={isRailExpanded}
+                        onToggle={handleRailToggle}
+                        sessions={sessions}
+                        currentSessionId={currentSessionId}
+                        onSelectSession={handleSelectSession}
+                        onNewChat={handleNewChat}
+                        onSettingsClick={() => setSettingsOpen(true)}
+                        onSessionDeleted={(sessionId) => {
+                            removeSession(sessionId);
+                            if (sessionId === currentSessionId) {
+                                clearChat({ historyMode: 'replace' });
+                            }
+                            refreshSessions();
+                        }}
+                        onSessionRenamed={onSessionRenamed}
+                    />
+                </Suspense>
             )}
 
             <main className="ui-app-main-shell">
@@ -418,94 +420,112 @@ const MainLayout = () => {
                         </LandingHero>
                     </div>
                 ) : (
-                    <>
-                        <ChatContainer
-                            history={history}
-                            isLoading={isLoading}
-                            isReadOnly={isReadOnly}
-                            onRegenerate={(messageId) => {
-                                if (regenerateMessage) {
-                                    notifyOnDoneRef.current = true;
-                                    regenerateMessage(messageId, currentModel);
-                                }
-                            }}
-                            onEdit={(messageId, newText) => {
-                                if (editMessage) {
-                                    notifyOnDoneRef.current = true;
-                                    editMessage(messageId, newText, currentModel);
-                                }
-                            }}
-                            onSwitchVariant={(messageId, direction) => {
-                                if (switchVariant) {
-                                    switchVariant(messageId, direction);
-                                }
-                            }}
-                        />
+                    <Suspense fallback={null}>
+                        <>
+                            <ChatContainer
+                                history={history}
+                                isLoading={isLoading}
+                                isReadOnly={isReadOnly}
+                                onRegenerate={(messageId) => {
+                                    if (regenerateMessage) {
+                                        notifyOnDoneRef.current = true;
+                                        regenerateMessage(messageId, currentModel);
+                                    }
+                                }}
+                                onEdit={(messageId, newText) => {
+                                    if (editMessage) {
+                                        notifyOnDoneRef.current = true;
+                                        editMessage(messageId, newText, currentModel);
+                                    }
+                                }}
+                                onSwitchVariant={(messageId, direction) => {
+                                    if (switchVariant) {
+                                        switchVariant(messageId, direction);
+                                    }
+                                }}
+                            />
 
-                        <InputArea
-                            onSendMessage={handleSendMessage}
-                            onStop={() => {
-                                notifyOnDoneRef.current = false;
-                                stopGeneration();
-                            }}
-                            isLoading={isLoading}
-                            isReadOnly={isReadOnly}
-                            initialPrompt={initialPrompt}
-                            onOpenAuth={() => setAuthOpen('login')}
-                        />
-                    </>
+                            <InputArea
+                                onSendMessage={handleSendMessage}
+                                onStop={() => {
+                                    notifyOnDoneRef.current = false;
+                                    stopGeneration();
+                                }}
+                                isLoading={isLoading}
+                                isReadOnly={isReadOnly}
+                                initialPrompt={initialPrompt}
+                                onOpenAuth={() => setAuthOpen('login')}
+                            />
+                        </>
+                    </Suspense>
                 )}
             </main>
 
             {isSettingsOpen && (
-                <SettingsModal
-                    onClose={() => {
-                        setSettingsOpen(false);
-                        clearHash();
-                    }}
-                    onOpenAuth={() => {
-                        setSettingsOpen(false);
-                        setAuthOpen('login');
-                        clearHash();
-                    }}
-                />
+                <Suspense fallback={null}>
+                    <SettingsModal
+                        onClose={() => {
+                            setSettingsOpen(false);
+                            clearHash();
+                        }}
+                        onOpenAuth={() => {
+                            setSettingsOpen(false);
+                            setAuthOpen('login');
+                            clearHash();
+                        }}
+                    />
+                </Suspense>
             )}
 
             {(isAuthOpen === 'login' || isAuthOpen === 'register') && (
-                <AuthModal
-                    onClose={() => setAuthOpen(false)}
-                    initialView={isAuthOpen === 'register' ? 'register' : 'login'}
-                />
+                <Suspense fallback={null}>
+                    <AuthModal
+                        onClose={() => setAuthOpen(false)}
+                        initialView={isAuthOpen === 'register' ? 'register' : 'login'}
+                    />
+                </Suspense>
             )}
 
-            <HtmlPreviewModal
-                isOpen={htmlPreview.isOpen}
-                onClose={() => setHtmlPreview({ isOpen: false, urlOrHtml: null, isHtml: false })}
-                urlOrHtml={htmlPreview.urlOrHtml}
-                isHtml={htmlPreview.isHtml}
-            />
+            {htmlPreview.isOpen && (
+                <Suspense fallback={null}>
+                    <HtmlPreviewModal
+                        isOpen={htmlPreview.isOpen}
+                        onClose={() => setHtmlPreview({ isOpen: false, urlOrHtml: null, isHtml: false })}
+                        urlOrHtml={htmlPreview.urlOrHtml}
+                        isHtml={htmlPreview.isHtml}
+                    />
+                </Suspense>
+            )}
 
-            <ImageLightbox
-                isOpen={imageLightbox.isOpen}
-                imageSrc={imageLightbox.imageSrc}
-                messageElement={
-                    imageLightbox.messageId
-                        ? document.querySelector(`[data-message-id="${imageLightbox.messageId}"]`)
-                        : null
-                }
-                onClose={() => setImageLightbox({ isOpen: false, imageSrc: null, messageId: null })}
-                currentModel={currentModel}
-                sessionId={currentSessionId}
-            />
+            {imageLightbox.isOpen && (
+                <Suspense fallback={null}>
+                    <ImageLightbox
+                        isOpen={imageLightbox.isOpen}
+                        imageSrc={imageLightbox.imageSrc}
+                        messageElement={
+                            imageLightbox.messageId
+                                ? document.querySelector(`[data-message-id="${imageLightbox.messageId}"]`)
+                                : null
+                        }
+                        onClose={() => setImageLightbox({ isOpen: false, imageSrc: null, messageId: null })}
+                        currentModel={currentModel}
+                        sessionId={currentSessionId}
+                    />
+                </Suspense>
+            )}
 
-            <ShareModal
-                isOpen={shareModalOpen}
-                onClose={() => setShareModalOpen(false)}
-                shareInfo={sessionAccess}
-                onEnableShare={enableSharing}
-                onDisableShare={disableSharing}
-                isAuthenticated={isAuthenticated}
-            />
+            {shareModalOpen && (
+                <Suspense fallback={null}>
+                    <ShareModal
+                        isOpen={shareModalOpen}
+                        onClose={() => setShareModalOpen(false)}
+                        shareInfo={sessionAccess}
+                        onEnableShare={enableSharing}
+                        onDisableShare={disableSharing}
+                        isAuthenticated={isAuthenticated}
+                    />
+                </Suspense>
+            )}
         </>
     );
 };

@@ -85,7 +85,7 @@
 
   html {
     scroll-behavior: smooth;
-    font-size: 12px;
+    font-size: 16px;
   }
 
   body {
@@ -631,21 +631,18 @@
   }
 
   .ui-landing-shell {
-    @apply mx-auto flex min-h-screen w-full max-w-[980px] flex-col items-center justify-center gap-8 px-4 pb-44 pt-28 md:px-6;
+    @apply mx-auto flex w-full max-w-[860px] flex-col justify-center gap-4 px-4 pb-28 pt-16 md:px-6 md:pb-24 md:pt-18;
+    min-height: calc(100vh - 2rem);
   }
 
   .ui-landing-readonly {
-    @apply w-full max-w-[720px];
-  }
-
-  .ui-landing-welcome {
-    @apply mx-auto flex min-h-[40vh] max-w-[700px] items-center justify-center px-4 py-6 text-center text-[clamp(1.8rem,3vw,2.5rem)] font-normal leading-[1.35] text-muted;
-    opacity: 0.9;
-    animation: fadeIn 0.7s ease-out;
-  }
-
-  .ui-landing-composer {
     @apply w-full;
+  }
+
+  @media (max-width: 767px) {
+    .ui-landing-shell {
+      @apply pb-24 pt-14;
+    }
   }
 
   .ui-selection-quote-button {

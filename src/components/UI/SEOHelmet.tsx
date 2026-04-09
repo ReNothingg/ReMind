@@ -1,23 +1,50 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getDocumentDirection, getOgLocale, getSiteCopy } from '../../content/siteCopy';
 
+function resolveAbsoluteUrl(value, baseUrl) {
+    if (!value) return null;
+
+    try {
+        return new URL(value, baseUrl).toString();
+    } catch {
+        return null;
+    }
+}
 
 export const SEOHelmet = ({
-    title = 'ReMind',
-    description = 'ReMind для всех. Даже для тех, кто еще не понял, зачем.',
-    keywords = 'ReMind, SynvexAI, AI, искусственный интеллект, чат-бот, LLM, GPT, Gemini, DeepSeek, продуктивность, нейросеть, ассистент',
+    title = null,
+    description = null,
+    keywords = null,
     canonical = null,
     ogTitle = null,
     ogDescription = null,
-    ogImage = 'https://chat.synvexai.com/images/banners/banner.png',
+    ogImage = null,
     ogType = 'website',
     twitterCard = 'summary_large_image',
-    themeColor = null,
+    themeColor = '#111214',
 }) => {
-    const fullTitle = title === 'ReMind' ? title : `${title} | ReMind`;
-    const baseUrl = 'https://chat.synvexai.com';
-    const fullCanonical = canonical ? `${baseUrl}${canonical}` : baseUrl;
+    const { i18n } = useTranslation();
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const siteCopy = useMemo(() => getSiteCopy(i18n.resolvedLanguage), [i18n.resolvedLanguage]);
+    const baseUrl =
+        (typeof window !== 'undefined' && window.location.origin) ||
+        import.meta.env.VITE_PUBLIC_BASE_URL ||
+        'https://chat.synvexai.com';
+    const pageTitle = title || (currentPath.startsWith('/c/') ? siteCopy.sharedChatTitle : 'ReMind');
+    const fullTitle = pageTitle === 'ReMind' ? pageTitle : `${pageTitle} | ReMind`;
+    const resolvedDescription =
+        description || (currentPath.startsWith('/c/') ? siteCopy.sharedChatDescription : siteCopy.metaDescription);
+    const resolvedKeywords = keywords || siteCopy.metaKeywords;
+    const fullCanonical = resolveAbsoluteUrl(canonical || currentPath, baseUrl) || baseUrl;
     const finalOgTitle = ogTitle || fullTitle;
-    const finalOgDescription = ogDescription || description;
+    const finalOgDescription = ogDescription || resolvedDescription;
+    const finalOgImage =
+        resolveAbsoluteUrl(ogImage || '/images/banners/main-banner.png', baseUrl) ||
+        `${baseUrl}/images/banners/main-banner.png`;
+    const currentLanguage = i18n.resolvedLanguage || i18n.language || 'en';
+    const ogLocale = getOgLocale(currentLanguage);
+    const documentDirection = getDocumentDirection(currentLanguage);
 
     useEffect(() => {
         const createdNodes = [];
@@ -54,9 +81,11 @@ export const SEOHelmet = ({
         };
 
         document.title = fullTitle;
+        document.documentElement.lang = currentLanguage;
+        document.documentElement.dir = documentDirection;
 
-        upsertMeta({ name: 'description', content: description });
-        upsertMeta({ name: 'keywords', content: keywords });
+        upsertMeta({ name: 'description', content: resolvedDescription });
+        upsertMeta({ name: 'keywords', content: resolvedKeywords });
 
         upsertLink({ rel: 'canonical', href: fullCanonical });
 
@@ -65,10 +94,10 @@ export const SEOHelmet = ({
         upsertMeta({ property: 'og:url', content: fullCanonical });
         upsertMeta({ property: 'og:type', content: ogType });
         upsertMeta({ property: 'og:site_name', content: 'ReMind' });
-        upsertMeta({ property: 'og:locale', content: 'ru_RU' });
+        upsertMeta({ property: 'og:locale', content: ogLocale });
 
-        if (ogImage) {
-            upsertMeta({ property: 'og:image', content: ogImage });
+        if (finalOgImage) {
+            upsertMeta({ property: 'og:image', content: finalOgImage });
             upsertMeta({ property: 'og:image:width', content: '1200' });
             upsertMeta({ property: 'og:image:height', content: '630' });
             upsertMeta({ property: 'og:image:alt', content: finalOgTitle });
@@ -77,7 +106,7 @@ export const SEOHelmet = ({
         upsertMeta({ name: 'twitter:card', content: twitterCard });
         upsertMeta({ name: 'twitter:title', content: finalOgTitle });
         upsertMeta({ name: 'twitter:description', content: finalOgDescription });
-        if (ogImage) upsertMeta({ name: 'twitter:image', content: ogImage });
+        if (finalOgImage) upsertMeta({ name: 'twitter:image', content: finalOgImage });
 
         if (themeColor) upsertMeta({ name: 'theme-color', content: themeColor });
 
@@ -85,14 +114,17 @@ export const SEOHelmet = ({
             createdNodes.forEach((node) => node.parentNode?.removeChild(node));
         };
     }, [
+        currentLanguage,
+        documentDirection,
         fullTitle,
-        description,
-        keywords,
+        resolvedDescription,
+        resolvedKeywords,
         fullCanonical,
         finalOgTitle,
         finalOgDescription,
-        ogImage,
+        finalOgImage,
         ogType,
+        ogLocale,
         twitterCard,
         themeColor,
     ]);

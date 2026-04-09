@@ -1,19 +1,19 @@
 {
   "name": "ReMind",
   "short_name": "ReMind",
-  "description": "ReMind для всех. Даже для тех, кто еще не понял, зачем.",
+  "description": "ReMind for everyone. Even for those who haven't figured out why yet.",
   "id": "/?source=pwa",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#1a1a1a",
-  "background_color": "#ffffff",
+  "theme_color": "#111214",
+  "background_color": "#f8fafc",
   "categories": [
     "productivity",
     "education",
     "utilities"
   ],
-  "lang": "ru",
+  "lang": "en",
   "dir": "ltr",
   "icons": [
     {

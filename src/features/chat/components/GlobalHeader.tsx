@@ -35,12 +35,10 @@ interface ModelSelectorProps {
     currentModel: string;
     dropdownId: string;
     dropdownRef: RefObject<HTMLDivElement | null>;
-    isAuthenticated: boolean;
     isDropdownOpen: boolean;
     models: ModelOption[];
     onCloseDropdown: () => void;
     onModelChange: (modelId: string) => void;
-    onOpenAuth: () => void;
     onToggleDropdown: () => void;
     chooseLabel: string;
 }
@@ -67,12 +65,10 @@ function ModelSelector({
     currentModel,
     dropdownId,
     dropdownRef,
-    isAuthenticated,
     isDropdownOpen,
     models,
     onCloseDropdown,
     onModelChange,
-    onOpenAuth,
     onToggleDropdown,
     chooseLabel,
 }: ModelSelectorProps) {
@@ -87,19 +83,10 @@ function ModelSelector({
                     'model-btn-trigger ui-toolbar-trigger',
                     isDropdownOpen && 'open ui-toolbar-trigger-active'
                 )}
-                onClick={(event) => {
-                    if (!isAuthenticated) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onOpenAuth();
-                        return;
-                    }
-
-                    onToggleDropdown();
-                }}
-                aria-expanded={isAuthenticated ? isDropdownOpen : undefined}
-                aria-haspopup={isAuthenticated ? 'listbox' : undefined}
-                aria-controls={isAuthenticated ? dropdownId : undefined}
+                onClick={onToggleDropdown}
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="listbox"
+                aria-controls={dropdownId}
             >
                 <span className="model-btn-name ui-toolbar-trigger-label">
                     {activeModel.name}
@@ -119,54 +106,52 @@ function ModelSelector({
                 </svg>
             </button>
 
-            {isAuthenticated && (
-                <div
-                    id={dropdownId}
-                    className={cn(
-                        'model-dropdown ui-toolbar-dropdown',
-                        isDropdownOpen
-                            ? 'open ui-toolbar-dropdown-open'
-                            : 'ui-toolbar-dropdown-closed'
-                    )}
-                    role="listbox"
-                    aria-label={chooseLabel}
-                >
-                    <div className="model-dropdown-header ui-toolbar-dropdown-header">
-                        <span className="model-dropdown-title ui-toolbar-dropdown-title">
-                            {chooseLabel}
-                        </span>
-                    </div>
-                    <div className="model-options ui-toolbar-option-list">
-                        {models.map((model) => (
-                            <button
-                                key={model.id}
-                                type="button"
-                                className="model-option ui-toolbar-option"
-                                aria-selected={currentModel === model.id}
-                                role="option"
-                                onClick={() => {
-                                    onModelChange(model.id);
-                                    onCloseDropdown();
-                                }}
-                            >
-                                <div className="model-option-header ui-toolbar-option-header">
-                                    <span className="model-option-name ui-toolbar-option-name">
-                                        {model.name}
-                                    </span>
-                                    {model.badge && (
-                                        <span className="model-option-badge ui-toolbar-option-badge">
-                                            {model.badge}
-                                        </span>
-                                    )}
-                                </div>
-                                <span className="model-option-desc ui-toolbar-option-description">
-                                    {model.desc}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
+            <div
+                id={dropdownId}
+                className={cn(
+                    'model-dropdown ui-toolbar-dropdown',
+                    isDropdownOpen
+                        ? 'open ui-toolbar-dropdown-open'
+                        : 'ui-toolbar-dropdown-closed'
+                )}
+                role="listbox"
+                aria-label={chooseLabel}
+            >
+                <div className="model-dropdown-header ui-toolbar-dropdown-header">
+                    <span className="model-dropdown-title ui-toolbar-dropdown-title">
+                        {chooseLabel}
+                    </span>
                 </div>
-            )}
+                <div className="model-options ui-toolbar-option-list">
+                    {models.map((model) => (
+                        <button
+                            key={model.id}
+                            type="button"
+                            className="model-option ui-toolbar-option"
+                            aria-selected={currentModel === model.id}
+                            role="option"
+                            onClick={() => {
+                                onModelChange(model.id);
+                                onCloseDropdown();
+                            }}
+                        >
+                            <div className="model-option-header ui-toolbar-option-header">
+                                <span className="model-option-name ui-toolbar-option-name">
+                                    {model.name}
+                                </span>
+                                {model.badge && (
+                                    <span className="model-option-badge ui-toolbar-option-badge">
+                                        {model.badge}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="model-option-desc ui-toolbar-option-description">
+                                {model.desc}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
@@ -220,7 +205,14 @@ export default function GlobalHeader({
 
     const activeModel = models.find((model) => model.id === currentModel) ?? defaultModel;
     const isShared = !!shareInfo?.isPublic;
-    const canShare = isAuthenticated && !!currentSessionId;
+    const hasSession = !!currentSessionId;
+    const shareButtonTitle = !hasSession
+        ? t('share.enableFirst')
+        : !isAuthenticated
+          ? t('share.signinToManage')
+          : isShared
+            ? t('share.configure')
+            : t('share.shareChat');
 
     return (
         <div className="global-controls ui-toolbar-shell">
@@ -254,12 +246,10 @@ export default function GlobalHeader({
                     currentModel={currentModel}
                     dropdownId={modelDropdownId}
                     dropdownRef={dropdownRef}
-                    isAuthenticated={isAuthenticated}
                     isDropdownOpen={isDropdownOpen}
                     models={models}
                     onCloseDropdown={() => setIsDropdownOpen(false)}
                     onModelChange={onModelChange}
-                    onOpenAuth={onOpenAuth}
                     onToggleDropdown={() => setIsDropdownOpen((prev) => !prev)}
                     chooseLabel={t('models.choose')}
                 />
@@ -274,15 +264,19 @@ export default function GlobalHeader({
                                 isShared && 'active border-[rgba(var(--color-accent-raw),0.45)] bg-interactive'
                             )}
                             onClick={() => {
-                                if (!canShare) {
+                                if (!hasSession) {
+                                    return;
+                                }
+
+                                if (!isAuthenticated) {
                                     onOpenAuth();
                                     return;
                                 }
                                 onOpenShareModal?.();
                             }}
-                            title={isShared ? t('share.configure') : t('share.shareChat')}
+                            title={shareButtonTitle}
                             aria-label={t('share.shareChat')}
-                            disabled={!canShare}
+                            disabled={!hasSession}
                         >
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="6" cy="12" r="3"></circle>

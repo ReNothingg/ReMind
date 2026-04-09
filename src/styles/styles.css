@@ -1,6 +1,6 @@
 html {
   scroll-behavior: smooth;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 * {
@@ -1825,14 +1825,6 @@ html[data-theme='light'] .icon-wrapper svg {
 
 .lightbox-loader .spinner {
   animation: lightboxLoaderSpin 1s linear infinite;
-}
-
-* {
-  transition:
-    opacity var(--transition-normal),
-    transform var(--transition-normal),
-    max-height var(--transition-normal),
-    margin var(--transition-normal);
 }
 
 button,

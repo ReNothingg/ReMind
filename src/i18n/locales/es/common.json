@@ -196,12 +196,12 @@
       "signOut": "Cerrar sesión",
       "profileUpdated": "Perfil actualizado",
       "updateError": "Error al actualizar",
-      "nameHint": "Se usa en la personalizaci?n de IA cuando no hay un apodo definido.",
-      "usernameHint": "3-50 caracteres: letras, n?meros, guion bajo y guion.",
+      "nameHint": "Se usa en la personalización de IA cuando no hay un apodo definido.",
+      "usernameHint": "3-50 caracteres: letras, números, guion bajo y guion.",
       "delete": {
         "title": "Eliminar cuenta",
         "description": "Esto elimina permanentemente tu perfil, ajustes, historial y chats compartidos.",
-        "confirmLabel": "Confirmar eliminaci?n",
+        "confirmLabel": "Confirmar eliminación",
         "confirmHint": "Escribe tu nombre de usuario actual: {{username}}",
         "confirmPlaceholder": "Introduce tu nombre de usuario",
         "confirmationMismatch": "Introduce tu nombre de usuario actual para eliminar la cuenta",
@@ -209,6 +209,17 @@
         "actionLoading": "Eliminando cuenta...",
         "success": "Cuenta eliminada",
         "error": "No se pudo eliminar la cuenta"
+      },
+      "validation": {
+        "nameRequired": "Introduce tu nombre",
+        "nameLength": "El nombre debe tener entre 1 y 100 caracteres",
+        "nameInvalidCharacters": "El nombre contiene caracteres no válidos",
+        "usernameRequired": "Introduce un nombre de usuario",
+        "usernameLength": "El nombre de usuario debe tener entre 3 y 50 caracteres",
+        "usernameCharset": "El nombre de usuario solo puede contener letras, números, guion bajo y guion",
+        "usernameStartsWith": "El nombre de usuario no puede empezar con guion bajo o guion",
+        "usernameTaken": "Este nombre de usuario ya está en uso",
+        "emailTaken": "Este correo ya está registrado"
       }
     },
     "appearance": {

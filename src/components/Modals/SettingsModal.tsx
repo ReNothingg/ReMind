@@ -255,7 +255,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
     const parsedFontSizePx = Number.parseInt(String(settings.fontSize || ''), 10);
     const currentFontSizePx = Number.isFinite(parsedFontSizePx)
         ? Math.min(FONT_SIZE_MAX_PX, Math.max(FONT_SIZE_MIN_PX, parsedFontSizePx))
-        : 12;
+        : 16;
     const fontSizePercent = ((currentFontSizePx - FONT_SIZE_MIN_PX) / (FONT_SIZE_MAX_PX - FONT_SIZE_MIN_PX)) * 100;
 
     const tabs = [

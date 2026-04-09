@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
@@ -392,9 +392,10 @@ const InputArea = ({
                                     type="button"
                                     className="quote-item-dismiss ui-composer-quote-dismiss"
                                     title={t('composer.removeQuote')}
+                                    aria-label={t('composer.removeQuote')}
                                     onClick={() => removeQuote(index)}
                                 >
-                                    ×
+                                    x
                                 </button>
                             </div>
                             ))}
