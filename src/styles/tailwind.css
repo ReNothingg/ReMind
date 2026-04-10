@@ -225,9 +225,13 @@
   }
 
   .ui-message-bubble-ai {
-    @apply w-full max-w-full px-0 py-[calc(var(--spacing-unit)*1)] text-foreground;
-    background: var(--ai-message-bg);
+    @apply w-full max-w-full border px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*3)] text-foreground;
+    background: var(--input-pill-bg);
     color: var(--ai-message-text-color);
+    min-height: var(--input-area-height-base);
+    border-color: var(--color-border-subtle);
+    border-radius: var(--input-area-border-radius);
+    box-shadow: var(--shadow-xs);
   }
 
   .ui-message-text {

@@ -390,83 +390,90 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     }, [widgetUpdate, message.id, isUser]);
 
     const markdownEnabledForMessage = isUser ? !!settings.renderUserMarkdown : !!settings.renderMarkdown;
-    useEffect(() => {
-        if (markdownEnabledForMessage && contentRef.current) {
-            setTimeout(() => {
-                if (window.Prism) {
-                    window.Prism.highlightAllUnder(contentRef.current);
-                } else {
-                    highlightCode();
-                }
-                requestAnimationFrame(() => {
-                    const codeBlocks = contentRef.current.querySelectorAll('pre.line-numbers');
-                    codeBlocks.forEach(pre => {
-                        if (window.Prism && window.Prism.plugins && window.Prism.plugins.lineNumbers) {
-                            try {
-                                if (!pre.querySelector('.line-numbers-rows')) {
-                                    window.Prism.plugins.lineNumbers.resize(pre);
-                                } else {
-                                    window.Prism.plugins.lineNumbers.resize(pre);
-                                }
-                            } catch (e) {
-                                console.warn('Failed to initialize line numbers:', e);
-                            }
-                        }
-                    });
-                });
-                const codeBlockContents = contentRef.current.querySelectorAll('.code-block-content');
-                codeBlockContents.forEach(content => {
-                    if (!content.dataset.initialMaxHeight) {
-                        const computedStyle = window.getComputedStyle(content);
-                        const maxHeight = computedStyle.maxHeight || '200px';
-                        content.dataset.initialMaxHeight = maxHeight;
-                        content.style.maxHeight = maxHeight;
-                    }
-                    requestAnimationFrame(() => {
-                        if (!content.classList.contains('expanded')) {
-                            const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200');
-                            if (content.scrollHeight > initialMaxHeight) {
-                                content.classList.add('has-overflow');
-                            } else {
-                                content.classList.remove('has-overflow');
-                            }
-                        }
-                    });
-                });
-            }, 0);
-
-            const renderVisuals = async () => {
-                if (Utils.renderSvgPreviews) {
-                    Utils.renderSvgPreviews();
-                    requestAnimationFrame(() => {
-                        Utils.renderSvgPreviews();
-                    });
-                }
-
-                if (Utils.renderCharts) {
-                    await Utils.renderCharts();
-                }
-
-                if (Utils.renderD3) {
-                    await Utils.renderD3();
-                }
-
-                if (Utils.renderNomnoml) {
-                    await Utils.renderNomnoml();
-                }
-
-                if (Utils.renderMermaid) {
-                    await Utils.renderMermaid();
-                }
-
-                if (Utils.attachDiagramPan) {
-                    Utils.attachDiagramPan();
-                }
-            };
-
-            renderVisuals();
+    const htmlContent = useMemo(() => {
+        if (isUser) {
+            return markdownEnabledForMessage ? formatUserText(content || '') : formatPlainText(content || '');
         }
-    }, [displayContent, markdownEnabledForMessage, settings.theme, widgets]);
+        return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
+    }, [displayContent, isUser, content, markdownEnabledForMessage]);
+    useEffect(() => {
+        if (!markdownEnabledForMessage || !contentRef.current) return;
+
+        const currentRef = contentRef.current;
+
+        const applySyntaxHighlighting = () => {
+            highlightCode(currentRef);
+
+            const codeBlocks = currentRef.querySelectorAll('pre.line-numbers');
+            codeBlocks.forEach(pre => {
+                if (window.Prism?.plugins?.lineNumbers) {
+                    try {
+                        window.Prism.plugins.lineNumbers.resize(pre);
+                    } catch (e) {
+                        console.warn('Failed to initialize line numbers:', e);
+                    }
+                }
+            });
+
+            const codeBlockContents = currentRef.querySelectorAll('.code-block-content');
+            codeBlockContents.forEach(content => {
+                if (!content.dataset.initialMaxHeight) {
+                    const computedStyle = window.getComputedStyle(content);
+                    const maxHeight = computedStyle.maxHeight || '200px';
+                    content.dataset.initialMaxHeight = maxHeight;
+                    content.style.maxHeight = maxHeight;
+                }
+
+                if (!content.classList.contains('expanded')) {
+                    const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200', 10);
+                    if (content.scrollHeight > initialMaxHeight) {
+                        content.classList.add('has-overflow');
+                    } else {
+                        content.classList.remove('has-overflow');
+                    }
+                }
+            });
+        };
+
+        const frame = window.requestAnimationFrame(() => {
+            applySyntaxHighlighting();
+        });
+
+        const renderVisuals = async () => {
+            if (Utils.renderSvgPreviews) {
+                Utils.renderSvgPreviews();
+                requestAnimationFrame(() => {
+                    Utils.renderSvgPreviews();
+                });
+            }
+
+            if (Utils.renderCharts) {
+                await Utils.renderCharts();
+            }
+
+            if (Utils.renderD3) {
+                await Utils.renderD3();
+            }
+
+            if (Utils.renderNomnoml) {
+                await Utils.renderNomnoml();
+            }
+
+            if (Utils.renderMermaid) {
+                await Utils.renderMermaid();
+            }
+
+            if (Utils.attachDiagramPan) {
+                Utils.attachDiagramPan();
+            }
+        };
+
+        renderVisuals();
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+        };
+    }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
     useEffect(() => {
         if (!audio.isVisible || !waveformCanvasRef.current || !audio.waveformPoints) return;
         const canvas = waveformCanvasRef.current;
@@ -659,12 +666,6 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         setEditedContent(content);
         setIsEditingUserMessage(false);
     };
-    const htmlContent = useMemo(() => {
-        if (isUser) {
-            return markdownEnabledForMessage ? formatUserText(content || '') : formatPlainText(content || '');
-        }
-        return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
-    }, [displayContent, isUser, content, markdownEnabledForMessage]);
     const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
     const messageClassName = cn(
         'message ui-message-shell',

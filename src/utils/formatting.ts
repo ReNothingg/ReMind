@@ -1,8 +1,34 @@
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
-import 'prismjs/plugins/line-numbers/prism-line-numbers'; 
+import 'prismjs/components/prism-markup-templating';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-csharp';
+import 'prismjs/components/prism-diff';
+import 'prismjs/components/prism-docker';
+import 'prismjs/components/prism-git';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-markdown';
+import 'prismjs/components/prism-php';
+import 'prismjs/components/prism-powershell';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-ruby';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/plugins/line-numbers/prism-line-numbers';
 import katex from 'katex';
+
+if (typeof window !== 'undefined') {
+    window.Prism = Prism;
+}
 
 export const escapeHtml = (unsafe) => {
     return (unsafe || '')
@@ -19,6 +45,30 @@ const CODE_LANGUAGE_ALIASES = {
     html: 'markup',
     xml: 'markup',
     svg: 'markup',
+    js: 'javascript',
+    mjs: 'javascript',
+    cjs: 'javascript',
+    jsx: 'jsx',
+    ts: 'typescript',
+    mts: 'typescript',
+    cts: 'typescript',
+    tsx: 'tsx',
+    py: 'python',
+    rb: 'ruby',
+    rs: 'rust',
+    sh: 'bash',
+    shell: 'bash',
+    shellscript: 'bash',
+    zsh: 'bash',
+    ps1: 'powershell',
+    psm1: 'powershell',
+    md: 'markdown',
+    yml: 'yaml',
+    jsonc: 'json',
+    dockerfile: 'docker',
+    plaintext: 'none',
+    text: 'none',
+    txt: 'none',
 };
 
 const replaceControlCharacters = (value, replacement = '') => {
@@ -425,6 +475,11 @@ export const formatUserText = (text) => {
     });
 };
 
-export const highlightCode = () => {
+export const highlightCode = (container?: ParentNode) => {
+    if (container) {
+        Prism.highlightAllUnder(container);
+        return;
+    }
+
     Prism.highlightAll();
 };
