@@ -3,10 +3,8 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       app:
         condition: service_healthy
@@ -26,7 +24,8 @@ services:
     expose:
       - "5000"
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
@@ -44,6 +43,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - LOCALHOST_MODE=False
       - ALLOW_GUEST_CHATS_SAVE=False
+      - ENABLE_STRICT_HTTPS=False
       - VALIDATE_USER_AGENT=True
     volumes:
       - ./database:/app/database
@@ -83,7 +83,8 @@ services:
       dockerfile: Dockerfile
     command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
@@ -94,6 +95,7 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - ENABLE_STRICT_HTTPS=False
     volumes:
       - ./database:/app/database
       - ./logs:/app/logs
@@ -141,7 +143,6 @@ services:
       - REDISCLI_AUTH=${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
-      - ./ops/redis/users.acl:/usr/local/etc/redis/users.acl:ro
     restart: unless-stopped
     command:
       - redis-server
@@ -157,8 +158,18 @@ services:
       - 0.0.0.0
       - --requirepass
       - ${REDIS_PASSWORD}
-      - --aclfile
-      - /usr/local/etc/redis/users.acl
+      - --rename-command
+      - CONFIG
+      - ""
+      - --rename-command
+      - FLUSHALL
+      - ""
+      - --rename-command
+      - FLUSHDB
+      - ""
+      - --rename-command
+      - SHUTDOWN
+      - ""
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

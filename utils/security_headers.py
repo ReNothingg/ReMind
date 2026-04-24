@@ -1,6 +1,6 @@
 from flask import has_request_context, request
 
-from config import IS_PRODUCTION
+from config import ENABLE_STRICT_HTTPS
 
 
 def get_csp_header():
@@ -17,8 +17,8 @@ def get_csp_header():
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests" if IS_PRODUCTION else "",
-        "block-all-mixed-content" if IS_PRODUCTION else "",
+        "upgrade-insecure-requests" if ENABLE_STRICT_HTTPS else "",
+        "block-all-mixed-content" if ENABLE_STRICT_HTTPS else "",
     ]
 
     return "; ".join(d for d in directives if d)
@@ -59,7 +59,7 @@ def apply_security_headers(response):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = get_permissions_policy()
-    if IS_PRODUCTION:
+    if ENABLE_STRICT_HTTPS:
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains; preload"
         )

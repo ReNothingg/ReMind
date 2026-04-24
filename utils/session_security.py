@@ -131,9 +131,9 @@ class SessionConfig:
 
 
 def configure_session(app):
-    from config import IS_PRODUCTION, SESSION_COOKIE_DOMAIN, SESSION_COOKIE_NAME
+    from config import ENABLE_STRICT_HTTPS, SESSION_COOKIE_DOMAIN, SESSION_COOKIE_NAME
 
-    app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+    app.config["SESSION_COOKIE_SECURE"] = ENABLE_STRICT_HTTPS
     app.config["SESSION_COOKIE_HTTPONLY"] = SessionConfig.COOKIE_HTTPONLY
     app.config["SESSION_COOKIE_SAMESITE"] = SessionConfig.COOKIE_SAMESITE
     app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN

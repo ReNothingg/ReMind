@@ -21,6 +21,21 @@ const renderApp = () => {
 initI18n().then(renderApp).catch(renderApp);
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    const isLocalHttp =
+      window.location.protocol === 'http:' &&
+      ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+
+    if (isLocalHttp) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+        .then(() => caches.keys())
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('remind-')).map((key) => caches.delete(key))))
+        .catch(() => {
+        });
+      return;
+    }
+
     navigator.serviceWorker
       .register('/sw.js')
       .catch(() => {

@@ -228,7 +228,9 @@ ALLOW_GUEST_CHATS_SAVE: bool = os.getenv("ALLOW_GUEST_CHATS_SAVE", "False").lowe
     "yes",
 )
 
-ENABLE_STRICT_HTTPS = IS_PRODUCTION
+ENABLE_STRICT_HTTPS = os.getenv(
+    "ENABLE_STRICT_HTTPS", "true" if IS_PRODUCTION else "false"
+).lower() in ("1", "true", "yes")
 
 RATELIMIT_ENABLED = True
 RATELIMIT_STORAGE_URL = os.getenv("REDIS_URL", "memory://")

@@ -21,6 +21,7 @@ from config import (
     CORS_ORIGINS,
     CORS_SEND_WILDCARD,
     CREATE_IMAGE_FOLDER,
+    ENABLE_STRICT_HTTPS,
     IS_PRODUCTION,
     MAX_CONTENT_LENGTH,
     SECRET_KEY,
@@ -73,7 +74,7 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=SQLALCHEMY_DATABASE_URI,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
-        PREFERRED_URL_SCHEME="https",
+        PREFERRED_URL_SCHEME="https" if ENABLE_STRICT_HTTPS else "http",
         REDIS_URL=os.getenv("REDIS_URL"),
         CELERY_BROKER_URL=os.getenv("CELERY_BROKER_URL"),
         CELERY_RESULT_BACKEND=os.getenv("CELERY_RESULT_BACKEND"),
@@ -86,7 +87,7 @@ def create_app():
     app.config["SESSION_PERMANENT"] = True
     app.config["SESSION_USE_SIGNER"] = True
     app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
-    app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+    app.config["SESSION_COOKIE_SECURE"] = ENABLE_STRICT_HTTPS
     app.config["SESSION_COOKIE_HTTPONLY"] = True 
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
