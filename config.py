@@ -4,8 +4,9 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
-env_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path=env_path)
+env_path = os.getenv("DOTENV_PATH", os.path.join(os.path.dirname(__file__), ".env"))
+if os.getenv("LOAD_DOTENV", "true").lower() not in ("0", "false", "no"):
+    load_dotenv(dotenv_path=env_path)
 
 BASE_PATH: Path = Path(__file__).resolve().parent
 

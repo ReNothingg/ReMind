@@ -209,7 +209,48 @@ python -m telegram_bot
 
 ## Docker Compose
 
-Для полного production-like запуска в репозитории уже есть `Dockerfile`, `docker-compose.yml` и `nginx.conf`.
+В проекте есть два Docker-режима:
+
+- `docker-compose.dev.yml` для разработки с hot reload frontend/backend/worker;
+- `docker-compose.yml` для production-like проверки полной сборки через Nginx и gunicorn.
+
+Подробный гайд: [docs/docker.md](docs/docker.md).
+
+### Dev-режим без постоянного rebuild
+
+Первый запуск:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Дальше для обычной разработки:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+Или через npm:
+
+```bash
+npm run docker:dev
+```
+
+Frontend будет доступен на `http://127.0.0.1:5173`, backend напрямую на `http://127.0.0.1:5000`.
+
+Для dev-секретов можно создать `.env.dev` из `.env.dev.example`. Основной `.env` dev-compose не читает и отключает через `LOAD_DOTENV=false`, чтобы production-domain/cookie/password значения не мешали локальной разработке.
+
+В dev-режиме:
+
+- изменения frontend-кода подхватывает Vite HMR;
+- изменения backend Python-кода подхватывает Flask reloader;
+- Celery worker перезапускается при изменении Python-файлов через `scripts/reload_on_change.py`.
+
+Rebuild нужен только после изменения `package*.json`, `requirements*.txt`, `requirements/`, `Dockerfile.dev` или системных зависимостей.
+
+### Production-like запуск
+
+Для полного production-like запуска в репозитории есть `Dockerfile`, `docker-compose.yml` и `nginx.conf`.
 
 ### Что нужно задать в `.env`
 

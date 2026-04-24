@@ -1,0 +1,35 @@
+FROM node:20-alpine AS frontend-dev
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+
+FROM python:3.11-slim AS backend-dev
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_APP=app_factory:create_app \
+    FLASK_ENV=development \
+    FLASK_DEBUG=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    libjpeg62-turbo-dev \
+    zlib1g-dev \
+    libpng-dev \
+    libfreetype6-dev \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+COPY requirements ./requirements
+RUN pip install --no-cache-dir -r requirements/dev.txt -c requirements/constraints.txt
+
+EXPOSE 5000
+CMD ["flask", "--app", "app_factory:create_app", "run", "--host=0.0.0.0", "--port=5000", "--debug"]
