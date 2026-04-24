@@ -76,7 +76,7 @@ const CustomSelect = ({
   return (
     <div
       ref={containerRef}
-      className={cn('custom-select-wrapper flex w-full flex-col gap-1.5', className)}
+      className={cn('custom-select-wrapper flex w-full flex-col gap-1.5', isOpen && 'is-open', className)}
     >
       {label && (
         <label className="custom-select-label text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -95,6 +95,7 @@ const CustomSelect = ({
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-expanded={isOpen}
+        aria-haspopup="listbox"
         aria-label={label}
       >
         <div className="custom-select-value flex w-full items-center justify-between gap-1.5">
@@ -124,40 +125,41 @@ const CustomSelect = ({
             <polyline points="6 6 8 4 10 6" />
           </svg>
         </div>
-
-        {isOpen && (
-          <div
-            className="custom-select-dropdown absolute inset-x-0 top-[calc(100%-1px)] z-[1000] overflow-hidden rounded-b-md border border-border-strong border-t-0 bg-surface shadow-[var(--shadow-lg)]"
-            ref={dropdownRef}
-          >
-            <div className="custom-select-list ui-scrollbar-thin max-h-70 overflow-x-hidden overflow-y-auto py-1">
-              {options.map((option) => (
-                <div
-                  key={option.value}
-                  className={cn(
-                    'custom-select-option flex items-center gap-2 px-2.5 py-2 text-sm text-foreground transition duration-150 ease-out select-none',
-                    option.value === value && 'selected bg-interactive font-medium text-accent-brand',
-                    option.disabled
-                      ? 'disabled cursor-not-allowed text-subtle opacity-50'
-                      : 'cursor-pointer hover:bg-surface-alt'
-                  )}
-                  onClick={() => !option.disabled && handleSelect(option.value)}
-                  role="option"
-                  aria-selected={option.value === value}
-                >
-                  <span
-                    className={cn(
-                      'option-dot size-1.5 shrink-0 rounded-full bg-transparent transition-all duration-150 ease-out',
-                      option.value === value && 'size-2 bg-accent-brand'
-                    )}
-                  ></span>
-                  <span className="option-label min-w-0 flex-1 truncate">{option.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {isOpen && (
+        <div
+          className="custom-select-dropdown absolute inset-x-0 top-[calc(100%+6px)] z-[1000] overflow-hidden rounded-md border border-border-strong bg-surface shadow-[var(--shadow-lg)]"
+          ref={dropdownRef}
+          role="listbox"
+        >
+          <div className="custom-select-list ui-scrollbar-thin max-h-70 overflow-x-hidden overflow-y-auto py-1">
+            {options.map((option) => (
+              <div
+                key={option.value}
+                className={cn(
+                  'custom-select-option flex items-center gap-2 px-2.5 py-2 text-sm text-foreground transition duration-150 ease-out select-none',
+                  option.value === value && 'selected bg-interactive font-medium text-accent-brand',
+                  option.disabled
+                    ? 'disabled cursor-not-allowed text-subtle opacity-50'
+                    : 'cursor-pointer hover:bg-surface-alt'
+                )}
+                onClick={() => !option.disabled && handleSelect(option.value)}
+                role="option"
+                aria-selected={option.value === value}
+              >
+                <span
+                  className={cn(
+                    'option-dot size-1.5 shrink-0 rounded-full bg-transparent transition-all duration-150 ease-out',
+                    option.value === value && 'size-2 bg-accent-brand'
+                  )}
+                ></span>
+                <span className="option-label min-w-0 flex-1 truncate">{option.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

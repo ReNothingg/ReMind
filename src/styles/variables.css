@@ -156,6 +156,7 @@
     'JetBrains Mono', 'Recursive', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 
   --spacing-unit: 4px;
+  --compact-spacing-unit: 3px;
   --chat-avatar-size: 36px;
   --chat-message-padding-y: calc(var(--spacing-unit) * 4);
   --chat-message-padding-x: calc(var(--spacing-unit) * 5);

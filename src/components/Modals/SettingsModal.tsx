@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+    Accessibility,
+    LayoutPanelLeft,
+    LogOut,
+    Palette,
+    Save,
+    ShieldAlert,
+    SlidersHorizontal,
+    UserRound,
+    X,
+} from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useURLRouter } from '../../hooks/useURLRouter';
@@ -262,63 +273,29 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
         {
             id: 'account',
             label: t('settings.tabs.account'),
-            icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                </svg>
-            )
+            icon: <UserRound size={18} strokeWidth={1.9} />
         },
         {
             id: 'appearance',
             label: t('settings.tabs.appearance'),
-            icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="13.5" cy="6.5" r="2.5" />
-                    <path d="M13.5 2h-9A4.5 4.5 0 0 0 0 6.5v9A4.5 4.5 0 0 0 4.5 20h9a4.5 4.5 0 0 0 4.5-4.5v-9A4.5 4.5 0 0 0 13.5 2Z" />
-                </svg>
-            )
+            icon: <Palette size={18} strokeWidth={1.9} />
         },
         ...(isAuthenticated
             ? [{
                 id: 'personalization',
                 label: t('settings.tabs.personalization'),
-                icon: (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="4" x2="4" y1="21" y2="14" />
-                        <line x1="4" x2="4" y1="10" y2="3" />
-                        <line x1="12" x2="12" y1="21" y2="12" />
-                        <line x1="12" x2="12" y1="8" y2="3" />
-                        <line x1="20" x2="20" y1="21" y2="16" />
-                        <line x1="20" x2="20" y1="12" y2="3" />
-                        <line x1="1" x2="7" y1="14" y2="14" />
-                        <line x1="9" x2="15" y1="8" y2="8" />
-                        <line x1="17" x2="23" y1="16" y2="16" />
-                    </svg>
-                )
+                icon: <SlidersHorizontal size={18} strokeWidth={1.9} />
             }]
             : []),
         {
             id: 'interface',
             label: t('settings.tabs.interface'),
-            icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                    <line x1="9" x2="9" y1="3" y2="21" />
-                </svg>
-            )
+            icon: <LayoutPanelLeft size={18} strokeWidth={1.9} />
         },
         {
             id: 'accessibility',
             label: t('settings.tabs.accessibility'),
-            icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="5" r="1" />
-                    <path d="m9 20 3-6 3 6" />
-                    <path d="m6 8 6 2 6-2" />
-                    <path d="M12 10v4" />
-                </svg>
-            )
+            icon: <Accessibility size={18} strokeWidth={1.9} />
         }
     ];
 
@@ -328,28 +305,14 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
     const accountProfileDetails = [
         { key: 'name', label: t('settings.account.fields.name'), value: normalizedAccountName || t('settings.account.unavailable') },
         { key: 'username', label: t('settings.account.fields.username'), value: user?.username || t('settings.account.unavailable') },
+        { key: 'email', label: t('settings.account.fields.email'), value: user?.email || t('settings.account.unavailable') },
     ];
+    const accountInitial = String(accountDisplayName || '?').trim().charAt(0).toUpperCase() || '?';
 
     const renderAccountTab = () => (
         <SettingsPane dataPane="account" className="account-pane">
             <div className="account-shell">
-                <section className="account-section account-section-header">
-                    <div className="account-pane-header">
-                        <div className="space-y-1">
-                            <h4 className="setting-group-title">
-                                {t('settings.account.title')}
-                            </h4>
-                            <p className="account-pane-description">
-                                {t('settings.account.description')}
-                            </p>
-                        </div>
-                        {isAuthenticated && (
-                            <div className="account-header-badge">
-                                {accountDisplayName}
-                            </div>
-                        )}
-                    </div>
-                </section>
+
 
                 {profileMessage && (
                     <p
@@ -388,38 +351,28 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                         </section>
                     </div>
                 ) : (
-                    <div className="account-layout">
-                        <div className="account-column account-column-side">
-                            <section className="account-card account-card-profile">
-                                <div className="account-card-head">
-                                    <h5 className="account-card-title">{accountDisplayName}</h5>
-                                    <p className="account-card-copy">{t('settings.account.fields.username')}</p>
-                                </div>
-                                <div className="account-detail-list">
-                                    {accountProfileDetails.map((item) => (
-                                        <div key={item.key} className="account-detail-row">
-                                            <span className="account-detail-label">{item.label}</span>
-                                            <span className="account-detail-value">{item.value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-
-                            <section className="account-card">
-                                <div className="account-card-head">
-                                    <h5 className="account-card-title">{t('settings.account.signOut')}</h5>
-                                    <p className="account-card-copy">{t('settings.account.fields.username')}: {user?.username || t('settings.account.unavailable')}</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="account-secondary-btn ui-button-secondary min-h-11 rounded-xl px-4 py-3"
-                                    onClick={logout}
-                                >
-                                    {t('settings.account.signOut')}
-                                </button>
-                            </section>
+                    <>
+                    <section className="account-profile-summary">
+                        <div className="account-avatar" aria-hidden="true">
+                            {accountInitial}
                         </div>
+                        <div className="account-profile-copy">
+                            <h5 className="account-profile-name">{accountDisplayName}</h5>
+                            <p className="account-profile-meta">
+                                @{user?.username || t('settings.account.unavailable')}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            className="account-signout-btn ui-button-secondary min-h-10 rounded-lg px-3 py-2"
+                            onClick={logout}
+                        >
+                            <LogOut size={16} strokeWidth={1.9} />
+                            {t('settings.account.signOut')}
+                        </button>
+                    </section>
 
+                    <div className="account-layout account-layout-auth">
                         <div className="account-column account-column-main">
                             <form className="account-card account-form-card" onSubmit={handleSaveProfile}>
                                 <div className="account-card-head">
@@ -492,14 +445,35 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                         className="btn-primary account-save-btn ui-button-primary min-h-11 rounded-xl px-5 py-3"
                                         disabled={isSavingProfile}
                                     >
+                                        <Save size={16} strokeWidth={1.9} />
                                         {isSavingProfile ? t('settings.account.saving') : t('settings.account.saveChanges')}
                                     </button>
                                 </div>
                             </form>
+                        </div>
+
+                        <div className="account-column account-column-side">
+                            <section className="account-card account-card-profile">
+                                <div className="account-card-head">
+                                    <h5 className="account-card-title">{t('settings.account.title')}</h5>
+                                    <p className="account-card-copy">{t('settings.account.description')}</p>
+                                </div>
+                                <div className="account-detail-list">
+                                    {accountProfileDetails.map((item) => (
+                                        <div key={item.key} className="account-detail-row">
+                                            <span className="account-detail-label">{item.label}</span>
+                                            <span className="account-detail-value">{item.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
 
                             <section className="account-card account-danger-card">
                                 <div className="account-card-head">
-                                    <h5 className="account-card-title">{t('settings.account.delete.title')}</h5>
+                                    <h5 className="account-card-title account-danger-title">
+                                        <ShieldAlert size={17} strokeWidth={1.9} />
+                                        {t('settings.account.delete.title')}
+                                    </h5>
                                     <p className="account-card-copy">{t('settings.account.delete.description')}</p>
                                 </div>
                                 <SettingField
@@ -529,6 +503,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                             </section>
                         </div>
                     </div>
+                    </>
                 )}
             </div>
         </SettingsPane>
@@ -550,10 +525,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                     aria-label={t('settings.close')}
                     type="button"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                    </svg>
+                    <X size={20} strokeWidth={1.9} />
                 </button>
             </div>
 
@@ -803,6 +775,9 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                                 max={FONT_SIZE_MAX_PX}
                                                 step={FONT_SIZE_STEP_PX}
                                                 value={currentFontSizePx}
+                                                style={{
+                                                    background: `linear-gradient(90deg, var(--color-accent) ${fontSizePercent}%, var(--color-bg-interactive) ${fontSizePercent}%)`
+                                                }}
                                                 onChange={(e) => updateSetting('fontSize', `${e.target.value}px`)}
                                                 aria-label={t('settings.accessibility.fontSizeLabel')}
                                             />

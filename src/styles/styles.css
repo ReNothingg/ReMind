@@ -896,7 +896,7 @@ html[data-theme='light'] .theme-toggle-btn img {
 }
 
 body.compact-mode {
-  --spacing-unit: 3px;
+  --spacing-unit: var(--compact-spacing-unit, 3px);
 }
 
 body.compact-mode .chat-container {
@@ -915,9 +915,9 @@ body.compact-mode .message-content {
 }
 
 body.compact-mode .global-controls {
-  top: calc(var(--spacing-unit) * 2);
-  left: calc(var(--spacing-unit) * 2);
-  right: calc(var(--spacing-unit) * 2);
+  top: calc(var(--spacing-unit) * 2 + env(safe-area-inset-top));
+  left: calc(var(--app-rail-offset) + var(--spacing-unit) * 2 + env(safe-area-inset-left));
+  right: calc(var(--spacing-unit) * 2 + env(safe-area-inset-right));
 }
 
 body.compact-mode .main-input-area {
@@ -961,7 +961,7 @@ body.compact-mode .action-btn img {
 }
 
 html[data-theme='light'] body.compact-mode {
-  --spacing-unit: var(--compact-spacing-unit);
+  --spacing-unit: var(--compact-spacing-unit, 3px);
 }
 
 .setting-control-group {
