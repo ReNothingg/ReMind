@@ -18,6 +18,8 @@ from routes.api_errors import ApiError, api_error_boundary
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
+    chat_file_exists,
+    has_valid_guest_session_token,
     load_chat_history,
     normalize_message,
     resolve_session_identifier,
@@ -124,7 +126,9 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             status=403,
             code="guest_file_upload_disabled",
         )
-    processed_files = [handle_file_upload(file_storage, session_id) for file_storage in uploaded_files]
+    processed_files = [
+        handle_file_upload(file_storage, session_id) for file_storage in uploaded_files
+    ]
     user_data["files"] = [file_info for file_info in processed_files if file_info is not None]
 
     if "meta" in user_data and isinstance(user_data["meta"], str):
@@ -217,7 +221,23 @@ def _resolve_history(
             return json.loads(history_field)
         except json.JSONDecodeError:
             return []
-    return load_chat_history(resolved_session_id, db_user_id)
+    guest_file_access_allowed = db_user_id is None and has_valid_guest_session_token(
+        resolved_session_id
+    )
+    return load_chat_history(
+        resolved_session_id,
+        db_user_id,
+        allow_file_fallback=guest_file_access_allowed,
+        require_guest_token=guest_file_access_allowed,
+    )
+
+
+def _allow_guest_file_persistence(resolved_session_id: str, db_user_id: int | None) -> bool:
+    if db_user_id is not None or not ALLOW_GUEST_CHATS_SAVE:
+        return False
+    if has_valid_guest_session_token(resolved_session_id):
+        return True
+    return not chat_file_exists(resolved_session_id)
 
 
 def _stream_chat_response(
@@ -227,6 +247,7 @@ def _stream_chat_response(
     user_data: dict,
     resolved_session_id: str,
     user_message_for_history: dict,
+    allow_guest_file_persistence: bool,
 ):
     captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
 
@@ -267,7 +288,7 @@ def _stream_chat_response(
 
                 final_data["reply"] = full_response
                 final_data["sessionId"] = resolved_session_id
-                if db_user_id is None and ALLOW_GUEST_CHATS_SAVE:
+                if allow_guest_file_persistence:
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
                     )
@@ -286,12 +307,20 @@ def _stream_chat_response(
                 ]
                 try:
                     append_messages_to_history(
-                        resolved_session_id, new_messages_batch, model_name, db_user_id
+                        resolved_session_id,
+                        new_messages_batch,
+                        model_name,
+                        db_user_id,
+                        allow_guest_file_persistence=allow_guest_file_persistence,
                     )
                 except OSError as exc:
                     logger.warning("Failed to persist stream messages: %s", exc)
                     append_messages_to_history(
-                        resolved_session_id, [user_message_for_history], model_name, db_user_id
+                        resolved_session_id,
+                        [user_message_for_history],
+                        model_name,
+                        db_user_id,
+                        allow_guest_file_persistence=allow_guest_file_persistence,
                     )
 
     response = Response(stream_generator(), mimetype="text/event-stream")
@@ -326,6 +355,9 @@ def register_chat_routes(api_bp):
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
 
         history = _resolve_history(user_data, resolved_session_id, db_user_id)
+        allow_guest_file_persistence = _allow_guest_file_persistence(
+            resolved_session_id, db_user_id
+        )
         original_user_message = user_data.get("message", "")
         user_data["history"] = history
 
@@ -350,6 +382,7 @@ def register_chat_routes(api_bp):
                 user_data=user_data,
                 resolved_session_id=resolved_session_id,
                 user_message_for_history=user_message_for_history,
+                allow_guest_file_persistence=allow_guest_file_persistence,
             )
 
         model_output = model_func(db_user_id, user_data)
@@ -362,7 +395,13 @@ def register_chat_routes(api_bp):
             model_parts = _build_model_message_parts(str(model_output), None)
 
         new_messages_batch = [user_message_for_history, {"role": "model", "parts": model_parts}]
-        append_messages_to_history(resolved_session_id, new_messages_batch, model_name, db_user_id)
+        append_messages_to_history(
+            resolved_session_id,
+            new_messages_batch,
+            model_name,
+            db_user_id,
+            allow_guest_file_persistence=allow_guest_file_persistence,
+        )
 
         direct_image_response = _maybe_return_direct_image(model_output)
         if direct_image_response is not None:
@@ -373,7 +412,7 @@ def register_chat_routes(api_bp):
         else:
             response_data = {"ok": True, "reply": str(model_output)}
 
-        if db_user_id is None and ALLOW_GUEST_CHATS_SAVE:
+        if allow_guest_file_persistence:
             response_data["session_token"] = _generate_guest_session_token(
                 resolved_session_id, int(time.time())
             )

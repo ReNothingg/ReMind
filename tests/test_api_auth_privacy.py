@@ -180,9 +180,9 @@ def test_chat_authenticated_uses_requested_session_id(client, app, create_confir
         login_response = login(email, password)
         assert login_response.status_code == 200
 
-        csrf_value = client.get("/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}).headers.get(
-            "X-CSRF-Token"
-        )
+        csrf_value = client.get(
+            "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
+        ).headers.get("X-CSRF-Token")
         assert csrf_value
 
         request_headers = {
@@ -207,8 +207,12 @@ def test_chat_authenticated_uses_requested_session_id(client, app, create_confir
         assert second_response.status_code == 200
 
         with app.app_context():
-            first_chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_a).first()
-            second_chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_b).first()
+            first_chat = UserChatHistory.query.filter_by(
+                user_id=user_id, session_id=session_a
+            ).first()
+            second_chat = UserChatHistory.query.filter_by(
+                user_id=user_id, session_id=session_b
+            ).first()
 
             assert first_chat is not None
             assert second_chat is not None
@@ -252,7 +256,7 @@ def test_chat_demo_image_stream_returns_image_and_persists_history(
     assert '"status": "generating_image"' in body
     assert '"/images/' in body
 
-    history = chat_history.load_chat_history("demo_image_session")
+    history = chat_history.load_chat_history("demo_image_session", allow_file_fallback=True)
     assert len(history) == 2
 
     assistant_message = history[-1]

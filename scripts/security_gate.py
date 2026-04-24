@@ -61,23 +61,24 @@ def is_high(value: Any) -> bool:
 
 def collect_pip_audit_findings(report: Any) -> List[str]:
     findings: List[str] = []
-    if not isinstance(report, list):
+    if isinstance(report, dict):
+        packages = report.get("dependencies") or []
+    elif isinstance(report, list):
+        packages = report
+    else:
         return findings
 
-    for package in report:
+    for package in packages:
         if not isinstance(package, dict):
             continue
         name = package.get("name", "unknown")
         for vuln in package.get("vulns") or []:
             if not isinstance(vuln, dict):
                 continue
-            severity = vuln.get("severity")
-            if not severity:
-                severity = vuln.get("cvss")
-            if not severity:
-                severity = vuln.get("cvss_score")
-            if is_high(severity):
-                findings.append(f"pip-audit: {name} -> {vuln.get('id', 'unknown')}")
+            vuln_id = vuln.get("id", "unknown")
+            fix_versions = vuln.get("fix_versions") or []
+            fix_text = f" (fix: {', '.join(fix_versions)})" if fix_versions else ""
+            findings.append(f"pip-audit: {name} -> {vuln_id}{fix_text}")
 
     return findings
 
@@ -162,12 +163,12 @@ def main() -> int:
     findings.extend(collect_semgrep_findings(semgrep_report))
 
     if findings:
-        print("High-severity security findings detected:")
+        print("Blocking security findings detected:")
         for finding in findings:
             print(f" - {finding}")
         return 1
 
-    print("Security gate passed: no high-severity findings detected.")
+    print("Security gate passed: no blocking findings detected.")
     return 0
 
 

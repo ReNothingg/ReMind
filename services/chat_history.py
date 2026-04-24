@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from flask import request, session
+from flask import has_request_context, request, session
 from werkzeug.utils import secure_filename
 
 from config import ALLOW_GUEST_CHATS_SAVE, ALLOWED_HOSTS, BACKEND_URL, CHATS_FOLDER, SECRET_KEY
@@ -74,6 +74,11 @@ def read_chat_file(safe_session_id: str) -> dict:
         return {}
 
 
+def chat_file_exists(session_id: str) -> bool:
+    safe_session_id = secure_filename(str(session_id))
+    return bool(safe_session_id and (CHATS_FOLDER / f"{safe_session_id}.json").is_file())
+
+
 def _generate_guest_session_token(session_id: str, timestamp: int) -> str:
     message = f"{session_id}:{timestamp}".encode("utf-8")
     secret_key = (SECRET_KEY or "").encode("utf-8")
@@ -82,9 +87,7 @@ def _generate_guest_session_token(session_id: str, timestamp: int) -> str:
     return base64.b64encode(token_data.encode("utf-8")).decode("utf-8")
 
 
-def _verify_guest_session_token(
-    token: str, session_id: str, max_age_seconds: int = 604800
-) -> bool:
+def _verify_guest_session_token(token: str, session_id: str, max_age_seconds: int = 604800) -> bool:
     try:
         token_data = base64.b64decode(token.encode("utf-8")).decode("utf-8")
         parts = token_data.split(":")
@@ -122,17 +125,27 @@ def _get_chat_access_token_from_request() -> Optional[str]:
     return request.args.get("chat_token")
 
 
+def has_valid_guest_session_token(session_id: str) -> bool:
+    safe_session_id = secure_filename(str(session_id))
+    if not safe_session_id or not ALLOW_GUEST_CHATS_SAVE or not has_request_context():
+        return False
+
+    token = _get_chat_access_token_from_request()
+    return bool(token and _verify_guest_session_token(token, safe_session_id))
+
+
 def read_chat_file_secure(safe_session_id: str, require_auth: bool = False) -> dict:
-    if session.get("user_id") is not None:
+    if has_request_context() and session.get("user_id") is not None:
         return read_chat_file(safe_session_id)
 
     if require_auth:
+        if not has_request_context():
+            return {}
         if not ALLOW_GUEST_CHATS_SAVE:
             logger.warning("Guest chat access disabled: %s", safe_session_id)
             return {}
 
-        token = _get_chat_access_token_from_request()
-        if not token or not _verify_guest_session_token(token, safe_session_id):
+        if not has_valid_guest_session_token(safe_session_id):
             logger.warning("Unauthorized access attempt to guest chat: %s", safe_session_id)
             return {}
 
@@ -189,7 +202,9 @@ def normalize_message(msg: Any) -> dict:
             }
 
         role = msg.get("role", "user")
-        parts = msg.get("parts") or ([{"text": msg.get("text")}] if msg.get("text") else [{"text": ""}])
+        parts = msg.get("parts") or (
+            [{"text": msg.get("text")}] if msg.get("text") else [{"text": ""}]
+        )
         return {
             "id": msg.get("id") or _new_message_id(),
             "role": role,
@@ -228,10 +243,14 @@ def _message_signature(msg: dict) -> str:
         return f"{(msg.get('role') or 'x')}::err"
 
 
-def _collect_new_messages(existing_messages: list[dict], incoming_messages: list[dict]) -> list[dict]:
+def _collect_new_messages(
+    existing_messages: list[dict], incoming_messages: list[dict]
+) -> list[dict]:
     existing_ids = {message.get("id") for message in existing_messages}
     recent_signatures = {
-        _message_signature(message) for message in existing_messages[-10:] if isinstance(message, dict)
+        _message_signature(message)
+        for message in existing_messages[-10:]
+        if isinstance(message, dict)
     }
     fresh_messages: list[dict] = []
 
@@ -270,7 +289,13 @@ def _normalize_history_from_data(data: dict) -> list[dict]:
     return [normalize_message(message) for message in history]
 
 
-def load_chat_history(session_id: str, user_id: int | None = None) -> list:
+def load_chat_history(
+    session_id: str,
+    user_id: int | None = None,
+    *,
+    allow_file_fallback: bool = False,
+    require_guest_token: bool = False,
+) -> list:
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
         return []
@@ -283,11 +308,20 @@ def load_chat_history(session_id: str, user_id: int | None = None) -> list:
         except Exception as exc:
             logger.debug("Could not load from DB: %s", exc)
 
-    return _normalize_history_from_data(read_chat_file(safe_session_id))
+    if not allow_file_fallback:
+        return []
+
+    data = read_chat_file_secure(safe_session_id, require_auth=require_guest_token)
+    return _normalize_history_from_data(data)
 
 
 def append_messages_to_history(
-    session_id: str, new_messages: list, model_name: str, user_id: int | None = None
+    session_id: str,
+    new_messages: list,
+    model_name: str,
+    user_id: int | None = None,
+    *,
+    allow_guest_file_persistence: bool | None = None,
 ) -> None:
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
@@ -297,7 +331,11 @@ def append_messages_to_history(
     with lock:
         try:
             incoming = [normalize_message(message) for message in new_messages]
-            allow_file_persistence = bool((user_id and isinstance(user_id, int)) or ALLOW_GUEST_CHATS_SAVE)
+            is_authenticated_user = user_id is not None and isinstance(user_id, int)
+            if allow_guest_file_persistence is None:
+                allow_file_persistence = bool(not is_authenticated_user and ALLOW_GUEST_CHATS_SAVE)
+            else:
+                allow_file_persistence = bool(allow_guest_file_persistence)
             current_data = read_chat_file(safe_session_id) if allow_file_persistence else {}
             file_history = current_data.get("history", []) if isinstance(current_data, dict) else []
             to_append_file = _collect_new_messages(file_history, incoming)
@@ -309,13 +347,16 @@ def append_messages_to_history(
                     "last_updated": time.time(),
                     "model_used_in_last_message": model_name,
                     "history": file_history,
-                    "title": current_data.get("title") or _generate_title_from_history(file_history),
+                    "title": current_data.get("title")
+                    or _generate_title_from_history(file_history),
                 }
                 write_chat_file(safe_session_id, chat_data)
 
             if user_id and isinstance(user_id, int):
                 try:
-                    chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id).first()
+                    chat = UserChatHistory.query.filter_by(
+                        user_id=user_id, session_id=session_id
+                    ).first()
                     if not chat:
                         chat = UserChatHistory(
                             user_id=user_id,
