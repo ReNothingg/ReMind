@@ -397,10 +397,10 @@
 }
 
 .user-settings-modal .custom-select-dropdown {
-  position: static !important;
-  inset: auto !important;
+  position: absolute;
+  inset: calc(100% + 6px) 0 auto 0;
   width: 100%;
-  margin-top: 6px;
+  margin-top: 0;
   overflow: hidden;
   border: 1px solid var(--color-border-medium);
   border-radius: var(--radius-md);

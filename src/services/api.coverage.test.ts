@@ -60,6 +60,31 @@ describe('apiService coverage', () => {
         });
     });
 
+    it('refreshes the csrf token and retries csrf failures once', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(createJsonResponse(
+                { error: { code: 'csrf_validation_failed', message: 'CSRF token validation failed' } },
+                { ok: false, status: 403 },
+            ))
+            .mockResolvedValueOnce(createJsonResponse(
+                { ok: true },
+                { headers: { 'X-CSRF-Token': 'fresh_csrf' } },
+            ))
+            .mockResolvedValueOnce(createJsonResponse({ ok: true, saved: true }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(apiService._fetch('/csrf-retry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hello: 'world' }),
+        })).resolves.toEqual({ ok: true, saved: true });
+
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(String(fetchMock.mock.calls[1][0])).toContain('/health?format=json');
+        const retryHeaders = (fetchMock.mock.calls[2][1] as RequestInit).headers as Headers;
+        expect(retryHeaders.get('X-CSRF-Token')).toBe('fresh_csrf');
+    });
+
     it('falls back to text errors and marks serious network failures', async () => {
         const textErrorFetch = vi.fn().mockResolvedValue({
             ok: false,

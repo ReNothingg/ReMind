@@ -422,5 +422,99 @@
   },
   "spinwheel": {
     "spin": "Spin"
+  },
+  "minds": {
+    "subtitle": "Create and manage custom AI minds for different tasks and conversation styles.",
+    "create": "Create",
+    "searchPlaceholder": "Search minds",
+    "searchAria": "Search minds",
+    "tabsAria": "Minds sections",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "My minds"
+    },
+    "categoriesAria": "Mind categories",
+    "categories": {
+      "all": "All",
+      "general": "General",
+      "education": "Education",
+      "development": "Development",
+      "productivity": "Productivity",
+      "creative": "Creative",
+      "business": "Business",
+      "security": "Security"
+    },
+    "visibility": {
+      "private": "Only me",
+      "link": "Anyone with the link",
+      "linkShort": "By link",
+      "linkLong": "Anyone with the link",
+      "store": "Mind store"
+    },
+    "verified": "Approved by the creator",
+    "startersAria": "Conversation starters",
+    "openChat": "Open chat",
+    "pinTitle": "Pin to app rail",
+    "unpinTitle": "Unpin from app rail",
+    "pinAria": "Pin mind",
+    "unpinAria": "Unpin mind",
+    "edit": "Edit",
+    "editAria": "Edit mind",
+    "delete": "Delete",
+    "loading": "Loading minds...",
+    "emptyMine": "You have not created any minds yet.",
+    "emptyStore": "No minds found for this query.",
+    "confirmDelete": "Delete mind \"{{name}}\"?",
+    "pinnedAria": "Pinned minds",
+    "disableActive": "Disable mind",
+    "errors": {
+      "load": "Could not load minds. Try refreshing the page.",
+      "pin": "Could not update mind pinning.",
+      "delete": "Could not delete mind.",
+      "authRequired": "Sign in to perform this action.",
+      "accessDenied": "You do not have access to this mind.",
+      "notFound": "The minds service is unavailable or the mind was not found. Check that the backend is running with the new API routes.",
+      "rateLimited": "Too many requests. Wait a bit and try again.",
+      "editAccess": "You do not have permission to edit this mind.",
+      "editorLoad": "Could not load the mind editor.",
+      "save": "Could not save the mind. Check the fields and try again."
+    },
+    "validation": {
+      "name": "Name must contain at least 2 characters.",
+      "description": "Description must contain at least 8 characters.",
+      "instructions": "Instructions must contain at least 16 characters.",
+      "category": "Choose a category for Mind store."
+    },
+    "editor": {
+      "authTitle": "Creating minds is available after sign in",
+      "back": "Back",
+      "editTitle": "Edit mind",
+      "createTitle": "Create mind",
+      "editSubtitle": "Manage settings and access.",
+      "createSubtitle": "Configure your own AI.",
+      "loading": "Loading editor...",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "instructions": "Instructions",
+        "starters": "Conversation starters"
+      },
+      "placeholders": {
+        "name": "Name your mind",
+        "description": "Briefly describe what your mind does",
+        "instructions": "What does the mind do, how does it behave, what is its personality and role?",
+        "starter": "Prompt button for users"
+      },
+      "removeStarter": "Remove starter",
+      "addStarter": "Add starter",
+      "access": "Access",
+      "category": "Category",
+      "check": "Check",
+      "basicReady": "Main fields are filled",
+      "startersReady": "Starters are ready",
+      "saving": "Saving...",
+      "saveChanges": "Save changes",
+      "createAction": "Create mind"
+    }
   }
 }

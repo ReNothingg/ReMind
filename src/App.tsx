@@ -1,9 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { BadgeCheck, BrainCircuit, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
 import SEOHelmet from './components/UI/SEOHelmet';
+import { apiService, type Mind } from './services/api';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
@@ -40,6 +43,18 @@ const AuthModal = lazy(() => import('./components/Modals/AuthModal'));
 const HtmlPreviewModal = lazy(() => import('./components/Modals/HtmlPreviewModal'));
 const ImageLightbox = lazy(() => import('./components/Modals/ImageLightbox'));
 const ShareModal = lazy(() => import('./features/share/components/ShareModal'));
+const MindsPage = lazy(() => import('./features/minds/MindsPage'));
+const MindEditorPage = lazy(() => import('./features/minds/MindEditorPage'));
+
+function normalizeAppPath(path: string): string {
+    if (path === '/editor') {
+        return '/minds/editor';
+    }
+    if (path.startsWith('/editor/')) {
+        return `/minds/editor/${path.slice('/editor/'.length)}`;
+    }
+    return path;
+}
 
 const MainLayout = () => {
     const [isRailExpandedDesktop, setRailExpandedDesktop] = useState(true);
@@ -54,10 +69,16 @@ const MainLayout = () => {
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [currentModel, setCurrentModel] = useState('gemini');
     const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
+    const [routePath, setRoutePath] = useState(() =>
+        typeof window !== 'undefined' ? window.location.pathname : '/'
+    );
+    const [activeMind, setActiveMind] = useState<Mind | null>(null);
+    const [pinnedMinds, setPinnedMinds] = useState<Mind[]>([]);
 
     const { isSettingsView, clearHash } = useURLRouter();
     const { isAuthenticated, loading: isAuthLoading } = useAuth();
     const { settings } = useSettings();
+    const { t } = useTranslation();
 
     const {
         history,
@@ -166,11 +187,47 @@ const MainLayout = () => {
         }
     }, [currentSessionId, isLoading, refreshSessions, settings.notifyOnThinkingDone]);
 
+    const refreshPinnedMinds = useCallback(async () => {
+        if (!isAuthenticated) {
+            setPinnedMinds([]);
+            return;
+        }
+        try {
+            const minds = await apiService.listPinnedMinds();
+            setPinnedMinds(minds);
+        } catch (error) {
+            console.warn('Failed to load pinned minds', error);
+            setPinnedMinds([]);
+        }
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            void refreshPinnedMinds();
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [refreshPinnedMinds]);
+
+    const navigateTo = useCallback((targetPath: string) => {
+        const url = new URL(targetPath, window.location.origin);
+        const nextPathAndSearch = `${url.pathname}${url.search}`;
+        if (`${window.location.pathname}${window.location.search}` !== nextPathAndSearch) {
+            window.history.pushState({}, '', nextPathAndSearch);
+        }
+        setRoutePath(url.pathname);
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    }, []);
+
     useEffect(() => {
         const handleRouteChange = () => {
-            const path = window.location.pathname;
+            const path = normalizeAppPath(window.location.pathname);
+            if (path !== window.location.pathname) {
+                window.history.replaceState({}, '', `${path}${window.location.search}${window.location.hash}`);
+            }
+            setRoutePath(path);
             if (path.startsWith('/c/')) {
                 const slug = decodeURIComponent(path.split('/c/')[1]);
+                setActiveMind(null);
                 if (slug) {
                     loadSession(slug, { historyMode: 'replace' });
                 } else {
@@ -187,6 +244,36 @@ const MainLayout = () => {
         return () => window.removeEventListener('popstate', handleRouteChange);
     }, [loadSession, clearChat]);
 
+    useEffect(() => {
+        if (routePath !== '/') {
+            return;
+        }
+
+        const mindId = new URLSearchParams(window.location.search).get('mind');
+        if (!mindId) {
+            return;
+        }
+
+        let cancelled = false;
+        apiService
+            .getMind(mindId)
+            .then((mind) => {
+                if (!cancelled && mind) {
+                    setActiveMind(mind);
+                }
+            })
+            .catch((error) => {
+                console.warn('Failed to load active mind', error);
+                if (!cancelled) {
+                    setActiveMind(null);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [routePath]);
+
     const handleSendMessage = useCallback(
         (text: string, files: File[], options = {}) => {
             const path = window.location.pathname;
@@ -195,9 +282,12 @@ const MainLayout = () => {
             }
 
             notifyOnDoneRef.current = true;
-            sendMessage(text, files, currentModel, options);
+            sendMessage(text, files, currentModel, {
+                ...options,
+                mindId: activeMind?.public_id || null,
+            });
         },
-        [clearChat, sendMessage, currentModel]
+        [activeMind, clearChat, sendMessage, currentModel]
     );
 
     useEffect(() => {
@@ -345,6 +435,7 @@ const MainLayout = () => {
 
     const handleSelectSession = useCallback(
         (id: string) => {
+            setActiveMind(null);
             if (id === currentSessionId && window.location.pathname.startsWith('/c/')) {
                 setMobileRailOpen(false);
                 return;
@@ -356,9 +447,61 @@ const MainLayout = () => {
     );
 
     const handleNewChat = useCallback(() => {
+        setActiveMind(null);
         clearChat({ historyMode: 'push' });
+        setRoutePath('/');
         setMobileRailOpen(false);
     }, [clearChat]);
+
+    const handleMindsClick = useCallback(() => {
+        clearChat({ historyMode: 'none' });
+        navigateTo('/minds');
+        setMobileRailOpen(false);
+    }, [clearChat, navigateTo]);
+
+    const handleCreateMind = useCallback(() => {
+        clearChat({ historyMode: 'none' });
+        navigateTo('/minds/editor');
+        setMobileRailOpen(false);
+    }, [clearChat, navigateTo]);
+
+    const handleEditMind = useCallback((mind: Mind) => {
+        clearChat({ historyMode: 'none' });
+        navigateTo(`/minds/editor/${encodeURIComponent(mind.public_id)}`);
+        setMobileRailOpen(false);
+    }, [clearChat, navigateTo]);
+
+    const handleStartMind = useCallback((mind: Mind) => {
+        setActiveMind(mind);
+        clearChat({ historyMode: 'none' });
+        navigateTo(`/?mind=${encodeURIComponent(mind.public_id)}`);
+        setMobileRailOpen(false);
+    }, [clearChat, navigateTo]);
+
+    const handleMindSaved = useCallback((mind: Mind) => {
+        void refreshPinnedMinds();
+        navigateTo('/minds');
+        setActiveMind((current) => {
+            if (current?.public_id === mind.public_id) {
+                return mind;
+            }
+            return current;
+        });
+    }, [navigateTo, refreshPinnedMinds]);
+
+    const handleClearActiveMind = useCallback(() => {
+        setActiveMind(null);
+        if (window.location.pathname === '/' && window.location.search) {
+            window.history.replaceState({}, '', '/');
+        }
+    }, []);
+
+    const editorMindId = routePath.startsWith('/minds/editor/')
+        ? decodeURIComponent(routePath.slice('/minds/editor/'.length))
+        : null;
+    const isMindsRoute = routePath === '/minds';
+    const isEditorRoute = routePath === '/minds/editor' || routePath.startsWith('/minds/editor/');
+    const isChatSurface = !isMindsRoute && !isEditorRoute;
 
     return (
         <>
@@ -373,7 +516,12 @@ const MainLayout = () => {
                         currentSessionId={currentSessionId}
                         onSelectSession={handleSelectSession}
                         onNewChat={handleNewChat}
+                        onMindsClick={handleMindsClick}
                         onSettingsClick={() => setSettingsOpen(true)}
+                        currentPath={routePath}
+                        activeMindId={activeMind?.public_id || null}
+                        pinnedMinds={pinnedMinds}
+                        onSelectMind={handleStartMind}
                         onSessionDeleted={(sessionId) => {
                             removeSession(sessionId);
                             if (sessionId === currentSessionId) {
@@ -399,11 +547,73 @@ const MainLayout = () => {
                     isReadOnly={isReadOnly}
                     onOpenShareModal={() => setShareModalOpen(true)}
                     onNewChat={handleNewChat}
+                    showChatControls={isChatSurface}
                 />
 
-                {history.length === 0 ? (
+                {isMindsRoute ? (
+                    <Suspense fallback={null}>
+                        <MindsPage
+                            isAuthenticated={isAuthenticated}
+                            onCreateMind={handleCreateMind}
+                            onEditMind={handleEditMind}
+                            onOpenAuth={() => setAuthOpen('login')}
+                            onPinnedChange={refreshPinnedMinds}
+                            onStartMind={handleStartMind}
+                        />
+                    </Suspense>
+                ) : isEditorRoute ? (
+                    <Suspense fallback={null}>
+                        <MindEditorPage
+                            editingMindId={editorMindId}
+                            isAuthenticated={isAuthenticated}
+                            onCancel={() => navigateTo('/minds')}
+                            onOpenAuth={() => setAuthOpen('login')}
+                            onSaved={handleMindSaved}
+                        />
+                    </Suspense>
+                ) : history.length === 0 ? (
                     <div className="ui-empty-conversation-shell">
                         <LandingHero isReadOnly={isReadOnly}>
+                            {activeMind && (
+                                <div className="ui-landing-mind-panel">
+                                    <div className="ui-landing-mind-header">
+                                        <div className="ui-landing-mind-title">
+                                            <BrainCircuit size={22} />
+                                            <div>
+                                                <strong>
+                                                    {activeMind.name}
+                                                    {activeMind.is_verified && (
+                                                        <BadgeCheck size={15} className="ml-1 inline-block align-[-2px]" />
+                                                    )}
+                                                </strong>
+                                                <span>{activeMind.description}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="ui-landing-mind-close"
+                                            onClick={handleClearActiveMind}
+                                            aria-label={t('minds.disableActive')}
+                                            title={t('minds.disableActive')}
+                                        >
+                                            <X size={17} />
+                                        </button>
+                                    </div>
+                                    {activeMind.starters?.length > 0 && (
+                                        <div className="ui-landing-mind-starters">
+                                            {activeMind.starters.map((starter) => (
+                                                <button
+                                                    key={starter}
+                                                    type="button"
+                                                    onClick={() => handleSendMessage(starter, [], {})}
+                                                >
+                                                    {starter}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <InputArea
                                 variant="landing"
                                 showDynamicWarning={false}

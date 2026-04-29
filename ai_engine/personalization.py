@@ -209,8 +209,36 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
+    mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     if base and user_md:
-        return base + "\n\n" + "PERSONALIZATION FOR USER:\n" + user_md
-    if user_md:
-        return user_md
-    return base
+        prompt = base + "\n\n" + "PERSONALIZATION FOR USER:\n" + user_md
+    elif user_md:
+        prompt = user_md
+    else:
+        prompt = base
+
+    if mind_prompt:
+        return prompt + "\n\n" + mind_prompt
+    return prompt
+
+
+def render_active_mind_prompt(active_mind: Any) -> str:
+    if not isinstance(active_mind, dict):
+        return ""
+
+    name = str(active_mind.get("name") or "").strip()
+    description = str(active_mind.get("description") or "").strip()
+    instructions = str(active_mind.get("instructions") or "").strip()
+    if not name or not instructions:
+        return ""
+
+    return (
+        "ACTIVE MIND PROFILE:\n"
+        "The user selected a custom Mind for this conversation. Follow this Mind profile "
+        "when answering, unless it conflicts with platform safety rules, privacy rules, "
+        "or higher-priority system requirements.\n"
+        f"Name: {name}\n"
+        f"Description: {description}\n"
+        "Mind instructions:\n"
+        f"{instructions}"
+    )

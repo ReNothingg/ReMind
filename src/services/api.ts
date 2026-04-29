@@ -74,10 +74,58 @@ type SessionRenameResponse = {
     [key: string]: unknown;
 };
 
+export type MindVisibility = 'private' | 'link' | 'store';
+
+export type MindCategory = {
+    id: string;
+    label: string;
+};
+
+export type Mind = {
+    id: number;
+    public_id: string;
+    name: string;
+    description: string;
+    instructions?: string;
+    starters: string[];
+    category: string;
+    visibility: MindVisibility;
+    is_verified: boolean;
+    is_system: boolean;
+    is_owner: boolean;
+    can_edit: boolean;
+    is_pinned: boolean;
+    created_at?: string | null;
+    updated_at?: string | null;
+};
+
+export type MindPayload = {
+    name: string;
+    description: string;
+    instructions: string;
+    starters: string[];
+    category: string;
+    visibility: MindVisibility;
+};
+
+type MindListResponse = {
+    minds?: Mind[];
+    categories?: MindCategory[];
+};
+
+type MindResponse = {
+    mind?: Mind;
+};
+
+type MindCategoryResponse = {
+    categories?: MindCategory[];
+};
+
 type CanvasActionResponse = Record<string, unknown>;
 type LinkMetadataResponse = Record<string, unknown>;
 type PrivacyDeleteResponse = Record<string, unknown>;
 type SessionDeleteResponse = Record<string, unknown>;
+type MindDeleteResponse = Record<string, unknown> | null;
 
 export { getCsrfToken };
 
@@ -377,6 +425,88 @@ export const apiService = {
                 body: JSON.stringify({ title: newTitle }),
             }
         );
+    },
+
+    async listMindCategories(): Promise<MindCategory[]> {
+        const data = await fetchApi<MindCategoryResponse>('/api/minds/categories', {
+            method: 'GET',
+        });
+        return data.categories || [];
+    },
+
+    async listMinds(params: {
+        category?: string;
+        limit?: number;
+        mine?: boolean;
+        q?: string;
+    } = {}): Promise<MindListResponse> {
+        return fetchApi<MindListResponse>('/api/minds', {
+            method: 'GET',
+            query: {
+                category: params.category,
+                limit: params.limit,
+                mine: params.mine ? '1' : undefined,
+                q: params.q,
+            },
+        });
+    },
+
+    async getMind(publicId: string): Promise<Mind | null> {
+        const data = await fetchApi<MindResponse>(
+            `/api/minds/${encodeURIComponent(publicId)}`,
+            { method: 'GET' }
+        );
+        return data.mind || null;
+    },
+
+    async createMind(payload: MindPayload): Promise<Mind> {
+        const data = await fetchApi<MindResponse>('/api/minds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!data.mind) {
+            throw new Error('Mind was not returned by the server.');
+        }
+        return data.mind;
+    },
+
+    async updateMind(publicId: string, payload: MindPayload): Promise<Mind> {
+        const data = await fetchApi<MindResponse>(
+            `/api/minds/${encodeURIComponent(publicId)}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }
+        );
+        if (!data.mind) {
+            throw new Error('Mind was not returned by the server.');
+        }
+        return data.mind;
+    },
+
+    async deleteMind(publicId: string): Promise<MindDeleteResponse> {
+        return fetchApi<MindDeleteResponse>(`/api/minds/${encodeURIComponent(publicId)}`, {
+            method: 'DELETE',
+        });
+    },
+
+    async listPinnedMinds(): Promise<Mind[]> {
+        const data = await fetchApi<MindListResponse>('/api/minds/pinned', {
+            method: 'GET',
+        });
+        return data.minds || [];
+    },
+
+    async setMindPinned(publicId: string, pinned: boolean): Promise<Mind | null> {
+        const data = await fetchApi<MindResponse>(
+            `/api/minds/${encodeURIComponent(publicId)}/pin`,
+            {
+                method: pinned ? 'POST' : 'DELETE',
+            }
+        );
+        return data.mind || null;
     },
 
     async canvasAction(

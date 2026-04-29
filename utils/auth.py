@@ -137,6 +137,97 @@ class ChatShare(db.Model):
         }
 
 
+class Mind(db.Model):
+    __tablename__ = "mind"
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True, index=True)
+    name = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.String(280), nullable=False)
+    instructions = db.Column(db.Text, nullable=False)
+    starters_data = db.Column(db.Text, default="[]", nullable=False)
+    category = db.Column(db.String(50), default="general", nullable=False, index=True)
+    visibility = db.Column(db.String(20), default="private", nullable=False, index=True)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    is_system = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def get_starters(self):
+        try:
+            parsed = json.loads(self.starters_data) if self.starters_data else []
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+
+    def set_starters(self, starters):
+        self.starters_data = json.dumps(starters or [], ensure_ascii=False)
+
+    def to_dict(self, viewer_id=None, pinned=False):
+        is_owner = bool(viewer_id is not None and self.user_id == viewer_id)
+        return {
+            "id": self.id,
+            "public_id": self.public_id,
+            "name": self.name,
+            "description": self.description,
+            "instructions": self.instructions if is_owner else "",
+            "starters": self.get_starters(),
+            "category": self.category,
+            "visibility": self.visibility,
+            "is_verified": bool(self.is_verified),
+            "is_system": bool(self.is_system),
+            "is_owner": is_owner,
+            "can_edit": is_owner and not self.is_system,
+            "is_pinned": bool(pinned),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class MindPin(db.Model):
+    __tablename__ = "mind_pin"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "mind_id", name="uq_mind_pin_user_mind"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    mind_id = db.Column(db.Integer, db.ForeignKey("mind.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+LEGACY_DEFAULT_MIND_PUBLIC_IDS = (
+    "mind_study_coach",
+    "mind_code_reviewer",
+    "mind_product_strategist",
+    "mind_security_auditor",
+)
+
+
+def _remove_legacy_default_minds(app):
+    try:
+        minds = (
+            Mind.query.filter(
+                Mind.public_id.in_(LEGACY_DEFAULT_MIND_PUBLIC_IDS),
+                Mind.is_system.is_(True),
+            )
+            .all()
+        )
+        if not minds:
+            return
+
+        mind_ids = [mind.id for mind in minds]
+        MindPin.query.filter(MindPin.mind_id.in_(mind_ids)).delete(synchronize_session=False)
+        for mind in minds:
+            db.session.delete(mind)
+        db.session.commit()
+        app.logger.info("Removed %s legacy default minds", len(minds))
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Failed to remove legacy default minds")
+
+
 def is_valid_password(password):
 
     if len(password) < 8:
@@ -1563,6 +1654,7 @@ def setup_auth(app):
         app.logger.info("Google OAuth registered successfully")
     with app.app_context():
         db.create_all()
+        _remove_legacy_default_minds(app)
         inspector = inspect(db.engine)
         if "user" in inspector.get_table_names():
             user_columns = {column["name"] for column in inspector.get_columns("user")}

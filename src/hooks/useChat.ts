@@ -87,6 +87,7 @@ export const useChat = () => {
     const activeChatRequestIdRef = useRef(0);
     const currentSessionIdRef = useRef(null);
     const currentSessionSlugRef = useRef(null);
+    const activeMindIdRef = useRef(null);
 
     const updateSessionIdentity = useCallback((sessionId, slug) => {
         currentSessionIdRef.current = sessionId;
@@ -217,6 +218,7 @@ export const useChat = () => {
         updateSessionIdentity(null, null);
         setSessionAccess(createDefaultSessionAccess());
         setIsReadOnly(false);
+        activeMindIdRef.current = null;
         messageVariantsRef.current.clear();
     }, [updateSessionIdentity]);
 
@@ -271,6 +273,7 @@ export const useChat = () => {
         const { historyMode = 'replace', clearHistory = true } = options;
         const loadRequestId = sessionLoadRequestIdRef.current + 1;
         sessionLoadRequestIdRef.current = loadRequestId;
+        activeMindIdRef.current = null;
 
         abortActiveChatRequest(true);
         setIsLoading(true);
@@ -448,7 +451,7 @@ export const useChat = () => {
         return historyArray;
     }, [history]);
     const sendMessage = useCallback(async (text, files = [], model = 'gemini', options = {}) => {
-        const { webSearch = false, censorship = false, ...metadata } = options;
+        const { webSearch = false, censorship = false, mindId = undefined, ...metadata } = options;
         if ((!text || !text.trim()) && files.length === 0) return;
         if (isReadOnly) {
             console.warn('Attempt to send message in read-only chat is blocked.');
@@ -508,6 +511,15 @@ export const useChat = () => {
         formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
         formData.append('webSearch', String(webSearch));
         formData.append('censorship', String(censorship));
+        if (mindId !== undefined) {
+            activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
+                ? mindId.trim()
+                : null;
+        }
+        const effectiveMindId = activeMindIdRef.current;
+        if (effectiveMindId) {
+            formData.append('mind_id', effectiveMindId);
+        }
         files.forEach((file, index) => {
             formData.append(`file${index}`, file, file.name);
         });
@@ -761,6 +773,9 @@ export const useChat = () => {
         formData.append('model', model);
         formData.append('session_id', currentSessionIdRef.current || generateSessionId());
         formData.append('history', JSON.stringify(historyBefore));
+        if (activeMindIdRef.current) {
+            formData.append('mind_id', activeMindIdRef.current);
+        }
 
         let fullReply = '';
 
@@ -933,6 +948,9 @@ export const useChat = () => {
         formData.append('model', model);
         formData.append('session_id', currentSessionIdRef.current || generateSessionId());
         formData.append('history', JSON.stringify(historyBefore));
+        if (activeMindIdRef.current) {
+            formData.append('mind_id', activeMindIdRef.current);
+        }
 
         let fullReply = '';
 

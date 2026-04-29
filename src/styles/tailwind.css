@@ -35,6 +35,7 @@
 @import "./components/auth/guest-mode.css" layer(components);
 @import "./components/auth/auth.css" layer(components);
 @import "./components/ui/spinwheel.css" layer(components);
+@import "./features/minds.css" layer(components);
 
 @source "../../index.html";
 @source "../**/*.{js,jsx,ts,tsx}";
@@ -473,6 +474,42 @@
 
   .ui-rail-search-input-hint {
     @apply italic text-subtle;
+  }
+
+  .ui-rail-pinned-minds {
+    @apply flex flex-col gap-1 border-b px-2 pb-2;
+    border-color: var(--color-border-subtle);
+  }
+
+  .ui-rail-pinned-minds-collapsed {
+    @apply items-center;
+  }
+
+  .ui-rail-pinned-mind {
+    @apply flex h-9 items-center rounded-md border border-transparent bg-transparent text-muted transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
+  }
+
+  .ui-rail-pinned-mind-expanded {
+    @apply w-full justify-start gap-2 px-2;
+  }
+
+  .ui-rail-pinned-mind-collapsed {
+    @apply w-11 justify-center;
+  }
+
+  .ui-rail-pinned-mind-active {
+    @apply bg-interactive text-foreground;
+    border-color: rgba(var(--color-accent-raw), 0.28);
+  }
+
+  .ui-rail-pinned-mind-avatar {
+    @apply inline-flex size-6 shrink-0 items-center justify-center rounded-md text-[0.68rem] font-bold;
+    background: rgba(var(--color-accent-raw), 0.14);
+    color: var(--color-accent);
+  }
+
+  .ui-rail-pinned-mind-label {
+    @apply min-w-0 flex-1 truncate text-left text-[0.82rem] font-medium;
   }
 
   .ui-rail-section-label {

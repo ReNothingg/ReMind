@@ -370,5 +370,99 @@
   },
   "spinwheel": {
     "spin": "Girar"
+  },
+  "minds": {
+    "subtitle": "Crea y gestiona minds de IA personalizados para distintas tareas y estilos de conversación.",
+    "create": "Crear",
+    "searchPlaceholder": "Buscar minds",
+    "searchAria": "Buscar minds",
+    "tabsAria": "Secciones de minds",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "Mis minds"
+    },
+    "categoriesAria": "Categorías de minds",
+    "categories": {
+      "all": "Todo",
+      "general": "General",
+      "education": "Educación",
+      "development": "Desarrollo",
+      "productivity": "Productividad",
+      "creative": "Creativo",
+      "business": "Negocios",
+      "security": "Seguridad"
+    },
+    "visibility": {
+      "private": "Solo yo",
+      "link": "Por enlace",
+      "linkShort": "Por enlace",
+      "linkLong": "Cualquiera con el enlace",
+      "store": "Mind store"
+    },
+    "verified": "Aprobado por el creador",
+    "startersAria": "Inicios de conversación",
+    "openChat": "Abrir chat",
+    "pinTitle": "Fijar en app-rail",
+    "unpinTitle": "Quitar de app-rail",
+    "pinAria": "Fijar mind",
+    "unpinAria": "Desfijar mind",
+    "edit": "Editar",
+    "editAria": "Editar mind",
+    "delete": "Eliminar",
+    "loading": "Cargando minds...",
+    "emptyMine": "Aún no has creado minds.",
+    "emptyStore": "No se encontraron minds para esta búsqueda.",
+    "confirmDelete": "¿Eliminar mind \"{{name}}\"?",
+    "pinnedAria": "Minds fijados",
+    "disableActive": "Desactivar mind",
+    "errors": {
+      "load": "No se pudieron cargar los minds. Intenta actualizar la página.",
+      "pin": "No se pudo actualizar el fijado del mind.",
+      "delete": "No se pudo eliminar el mind.",
+      "authRequired": "Inicia sesión para realizar esta acción.",
+      "accessDenied": "No tienes acceso a este mind.",
+      "notFound": "El servicio de minds no está disponible o el mind no se encontró. Comprueba que el backend tenga las nuevas rutas API.",
+      "rateLimited": "Demasiadas solicitudes. Espera un poco e inténtalo de nuevo.",
+      "editAccess": "No tienes permiso para editar este mind.",
+      "editorLoad": "No se pudo cargar el editor de mind.",
+      "save": "No se pudo guardar el mind. Revisa los campos e inténtalo de nuevo."
+    },
+    "validation": {
+      "name": "El nombre debe tener al menos 2 caracteres.",
+      "description": "La descripción debe tener al menos 8 caracteres.",
+      "instructions": "Las instrucciones deben tener al menos 16 caracteres.",
+      "category": "Elige una categoría para Mind store."
+    },
+    "editor": {
+      "authTitle": "Crear minds está disponible después de iniciar sesión",
+      "back": "Atrás",
+      "editTitle": "Editar mind",
+      "createTitle": "Crear mind",
+      "editSubtitle": "Gestiona ajustes y acceso.",
+      "createSubtitle": "Configura tu propia IA.",
+      "loading": "Cargando editor...",
+      "fields": {
+        "name": "Nombre",
+        "description": "Descripción",
+        "instructions": "Instrucciones",
+        "starters": "Inicios de conversación"
+      },
+      "placeholders": {
+        "name": "Ponle nombre a tu mind",
+        "description": "Describe brevemente qué hace tu mind",
+        "instructions": "Qué hace el mind, cómo se comporta, su personalidad y función",
+        "starter": "Botón de sugerencia para usuarios"
+      },
+      "removeStarter": "Eliminar sugerencia",
+      "addStarter": "Añadir sugerencia",
+      "access": "Acceso",
+      "category": "Categoría",
+      "check": "Comprobación",
+      "basicReady": "Campos principales completos",
+      "startersReady": "Sugerencias listas",
+      "saving": "Guardando...",
+      "saveChanges": "Guardar cambios",
+      "createAction": "Crear mind"
+    }
   }
 }

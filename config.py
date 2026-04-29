@@ -100,6 +100,7 @@ CORS_ALLOW_HEADERS = [
 
 CORS_EXPOSE_HEADERS = [
     "Content-Type",
+    "X-CSRF-Token",
     "X-Request-Id",
     "X-Total-Count",
     "X-Page-Number",

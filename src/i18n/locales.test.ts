@@ -20,6 +20,17 @@ const requiredTextPaths = [
   ['settings', 'account', 'delete', 'actionLoading'],
   ['settings', 'account', 'delete', 'success'],
   ['settings', 'account', 'delete', 'error'],
+  ['minds', 'subtitle'],
+  ['minds', 'searchPlaceholder'],
+  ['minds', 'tabs', 'store'],
+  ['minds', 'tabs', 'mine'],
+  ['minds', 'categories', 'general'],
+  ['minds', 'visibility', 'private'],
+  ['minds', 'errors', 'save'],
+  ['minds', 'validation', 'instructions'],
+  ['minds', 'editor', 'createTitle'],
+  ['minds', 'editor', 'fields', 'instructions'],
+  ['minds', 'editor', 'saveChanges'],
 ] as const;
 
 const validationKeys = [

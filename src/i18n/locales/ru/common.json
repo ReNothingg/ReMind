@@ -421,5 +421,99 @@
   },
   "spinwheel": {
     "spin": "Вращать"
+  },
+  "minds": {
+    "subtitle": "Создавайте и управляйте собственными ИИ для разных задач и стилей общения.",
+    "create": "Создать",
+    "searchPlaceholder": "Поиск по minds",
+    "searchAria": "Поиск по minds",
+    "tabsAria": "Разделы minds",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "Мои minds"
+    },
+    "categoriesAria": "Категории minds",
+    "categories": {
+      "all": "Все",
+      "general": "Общее",
+      "education": "Обучение",
+      "development": "Разработка",
+      "productivity": "Продуктивность",
+      "creative": "Креатив",
+      "business": "Бизнес",
+      "security": "Безопасность"
+    },
+    "visibility": {
+      "private": "Только я",
+      "link": "По ссылке",
+      "linkShort": "По ссылке",
+      "linkLong": "Все, у кого есть ссылка",
+      "store": "Mind store"
+    },
+    "verified": "Одобрено создателем",
+    "startersAria": "Начало обсуждения",
+    "openChat": "Открыть чат",
+    "pinTitle": "Закрепить в app-rail",
+    "unpinTitle": "Открепить из app-rail",
+    "pinAria": "Закрепить mind",
+    "unpinAria": "Открепить mind",
+    "edit": "Изменить",
+    "editAria": "Редактировать mind",
+    "delete": "Удалить",
+    "loading": "Загрузка minds...",
+    "emptyMine": "У вас пока нет созданных minds.",
+    "emptyStore": "По этому запросу minds не найдены.",
+    "confirmDelete": "Удалить mind \"{{name}}\"?",
+    "pinnedAria": "Закрепленные minds",
+    "disableActive": "Отключить mind",
+    "errors": {
+      "load": "Не удалось загрузить minds. Попробуйте обновить страницу.",
+      "pin": "Не удалось обновить закрепление mind.",
+      "delete": "Не удалось удалить mind.",
+      "authRequired": "Войдите в аккаунт, чтобы выполнить это действие.",
+      "accessDenied": "У вас нет доступа к этому mind.",
+      "notFound": "Сервис minds недоступен или mind не найден. Проверьте, что backend запущен с новыми API routes.",
+      "rateLimited": "Слишком много запросов. Подождите немного и попробуйте снова.",
+      "editAccess": "У вас нет доступа к редактированию этого mind.",
+      "editorLoad": "Не удалось загрузить редактор mind.",
+      "save": "Не удалось сохранить mind. Проверьте поля и попробуйте еще раз."
+    },
+    "validation": {
+      "name": "Название должно содержать минимум 2 символа.",
+      "description": "Описание должно содержать минимум 8 символов.",
+      "instructions": "Инструкции должны содержать минимум 16 символов.",
+      "category": "Выберите категорию для Mind store."
+    },
+    "editor": {
+      "authTitle": "Создание minds доступно после входа",
+      "back": "Назад",
+      "editTitle": "Редактировать mind",
+      "createTitle": "Создать mind",
+      "editSubtitle": "Управление настройками и доступом.",
+      "createSubtitle": "Настройка собственного ИИ.",
+      "loading": "Загрузка редактора...",
+      "fields": {
+        "name": "Название",
+        "description": "Описание",
+        "instructions": "Инструкции",
+        "starters": "Начало обсуждения"
+      },
+      "placeholders": {
+        "name": "Назовите свой mind",
+        "description": "Краткое описание того, что делает ваш mind",
+        "instructions": "Что делает mind, как он себя ведет, его характер и функцию",
+        "starter": "Подсказка-кнопка для пользователей"
+      },
+      "removeStarter": "Удалить подсказку",
+      "addStarter": "Добавить подсказку",
+      "access": "Доступ",
+      "category": "Категория",
+      "check": "Проверка",
+      "basicReady": "Основные поля заполнены",
+      "startersReady": "Подсказки готовы",
+      "saving": "Сохранение...",
+      "saveChanges": "Сохранить изменения",
+      "createAction": "Создать mind"
+    }
   }
 }

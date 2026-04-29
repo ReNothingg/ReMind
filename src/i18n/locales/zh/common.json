@@ -370,5 +370,99 @@
   },
   "spinwheel": {
     "spin": "旋转"
+  },
+  "minds": {
+    "subtitle": "创建并管理适用于不同任务和对话风格的自定义 AI minds。",
+    "create": "创建",
+    "searchPlaceholder": "搜索 minds",
+    "searchAria": "搜索 minds",
+    "tabsAria": "Minds 分区",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "我的 minds"
+    },
+    "categoriesAria": "Minds 分类",
+    "categories": {
+      "all": "全部",
+      "general": "通用",
+      "education": "教育",
+      "development": "开发",
+      "productivity": "效率",
+      "creative": "创意",
+      "business": "商业",
+      "security": "安全"
+    },
+    "visibility": {
+      "private": "仅自己",
+      "link": "通过链接",
+      "linkShort": "通过链接",
+      "linkLong": "拥有链接的任何人",
+      "store": "Mind store"
+    },
+    "verified": "创建者已批准",
+    "startersAria": "对话开场",
+    "openChat": "打开聊天",
+    "pinTitle": "固定到 app-rail",
+    "unpinTitle": "从 app-rail 取消固定",
+    "pinAria": "固定 mind",
+    "unpinAria": "取消固定 mind",
+    "edit": "编辑",
+    "editAria": "编辑 mind",
+    "delete": "删除",
+    "loading": "正在加载 minds...",
+    "emptyMine": "你还没有创建任何 minds。",
+    "emptyStore": "未找到符合此查询的 minds。",
+    "confirmDelete": "删除 mind “{{name}}”？",
+    "pinnedAria": "已固定的 minds",
+    "disableActive": "停用 mind",
+    "errors": {
+      "load": "无法加载 minds。请刷新页面。",
+      "pin": "无法更新 mind 固定状态。",
+      "delete": "无法删除 mind。",
+      "authRequired": "请登录后执行此操作。",
+      "accessDenied": "你无权访问此 mind。",
+      "notFound": "minds 服务不可用或未找到该 mind。请确认后端已启用新的 API 路由。",
+      "rateLimited": "请求过多。请稍后再试。",
+      "editAccess": "你没有权限编辑此 mind。",
+      "editorLoad": "无法加载 mind 编辑器。",
+      "save": "无法保存 mind。请检查字段后重试。"
+    },
+    "validation": {
+      "name": "名称至少需要 2 个字符。",
+      "description": "描述至少需要 8 个字符。",
+      "instructions": "指令至少需要 16 个字符。",
+      "category": "请选择 Mind store 分类。"
+    },
+    "editor": {
+      "authTitle": "登录后即可创建 minds",
+      "back": "返回",
+      "editTitle": "编辑 mind",
+      "createTitle": "创建 mind",
+      "editSubtitle": "管理设置和访问权限。",
+      "createSubtitle": "配置你自己的 AI。",
+      "loading": "正在加载编辑器...",
+      "fields": {
+        "name": "名称",
+        "description": "描述",
+        "instructions": "指令",
+        "starters": "对话开场"
+      },
+      "placeholders": {
+        "name": "为你的 mind 命名",
+        "description": "简要说明你的 mind 能做什么",
+        "instructions": "mind 做什么、如何表现、个性和职责是什么",
+        "starter": "给用户的提示按钮"
+      },
+      "removeStarter": "删除提示",
+      "addStarter": "添加提示",
+      "access": "访问权限",
+      "category": "分类",
+      "check": "检查",
+      "basicReady": "主要字段已填写",
+      "startersReady": "提示已准备好",
+      "saving": "正在保存...",
+      "saveChanges": "保存更改",
+      "createAction": "创建 mind"
+    }
   }
 }

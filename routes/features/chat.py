@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from ai_engine import get_model_function
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
+from routes.features.minds import resolve_mind_context_for_chat
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
@@ -355,6 +356,9 @@ def register_chat_routes(api_bp):
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
 
         history = _resolve_history(user_data, resolved_session_id, db_user_id)
+        mind_context = resolve_mind_context_for_chat(user_data.get("mind_id"), db_user_id)
+        if mind_context:
+            user_data["active_mind"] = mind_context
         allow_guest_file_persistence = _allow_guest_file_persistence(
             resolved_session_id, db_user_id
         )

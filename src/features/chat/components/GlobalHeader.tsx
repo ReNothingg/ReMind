@@ -17,6 +17,7 @@ interface GlobalHeaderProps {
     isReadOnly: boolean;
     onOpenShareModal?: () => void;
     onNewChat: () => void;
+    showChatControls?: boolean;
 }
 
 interface ModelOption {
@@ -168,6 +169,7 @@ export default function GlobalHeader({
     isReadOnly,
     onOpenShareModal,
     onNewChat,
+    showChatControls = true,
 }: GlobalHeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const modelDropdownId = useId();
@@ -241,22 +243,24 @@ export default function GlobalHeader({
                     </HeaderIconButton>
                 )}
 
-                <ModelSelector
-                    activeModel={activeModel}
-                    currentModel={currentModel}
-                    dropdownId={modelDropdownId}
-                    dropdownRef={dropdownRef}
-                    isDropdownOpen={isDropdownOpen}
-                    models={models}
-                    onCloseDropdown={() => setIsDropdownOpen(false)}
-                    onModelChange={onModelChange}
-                    onToggleDropdown={() => setIsDropdownOpen((prev) => !prev)}
-                    chooseLabel={t('models.choose')}
-                />
+                {showChatControls && (
+                    <ModelSelector
+                        activeModel={activeModel}
+                        currentModel={currentModel}
+                        dropdownId={modelDropdownId}
+                        dropdownRef={dropdownRef}
+                        isDropdownOpen={isDropdownOpen}
+                        models={models}
+                        onCloseDropdown={() => setIsDropdownOpen(false)}
+                        onModelChange={onModelChange}
+                        onToggleDropdown={() => setIsDropdownOpen((prev) => !prev)}
+                        chooseLabel={t('models.choose')}
+                    />
+                )}
             </div>
 
             <div className="ui-toolbar-actions">
-                {!!currentSessionId && (
+                {showChatControls && !!currentSessionId && (
                     <div className="share-controls ui-toolbar-share-cluster">
                         <HeaderIconButton
                             className={cn(
@@ -297,7 +301,7 @@ export default function GlobalHeader({
                     </div>
                 )}
 
-                {isAuthenticated && (
+                {showChatControls && isAuthenticated && (
                     <HeaderIconButton
                         className="new-chat-btn hidden text-foreground md:inline-flex"
                         onClick={onNewChat}

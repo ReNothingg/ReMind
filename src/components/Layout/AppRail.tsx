@@ -113,7 +113,37 @@ const RailMenuItem = ({ children, className, danger = false, icon, ...props }) =
     </button>
 );
 
-const AppRail = ({ isExpanded, onToggle, sessions, currentSessionId, onNewChat, onSelectSession, onSettingsClick, onSessionDeleted, onSessionRenamed }) => {
+const getMindInitials = (mind) => {
+    const words = (mind?.name || 'M')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+    return words.map((word) => word[0]).join('').toUpperCase() || 'M';
+};
+
+const MindRailIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8.5 6.5a3 3 0 0 1 5.7-1.3A3.2 3.2 0 0 1 19 8a3.3 3.3 0 0 1-.7 6.5 4.2 4.2 0 0 1-7.8 2.6A3.7 3.7 0 0 1 5 13.7 3.9 3.9 0 0 1 8.5 6.5Z" />
+        <path d="M9 10h6M10 14h4" />
+    </svg>
+);
+
+const AppRail = ({
+    activeMindId = null,
+    currentPath = '/',
+    currentSessionId,
+    isExpanded,
+    onMindsClick,
+    onNewChat,
+    onSelectMind,
+    onSelectSession,
+    onSessionDeleted,
+    onSessionRenamed,
+    onSettingsClick,
+    onToggle,
+    pinnedMinds = [],
+    sessions,
+}) => {
     const { t } = useTranslation();
     const { isAuthenticated } = useAuth();
     const { settings } = useSettings();
@@ -422,7 +452,44 @@ const AppRail = ({ isExpanded, onToggle, sessions, currentSessionId, onNewChat, 
                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
                 </RailActionButton>
+                <RailActionButton
+                    active={currentPath === '/minds' || currentPath.startsWith('/minds/editor') || !!activeMindId}
+                    className="rail-icon-btn"
+                    expanded={isExpanded}
+                    id="railMinds"
+                    label="Minds"
+                    onClick={onMindsClick}
+                    title="Minds"
+                    aria-label="Minds"
+                >
+                    <MindRailIcon />
+                </RailActionButton>
             </div>
+
+            {isExpanded && pinnedMinds.length > 0 && (
+                <div
+                    className="ui-rail-pinned-minds ui-rail-pinned-minds-expanded"
+                    aria-label={t('minds.pinnedAria')}
+                >
+                    {pinnedMinds.map((mind) => (
+                        <button
+                            key={mind.public_id}
+                            type="button"
+                            className={cn(
+                                'ui-rail-pinned-mind ui-rail-pinned-mind-expanded',
+                                activeMindId === mind.public_id && 'ui-rail-pinned-mind-active'
+                            )}
+                            title={mind.name}
+                            onClick={() => onSelectMind?.(mind)}
+                        >
+                            <span className="ui-rail-pinned-mind-avatar">{getMindInitials(mind)}</span>
+                            <span className="ui-rail-pinned-mind-label">
+                                {mind.name}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {searchOpen && isExpanded && (
                 <div className="rail-search-container ui-rail-search-wrap">

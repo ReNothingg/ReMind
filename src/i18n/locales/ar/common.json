@@ -370,5 +370,99 @@
   },
   "spinwheel": {
     "spin": "أدر"
+  },
+  "minds": {
+    "subtitle": "أنشئ وأدر minds ذكاء اصطناعي مخصصة لمهام وأنماط محادثة مختلفة.",
+    "create": "إنشاء",
+    "searchPlaceholder": "البحث في minds",
+    "searchAria": "البحث في minds",
+    "tabsAria": "أقسام minds",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "minds الخاصة بي"
+    },
+    "categoriesAria": "فئات minds",
+    "categories": {
+      "all": "الكل",
+      "general": "عام",
+      "education": "تعليم",
+      "development": "تطوير",
+      "productivity": "إنتاجية",
+      "creative": "إبداعي",
+      "business": "أعمال",
+      "security": "أمان"
+    },
+    "visibility": {
+      "private": "أنا فقط",
+      "link": "عبر الرابط",
+      "linkShort": "عبر الرابط",
+      "linkLong": "كل من لديه الرابط",
+      "store": "Mind store"
+    },
+    "verified": "معتمد من المنشئ",
+    "startersAria": "بدايات المحادثة",
+    "openChat": "فتح الدردشة",
+    "pinTitle": "تثبيت في app-rail",
+    "unpinTitle": "إزالة من app-rail",
+    "pinAria": "تثبيت mind",
+    "unpinAria": "إلغاء تثبيت mind",
+    "edit": "تعديل",
+    "editAria": "تعديل mind",
+    "delete": "حذف",
+    "loading": "جارٍ تحميل minds...",
+    "emptyMine": "لم تنشئ أي minds بعد.",
+    "emptyStore": "لم يتم العثور على minds لهذا البحث.",
+    "confirmDelete": "هل تريد حذف mind \"{{name}}\"؟",
+    "pinnedAria": "minds المثبتة",
+    "disableActive": "تعطيل mind",
+    "errors": {
+      "load": "تعذر تحميل minds. حاول تحديث الصفحة.",
+      "pin": "تعذر تحديث تثبيت mind.",
+      "delete": "تعذر حذف mind.",
+      "authRequired": "سجّل الدخول لتنفيذ هذا الإجراء.",
+      "accessDenied": "ليست لديك صلاحية الوصول إلى هذا mind.",
+      "notFound": "خدمة minds غير متاحة أو لم يتم العثور على mind. تأكد من تشغيل backend بمسارات API الجديدة.",
+      "rateLimited": "طلبات كثيرة جدًا. انتظر قليلًا ثم حاول مرة أخرى.",
+      "editAccess": "ليست لديك صلاحية تعديل هذا mind.",
+      "editorLoad": "تعذر تحميل محرر mind.",
+      "save": "تعذر حفظ mind. تحقق من الحقول وحاول مرة أخرى."
+    },
+    "validation": {
+      "name": "يجب أن يحتوي الاسم على حرفين على الأقل.",
+      "description": "يجب أن يحتوي الوصف على 8 أحرف على الأقل.",
+      "instructions": "يجب أن تحتوي التعليمات على 16 حرفًا على الأقل.",
+      "category": "اختر فئة لـ Mind store."
+    },
+    "editor": {
+      "authTitle": "إنشاء minds متاح بعد تسجيل الدخول",
+      "back": "رجوع",
+      "editTitle": "تعديل mind",
+      "createTitle": "إنشاء mind",
+      "editSubtitle": "إدارة الإعدادات والوصول.",
+      "createSubtitle": "إعداد الذكاء الاصطناعي الخاص بك.",
+      "loading": "جارٍ تحميل المحرر...",
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف",
+        "instructions": "التعليمات",
+        "starters": "بدايات المحادثة"
+      },
+      "placeholders": {
+        "name": "سمّ mind الخاص بك",
+        "description": "صف بإيجاز ما يفعله mind",
+        "instructions": "ماذا يفعل mind، كيف يتصرف، شخصيته ووظيفته",
+        "starter": "زر اقتراح للمستخدمين"
+      },
+      "removeStarter": "حذف الاقتراح",
+      "addStarter": "إضافة اقتراح",
+      "access": "الوصول",
+      "category": "الفئة",
+      "check": "التحقق",
+      "basicReady": "تم ملء الحقول الأساسية",
+      "startersReady": "الاقتراحات جاهزة",
+      "saving": "جارٍ الحفظ...",
+      "saveChanges": "حفظ التغييرات",
+      "createAction": "إنشاء mind"
+    }
   }
 }

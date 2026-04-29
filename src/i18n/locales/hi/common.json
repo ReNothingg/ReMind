@@ -370,5 +370,99 @@
   },
   "spinwheel": {
     "spin": "स्पिन करें"
+  },
+  "minds": {
+    "subtitle": "अलग-अलग कार्यों और बातचीत की शैलियों के लिए अपने कस्टम AI minds बनाएं और प्रबंधित करें।",
+    "create": "बनाएं",
+    "searchPlaceholder": "minds खोजें",
+    "searchAria": "minds खोजें",
+    "tabsAria": "minds अनुभाग",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "मेरे minds"
+    },
+    "categoriesAria": "mind श्रेणियां",
+    "categories": {
+      "all": "सभी",
+      "general": "सामान्य",
+      "education": "शिक्षा",
+      "development": "विकास",
+      "productivity": "उत्पादकता",
+      "creative": "रचनात्मक",
+      "business": "व्यवसाय",
+      "security": "सुरक्षा"
+    },
+    "visibility": {
+      "private": "केवल मैं",
+      "link": "लिंक से",
+      "linkShort": "लिंक से",
+      "linkLong": "लिंक वाले सभी लोग",
+      "store": "Mind store"
+    },
+    "verified": "निर्माता द्वारा स्वीकृत",
+    "startersAria": "बातचीत शुरू करने वाले संकेत",
+    "openChat": "चैट खोलें",
+    "pinTitle": "app-rail में पिन करें",
+    "unpinTitle": "app-rail से हटाएं",
+    "pinAria": "mind पिन करें",
+    "unpinAria": "mind अनपिन करें",
+    "edit": "संपादित करें",
+    "editAria": "mind संपादित करें",
+    "delete": "हटाएं",
+    "loading": "minds लोड हो रहे हैं...",
+    "emptyMine": "आपने अभी तक कोई mind नहीं बनाया है।",
+    "emptyStore": "इस खोज के लिए कोई mind नहीं मिला।",
+    "confirmDelete": "mind \"{{name}}\" हटाएं?",
+    "pinnedAria": "पिन किए गए minds",
+    "disableActive": "mind बंद करें",
+    "errors": {
+      "load": "minds लोड नहीं हो सके। पेज रीफ्रेश करें।",
+      "pin": "mind पिनिंग अपडेट नहीं हो सकी।",
+      "delete": "mind हटाया नहीं जा सका।",
+      "authRequired": "यह कार्रवाई करने के लिए साइन इन करें।",
+      "accessDenied": "आपके पास इस mind की पहुंच नहीं है।",
+      "notFound": "minds सेवा उपलब्ध नहीं है या mind नहीं मिला। जांचें कि backend नए API routes के साथ चल रहा है।",
+      "rateLimited": "बहुत अधिक अनुरोध। थोड़ा इंतज़ार करें और फिर कोशिश करें।",
+      "editAccess": "आपको इस mind को संपादित करने की अनुमति नहीं है।",
+      "editorLoad": "mind editor लोड नहीं हो सका।",
+      "save": "mind सहेजा नहीं जा सका। फ़ील्ड जांचें और फिर कोशिश करें।"
+    },
+    "validation": {
+      "name": "नाम में कम से कम 2 अक्षर होने चाहिए।",
+      "description": "विवरण में कम से कम 8 अक्षर होने चाहिए।",
+      "instructions": "निर्देशों में कम से कम 16 अक्षर होने चाहिए।",
+      "category": "Mind store के लिए श्रेणी चुनें।"
+    },
+    "editor": {
+      "authTitle": "minds बनाना साइन इन के बाद उपलब्ध है",
+      "back": "वापस",
+      "editTitle": "mind संपादित करें",
+      "createTitle": "mind बनाएं",
+      "editSubtitle": "सेटिंग्स और पहुंच प्रबंधित करें।",
+      "createSubtitle": "अपना AI कॉन्फ़िगर करें।",
+      "loading": "editor लोड हो रहा है...",
+      "fields": {
+        "name": "नाम",
+        "description": "विवरण",
+        "instructions": "निर्देश",
+        "starters": "बातचीत शुरू करने वाले संकेत"
+      },
+      "placeholders": {
+        "name": "अपने mind को नाम दें",
+        "description": "संक्षेप में बताएं कि आपका mind क्या करता है",
+        "instructions": "mind क्या करता है, कैसे व्यवहार करता है, उसका व्यक्तित्व और भूमिका क्या है",
+        "starter": "उपयोगकर्ताओं के लिए prompt button"
+      },
+      "removeStarter": "संकेत हटाएं",
+      "addStarter": "संकेत जोड़ें",
+      "access": "पहुंच",
+      "category": "श्रेणी",
+      "check": "जांच",
+      "basicReady": "मुख्य फ़ील्ड भरे गए हैं",
+      "startersReady": "संकेत तैयार हैं",
+      "saving": "सहेज रहे हैं...",
+      "saveChanges": "बदलाव सहेजें",
+      "createAction": "mind बनाएं"
+    }
   }
 }
