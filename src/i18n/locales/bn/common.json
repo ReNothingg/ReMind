@@ -463,6 +463,7 @@
       "saving": "সংরক্ষণ হচ্ছে...",
       "saveChanges": "পরিবর্তন সংরক্ষণ",
       "createAction": "mind তৈরি"
-    }
+    },
+    "activeLabel": "mind সক্রিয়"
   }
 }

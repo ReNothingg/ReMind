@@ -118,6 +118,10 @@ def delete_user_data(user_id, delete_account=False):
             pins_deleted += MindPin.query.filter(MindPin.mind_id.in_(owned_mind_ids)).delete(
                 synchronize_session=False
             )
+            UserChatHistory.query.filter(UserChatHistory.mind_id.in_(owned_mind_ids)).update(
+                {"mind_id": None},
+                synchronize_session=False,
+            )
         minds_deleted = Mind.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["minds"] = minds_deleted
         results["items_deleted"]["mind_pins"] = pins_deleted

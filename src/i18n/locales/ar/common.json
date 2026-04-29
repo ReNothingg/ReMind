@@ -463,6 +463,7 @@
       "saving": "جارٍ الحفظ...",
       "saveChanges": "حفظ التغييرات",
       "createAction": "إنشاء mind"
-    }
+    },
+    "activeLabel": "mind نشط"
   }
 }

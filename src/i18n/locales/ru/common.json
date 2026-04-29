@@ -514,6 +514,7 @@
       "saving": "Сохранение...",
       "saveChanges": "Сохранить изменения",
       "createAction": "Создать mind"
-    }
+    },
+    "activeLabel": "Активный mind"
   }
 }

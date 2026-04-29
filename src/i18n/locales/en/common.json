@@ -515,6 +515,7 @@
       "saving": "Saving...",
       "saveChanges": "Save changes",
       "createAction": "Create mind"
-    }
+    },
+    "activeLabel": "Mind active"
   }
 }

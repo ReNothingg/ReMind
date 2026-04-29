@@ -21,6 +21,7 @@ const requiredTextPaths = [
   ['settings', 'account', 'delete', 'success'],
   ['settings', 'account', 'delete', 'error'],
   ['minds', 'subtitle'],
+  ['minds', 'activeLabel'],
   ['minds', 'searchPlaceholder'],
   ['minds', 'tabs', 'store'],
   ['minds', 'tabs', 'mine'],

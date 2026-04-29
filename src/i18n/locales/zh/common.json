@@ -463,6 +463,7 @@
       "saving": "正在保存...",
       "saveChanges": "保存更改",
       "createAction": "创建 mind"
-    }
+    },
+    "activeLabel": "Mind 已启用"
   }
 }

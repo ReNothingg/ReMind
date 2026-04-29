@@ -88,6 +88,7 @@ class UserChatHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     session_id = db.Column(db.String(100), nullable=False)
+    mind_id = db.Column(db.Integer, db.ForeignKey("mind.id", ondelete="SET NULL"), nullable=True, index=True)
     title = db.Column(db.String(200), default="Новый чат")
     messages_data = db.Column(db.Text, default="[]")  # JSON array of messages
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -110,6 +111,7 @@ class UserChatHistory(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "session_id": self.session_id,
+            "mind_id": self.mind_id,
             "title": self.title,
             "messages": self.get_messages(),
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -1668,5 +1670,17 @@ def setup_auth(app):
                         )
                     )
                 app.logger.info("Added missing user.name column to existing database")
+        if "user_chat_history" in inspector.get_table_names():
+            chat_columns = {column["name"] for column in inspector.get_columns("user_chat_history")}
+            if "mind_id" not in chat_columns:
+                with db.engine.begin() as connection:
+                    connection.execute(text('ALTER TABLE user_chat_history ADD COLUMN mind_id INTEGER'))
+                    connection.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_user_chat_history_mind_id "
+                            "ON user_chat_history (mind_id)"
+                        )
+                    )
+                app.logger.info("Added missing user_chat_history.mind_id column")
         app.logger.info("Database tables created successfully")
     register_auth_routes(app)

@@ -9,7 +9,7 @@ from flask import request, session
 from sqlalchemy import or_
 
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
-from utils.auth import Mind, MindPin, db
+from utils.auth import Mind, MindPin, UserChatHistory, db
 from utils.rate_limiting import api_limiter, rate_limit
 from utils.responses import make_ok
 
@@ -167,6 +167,21 @@ def _serialize_minds(minds: list[Mind], viewer_id: int | None) -> list[dict[str,
     return [mind.to_dict(viewer_id=viewer_id, pinned=mind.id in pinned_ids) for mind in minds]
 
 
+def serialize_mind_for_session(mind_id: int | None, viewer_id: int | None) -> dict[str, Any] | None:
+    if not mind_id:
+        return None
+
+    mind = db.session.get(Mind, mind_id)
+    if not mind or not _can_view_mind(mind, viewer_id):
+        return None
+
+    pinned = bool(
+        viewer_id is not None
+        and MindPin.query.filter_by(user_id=viewer_id, mind_id=mind.id).first()
+    )
+    return mind.to_dict(viewer_id=viewer_id, pinned=pinned)
+
+
 def _apply_search(query, search_term: str):
     term = (search_term or "").strip()[:80].casefold()
     if not term:
@@ -232,18 +247,43 @@ def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> d
     return fields
 
 
-def resolve_mind_context_for_chat(public_id: str | None, viewer_id: int | None) -> dict[str, str] | None:
+def resolve_mind_context_for_chat(public_id: str | None, viewer_id: int | None) -> dict[str, Any] | None:
     if not public_id:
         return None
 
     mind = _get_mind_or_404(public_id, viewer_id)
     return {
+        "id": mind.id,
         "public_id": mind.public_id,
         "name": mind.name,
         "description": mind.description,
         "instructions": mind.instructions,
         "category": mind.category,
     }
+
+
+def resolve_bound_mind_context_for_chat(mind_id: int | None, viewer_id: int | None) -> dict[str, Any] | None:
+    if not mind_id:
+        return None
+
+    mind = db.session.get(Mind, mind_id)
+    if not mind or not _can_view_mind(mind, viewer_id):
+        return None
+
+    return {
+        "id": mind.id,
+        "public_id": mind.public_id,
+        "name": mind.name,
+        "description": mind.description,
+        "instructions": mind.instructions,
+        "category": mind.category,
+    }
+
+
+def get_mind_for_session_binding(public_id: str | None, viewer_id: int | None) -> Mind | None:
+    if not public_id:
+        return None
+    return _get_mind_or_404(public_id, viewer_id)
 
 
 def register_mind_routes(api_bp):
@@ -365,6 +405,7 @@ def register_mind_routes(api_bp):
             raise ApiError("Access denied", status=403, code="access_denied")
 
         MindPin.query.filter_by(mind_id=mind.id).delete()
+        UserChatHistory.query.filter_by(mind_id=mind.id).update({"mind_id": None})
         db.session.delete(mind)
         db.session.commit()
         return "", 204

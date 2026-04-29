@@ -463,6 +463,7 @@
       "saving": "Enregistrement...",
       "saveChanges": "Enregistrer les modifications",
       "createAction": "Créer le mind"
-    }
+    },
+    "activeLabel": "Mind actif"
   }
 }

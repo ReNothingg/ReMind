@@ -322,6 +322,7 @@ def append_messages_to_history(
     user_id: int | None = None,
     *,
     allow_guest_file_persistence: bool | None = None,
+    mind_id: int | None = None,
 ) -> None:
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
@@ -364,6 +365,9 @@ def append_messages_to_history(
                             title=_generate_title_from_history(incoming),
                         )
                         db.session.add(chat)
+
+                    if mind_id is not None:
+                        chat.mind_id = mind_id
 
                     db_messages = chat.get_messages()
                     to_append_db = _collect_new_messages(db_messages, incoming)

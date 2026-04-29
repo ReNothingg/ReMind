@@ -1,5 +1,5 @@
 import routes.features.chat as chat_routes
-from utils.auth import Mind, MindPin, db
+from utils.auth import Mind, MindPin, UserChatHistory
 from utils.rate_limiting import rate_limit_store
 
 
@@ -152,13 +152,15 @@ def test_chat_resolves_mind_context_server_side(client, create_confirmed_user, l
 
     monkeypatch.setattr(chat_routes, "get_model_function", lambda _name: mind_echo)
 
+    session_id = "mind_chat_session_1234567890"
+
     try:
         response = client.post(
             "/chat",
             json={
                 "message": "hello",
                 "model": "echo",
-                "session_id": "mind_chat_session_1234567890",
+                "session_id": session_id,
                 "mind_id": public_id,
             },
             headers=headers,
@@ -168,3 +170,35 @@ def test_chat_resolves_mind_context_server_side(client, create_confirmed_user, l
 
     assert response.status_code == 200
     assert response.get_json()["reply"] == "Always answer as a research mentor."
+
+    history_response = client.get(
+        f"/sessions/{session_id}/history",
+        headers={"User-Agent": "Mozilla/5.0 (pytest)"},
+    )
+    assert history_response.status_code == 200
+    assert history_response.get_json()["mind"]["public_id"] == public_id
+
+    second_response = client.post(
+        "/chat",
+        json={
+            "message": "continue",
+            "model": "echo",
+            "session_id": session_id,
+        },
+        headers=headers,
+    )
+    assert second_response.status_code == 200
+    assert second_response.get_json()["reply"] == "Always answer as a research mentor."
+
+    clear_response = client.put(
+        f"/sessions/{session_id}/mind",
+        json={"mind_id": None},
+        headers=headers,
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.get_json()["mind"] is None
+
+    with client.application.app_context():
+        chat = UserChatHistory.query.filter_by(session_id=session_id).first()
+        assert chat is not None
+        assert chat.mind_id is None

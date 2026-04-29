@@ -594,6 +594,100 @@
     font-weight: 650;
   }
 
+  .ui-chat-mind-banner {
+    position: sticky;
+    top: 72px;
+    z-index: 35;
+    display: flex;
+    width: var(--app-content-width-dynamic);
+    min-width: var(--content-width-min);
+    max-width: var(--app-content-max-width-dynamic);
+    margin: 76px auto 12px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border: 1px solid rgba(var(--color-accent-raw), 0.28);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--color-bg-surface) 90%, var(--color-accent) 10%);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-text-primary);
+  }
+
+  .ui-chat-mind-banner-main {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ui-chat-mind-banner-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(var(--color-accent-raw), 0.3);
+    border-radius: 8px;
+    background: rgba(var(--color-accent-raw), 0.12);
+    color: var(--color-accent);
+  }
+
+  .ui-chat-mind-banner-copy {
+    min-width: 0;
+  }
+
+  .ui-chat-mind-banner-copy span {
+    display: block;
+    color: var(--color-text-tertiary);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .ui-chat-mind-banner-copy strong {
+    display: block;
+    overflow: hidden;
+    max-width: 52ch;
+    color: var(--color-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .ui-chat-mind-banner-copy p {
+    overflow: hidden;
+    max-width: 68ch;
+    margin: 2px 0 0;
+    color: var(--color-text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .ui-chat-mind-banner-close {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border-medium);
+    border-radius: 8px;
+    background: var(--color-bg-surface-alt);
+    color: var(--color-text-secondary);
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  }
+
+  .ui-chat-mind-banner-close:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-bg-interactive);
+    color: var(--color-text-primary);
+  }
+
   @media (max-width: 900px) {
     .minds-page,
     .mind-editor-page {
@@ -619,6 +713,12 @@
     .mind-form-side {
       position: static;
     }
+
+    .ui-chat-mind-banner {
+      width: min(100%, calc(100vw - 24px));
+      min-width: 0;
+      margin-top: 68px;
+    }
   }
 
   @media (max-width: 560px) {
@@ -628,6 +728,15 @@
 
     .mind-card-footer {
       flex-wrap: wrap;
+    }
+
+    .ui-chat-mind-banner {
+      align-items: flex-start;
+    }
+
+    .ui-chat-mind-banner-copy strong,
+    .ui-chat-mind-banner-copy p {
+      max-width: calc(100vw - 118px);
     }
 
     .mind-primary-action {

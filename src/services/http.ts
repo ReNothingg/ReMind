@@ -69,7 +69,7 @@ export function withCsrfHeaders(options: RequestInit = {}): RequestInit & { head
 }
 
 function rememberCsrfTokenFromResponse(response: Response): void {
-    const token = response.headers.get(CSRF_HEADER_KEY);
+    const token = response.headers?.get?.(CSRF_HEADER_KEY);
     if (token) {
         csrfTokenCache = token;
     }

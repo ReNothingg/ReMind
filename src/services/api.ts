@@ -117,6 +117,15 @@ type MindResponse = {
     mind?: Mind;
 };
 
+export type SessionHistoryWithMind = SessionHistoryResponse & {
+    mind?: Mind | null;
+};
+
+type SessionMindResponse = {
+    mind?: Mind | null;
+    session_id?: string;
+};
+
 type MindCategoryResponse = {
     categories?: MindCategory[];
 };
@@ -380,12 +389,12 @@ export const apiService = {
         return apiListSessions(query, headers);
     },
 
-    async getSessionHistory(sessionId: string): Promise<SessionHistoryResponse> {
+    async getSessionHistory(sessionId: string): Promise<SessionHistoryWithMind> {
         const token = getGuestSessionToken(sessionId);
         const headers: HeadersInit | undefined = token
             ? { Authorization: `Bearer ${token}` }
             : undefined;
-        return apiGetSessionHistory(sessionId, headers);
+        return apiGetSessionHistory(sessionId, headers) as Promise<SessionHistoryWithMind>;
     },
 
     async toggleShare(
@@ -425,6 +434,18 @@ export const apiService = {
                 body: JSON.stringify({ title: newTitle }),
             }
         );
+    },
+
+    async setSessionMind(sessionId: string, mindId: string | null): Promise<Mind | null> {
+        const data = await fetchApi<SessionMindResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/mind`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mind_id: mindId }),
+            }
+        );
+        return data.mind || null;
     },
 
     async listMindCategories(): Promise<MindCategory[]> {

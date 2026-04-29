@@ -308,13 +308,15 @@ export const useChat = () => {
                 setHistory(normalized);
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
+                activeMindIdRef.current = data.mind?.public_id || null;
                 syncSessionIdentity(resolvedSessionId, slug, { historyMode });
-                return;
+                return data;
             }
 
             resetConversationState();
             syncPersistedCurrentSession(null, null);
             syncBrowserPath('/', 'replace');
+            return null;
         } catch (e) {
             if (sessionLoadRequestIdRef.current !== loadRequestId) {
                 return;
@@ -324,6 +326,7 @@ export const useChat = () => {
             resetConversationState();
             syncPersistedCurrentSession(null, null);
             syncBrowserPath('/', 'replace');
+            return null;
         } finally {
             if (sessionLoadRequestIdRef.current === loadRequestId) {
                 setIsLoading(false);
@@ -348,6 +351,13 @@ export const useChat = () => {
         setIsLoading(false);
         syncBrowserPath('/', historyMode);
     }, [abortActiveChatRequest, resetConversationState, syncBrowserPath, syncPersistedCurrentSession]);
+
+    const setActiveSessionMindId = useCallback((mindId = null) => {
+        activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
+            ? mindId.trim()
+            : null;
+    }, []);
+
     const buildHistoryForAPI = useCallback((untilIndex = null) => {
         const historyArray = [];
         const stopIndex = untilIndex !== null ? untilIndex : history.length;
@@ -1089,6 +1099,7 @@ export const useChat = () => {
         isReadOnly,
         loadSession,
         clearChat,
+        setActiveSessionMindId,
         sendMessage,
         stopGeneration,
         regenerateMessage,

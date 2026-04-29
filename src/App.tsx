@@ -87,6 +87,7 @@ const MainLayout = () => {
         stopGeneration,
         loadSession,
         clearChat,
+        setActiveSessionMindId,
         currentSessionId,
         regenerateMessage,
         editMessage,
@@ -227,10 +228,15 @@ const MainLayout = () => {
             setRoutePath(path);
             if (path.startsWith('/c/')) {
                 const slug = decodeURIComponent(path.split('/c/')[1]);
-                setActiveMind(null);
                 if (slug) {
-                    loadSession(slug, { historyMode: 'replace' });
+                    setActiveMind(null);
+                    void loadSession(slug, { historyMode: 'replace' }).then((data) => {
+                        if (data) {
+                            setActiveMind(data.mind || null);
+                        }
+                    });
                 } else {
+                    setActiveMind(null);
                     clearChat({ historyMode: 'none' });
                 }
                 return;
@@ -435,12 +441,16 @@ const MainLayout = () => {
 
     const handleSelectSession = useCallback(
         (id: string) => {
-            setActiveMind(null);
             if (id === currentSessionId && window.location.pathname.startsWith('/c/')) {
                 setMobileRailOpen(false);
                 return;
             }
-            loadSession(id, { historyMode: 'push' });
+            setActiveMind(null);
+            void loadSession(id, { historyMode: 'push' }).then((data) => {
+                if (data) {
+                    setActiveMind(data.mind || null);
+                }
+            });
             setMobileRailOpen(false);
         },
         [currentSessionId, loadSession]
@@ -491,10 +501,16 @@ const MainLayout = () => {
 
     const handleClearActiveMind = useCallback(() => {
         setActiveMind(null);
+        setActiveSessionMindId(null);
+        if (currentSessionId) {
+            void apiService.setSessionMind(currentSessionId, null).catch((error) => {
+                console.warn('Failed to clear session mind', error);
+            });
+        }
         if (window.location.pathname === '/' && window.location.search) {
             window.history.replaceState({}, '', '/');
         }
-    }, []);
+    }, [currentSessionId, setActiveSessionMindId]);
 
     const editorMindId = routePath.startsWith('/minds/editor/')
         ? decodeURIComponent(routePath.slice('/minds/editor/'.length))
@@ -632,6 +648,36 @@ const MainLayout = () => {
                 ) : (
                     <Suspense fallback={null}>
                         <>
+                            {activeMind && (
+                                <div className="ui-chat-mind-banner" role="status">
+                                    <div className="ui-chat-mind-banner-main">
+                                        <div className="ui-chat-mind-banner-icon" aria-hidden="true">
+                                            <BrainCircuit size={19} />
+                                        </div>
+                                        <div className="ui-chat-mind-banner-copy">
+                                            <span>{t('minds.activeLabel')}</span>
+                                            <strong>
+                                                {activeMind.name}
+                                                {activeMind.is_verified && (
+                                                    <BadgeCheck size={14} className="ml-1 inline-block align-[-2px]" />
+                                                )}
+                                            </strong>
+                                            {activeMind.description && (
+                                                <p>{activeMind.description}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="ui-chat-mind-banner-close"
+                                        onClick={handleClearActiveMind}
+                                        aria-label={t('minds.disableActive')}
+                                        title={t('minds.disableActive')}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            )}
                             <ChatContainer
                                 history={history}
                                 isLoading={isLoading}

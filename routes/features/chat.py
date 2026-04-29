@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from ai_engine import get_model_function
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
-from routes.features.minds import resolve_mind_context_for_chat
+from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
@@ -30,6 +30,7 @@ from services.voice import synthesize_text_segments
 from utils.input_validation import InputValidator, ValidationError
 from utils.rate_limiting import RateLimiter, rate_limit
 from utils.responses import logger, make_ok
+from utils.auth import UserChatHistory
 
 PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
 chat_limiter = RateLimiter(max_requests=60, time_window=3600)
@@ -43,6 +44,23 @@ def _resolve_db_user_id() -> int | None:
         return int(raw_user_id)
     except (TypeError, ValueError):
         return None
+
+
+def _resolve_chat_mind_context(
+    requested_mind_id: str | None,
+    session_id: str,
+    user_id: int | None,
+) -> dict[str, Any] | None:
+    if requested_mind_id:
+        return resolve_mind_context_for_chat(requested_mind_id, user_id)
+
+    if user_id is None:
+        return None
+
+    chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id).first()
+    if not chat:
+        return None
+    return resolve_bound_mind_context_for_chat(chat.mind_id, user_id)
 
 
 def _validate_message_in_payload(payload: dict) -> None:
@@ -249,6 +267,7 @@ def _stream_chat_response(
     resolved_session_id: str,
     user_message_for_history: dict,
     allow_guest_file_persistence: bool,
+    mind_context: dict[str, Any] | None,
 ):
     captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
 
@@ -313,6 +332,7 @@ def _stream_chat_response(
                         model_name,
                         db_user_id,
                         allow_guest_file_persistence=allow_guest_file_persistence,
+                        mind_id=mind_context.get("id") if mind_context else None,
                     )
                 except OSError as exc:
                     logger.warning("Failed to persist stream messages: %s", exc)
@@ -322,6 +342,7 @@ def _stream_chat_response(
                         model_name,
                         db_user_id,
                         allow_guest_file_persistence=allow_guest_file_persistence,
+                        mind_id=mind_context.get("id") if mind_context else None,
                     )
 
     response = Response(stream_generator(), mimetype="text/event-stream")
@@ -356,9 +377,14 @@ def register_chat_routes(api_bp):
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
 
         history = _resolve_history(user_data, resolved_session_id, db_user_id)
-        mind_context = resolve_mind_context_for_chat(user_data.get("mind_id"), db_user_id)
+        mind_context = _resolve_chat_mind_context(
+            user_data.get("mind_id"),
+            resolved_session_id,
+            db_user_id,
+        )
         if mind_context:
             user_data["active_mind"] = mind_context
+            user_data["mind_id"] = mind_context["public_id"]
         allow_guest_file_persistence = _allow_guest_file_persistence(
             resolved_session_id, db_user_id
         )
@@ -387,6 +413,7 @@ def register_chat_routes(api_bp):
                 resolved_session_id=resolved_session_id,
                 user_message_for_history=user_message_for_history,
                 allow_guest_file_persistence=allow_guest_file_persistence,
+                mind_context=mind_context,
             )
 
         model_output = model_func(db_user_id, user_data)
@@ -405,6 +432,7 @@ def register_chat_routes(api_bp):
             model_name,
             db_user_id,
             allow_guest_file_persistence=allow_guest_file_persistence,
+            mind_id=mind_context.get("id") if mind_context else None,
         )
 
         direct_image_response = _maybe_return_direct_image(model_output)
