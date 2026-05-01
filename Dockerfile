@@ -1,10 +1,13 @@
+# syntax=docker/dockerfile:1.7
 FROM node:20-alpine AS frontend
 WORKDIR /app
-COPY package*.json vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY src ./src
 COPY public ./public
 COPY index.html ./
-RUN npm ci && npm run build
+RUN npm run build
 FROM python:3.11-slim AS builder
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -20,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 COPY requirements ./requirements
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip wheel --no-deps --wheel-dir /app/wheels -r requirements.txt
 FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -43,7 +46,7 @@ COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/requirements.txt .
 COPY --from=builder /app/requirements ./requirements
 
-RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
+RUN --mount=type=cache,target=/root/.cache/pip pip install /wheels/* && rm -rf /wheels
 
 COPY . .
 COPY --from=frontend /app/dist ./dist
