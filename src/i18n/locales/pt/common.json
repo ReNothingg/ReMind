@@ -46,6 +46,7 @@
       "usernameTooLong": "O nome de usuário não deve exceder 100 caracteres",
       "emailTooLong": "O email não deve exceder 100 caracteres",
       "passwordTooLong": "A senha não deve exceder 100 caracteres",
+      "turnstileRequired": "Confirme que você não é um robô e tente novamente.",
       "requestError": "Erro de rede ou do servidor"
     }
   },

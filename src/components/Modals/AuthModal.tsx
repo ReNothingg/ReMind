@@ -38,6 +38,25 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-11 w-full justify-center rounded-xl px-4 py-3 text-[0.95rem] font-semibold';
     const secondaryAuthButtonClass = 'btn btn-google flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4 py-3 text-[0.95rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
 
+    const getTurnstileResponse = (idRef) => {
+        try {
+            if (window.turnstile && idRef.current !== undefined) {
+                return window.turnstile.getResponse(idRef.current) || null;
+            }
+        } catch (error) {
+            console.warn('Failed to get Turnstile response', error);
+        }
+        return null;
+    };
+
+    const hasRequiredTurnstileToken = (token) => {
+        if (!authConfig?.turnstile_site_key || token) {
+            return true;
+        }
+        setMessage({ type: 'error', text: t('authModal.messages.turnstileRequired') });
+        return false;
+    };
+
     const removeTurnstile = (idRef, containerRef) => {
         if (!window.turnstile) return;
         if (idRef.current !== undefined) {
@@ -168,13 +187,9 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         setFieldErrors({});
 
         try {
-            let turnstileResponse = null;
-            try {
-                if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
-                    turnstileResponse = window.turnstile.getResponse(loginTurnstileIdRef.current);
-                }
-            } catch (error) {
-                console.warn('Failed to get Turnstile response', error);
+            const turnstileResponse = getTurnstileResponse(loginTurnstileIdRef);
+            if (!hasRequiredTurnstileToken(turnstileResponse)) {
+                return;
             }
 
             const res = await login(email, password, turnstileResponse);
@@ -252,13 +267,9 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         setMessage(null);
 
         try {
-            let turnstileResponse = null;
-            try {
-                if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
-                    turnstileResponse = window.turnstile.getResponse(registerTurnstileIdRef.current);
-                }
-            } catch (error) {
-                console.warn('Failed to get Turnstile response', error);
+            const turnstileResponse = getTurnstileResponse(registerTurnstileIdRef);
+            if (!hasRequiredTurnstileToken(turnstileResponse)) {
+                return;
             }
 
             const res = await authService.register(name.trim(), username.trim(), email, password, turnstileResponse);

@@ -19,7 +19,7 @@ from .input_validation import InputValidator, ValidationError
 from .mailer import send_email
 from .rate_limiting import login_limiter, rate_limit
 from .responses import make_error
-from .session_security import resolve_cookie_domain
+from .session_security import is_loopback_hostname, resolve_cookie_domain
 
 db: Any = SQLAlchemy()
 oauth = OAuth()
@@ -372,8 +372,7 @@ def _is_allowed_hostname(hostname: str | None, allowed_hosts) -> bool:
 
 
 def _is_loopback_hostname(hostname: str) -> bool:
-    host = (hostname or "").lower().strip(".")
-    return host in {"localhost", "127.0.0.1", "::1"}
+    return is_loopback_hostname(hostname)
 
 
 def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:

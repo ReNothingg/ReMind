@@ -46,6 +46,7 @@
       "usernameTooLong": "用户名不能超过 100 个字符",
       "emailTooLong": "Email 不能超过 100 个字符",
       "passwordTooLong": "密码不能超过 100 个字符",
+      "turnstileRequired": "请确认你不是机器人，然后重试。",
       "requestError": "网络或服务器错误"
     }
   },

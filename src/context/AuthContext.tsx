@@ -13,10 +13,12 @@ export const AuthProvider = ({ children }) => {
             const data = await authService.checkAuth();
             setIsAuthenticated(data.authenticated);
             setUser(data.user || null);
+            return data;
         } catch (e) {
             console.error('Auth check error:', e);
             setIsAuthenticated(false);
             setUser(null);
+            return { authenticated: false, user: null };
         } finally {
             setLoading(false);
         }
@@ -29,7 +31,13 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, pass, token) => {
         const res = await authService.login(email, pass, token);
         if (res.success) {
-            await checkAuth();
+            const authState = await checkAuth();
+            if (!authState.authenticated) {
+                return {
+                    success: false,
+                    error: 'Не удалось подтвердить сессию после входа. Проверьте, что cookies разрешены для этого сайта.',
+                };
+            }
             window.location.reload();
         }
         return res;

@@ -3,6 +3,8 @@ from functools import wraps
 
 from flask import current_app, request, session
 
+from utils.session_security import is_loopback_hostname
+
 CSRF_TOKEN_LENGTH = 32
 CSRF_SESSION_KEY = "_csrf_token"
 CSRF_COOKIE_KEY = "csrf_token"
@@ -112,6 +114,8 @@ def add_csrf_token_to_response(response):
             response.headers["X-CSRF-Token"] = token
             try:
                 secure_cookie = bool(current_app.config.get("SESSION_COOKIE_SECURE", False))
+                if is_loopback_hostname(request.host):
+                    secure_cookie = False
                 samesite = current_app.config.get("SESSION_COOKIE_SAMESITE", "Lax")
                 response.set_cookie(
                     CSRF_COOKIE_KEY,

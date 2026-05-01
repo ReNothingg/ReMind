@@ -98,6 +98,27 @@ def test_resolve_cookie_domain_uses_host_only_cookies_for_local_requests():
     assert resolve_cookie_domain(".synvexai.com", "chat.synvexai.com") == ".synvexai.com"
 
 
+def test_login_uses_non_secure_session_cookie_on_local_http(client, app, create_confirmed_user):
+    app.config["SESSION_COOKIE_SECURE"] = True
+    _, email, password = create_confirmed_user()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": password},
+        base_url="http://127.0.0.1:5000",
+        headers={"User-Agent": "Mozilla/5.0 (pytest)"},
+    )
+
+    assert response.status_code == 200
+    cookies = response.headers.getlist("Set-Cookie")
+    session_cookie = next(
+        cookie for cookie in cookies if cookie.startswith(f"{SESSION_COOKIE_NAME}=")
+    )
+    csrf_cookie = next(cookie for cookie in cookies if cookie.startswith("csrf_token="))
+    assert "Secure" not in session_cookie
+    assert "Secure" not in csrf_cookie
+
+
 def test_login_google_uses_host_only_cookies_on_local_host(client, monkeypatch):
     class FakeGoogleClient:
         def create_authorization_url(self, redirect_uri):
