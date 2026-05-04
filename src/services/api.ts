@@ -150,6 +150,10 @@ export type AdminUser = {
     is_banned: boolean;
     is_blocked: boolean;
     moderation_reason?: string | null;
+    ban_reason?: string | null;
+    block_reason?: string | null;
+    banned_until?: string | null;
+    blocked_until?: string | null;
     oauth_provider?: string | null;
     created_at?: string | null;
     mind_count: number;
@@ -217,18 +221,76 @@ export type AdminOverview = {
             memory: {
                 max_rss_bytes?: number | null;
             };
+            python_executable?: string;
+            implementation?: string;
+            machine?: string;
+            processor?: string;
+            cpu_count?: number | null;
+            thread_count?: number | null;
+            cwd?: string;
+            debug?: boolean;
+            env?: string;
             load_average?: number[] | null;
         };
         components: {
-            database: { status: string };
+            database: { status: string; engine?: string };
             redis: { status: string };
             storage: Array<{
                 key: string;
                 path: string;
                 exists: boolean;
                 writable: boolean;
+                disk?: {
+                    total_bytes: number;
+                    used_bytes: number;
+                    free_bytes: number;
+                } | null;
             }>;
         };
+    };
+    operations: {
+        health: {
+            score: number;
+            level: string;
+            issues: string[];
+        };
+        alerts: Array<{
+            tone: string;
+            title: string;
+            detail: string;
+            action: string;
+        }>;
+        queues: {
+            unconfirmed_users: number;
+            restricted_users: number;
+            store_minds: number;
+            unverified_store_minds: number;
+            banned_minds: number;
+        };
+        growth_7d: {
+            users: number;
+            minds: number;
+            sessions: number;
+        };
+        top_users: Array<{
+            id: number;
+            username: string;
+            email: string;
+            chat_count: number;
+            mind_count: number;
+            is_restricted: boolean;
+            created_at?: string | null;
+        }>;
+        recent_audit: Array<{
+            timestamp?: string | null;
+            event_type: string;
+            severity: string;
+            endpoint?: string | null;
+            method?: string | null;
+            client_type?: string | null;
+            user_hash?: string | null;
+            details?: Record<string, unknown>;
+        }>;
     };
 };
 
@@ -254,6 +316,11 @@ type AdminUserUpdatePayload = {
     is_banned?: boolean;
     is_blocked?: boolean;
     moderation_reason?: string | null;
+    ban_reason?: string | null;
+    block_reason?: string | null;
+    banned_until?: string | null;
+    blocked_until?: string | null;
+    restriction_until?: string | null;
 };
 
 type AdminMindUpdatePayload = {

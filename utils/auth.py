@@ -46,12 +46,17 @@ class User(db.Model):
     is_banned = db.Column(db.Boolean, default=False, nullable=False)
     is_blocked = db.Column(db.Boolean, default=False, nullable=False)
     moderation_reason = db.Column(db.String(280), nullable=True)
+    ban_reason = db.Column(db.String(280), nullable=True)
+    block_reason = db.Column(db.String(280), nullable=True)
+    banned_until = db.Column(db.DateTime, nullable=True)
+    blocked_until = db.Column(db.DateTime, nullable=True)
 
     def __repr__(self):
         return f"<User {self.username}>"
 
     def to_dict(self):
         is_super_admin = self.id == ROOT_ADMIN_USER_ID
+        restriction = get_account_restriction(self)
         return {
             "id": self.id,
             "username": self.username,
@@ -60,8 +65,13 @@ class User(db.Model):
             "is_confirmed": self.is_confirmed,
             "is_admin": bool(self.is_admin or is_super_admin),
             "is_super_admin": is_super_admin,
-            "is_banned": bool(self.is_banned),
-            "is_blocked": bool(self.is_blocked),
+            "is_banned": bool(restriction and restriction["type"] == "ban"),
+            "is_blocked": bool(restriction and restriction["type"] == "block"),
+            "moderation_reason": restriction["reason"] if restriction else None,
+            "ban_reason": self.ban_reason,
+            "block_reason": self.block_reason,
+            "banned_until": self.banned_until.isoformat() if self.banned_until else None,
+            "blocked_until": self.blocked_until.isoformat() if self.blocked_until else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "oauth_provider": self.oauth_provider,
         }
@@ -75,8 +85,51 @@ def is_admin_user(user: User | None) -> bool:
     return bool(user and (user.id == ROOT_ADMIN_USER_ID or user.is_admin))
 
 
+def _restriction_is_active(enabled: bool | None, expires_at: datetime | None) -> bool:
+    if not enabled:
+        return False
+    return expires_at is None or expires_at > datetime.utcnow()
+
+
+def get_account_restriction(user: User | None) -> dict[str, Any] | None:
+    if not user:
+        return None
+    if _restriction_is_active(user.is_banned, user.banned_until):
+        return {
+            "type": "ban",
+            "label": "бан",
+            "reason": user.ban_reason or user.moderation_reason,
+            "until": user.banned_until,
+        }
+    if _restriction_is_active(user.is_blocked, user.blocked_until):
+        return {
+            "type": "block",
+            "label": "блокировка",
+            "reason": user.block_reason or user.moderation_reason,
+            "until": user.blocked_until,
+        }
+    return None
+
+
+def format_account_restriction_message(user: User | None) -> str:
+    restriction = get_account_restriction(user)
+    if not restriction:
+        return "Аккаунт ограничен администратором"
+
+    parts = [f"Аккаунт ограничен администратором: {restriction['label']}."]
+    reason = restriction.get("reason")
+    if reason:
+        parts.append(f"Причина: {reason}.")
+    until = restriction.get("until")
+    if isinstance(until, datetime):
+        parts.append(f"Срок: до {until.strftime('%Y-%m-%d %H:%M UTC')}.")
+    else:
+        parts.append("Срок: бессрочно.")
+    return " ".join(parts)
+
+
 def is_account_disabled(user: User | None) -> bool:
-    return bool(user and (user.is_banned or user.is_blocked))
+    return get_account_restriction(user) is not None
 
 
 class UserSettings(db.Model):
@@ -716,7 +769,7 @@ def register_auth_routes(app):
             if is_account_disabled(user):
                 record_login_attempt(email, False)
                 log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "account_disabled")
-                flash("Аккаунт ограничен администратором", "danger")
+                flash(format_account_restriction_message(user), "danger")
                 from config import TURNSTILE_SITE_KEY
 
                 return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
@@ -1244,7 +1297,7 @@ def register_auth_routes(app):
 
             if is_account_disabled(user):
                 record_login_attempt(email, False)
-                return jsonify({"error": "Аккаунт ограничен администратором"}), 403
+                return jsonify({"error": format_account_restriction_message(user)}), 403
 
             if not user.is_confirmed:
                 return (
@@ -1714,6 +1767,10 @@ def setup_auth(app):
                 "is_banned": 'ALTER TABLE "user" ADD COLUMN is_banned BOOLEAN DEFAULT FALSE NOT NULL',
                 "is_blocked": 'ALTER TABLE "user" ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE NOT NULL',
                 "moderation_reason": 'ALTER TABLE "user" ADD COLUMN moderation_reason VARCHAR(280)',
+                "ban_reason": 'ALTER TABLE "user" ADD COLUMN ban_reason VARCHAR(280)',
+                "block_reason": 'ALTER TABLE "user" ADD COLUMN block_reason VARCHAR(280)',
+                "banned_until": 'ALTER TABLE "user" ADD COLUMN banned_until DATETIME',
+                "blocked_until": 'ALTER TABLE "user" ADD COLUMN blocked_until DATETIME',
             }
             missing_user_admin_columns = [
                 (column_name, ddl)

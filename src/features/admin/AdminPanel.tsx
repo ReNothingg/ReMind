@@ -1,11 +1,15 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
     Activity,
+    AlertTriangle,
     BadgeCheck,
     Ban,
     BrainCircuit,
     CheckCircle2,
+    ClipboardList,
+    Clock,
+    Cpu,
     Database,
     Gauge,
     HardDrive,
@@ -16,7 +20,9 @@ import {
     ShieldCheck,
     ShieldPlus,
     Sparkles,
+    TrendingUp,
     Unlock,
+    UserCheck,
     Users,
     XCircle,
 } from 'lucide-react';
@@ -30,12 +36,21 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
 
-type AdminTab = 'overview' | 'users' | 'minds' | 'server';
+type AdminTab = 'overview' | 'operations' | 'users' | 'minds' | 'server';
+type UserRestrictionField = 'is_banned' | 'is_blocked';
+type RestrictionDraft = {
+    user: AdminUser;
+    field: UserRestrictionField;
+    reason: string;
+    preset: string;
+    customUntil: string;
+};
 
 const USER_STATUS_OPTIONS = [
     { id: 'all', label: 'Все' },
     { id: 'active', label: 'Активные' },
     { id: 'admin', label: 'Админы' },
+    { id: 'restricted', label: 'Ограничены' },
     { id: 'banned', label: 'Бан' },
     { id: 'blocked', label: 'Блок' },
     { id: 'unconfirmed', label: 'Не подтверждены' },
@@ -44,11 +59,21 @@ const USER_STATUS_OPTIONS = [
 const MIND_STATUS_OPTIONS = [
     { id: 'all', label: 'Все' },
     { id: 'featured', label: 'Главная' },
+    { id: 'needs_review', label: 'Review' },
     { id: 'banned', label: 'Бан' },
     { id: 'verified', label: 'Verified' },
     { id: 'store', label: 'Store' },
     { id: 'private', label: 'Private' },
     { id: 'link', label: 'Link' },
+];
+
+const RESTRICTION_PRESETS = [
+    { id: '1h', label: '1 час', hours: 1 },
+    { id: '24h', label: '24 часа', hours: 24 },
+    { id: '7d', label: '7 дней', hours: 24 * 7 },
+    { id: '30d', label: '30 дней', hours: 24 * 30 },
+    { id: 'forever', label: 'Бессрочно', hours: null },
+    { id: 'custom', label: 'Свой срок', hours: null },
 ];
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -75,6 +100,18 @@ function formatDate(value?: string | null): string {
     }).format(parsed);
 }
 
+function formatDateShort(value?: string | null): string {
+    if (!value) return 'бессрочно';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '—';
+    return new Intl.DateTimeFormat('ru-RU', {
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        month: 'short',
+    }).format(parsed);
+}
+
 function formatDuration(seconds: number | undefined): string {
     const total = Math.max(0, Math.floor(seconds || 0));
     const days = Math.floor(total / 86_400);
@@ -98,11 +135,52 @@ function formatBytes(value?: number | null): string {
     return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${unit}`;
 }
 
+function formatPercent(value?: number): string {
+    return `${Math.max(0, Math.min(100, Math.round(value || 0)))}%`;
+}
+
 function userStatus(user: AdminUser): { label: string; tone: string } {
     if (user.is_banned) return { label: 'Ban', tone: 'danger' };
     if (user.is_blocked) return { label: 'Blocked', tone: 'warning' };
     if (!user.is_confirmed) return { label: 'Pending', tone: 'muted' };
     return { label: 'Active', tone: 'success' };
+}
+
+function restrictionInfo(user: AdminUser): { reason?: string | null; until?: string | null; label: string } | null {
+    if (user.is_banned) {
+        return {
+            label: 'Ban',
+            reason: user.ban_reason || user.moderation_reason,
+            until: user.banned_until,
+        };
+    }
+    if (user.is_blocked) {
+        return {
+            label: 'Block',
+            reason: user.block_reason || user.moderation_reason,
+            until: user.blocked_until,
+        };
+    }
+    return null;
+}
+
+function buildRestrictionUntil(preset: string, customUntil: string): string | null {
+    const selectedPreset = RESTRICTION_PRESETS.find((item) => item.id === preset);
+    if (selectedPreset?.hours) {
+        return new Date(Date.now() + selectedPreset.hours * 3_600_000).toISOString();
+    }
+    if (preset === 'custom' && customUntil) {
+        const parsed = new Date(customUntil);
+        return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+    }
+    return null;
+}
+
+function normalizeTone(tone?: string): string {
+    if (tone === 'danger' || tone === 'warning' || tone === 'accent' || tone === 'success') {
+        return tone;
+    }
+    return 'muted';
 }
 
 function defaultPagination(): AdminPagination {
@@ -182,11 +260,22 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
     const [loading, setLoading] = useState(false);
     const [busyId, setBusyId] = useState<string | null>(null);
     const [error, setError] = useState('');
+    const [restrictionDraft, setRestrictionDraft] = useState<RestrictionDraft | null>(null);
     const deferredUserQuery = useDeferredValue(userQuery.trim());
     const deferredMindQuery = useDeferredValue(mindQuery.trim());
 
     const canAccessAdmin = Boolean(isAuthenticated && user?.is_admin);
     const canAssignAdmins = Boolean(overview?.admin.is_super_admin || user?.is_super_admin);
+
+    const jumpToUsers = useCallback((status: string) => {
+        setUserStatusFilter(status);
+        setActiveTab('users');
+    }, []);
+
+    const jumpToMinds = useCallback((status: string) => {
+        setMindStatusFilter(status);
+        setActiveTab('minds');
+    }, []);
 
     const loadOverview = useCallback(async () => {
         if (!canAccessAdmin) return;
@@ -263,23 +352,28 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
         setMinds((current) => current.map((item) => (item.public_id === nextMind.public_id ? nextMind : item)));
     }, []);
 
-    const updateUserRestriction = useCallback(async (
-        target: AdminUser,
-        field: 'is_banned' | 'is_blocked'
-    ) => {
-        const nextValue = !target[field];
-        const promptLabel = field === 'is_banned' ? 'бана' : 'блокировки';
-        const reason = nextValue
-            ? window.prompt(`Причина ${promptLabel}`, target.moderation_reason || '')
-            : target.moderation_reason || null;
-        if (nextValue && reason === null) return;
+    const openRestrictionDraft = useCallback((target: AdminUser, field: UserRestrictionField) => {
+        setRestrictionDraft({
+            user: target,
+            field,
+            reason: target.moderation_reason || '',
+            preset: '24h',
+            customUntil: '',
+        });
+    }, []);
 
+    const clearUserRestriction = useCallback(async (
+        target: AdminUser,
+        field: UserRestrictionField
+    ) => {
+        const promptLabel = field === 'is_banned' ? 'бан' : 'блокировку';
+        const confirmed = window.confirm(`Снять ${promptLabel} с ${target.username}?`);
+        if (!confirmed) return;
         setBusyId(`user-${target.id}-${field}`);
         setError('');
         try {
             const nextUser = await apiService.updateAdminUser(target.id, {
-                [field]: nextValue,
-                moderation_reason: reason,
+                [field]: false,
             });
             replaceUser(nextUser);
             void loadOverview();
@@ -289,6 +383,52 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             setBusyId(null);
         }
     }, [loadOverview, replaceUser]);
+
+    const submitRestrictionDraft = useCallback(async () => {
+        if (!restrictionDraft) return;
+        const reason = restrictionDraft.reason.trim();
+        if (!reason) {
+            setError('Укажите причину ограничения');
+            return;
+        }
+        if (restrictionDraft.preset === 'custom' && !restrictionDraft.customUntil) {
+            setError('Укажите дату окончания ограничения');
+            return;
+        }
+        const until = buildRestrictionUntil(restrictionDraft.preset, restrictionDraft.customUntil);
+        if (restrictionDraft.preset === 'custom' && !until) {
+            setError('Укажите корректную дату окончания ограничения');
+            return;
+        }
+        const { user: target, field } = restrictionDraft;
+        const payload =
+            field === 'is_banned'
+                ? {
+                      is_banned: true,
+                      ban_reason: reason,
+                      moderation_reason: reason,
+                      banned_until: until,
+                  }
+                : {
+                      is_blocked: true,
+                      block_reason: reason,
+                      moderation_reason: reason,
+                      blocked_until: until,
+                  };
+
+        setBusyId(`user-${target.id}-${field}`);
+        setError('');
+        try {
+            const nextUser = await apiService.updateAdminUser(target.id, payload);
+            replaceUser(nextUser);
+            setRestrictionDraft(null);
+            void loadOverview();
+        } catch (updateError) {
+            setError(getErrorMessage(updateError, 'Не удалось обновить пользователя'));
+        } finally {
+            setBusyId(null);
+        }
+    }, [loadOverview, replaceUser, restrictionDraft]);
 
     const updateAdminRole = useCallback(async (target: AdminUser) => {
         const nextValue = !target.is_admin;
@@ -362,6 +502,16 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 label: 'Memory',
                 value: formatBytes(overview.server.process.memory.max_rss_bytes),
             },
+            {
+                icon: <Cpu size={18} />,
+                label: 'CPU / threads',
+                value: `${overview.server.process.cpu_count || '—'} / ${overview.server.process.thread_count || '—'}`,
+            },
+            {
+                icon: <Clock size={18} />,
+                label: 'Snapshot',
+                value: formatDateShort(overview.server.timestamp),
+            },
         ];
     }, [overview]);
 
@@ -418,6 +568,14 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 </button>
                 <button
                     type="button"
+                    className={cn(activeTab === 'operations' && 'active')}
+                    onClick={() => setActiveTab('operations')}
+                >
+                    <ClipboardList size={16} />
+                    Операции
+                </button>
+                <button
+                    type="button"
                     className={cn(activeTab === 'users' && 'active')}
                     onClick={() => setActiveTab('users')}
                 >
@@ -444,16 +602,247 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
 
             {error && <div className="admin-error">{error}</div>}
 
+            {restrictionDraft && (
+                <div className="admin-restriction-editor" role="dialog" aria-modal="true">
+                    <div className="admin-restriction-editor-header">
+                        <div>
+                            <strong>
+                                {restrictionDraft.field === 'is_banned' ? 'Бан пользователя' : 'Блокировка пользователя'}
+                            </strong>
+                            <span>{restrictionDraft.user.username} · {restrictionDraft.user.email}</span>
+                        </div>
+                        <button type="button" onClick={() => setRestrictionDraft(null)}>
+                            Закрыть
+                        </button>
+                    </div>
+                    <label>
+                        Причина
+                        <textarea
+                            value={restrictionDraft.reason}
+                            maxLength={280}
+                            onChange={(event) => setRestrictionDraft((current) => (
+                                current ? { ...current, reason: event.target.value } : current
+                            ))}
+                            placeholder="Например: спам, нарушение правил, подозрительная активность"
+                        />
+                    </label>
+                    <div className="admin-restriction-presets" role="radiogroup" aria-label="Срок ограничения">
+                        {RESTRICTION_PRESETS.map((preset) => (
+                            <button
+                                key={preset.id}
+                                type="button"
+                                className={cn(restrictionDraft.preset === preset.id && 'active')}
+                                onClick={() => setRestrictionDraft((current) => (
+                                    current ? { ...current, preset: preset.id } : current
+                                ))}
+                            >
+                                {preset.label}
+                            </button>
+                        ))}
+                    </div>
+                    {restrictionDraft.preset === 'custom' && (
+                        <label>
+                            Окончание
+                            <input
+                                type="datetime-local"
+                                value={restrictionDraft.customUntil}
+                                onChange={(event) => setRestrictionDraft((current) => (
+                                    current ? { ...current, customUntil: event.target.value } : current
+                                ))}
+                            />
+                        </label>
+                    )}
+                    <div className="admin-restriction-actions">
+                        <span>
+                            Пользователь увидит причину и срок при входе или следующем запросе.
+                        </span>
+                        <button
+                            type="button"
+                            disabled={busyId === `user-${restrictionDraft.user.id}-${restrictionDraft.field}`}
+                            onClick={() => void submitRestrictionDraft()}
+                        >
+                            Применить
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'overview' && (
-                <div className="admin-overview-grid">
-                    <MetricTile icon={<Users size={18} />} label="Пользователей" value={overview?.stats.users.total} />
-                    <MetricTile icon={<ShieldPlus size={18} />} label="Администраторов" value={overview?.stats.users.admins} />
-                    <MetricTile icon={<BrainCircuit size={18} />} label="Minds всего" value={overview?.stats.minds.total} />
-                    <MetricTile icon={<Sparkles size={18} />} label="На главной" value={overview?.stats.minds.featured} />
-                    <MetricTile icon={<Ban size={18} />} label="Банов аккаунтов" value={overview?.stats.users.banned} />
-                    <MetricTile icon={<Lock size={18} />} label="Блокировок" value={overview?.stats.users.blocked} />
-                    <MetricTile icon={<Activity size={18} />} label="Сессий за 24ч" value={overview?.stats.sessions.updated_24h} />
-                    <MetricTile icon={<Server size={18} />} label="Статус сервера" value={overview?.server.status} />
+                <div className="admin-section">
+                    <div className="admin-command-strip">
+                        <div>
+                            <span>Health score</span>
+                            <strong>{formatPercent(overview?.operations.health.score)}</strong>
+                            <small>{overview?.operations.health.level || '—'}</small>
+                        </div>
+                        <div>
+                            <span>Очередь модерации</span>
+                            <strong>{formatNumber(overview?.operations.queues.unverified_store_minds)}</strong>
+                            <small>Store minds без verified</small>
+                        </div>
+                        <div>
+                            <span>Рост за 7 дней</span>
+                            <strong>+{formatNumber(overview?.operations.growth_7d.users)}</strong>
+                            <small>новых пользователей</small>
+                        </div>
+                        <button type="button" onClick={() => setActiveTab('operations')}>
+                            <ClipboardList size={16} />
+                            Открыть command center
+                        </button>
+                    </div>
+                    <div className="admin-overview-grid">
+                        <MetricTile icon={<Users size={18} />} label="Пользователей" value={overview?.stats.users.total} />
+                        <MetricTile icon={<ShieldPlus size={18} />} label="Администраторов" value={overview?.stats.users.admins} />
+                        <MetricTile icon={<BrainCircuit size={18} />} label="Minds всего" value={overview?.stats.minds.total} />
+                        <MetricTile icon={<Sparkles size={18} />} label="На главной" value={overview?.stats.minds.featured} />
+                        <MetricTile icon={<Ban size={18} />} label="Банов аккаунтов" value={overview?.stats.users.banned} />
+                        <MetricTile icon={<Lock size={18} />} label="Блокировок" value={overview?.stats.users.blocked} />
+                        <MetricTile icon={<Activity size={18} />} label="Сессий за 24ч" value={overview?.stats.sessions.updated_24h} />
+                        <MetricTile icon={<Server size={18} />} label="Статус сервера" value={overview?.server.status} />
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'operations' && (
+                <div className="admin-ops-grid">
+                    <div className="admin-ops-health">
+                        <div>
+                            <span>Operational health</span>
+                            <strong>{formatPercent(overview?.operations.health.score)}</strong>
+                            <small>{overview?.operations.health.level || '—'}</small>
+                        </div>
+                        <div
+                            className="admin-health-ring"
+                            style={{ '--admin-health': `${overview?.operations.health.score || 0}%` } as CSSProperties}
+                            aria-label="Operational health score"
+                        />
+                    </div>
+
+                    <div className="admin-ops-panel">
+                        <h2>
+                            <AlertTriangle size={17} />
+                            Action center
+                        </h2>
+                        <div className="admin-alert-list">
+                            {(overview?.operations.alerts || []).map((alert) => (
+                                <div className={cn('admin-alert-item', `tone-${normalizeTone(alert.tone)}`)} key={`${alert.title}-${alert.detail}`}>
+                                    <strong>{alert.title}</strong>
+                                    <span>{alert.detail}</span>
+                                    <small>{alert.action}</small>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="admin-ops-panel">
+                        <h2>
+                            <ClipboardList size={17} />
+                            Moderation queues
+                        </h2>
+                        <div className="admin-queue-grid">
+                            <button type="button" onClick={() => jumpToUsers('unconfirmed')}>
+                                <strong>{formatNumber(overview?.operations.queues.unconfirmed_users)}</strong>
+                                <span>Email pending</span>
+                            </button>
+                            <button type="button" onClick={() => jumpToUsers('restricted')}>
+                                <strong>{formatNumber(overview?.operations.queues.restricted_users)}</strong>
+                                <span>Restricted users</span>
+                            </button>
+                            <button type="button" onClick={() => jumpToMinds('store')}>
+                                <strong>{formatNumber(overview?.operations.queues.store_minds)}</strong>
+                                <span>Store minds</span>
+                            </button>
+                            <button type="button" onClick={() => jumpToMinds('needs_review')}>
+                                <strong>{formatNumber(overview?.operations.queues.unverified_store_minds)}</strong>
+                                <span>Needs review</span>
+                            </button>
+                            <button type="button" onClick={() => jumpToMinds('banned')}>
+                                <strong>{formatNumber(overview?.operations.queues.banned_minds)}</strong>
+                                <span>Banned minds</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="admin-ops-panel">
+                        <h2>
+                            <TrendingUp size={17} />
+                            Growth 7d
+                        </h2>
+                        <div className="admin-growth-row">
+                            <div>
+                                <strong>+{formatNumber(overview?.operations.growth_7d.users)}</strong>
+                                <span>Users</span>
+                            </div>
+                            <div>
+                                <strong>+{formatNumber(overview?.operations.growth_7d.minds)}</strong>
+                                <span>Minds</span>
+                            </div>
+                            <div>
+                                <strong>+{formatNumber(overview?.operations.growth_7d.sessions)}</strong>
+                                <span>Sessions</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="admin-ops-panel admin-ops-wide">
+                        <h2>
+                            <UserCheck size={17} />
+                            High activity accounts
+                        </h2>
+                        <div className="admin-compact-list">
+                            {(overview?.operations.top_users || []).map((item) => (
+                                <button
+                                    type="button"
+                                    key={item.id}
+                                    onClick={() => {
+                                        setUserQuery(item.email);
+                                        setActiveTab('users');
+                                    }}
+                                >
+                                    <span>
+                                        <strong>{item.username}</strong>
+                                        <small>{item.email}</small>
+                                    </span>
+                                    <span>
+                                        <strong>{formatNumber(item.chat_count)}</strong>
+                                        <small>sessions</small>
+                                    </span>
+                                    <span>
+                                        <strong>{formatNumber(item.mind_count)}</strong>
+                                        <small>minds</small>
+                                    </span>
+                                    {item.is_restricted && <em>restricted</em>}
+                                </button>
+                            ))}
+                            {overview?.operations.top_users.length === 0 && (
+                                <div className="admin-empty">Активность пока не накоплена</div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="admin-ops-panel admin-ops-wide">
+                        <h2>
+                            <Clock size={17} />
+                            Audit stream
+                        </h2>
+                        <div className="admin-audit-list">
+                            {(overview?.operations.recent_audit || []).map((event, index) => (
+                                <div className={cn('admin-audit-item', `tone-${normalizeTone(event.severity === 'warning' ? 'warning' : 'muted')}`)} key={`${event.timestamp}-${event.event_type}-${index}`}>
+                                    <span>
+                                        <strong>{event.event_type}</strong>
+                                        <small>{event.method || '—'} {event.endpoint || '—'}</small>
+                                    </span>
+                                    <span>
+                                        <strong>{formatDate(event.timestamp)}</strong>
+                                        <small>{event.client_type || event.user_hash || 'system'}</small>
+                                    </span>
+                                </div>
+                            ))}
+                            {overview?.operations.recent_audit.length === 0 && (
+                                <div className="admin-empty">Audit events пока не найдены</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -489,6 +878,7 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                                 <tr>
                                     <th>Пользователь</th>
                                     <th>Статус</th>
+                                    <th>Ограничение</th>
                                     <th>Роль</th>
                                     <th>Активность</th>
                                     <th>Создан</th>
@@ -498,6 +888,7 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                             <tbody>
                                 {users.map((item) => {
                                     const status = userStatus(item);
+                                    const restriction = restrictionInfo(item);
                                     return (
                                         <tr key={item.id}>
                                             <td>
@@ -508,6 +899,16 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                                                 <span className={cn('admin-status-chip', `tone-${status.tone}`)}>
                                                     {status.label}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                {restriction ? (
+                                                    <div className="admin-restriction-cell">
+                                                        <strong>{restriction.reason || 'Причина не указана'}</strong>
+                                                        <span>До: {formatDateShort(restriction.until)}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="admin-muted-cell">Нет ограничений</span>
+                                                )}
                                             </td>
                                             <td>
                                                 <span className="admin-role-cell">
@@ -525,7 +926,11 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                                                         type="button"
                                                         title={item.is_banned ? 'Разбанить' : 'Забанить'}
                                                         disabled={busyId === `user-${item.id}-is_banned` || item.is_super_admin}
-                                                        onClick={() => void updateUserRestriction(item, 'is_banned')}
+                                                        onClick={() => (
+                                                            item.is_banned
+                                                                ? void clearUserRestriction(item, 'is_banned')
+                                                                : openRestrictionDraft(item, 'is_banned')
+                                                        )}
                                                     >
                                                         {item.is_banned ? <Unlock size={15} /> : <Ban size={15} />}
                                                     </button>
@@ -533,7 +938,11 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                                                         type="button"
                                                         title={item.is_blocked ? 'Разблокировать' : 'Заблокировать'}
                                                         disabled={busyId === `user-${item.id}-is_blocked` || item.is_super_admin}
-                                                        onClick={() => void updateUserRestriction(item, 'is_blocked')}
+                                                        onClick={() => (
+                                                            item.is_blocked
+                                                                ? void clearUserRestriction(item, 'is_blocked')
+                                                                : openRestrictionDraft(item, 'is_blocked')
+                                                        )}
                                                     >
                                                         {item.is_blocked ? <Unlock size={15} /> : <Lock size={15} />}
                                                     </button>
@@ -692,15 +1101,59 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                             </div>
                             <div>
                                 <dt>Python</dt>
-                                <dd>{overview?.server.process.python || '—'}</dd>
+                                <dd>
+                                    {overview?.server.process.implementation || 'Python'} {overview?.server.process.python || '—'}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Executable</dt>
+                                <dd>{overview?.server.process.python_executable || '—'}</dd>
                             </div>
                             <div>
                                 <dt>Load avg</dt>
                                 <dd>{overview?.server.process.load_average?.map((value) => value.toFixed(2)).join(' / ') || '—'}</dd>
                             </div>
                             <div>
+                                <dt>Platform</dt>
+                                <dd>{overview?.server.process.platform || '—'}</dd>
+                            </div>
+                            <div>
+                                <dt>Machine</dt>
+                                <dd>{overview?.server.process.machine || '—'}</dd>
+                            </div>
+                            <div>
+                                <dt>Working dir</dt>
+                                <dd>{overview?.server.process.cwd || '—'}</dd>
+                            </div>
+                            <div>
                                 <dt>Started</dt>
                                 <dd>{formatDate(overview?.server.started_at)}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                    <div className="admin-server-panel">
+                        <h2>Runtime</h2>
+                        <dl>
+                            <div>
+                                <dt>Environment</dt>
+                                <dd>{overview?.server.process.env || '—'}</dd>
+                            </div>
+                            <div>
+                                <dt>Debug</dt>
+                                <dd>{overview?.server.process.debug ? 'on' : 'off'}</dd>
+                            </div>
+                            <div>
+                                <dt>Database</dt>
+                                <dd>
+                                    {overview?.server.components.database.status || '—'}
+                                    {overview?.server.components.database.engine
+                                        ? ` · ${overview.server.components.database.engine}`
+                                        : ''}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Redis</dt>
+                                <dd>{overview?.server.components.redis.status || '—'}</dd>
                             </div>
                         </dl>
                     </div>
@@ -711,7 +1164,10 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                                 <div key={item.key}>
                                     {item.exists && item.writable ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
                                     <span>{item.key}</span>
-                                    <small>{item.path}</small>
+                                    <small>
+                                        {item.path}
+                                        {item.disk ? ` · free ${formatBytes(item.disk.free_bytes)}` : ''}
+                                    </small>
                                 </div>
                             ))}
                         </div>

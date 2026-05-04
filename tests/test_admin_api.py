@@ -1,6 +1,17 @@
 import json
+from datetime import datetime, timedelta
 
-from utils.auth import Mind, UserChatHistory, db
+import pytest
+
+from utils.auth import Mind, User, UserChatHistory, db
+from utils.rate_limiting import rate_limit_store
+
+
+@pytest.fixture(autouse=True)
+def clear_rate_limits():
+    rate_limit_store.clear()
+    yield
+    rate_limit_store.clear()
 
 
 def _csrf_headers(client):
@@ -55,6 +66,9 @@ def test_root_admin_can_open_dashboard_without_chat_transcripts(
     overview = client.get("/api/admin/overview", headers={"User-Agent": "Mozilla/5.0 (pytest)"})
     assert overview.status_code == 200
     assert overview.get_json()["admin"]["is_super_admin"] is True
+    assert overview.get_json()["operations"]["health"]["score"] >= 0
+    assert "queues" in overview.get_json()["operations"]
+    assert "recent_audit" in overview.get_json()["operations"]
 
     users = client.get("/api/admin/users", headers={"User-Agent": "Mozilla/5.0 (pytest)"})
     assert users.status_code == 200
@@ -99,6 +113,50 @@ def test_admin_can_ban_account_and_block_future_login(
     assert client.post("/api/auth/logout", headers=headers).status_code == 200
     login_response = login(target_email, target_password)
     assert login_response.status_code == 403
+    assert "abuse" in login_response.get_json()["error"]
+
+
+def test_admin_can_set_temporary_block_reason_and_expired_blocks_do_not_apply(
+    client,
+    app,
+    create_confirmed_user,
+    login,
+):
+    _admin_id, admin_email, admin_password = create_confirmed_user(username="root_admin")
+    target_id, target_email, target_password = create_confirmed_user(username="temporary_blocked")
+
+    assert login(admin_email, admin_password).status_code == 200
+    headers = _csrf_headers(client)
+    blocked_until = (datetime.utcnow() + timedelta(hours=2)).isoformat() + "Z"
+
+    response = client.patch(
+        f"/api/admin/users/{target_id}",
+        json={
+            "is_blocked": True,
+            "block_reason": "payment abuse",
+            "blocked_until": blocked_until,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    payload = response.get_json()["user"]
+    assert payload["is_blocked"] is True
+    assert payload["block_reason"] == "payment abuse"
+    assert payload["blocked_until"] is not None
+
+    assert client.post("/api/auth/logout", headers=headers).status_code == 200
+    login_response = login(target_email, target_password)
+    assert login_response.status_code == 403
+    assert "payment abuse" in login_response.get_json()["error"]
+    assert "Срок:" in login_response.get_json()["error"]
+
+    with app.app_context():
+        target = db.session.get(User, target_id)
+        target.blocked_until = datetime.utcnow() - timedelta(minutes=1)
+        db.session.commit()
+
+    login_response = login(target_email, target_password)
+    assert login_response.status_code == 200
 
 
 def test_admin_can_feature_and_ban_mind(client, create_confirmed_user, login):

@@ -61,6 +61,24 @@ export interface components {
       text: string;
       [key: string]: unknown;
     };
+    Mind: {
+      can_edit: boolean;
+      category: string;
+      created_at?: string | null;
+      description: string;
+      id: number;
+      instructions?: string;
+      is_owner: boolean;
+      is_pinned: boolean;
+      is_system: boolean;
+      is_verified: boolean;
+      name: string;
+      public_id: string;
+      starters: string[];
+      updated_at?: string | null;
+      visibility: "private" | "link" | "store";
+      [key: string]: unknown;
+    };
     PrivacyDeleteRequest: {
       delete_account?: boolean;
     };
@@ -101,24 +119,6 @@ export interface components {
       session_id: string;
       share_url?: string | null;
       title?: string | null;
-      [key: string]: unknown;
-    };
-    Mind: {
-      can_edit: boolean;
-      category: string;
-      created_at?: string | null;
-      description: string;
-      id: number;
-      instructions?: string;
-      is_owner: boolean;
-      is_pinned: boolean;
-      is_system: boolean;
-      is_verified: boolean;
-      name: string;
-      public_id: string;
-      starters: string[];
-      updated_at?: string | null;
-      visibility: "private" | "link" | "store";
       [key: string]: unknown;
     };
     SessionListResponse: {

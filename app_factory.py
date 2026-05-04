@@ -166,12 +166,12 @@ def create_app():
         except (TypeError, ValueError):
             return None
 
-        from utils.auth import User, db, is_account_disabled
+        from utils.auth import User, db, format_account_restriction_message, is_account_disabled
 
         user = db.session.get(User, user_id)
         if user and is_account_disabled(user):
             return make_error(
-                "Account is restricted by an administrator",
+                format_account_restriction_message(user),
                 status=403,
                 code="account_disabled",
             )

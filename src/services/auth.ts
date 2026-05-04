@@ -12,6 +12,9 @@ export type AuthUser = {
     is_super_admin?: boolean;
     is_banned?: boolean;
     is_blocked?: boolean;
+    moderation_reason?: string | null;
+    banned_until?: string | null;
+    blocked_until?: string | null;
     created_at?: string | null;
     oauth_provider?: string | null;
 };
