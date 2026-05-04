@@ -11,7 +11,6 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --load-mark: #111827;
         --load-muted: rgba(17, 24, 39, 0.28);
         --load-soft: rgba(17, 24, 39, 0.1);
         --load-accent: #2563eb;
@@ -143,11 +142,6 @@
   <rect x="13.5" y="5.5" width="33" height="29" rx="14.5" fill="var(--load-surface)" stroke="var(--load-soft)" />
 
   <g filter="url(#softGlow)">
-    <g class="halo" opacity="0.72">
-      <path d="M19.6 14.7C22 10.9 26 8.7 30.4 8.8C36.3 8.9 41.3 13 42.5 18.7" stroke="var(--load-muted)" stroke-width="1.6" stroke-linecap="round" />
-      <path class="spark" d="M42.8 19.9C42.8 26.6 37.3 32 30.5 32" stroke="var(--load-accent)" stroke-width="1.8" stroke-linecap="round" />
-    </g>
-
     <path class="arm" d="M30 20L20.5 11.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
     <path class="arm secondary" d="M30 20L39.5 11.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
     <path class="arm secondary" d="M30 20L20.5 28.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
