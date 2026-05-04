@@ -1750,6 +1750,11 @@ def setup_auth(app):
         db.create_all()
         _remove_legacy_default_minds(app)
         inspector = inspect(db.engine)
+        date_time_type = (
+            "TIMESTAMP"
+            if db.engine.dialect.name in {"postgresql", "postgres"}
+            else "DATETIME"
+        )
         if "user" in inspector.get_table_names():
             user_columns = {column["name"] for column in inspector.get_columns("user")}
             if "name" not in user_columns:
@@ -1769,8 +1774,8 @@ def setup_auth(app):
                 "moderation_reason": 'ALTER TABLE "user" ADD COLUMN moderation_reason VARCHAR(280)',
                 "ban_reason": 'ALTER TABLE "user" ADD COLUMN ban_reason VARCHAR(280)',
                 "block_reason": 'ALTER TABLE "user" ADD COLUMN block_reason VARCHAR(280)',
-                "banned_until": 'ALTER TABLE "user" ADD COLUMN banned_until DATETIME',
-                "blocked_until": 'ALTER TABLE "user" ADD COLUMN blocked_until DATETIME',
+                "banned_until": f'ALTER TABLE "user" ADD COLUMN banned_until {date_time_type}',
+                "blocked_until": f'ALTER TABLE "user" ADD COLUMN blocked_until {date_time_type}',
             }
             missing_user_admin_columns = [
                 (column_name, ddl)

@@ -1,41 +1,164 @@
-<svg width="60" height="40" viewBox="0 0 60 40"
-  xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="grokGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:currentColor; stop-opacity:1" />
-      <stop offset="100%" style="stop-color:currentColor; stop-opacity:0.6" />
-    </linearGradient>
-  </defs>
+<svg width="60" height="40" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loading">
   <style>
-    .stream-rect {
-      fill: url(#grokGradient);
-      transform-origin: center;
-      animation: streamProcess 1s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+    :root {
+      --load-mark: #eaeaee;
+      --load-muted: rgba(234, 234, 238, 0.28);
+      --load-soft: rgba(234, 234, 238, 0.12);
+      --load-accent: #9bb7ff;
+      --load-glow: rgba(155, 183, 255, 0.42);
+      --load-surface: rgba(17, 18, 20, 0.2);
     }
 
-    @keyframes streamProcess {
-      0%, 100% {
-        transform: skewX(-20deg) scaleY(0.1);
-        opacity: 0.3;
+    @media (prefers-color-scheme: light) {
+      :root {
+        --load-mark: #111827;
+        --load-muted: rgba(17, 24, 39, 0.28);
+        --load-soft: rgba(17, 24, 39, 0.1);
+        --load-accent: #2563eb;
+        --load-glow: rgba(37, 99, 235, 0.34);
+        --load-surface: rgba(255, 255, 255, 0.64);
       }
-      50% {
-        transform: skewX(-20deg) scaleY(1);
+    }
+
+    .halo {
+      transform-origin: 30px 20px;
+      animation: loadSpin 1.9s linear infinite;
+    }
+
+    .arm {
+      stroke-dasharray: 15 23;
+      stroke-dashoffset: 0;
+      animation: loadTrace 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .arm.secondary {
+      animation-delay: -0.42s;
+    }
+
+    .node,
+    .core {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .node {
+      animation: loadNode 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .node:nth-of-type(2) {
+      animation-delay: 0.16s;
+    }
+
+    .node:nth-of-type(3) {
+      animation-delay: 0.32s;
+    }
+
+    .node:nth-of-type(4) {
+      animation-delay: 0.48s;
+    }
+
+    .core {
+      animation: loadCore 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .spark {
+      transform-origin: 30px 20px;
+      animation: loadSpark 1.9s linear infinite;
+    }
+
+    @keyframes loadSpin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes loadTrace {
+      0% {
+        stroke-dashoffset: 26;
+        opacity: 0.32;
+      }
+      45% {
+        opacity: 1;
+      }
+      100% {
+        stroke-dashoffset: -26;
+        opacity: 0.32;
+      }
+    }
+
+    @keyframes loadNode {
+      0%,
+      100% {
+        transform: scale(0.82);
+        opacity: 0.48;
+      }
+      45% {
+        transform: scale(1.08);
         opacity: 1;
       }
     }
 
+    @keyframes loadCore {
+      0%,
+      100% {
+        transform: scale(0.94);
+        opacity: 0.82;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 1;
+      }
+    }
 
-    .rect-1 { animation-delay: 0.0s; }
-    .rect-2 { animation-delay: 0.1s; }
-    .rect-3 { animation-delay: 0.2s; }
-    .rect-4 { animation-delay: 0.3s; }
-    .rect-5 { animation-delay: 0.4s; }
+    @keyframes loadSpark {
+      0% {
+        transform: rotate(0deg);
+        opacity: 0;
+      }
+      12%,
+      54% {
+        opacity: 1;
+      }
+      66%,
+      100% {
+        transform: rotate(360deg);
+        opacity: 0;
+      }
+    }
   </style>
 
-  <!-- 5 наклонных блоков "потока" -->
-  <rect class="stream-rect rect-1" x="5" y="0" width="6" height="40" />
-  <rect class="stream-rect rect-2" x="15" y="0" width="6" height="40" />
-  <rect class="stream-rect rect-3" x="25" y="0" width="6" height="40" />
-  <rect class="stream-rect rect-4" x="35" y="0" width="6" height="40" />
-  <rect class="stream-rect rect-5" x="45" y="0" width="6" height="40" />
+  <defs>
+    <filter id="softGlow" x="-12" y="-20" width="84" height="80" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="2.2" result="blur" />
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.61 0 0 0 0 0.72 0 0 0 0 1 0 0 0 0.55 0" />
+      <feBlend in="SourceGraphic" mode="screen" />
+    </filter>
+    <linearGradient id="activeStroke" x1="17" y1="10" x2="43" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="var(--load-mark)" />
+      <stop offset="0.58" stop-color="var(--load-accent)" />
+      <stop offset="1" stop-color="var(--load-mark)" stop-opacity="0.78" />
+    </linearGradient>
+  </defs>
+
+  <rect x="13.5" y="5.5" width="33" height="29" rx="14.5" fill="var(--load-surface)" stroke="var(--load-soft)" />
+
+  <g filter="url(#softGlow)">
+    <g class="halo" opacity="0.72">
+      <path d="M19.6 14.7C22 10.9 26 8.7 30.4 8.8C36.3 8.9 41.3 13 42.5 18.7" stroke="var(--load-muted)" stroke-width="1.6" stroke-linecap="round" />
+      <path class="spark" d="M42.8 19.9C42.8 26.6 37.3 32 30.5 32" stroke="var(--load-accent)" stroke-width="1.8" stroke-linecap="round" />
+    </g>
+
+    <path class="arm" d="M30 20L20.5 11.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
+    <path class="arm secondary" d="M30 20L39.5 11.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
+    <path class="arm secondary" d="M30 20L20.5 28.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
+    <path class="arm" d="M30 20L39.5 28.5" stroke="url(#activeStroke)" stroke-width="2" stroke-linecap="round" />
+
+    <circle class="node" cx="20.5" cy="11.5" r="2.6" fill="var(--load-mark)" />
+    <circle class="node" cx="39.5" cy="11.5" r="2.6" fill="var(--load-accent)" />
+    <circle class="node" cx="39.5" cy="28.5" r="2.6" fill="var(--load-mark)" />
+    <circle class="node" cx="20.5" cy="28.5" r="2.6" fill="var(--load-accent)" />
+
+    <circle cx="30" cy="20" r="5.6" fill="var(--load-glow)" opacity="0.55" />
+    <circle class="core" cx="30" cy="20" r="3.5" fill="var(--load-mark)" />
+  </g>
 </svg>
