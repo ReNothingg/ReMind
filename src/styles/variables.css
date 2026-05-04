@@ -183,12 +183,12 @@
   --content-width-rail-open-max: calc(
     100% - var(--history-width) - var(--rail-width) - var(--spacing-unit) * 4
   );
-  --rail-width-collapsed: 64px;
-  --rail-width-expanded: 320px;
+  --rail-width-collapsed: 52px;
+  --rail-width-expanded: 276px;
   --rail-width: var(--rail-width-collapsed);
   --history-width: 280px;
-  --rail-btn-size: 50px;
-  --rail-btn-radius: 12px;
+  --rail-btn-size: 36px;
+  --rail-btn-radius: 9px;
   --app-rail-offset: 0px;
   --app-content-width-dynamic: var(--content-width);
   --app-content-max-width-dynamic: var(--content-width-max);

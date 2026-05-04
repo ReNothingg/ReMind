@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -133,6 +134,7 @@ const AppRail = ({
     currentPath = '/',
     currentSessionId,
     isExpanded,
+    onAdminClick,
     onMindsClick,
     onNewChat,
     onSelectMind,
@@ -145,7 +147,7 @@ const AppRail = ({
     sessions,
 }) => {
     const { t } = useTranslation();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const { settings } = useSettings();
     const [favorites, setFavorites] = useState([]);
     const [openMenuId, setOpenMenuId] = useState(null);
@@ -464,6 +466,20 @@ const AppRail = ({
                 >
                     <MindRailIcon />
                 </RailActionButton>
+                {user?.is_admin && (
+                    <RailActionButton
+                        active={currentPath === '/admin' || currentPath.startsWith('/admin/')}
+                        className="rail-icon-btn"
+                        expanded={isExpanded}
+                        id="railAdmin"
+                        label="Admin"
+                        onClick={onAdminClick}
+                        title="Admin"
+                        aria-label="Admin"
+                    >
+                        <ShieldCheck size={20} />
+                    </RailActionButton>
+                )}
             </div>
 
             {isExpanded && pinnedMinds.length > 0 && (

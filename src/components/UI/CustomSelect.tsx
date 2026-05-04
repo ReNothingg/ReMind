@@ -1,6 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
+
+type SelectOption = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+};
+
+type CustomSelectProps = {
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  label?: string;
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
+};
 
 const CustomSelect = ({
   value,
@@ -10,16 +26,20 @@ const CustomSelect = ({
   disabled = false,
   className = '',
   placeholder
-}) => {
+}: CustomSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
-  const dropdownRef = useRef(null);
+  const [dropDirection, setDropDirection] = useState<'down' | 'up'>('down');
+  const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const selectedOption = options.find(opt => opt.value === value);
   const displayText = selectedOption?.label || placeholder || t('common.selectOption');
+
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target instanceof Node ? e.target : null;
+      if (containerRef.current && target && !containerRef.current.contains(target)) {
         setIsOpen(false);
       }
     };
@@ -29,10 +49,48 @@ const CustomSelect = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setDropdownMaxHeight(null);
+      return;
+    }
+
+    const updateDropdownPlacement = () => {
+      if (!containerRef.current || !dropdownRef.current) {
+        return;
+      }
+
+      const viewportGap = 12;
+      const triggerGap = 6;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const dropdownHeight = Math.min(dropdownRef.current.scrollHeight, 280);
+      const spaceBelow = window.innerHeight - containerRect.bottom - viewportGap;
+      const spaceAbove = containerRect.top - viewportGap;
+      const shouldOpenUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+      const availableSpace = Math.max(
+        120,
+        Math.floor((shouldOpenUp ? spaceAbove : spaceBelow) - triggerGap)
+      );
+
+      setDropDirection(shouldOpenUp ? 'up' : 'down');
+      setDropdownMaxHeight(Math.min(280, availableSpace));
+    };
+
+    updateDropdownPlacement();
+    window.addEventListener('resize', updateDropdownPlacement);
+    window.addEventListener('scroll', updateDropdownPlacement, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownPlacement);
+      window.removeEventListener('scroll', updateDropdownPlacement, true);
+    };
+  }, [isOpen, options.length]);
+
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsOpen(false);
         return;
@@ -62,7 +120,7 @@ const CustomSelect = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, value, options, onChange]);
 
-  const handleSelect = (optionValue) => {
+  const handleSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
   };
@@ -76,7 +134,12 @@ const CustomSelect = ({
   return (
     <div
       ref={containerRef}
-      className={cn('custom-select-wrapper flex w-full flex-col gap-1.5', isOpen && 'is-open', className)}
+      className={cn(
+        'custom-select-wrapper flex w-full flex-col gap-1.5',
+        isOpen && 'is-open',
+        isOpen && dropDirection === 'up' && 'is-drop-up',
+        className
+      )}
     >
       {label && (
         <label className="custom-select-label text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -129,11 +192,15 @@ const CustomSelect = ({
 
       {isOpen && (
         <div
-          className="custom-select-dropdown absolute inset-x-0 top-[calc(100%+6px)] z-[1000] overflow-hidden rounded-md border border-border-strong bg-surface shadow-[var(--shadow-lg)]"
+          className={cn(
+            'custom-select-dropdown absolute inset-x-0 z-[1000] overflow-hidden rounded-md border border-border-strong bg-surface shadow-[var(--shadow-lg)]',
+            dropDirection === 'up' ? 'custom-select-dropdown-up' : 'custom-select-dropdown-down'
+          )}
           ref={dropdownRef}
           role="listbox"
+          style={dropdownMaxHeight ? ({ '--custom-select-dropdown-max-height': `${dropdownMaxHeight}px` } as React.CSSProperties) : undefined}
         >
-          <div className="custom-select-list ui-scrollbar-thin max-h-70 overflow-x-hidden overflow-y-auto py-1">
+          <div className="custom-select-list ui-scrollbar-thin overflow-x-hidden overflow-y-auto py-1">
             {options.map((option) => (
               <div
                 key={option.value}

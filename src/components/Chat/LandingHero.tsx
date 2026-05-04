@@ -12,7 +12,13 @@ const LandingHero = ({ children, isReadOnly = false }) => {
                 </div>
             )}
 
-            {children}
+            <div className="ui-landing-center-stack">
+                <div className="ui-landing-copy">
+                    <h1 className="ui-landing-greeting">{t('landing.greeting')}</h1>
+                </div>
+
+                {children}
+            </div>
         </section>
     );
 };

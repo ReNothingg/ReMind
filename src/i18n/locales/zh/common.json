@@ -63,6 +63,7 @@
   "landing": {
     "ariaLabel": "开始屏幕",
     "readonlyBanner": "公共聊天：只读",
+    "greeting": "你在做什么？",
     "welcomeMessages": [
       "欢迎！",
       "你好！今天我能帮什么？",

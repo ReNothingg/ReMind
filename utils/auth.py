@@ -25,6 +25,7 @@ db: Any = SQLAlchemy()
 oauth = OAuth()
 OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
+ROOT_ADMIN_USER_ID = 1
 
 
 class User(db.Model):
@@ -41,20 +42,41 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     oauth_provider = db.Column(db.String(20), nullable=True)
     oauth_id = db.Column(db.String(100), nullable=True)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_banned = db.Column(db.Boolean, default=False, nullable=False)
+    is_blocked = db.Column(db.Boolean, default=False, nullable=False)
+    moderation_reason = db.Column(db.String(280), nullable=True)
 
     def __repr__(self):
         return f"<User {self.username}>"
 
     def to_dict(self):
+        is_super_admin = self.id == ROOT_ADMIN_USER_ID
         return {
             "id": self.id,
             "username": self.username,
             "name": self.name,
             "email": self.email,
             "is_confirmed": self.is_confirmed,
+            "is_admin": bool(self.is_admin or is_super_admin),
+            "is_super_admin": is_super_admin,
+            "is_banned": bool(self.is_banned),
+            "is_blocked": bool(self.is_blocked),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "oauth_provider": self.oauth_provider,
         }
+
+
+def is_super_admin_user(user: User | None) -> bool:
+    return bool(user and user.id == ROOT_ADMIN_USER_ID)
+
+
+def is_admin_user(user: User | None) -> bool:
+    return bool(user and (user.id == ROOT_ADMIN_USER_ID or user.is_admin))
+
+
+def is_account_disabled(user: User | None) -> bool:
+    return bool(user and (user.is_banned or user.is_blocked))
 
 
 class UserSettings(db.Model):
@@ -153,6 +175,9 @@ class Mind(db.Model):
     visibility = db.Column(db.String(20), default="private", nullable=False, index=True)
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     is_system = db.Column(db.Boolean, default=False, nullable=False)
+    is_featured = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_banned = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    moderation_reason = db.Column(db.String(280), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -179,6 +204,9 @@ class Mind(db.Model):
             "visibility": self.visibility,
             "is_verified": bool(self.is_verified),
             "is_system": bool(self.is_system),
+            "is_featured": bool(self.is_featured),
+            "is_banned": bool(self.is_banned),
+            "moderation_reason": self.moderation_reason if is_owner else None,
             "is_owner": is_owner,
             "can_edit": is_owner and not self.is_system,
             "is_pinned": bool(pinned),
@@ -681,6 +709,14 @@ def register_auth_routes(app):
                 record_login_attempt(email, False)
                 log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "invalid_credentials")
                 flash("Неверный email или пароль", "danger")
+                from config import TURNSTILE_SITE_KEY
+
+                return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
+
+            if is_account_disabled(user):
+                record_login_attempt(email, False)
+                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "account_disabled")
+                flash("Аккаунт ограничен администратором", "danger")
                 from config import TURNSTILE_SITE_KEY
 
                 return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
@@ -1206,6 +1242,10 @@ def register_auth_routes(app):
                 record_login_attempt(email, False)
                 return jsonify({"error": "Неверный email или пароль"}), 401
 
+            if is_account_disabled(user):
+                record_login_attempt(email, False)
+                return jsonify({"error": "Аккаунт ограничен администратором"}), 403
+
             if not user.is_confirmed:
                 return (
                     jsonify({"error": "Пожалуйста, подтвердите ваш email перед входом"}),
@@ -1669,6 +1709,51 @@ def setup_auth(app):
                         )
                     )
                 app.logger.info("Added missing user.name column to existing database")
+            user_admin_columns = {
+                "is_admin": 'ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE NOT NULL',
+                "is_banned": 'ALTER TABLE "user" ADD COLUMN is_banned BOOLEAN DEFAULT FALSE NOT NULL',
+                "is_blocked": 'ALTER TABLE "user" ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE NOT NULL',
+                "moderation_reason": 'ALTER TABLE "user" ADD COLUMN moderation_reason VARCHAR(280)',
+            }
+            missing_user_admin_columns = [
+                (column_name, ddl)
+                for column_name, ddl in user_admin_columns.items()
+                if column_name not in user_columns
+            ]
+            if missing_user_admin_columns:
+                with db.engine.begin() as connection:
+                    for _column_name, ddl in missing_user_admin_columns:
+                        connection.execute(text(ddl))
+                app.logger.info("Added missing user admin/moderation columns")
+        if "mind" in inspector.get_table_names():
+            mind_columns = {column["name"] for column in inspector.get_columns("mind")}
+            mind_admin_columns = {
+                "is_featured": "ALTER TABLE mind ADD COLUMN is_featured BOOLEAN DEFAULT FALSE NOT NULL",
+                "is_banned": "ALTER TABLE mind ADD COLUMN is_banned BOOLEAN DEFAULT FALSE NOT NULL",
+                "moderation_reason": "ALTER TABLE mind ADD COLUMN moderation_reason VARCHAR(280)",
+            }
+            missing_mind_admin_columns = [
+                (column_name, ddl)
+                for column_name, ddl in mind_admin_columns.items()
+                if column_name not in mind_columns
+            ]
+            if missing_mind_admin_columns:
+                with db.engine.begin() as connection:
+                    for _column_name, ddl in missing_mind_admin_columns:
+                        connection.execute(text(ddl))
+                    connection.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_mind_is_featured "
+                            "ON mind (is_featured)"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_mind_is_banned "
+                            "ON mind (is_banned)"
+                        )
+                    )
+                app.logger.info("Added missing mind admin/moderation columns")
         if "user_chat_history" in inspector.get_table_names():
             chat_columns = {column["name"] for column in inspector.get_columns("user_chat_history")}
             if "mind_id" not in chat_columns:

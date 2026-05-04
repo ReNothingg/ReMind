@@ -92,6 +92,9 @@ export type Mind = {
     visibility: MindVisibility;
     is_verified: boolean;
     is_system: boolean;
+    is_featured?: boolean;
+    is_banned?: boolean;
+    moderation_reason?: string | null;
     is_owner: boolean;
     can_edit: boolean;
     is_pinned: boolean;
@@ -128,6 +131,136 @@ type SessionMindResponse = {
 
 type MindCategoryResponse = {
     categories?: MindCategory[];
+};
+
+export type AdminPagination = {
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type AdminUser = {
+    id: number;
+    username: string;
+    name?: string | null;
+    email: string;
+    is_confirmed: boolean;
+    is_admin: boolean;
+    is_super_admin: boolean;
+    is_banned: boolean;
+    is_blocked: boolean;
+    moderation_reason?: string | null;
+    oauth_provider?: string | null;
+    created_at?: string | null;
+    mind_count: number;
+    chat_count: number;
+};
+
+export type AdminMind = {
+    id: number;
+    public_id: string;
+    name: string;
+    description: string;
+    category: string;
+    visibility: MindVisibility;
+    is_verified: boolean;
+    is_featured: boolean;
+    is_banned: boolean;
+    is_system: boolean;
+    moderation_reason?: string | null;
+    owner?: {
+        id: number;
+        username: string;
+        email: string;
+    } | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+};
+
+export type AdminOverview = {
+    admin: {
+        id: number;
+        username: string;
+        is_super_admin: boolean;
+    };
+    stats: {
+        users: {
+            total: number;
+            confirmed: number;
+            admins: number;
+            banned: number;
+            blocked: number;
+            new_24h: number;
+        };
+        minds: {
+            total: number;
+            store: number;
+            featured: number;
+            banned: number;
+            verified: number;
+            new_24h: number;
+        };
+        sessions: {
+            total: number;
+            updated_24h: number;
+        };
+    };
+    server: {
+        status: string;
+        uptime_seconds: number;
+        started_at?: string | null;
+        timestamp: string;
+        process: {
+            pid: number;
+            python: string;
+            platform: string;
+            memory: {
+                max_rss_bytes?: number | null;
+            };
+            load_average?: number[] | null;
+        };
+        components: {
+            database: { status: string };
+            redis: { status: string };
+            storage: Array<{
+                key: string;
+                path: string;
+                exists: boolean;
+                writable: boolean;
+            }>;
+        };
+    };
+};
+
+type AdminUsersResponse = {
+    users?: AdminUser[];
+    pagination?: AdminPagination;
+};
+
+type AdminUserResponse = {
+    user?: AdminUser;
+};
+
+type AdminMindsResponse = {
+    minds?: AdminMind[];
+    pagination?: AdminPagination;
+};
+
+type AdminMindResponse = {
+    mind?: AdminMind;
+};
+
+type AdminUserUpdatePayload = {
+    is_banned?: boolean;
+    is_blocked?: boolean;
+    moderation_reason?: string | null;
+};
+
+type AdminMindUpdatePayload = {
+    is_banned?: boolean;
+    is_featured?: boolean;
+    is_verified?: boolean;
+    moderation_reason?: string | null;
 };
 
 type CanvasActionResponse = Record<string, unknown>;
@@ -528,6 +661,91 @@ export const apiService = {
             }
         );
         return data.mind || null;
+    },
+
+    async getAdminOverview(): Promise<AdminOverview> {
+        return fetchApi<AdminOverview>('/api/admin/overview', { method: 'GET' });
+    },
+
+    async listAdminUsers(params: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        status?: string;
+    } = {}): Promise<{ users: AdminUser[]; pagination: AdminPagination }> {
+        const data = await fetchApi<AdminUsersResponse>('/api/admin/users', {
+            method: 'GET',
+            query: {
+                page: params.page,
+                page_size: params.pageSize,
+                q: params.q,
+                status: params.status,
+            },
+        });
+        return {
+            users: data.users || [],
+            pagination: data.pagination || { page: 1, page_size: 25, total: 0 },
+        };
+    },
+
+    async updateAdminUser(userId: number, payload: AdminUserUpdatePayload): Promise<AdminUser> {
+        const data = await fetchApi<AdminUserResponse>(`/api/admin/users/${userId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!data.user) {
+            throw new Error('User was not returned by the server.');
+        }
+        return data.user;
+    },
+
+    async setAdminRole(userId: number, isAdmin: boolean): Promise<AdminUser> {
+        const data = await fetchApi<AdminUserResponse>(`/api/admin/users/${userId}/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_admin: isAdmin }),
+        });
+        if (!data.user) {
+            throw new Error('User was not returned by the server.');
+        }
+        return data.user;
+    },
+
+    async listAdminMinds(params: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        status?: string;
+    } = {}): Promise<{ minds: AdminMind[]; pagination: AdminPagination }> {
+        const data = await fetchApi<AdminMindsResponse>('/api/admin/minds', {
+            method: 'GET',
+            query: {
+                page: params.page,
+                page_size: params.pageSize,
+                q: params.q,
+                status: params.status,
+            },
+        });
+        return {
+            minds: data.minds || [],
+            pagination: data.pagination || { page: 1, page_size: 25, total: 0 },
+        };
+    },
+
+    async updateAdminMind(publicId: string, payload: AdminMindUpdatePayload): Promise<AdminMind> {
+        const data = await fetchApi<AdminMindResponse>(
+            `/api/admin/minds/${encodeURIComponent(publicId)}`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }
+        );
+        if (!data.mind) {
+            throw new Error('Mind was not returned by the server.');
+        }
+        return data.mind;
     },
 
     async canvasAction(

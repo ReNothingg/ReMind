@@ -63,6 +63,7 @@
   "landing": {
     "ariaLabel": "Start screen",
     "readonlyBanner": "Public chat: read-only",
+    "greeting": "What are you working on?",
     "welcomeMessages": [
       "Welcome!",
       "Hi! How can I help today?",

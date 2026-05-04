@@ -2,7 +2,7 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
-from flask import Flask, g, request
+from flask import Flask, g, request, session
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -143,6 +143,40 @@ def create_app():
             )
             return make_error(error_message, status=403, code="invalid_user_agent")
         g.anonymized_ip = anonymize_ip(request.remote_addr)
+
+    @app.before_request
+    def enforce_active_account_status():
+        allowed_paths = {
+            "/api/auth/check",
+            "/api/auth/config",
+            "/api/auth/logout",
+            "/logout",
+            "/health",
+            "/metrics",
+        }
+        if request.path in allowed_paths:
+            return None
+
+        raw_user_id = session.get("user_id")
+        if raw_user_id is None:
+            return None
+
+        try:
+            user_id = int(raw_user_id)
+        except (TypeError, ValueError):
+            return None
+
+        from utils.auth import User, db, is_account_disabled
+
+        user = db.session.get(User, user_id)
+        if user and is_account_disabled(user):
+            return make_error(
+                "Account is restricted by an administrator",
+                status=403,
+                code="account_disabled",
+            )
+
+        return None
 
     @app.after_request
     def add_security_headers(response):

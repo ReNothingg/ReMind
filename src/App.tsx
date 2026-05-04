@@ -45,6 +45,7 @@ const ImageLightbox = lazy(() => import('./components/Modals/ImageLightbox'));
 const ShareModal = lazy(() => import('./features/share/components/ShareModal'));
 const MindsPage = lazy(() => import('./features/minds/MindsPage'));
 const MindEditorPage = lazy(() => import('./features/minds/MindEditorPage'));
+const AdminPanel = lazy(() => import('./features/admin/AdminPanel'));
 
 function normalizeAppPath(path: string): string {
     if (path === '/editor') {
@@ -475,6 +476,12 @@ const MainLayout = () => {
         setMobileRailOpen(false);
     }, [clearChat, navigateTo]);
 
+    const handleAdminClick = useCallback(() => {
+        clearChat({ historyMode: 'none' });
+        navigateTo('/admin');
+        setMobileRailOpen(false);
+    }, [clearChat, navigateTo]);
+
     const handleEditMind = useCallback((mind: Mind) => {
         clearChat({ historyMode: 'none' });
         navigateTo(`/minds/editor/${encodeURIComponent(mind.public_id)}`);
@@ -517,7 +524,8 @@ const MainLayout = () => {
         : null;
     const isMindsRoute = routePath === '/minds';
     const isEditorRoute = routePath === '/minds/editor' || routePath.startsWith('/minds/editor/');
-    const isChatSurface = !isMindsRoute && !isEditorRoute;
+    const isAdminRoute = routePath === '/admin' || routePath.startsWith('/admin/');
+    const isChatSurface = !isMindsRoute && !isEditorRoute && !isAdminRoute;
 
     return (
         <>
@@ -533,6 +541,7 @@ const MainLayout = () => {
                         onSelectSession={handleSelectSession}
                         onNewChat={handleNewChat}
                         onMindsClick={handleMindsClick}
+                        onAdminClick={handleAdminClick}
                         onSettingsClick={() => setSettingsOpen(true)}
                         currentPath={routePath}
                         activeMindId={activeMind?.public_id || null}
@@ -566,7 +575,14 @@ const MainLayout = () => {
                     showChatControls={isChatSurface}
                 />
 
-                {isMindsRoute ? (
+                {isAdminRoute ? (
+                    <Suspense fallback={null}>
+                        <AdminPanel
+                            isAuthenticated={isAuthenticated}
+                            onOpenAuth={() => setAuthOpen('login')}
+                        />
+                    </Suspense>
+                ) : isMindsRoute ? (
                     <Suspense fallback={null}>
                         <MindsPage
                             isAuthenticated={isAuthenticated}

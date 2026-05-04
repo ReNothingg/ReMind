@@ -103,6 +103,11 @@ def register_system_routes(api_bp):
     def spa_minds_route(anything=None):
         return send_from_directory(current_app.static_folder, "index.html")
 
+    @api_bp.route("/admin")
+    @api_bp.route("/admin/<path:anything>")
+    def spa_admin_route(anything=None):
+        return send_from_directory(current_app.static_folder, "index.html")
+
     @api_bp.route("/editor")
     @api_bp.route("/editor/<path:anything>")
     def legacy_editor_route(anything=None):

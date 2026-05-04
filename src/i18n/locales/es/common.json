@@ -63,6 +63,7 @@
   "landing": {
     "ariaLabel": "Pantalla de inicio",
     "readonlyBanner": "Chat público: solo lectura",
+    "greeting": "¿En qué estás trabajando?",
     "welcomeMessages": [
       "¡Bienvenido!",
       "¡Hola! ¿En qué puedo ayudar hoy?",

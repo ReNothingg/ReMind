@@ -136,6 +136,8 @@ def _generate_public_id() -> str:
 
 
 def _can_view_mind(mind: Mind, viewer_id: int | None) -> bool:
+    if mind.is_banned and not (viewer_id is not None and mind.user_id == viewer_id):
+        return False
     if mind.visibility in {"store", "link"}:
         return True
     return bool(viewer_id is not None and mind.user_id == viewer_id)
@@ -173,6 +175,8 @@ def serialize_mind_for_session(mind_id: int | None, viewer_id: int | None) -> di
 
     mind = db.session.get(Mind, mind_id)
     if not mind or not _can_view_mind(mind, viewer_id):
+        return None
+    if mind.is_banned:
         return None
 
     pinned = bool(
@@ -252,6 +256,8 @@ def resolve_mind_context_for_chat(public_id: str | None, viewer_id: int | None) 
         return None
 
     mind = _get_mind_or_404(public_id, viewer_id)
+    if mind.is_banned:
+        raise ApiError("Mind is unavailable", status=403, code="mind_unavailable")
     return {
         "id": mind.id,
         "public_id": mind.public_id,
@@ -269,6 +275,8 @@ def resolve_bound_mind_context_for_chat(mind_id: int | None, viewer_id: int | No
     mind = db.session.get(Mind, mind_id)
     if not mind or not _can_view_mind(mind, viewer_id):
         return None
+    if mind.is_banned:
+        return None
 
     return {
         "id": mind.id,
@@ -283,7 +291,10 @@ def resolve_bound_mind_context_for_chat(mind_id: int | None, viewer_id: int | No
 def get_mind_for_session_binding(public_id: str | None, viewer_id: int | None) -> Mind | None:
     if not public_id:
         return None
-    return _get_mind_or_404(public_id, viewer_id)
+    mind = _get_mind_or_404(public_id, viewer_id)
+    if mind.is_banned:
+        raise ApiError("Mind is unavailable", status=403, code="mind_unavailable")
+    return mind
 
 
 def register_mind_routes(api_bp):
@@ -302,7 +313,11 @@ def register_mind_routes(api_bp):
             viewer_id = require_authenticated_user_id()
             query = Mind.query.filter(Mind.user_id == viewer_id)
         else:
-            query = Mind.query.filter(Mind.visibility == "store", Mind.is_system.is_(False))
+            query = Mind.query.filter(
+                Mind.visibility == "store",
+                Mind.is_system.is_(False),
+                Mind.is_banned.is_(False),
+            )
 
         query = _apply_category(query, request.args.get("category", ""))
         query = _apply_search(query, request.args.get("q", ""))
@@ -311,6 +326,7 @@ def register_mind_routes(api_bp):
             query = query.order_by(Mind.updated_at.desc(), Mind.created_at.desc())
         else:
             query = query.order_by(
+                Mind.is_featured.desc(),
                 Mind.is_verified.desc(),
                 Mind.updated_at.desc(),
                 Mind.created_at.desc(),
@@ -328,6 +344,7 @@ def register_mind_routes(api_bp):
             db.session.query(Mind, MindPin.created_at)
             .join(MindPin, MindPin.mind_id == Mind.id)
             .filter(MindPin.user_id == viewer_id)
+            .filter(Mind.is_banned.is_(False))
             .order_by(MindPin.created_at.asc())
             .all()
         )

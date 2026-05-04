@@ -63,6 +63,7 @@
   "landing": {
     "ariaLabel": "Écran de démarrage",
     "readonlyBanner": "Chat public : lecture seule",
+    "greeting": "Sur quoi travaillez-vous ?",
     "welcomeMessages": [
       "Bienvenue !",
       "Bonjour ! Comment puis-je aider aujourd'hui ?",

@@ -2,17 +2,21 @@ import { apiAuthCheck, apiAuthLogin } from './openapiClient';
 import { ApiClientError, extractApiErrorMessage, requestJson } from './http';
 import type { AccountFieldName } from '../utils/accountValidation';
 
-type AuthUser = {
+export type AuthUser = {
     id: number;
     username: string;
     name?: string | null;
     email: string;
     is_confirmed: boolean;
+    is_admin?: boolean;
+    is_super_admin?: boolean;
+    is_banned?: boolean;
+    is_blocked?: boolean;
     created_at?: string | null;
     oauth_provider?: string | null;
 };
 
-type AuthCheckResult = {
+export type AuthCheckResult = {
     authenticated: boolean;
     user: AuthUser | null;
 };
