@@ -596,6 +596,10 @@
     height: 100%;
   }
 
+  .ui-rail-menu-anchor-open {
+    z-index: 10001;
+  }
+
   .ui-rail-menu-trigger {
     @apply flex size-6 items-center justify-center rounded-md border-0 bg-transparent p-0 text-subtle transition duration-150 ease-out hover:bg-interactive hover:text-muted;
     appearance: none;
@@ -634,7 +638,7 @@
 
   .ui-rail-menu-item svg {
     @apply h-4 w-4 shrink-0;
-    color: var(--color-text-tertiary);
+    color: currentColor;
   }
 
   .ui-rail-menu-item:focus-visible {
@@ -651,11 +655,11 @@
   }
 
   .ui-rail-menu-item-danger svg {
-    color: var(--color-error);
+    color: currentColor;
   }
 
   .favorite-menu-item.ui-rail-menu-item svg {
-    color: var(--color-accent);
+    color: currentColor;
   }
 
   .ui-rail-empty {
