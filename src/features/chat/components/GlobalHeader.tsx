@@ -4,9 +4,12 @@ import { useTranslation } from 'react-i18next';
 import type { ShareInfo } from '../../share/components/ShareModal';
 import GuestButtons from './GuestButtons';
 import { cn } from '../../../utils/cn';
+import type { AuthUser } from '../../../services/auth';
+import { getAvailableModels, getModelStageLabel } from '../modelCatalog';
 
 interface GlobalHeaderProps {
     isAuthenticated: boolean;
+    currentUser: AuthUser | null;
     onMenuToggle: () => void;
     currentModel: string;
     onModelChange: (modelId: string) => void;
@@ -159,6 +162,7 @@ function ModelSelector({
 
 export default function GlobalHeader({
     isAuthenticated,
+    currentUser,
     onMenuToggle,
     currentModel,
     onModelChange,
@@ -188,22 +192,17 @@ export default function GlobalHeader({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const defaultModel: ModelOption = {
+    const models: ModelOption[] = getAvailableModels(currentUser).map((model) => ({
+        id: model.id,
+        name: model.name,
+        desc: t(model.descKey, { defaultValue: model.descFallback }),
+        badge: getModelStageLabel(model.stage),
+    }));
+    const defaultModel = models.find((model) => model.id === 'gemini') ?? models[0] ?? {
         id: 'gemini',
         name: 'Gemini',
         desc: t('models.gemini.desc'),
-        badge: t('models.gemini.badge'),
     };
-    const models: ModelOption[] = [
-        defaultModel,
-        {
-            id: 'demo_image',
-            name: 'Image Demo',
-            desc: t('models.demoImage.desc', { defaultValue: 'Always returns a generated demo image' }),
-            badge: t('models.demoImage.badge', { defaultValue: 'Demo' }),
-        },
-        { id: 'echo', name: 'Echo', desc: t('models.echo.desc') },
-    ];
 
     const activeModel = models.find((model) => model.id === currentModel) ?? defaultModel;
     const isShared = !!shareInfo?.isPublic;

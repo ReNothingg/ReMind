@@ -12,6 +12,7 @@ import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
 import { ALLOW_GUEST_CHATS_SAVE } from './utils/constants';
 import GlobalHeader from './features/chat/components/GlobalHeader';
+import { getFallbackModelId, isModelAvailable } from './features/chat/modelCatalog';
 import { useSessionList } from './features/sessions/hooks/useSessionList';
 
 type AuthModalState = false | 'login' | 'register';
@@ -77,7 +78,7 @@ const MainLayout = () => {
     const [pinnedMinds, setPinnedMinds] = useState<Mind[]>([]);
 
     const { isSettingsView, clearHash } = useURLRouter();
-    const { isAuthenticated, loading: isAuthLoading } = useAuth();
+    const { isAuthenticated, loading: isAuthLoading, user } = useAuth();
     const { settings } = useSettings();
     const { t } = useTranslation();
 
@@ -120,6 +121,13 @@ const MainLayout = () => {
 
         return () => mediaQuery.removeEventListener('change', handleViewportChange);
     }, []);
+
+    useEffect(() => {
+        if (isAuthLoading || isModelAvailable(currentModel, user)) {
+            return;
+        }
+        setCurrentModel(getFallbackModelId(user));
+    }, [currentModel, isAuthLoading, user]);
 
     useEffect(() => {
         if (isMobileRailOpen && (!isMobileViewport || !isAuthenticated)) {
@@ -562,6 +570,7 @@ const MainLayout = () => {
             <main className="ui-app-main-shell">
                 <GlobalHeader
                     isAuthenticated={isAuthenticated}
+                    currentUser={user}
                     onMenuToggle={handleRailToggle}
                     currentModel={currentModel}
                     onModelChange={setCurrentModel}

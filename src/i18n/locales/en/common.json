@@ -125,12 +125,10 @@
   "models": {
     "choose": "Choose a model",
     "gemini": {
-      "desc": "General-purpose Google model",
-      "badge": "Beta"
+      "desc": "General-purpose Google model"
     },
     "demoImage": {
-      "desc": "Always returns a generated demo image",
-      "badge": "Demo"
+      "desc": "Image generation model in development"
     },
     "echo": {
       "desc": "Echo bot for testing"

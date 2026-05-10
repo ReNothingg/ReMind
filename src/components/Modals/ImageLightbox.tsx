@@ -89,7 +89,7 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
         styleOptions.find((option) => option.value === imageStyle)?.label || imageStyle;
     const modelLabel =
         currentModel === 'demo_image'
-            ? 'Image Demo'
+            ? 'Mind image'
             : normalizeModelName(currentModel);
 
     const handleRegenerate = async () => {

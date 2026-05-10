@@ -16,6 +16,7 @@ from ai_engine import get_model_function
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
+from services.model_access import can_user_access_model, get_model_stage
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
@@ -375,6 +376,14 @@ def register_chat_routes(api_bp):
             and not (db_user_id and share_entry.user_id == db_user_id)
         ):
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
+        if not can_user_access_model(model_name, db_user_id):
+            stage = get_model_stage(model_name).value
+            raise ApiError(
+                f"Model '{model_name}' is not available for this account.",
+                status=403,
+                code="model_access_denied",
+                extra={"model": model_name, "stage": stage},
+            )
 
         history = _resolve_history(user_data, resolved_session_id, db_user_id)
         mind_context = _resolve_chat_mind_context(

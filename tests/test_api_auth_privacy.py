@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import routes.features.chat as chat_routes
 import services.chat_history as chat_history
 import utils.auth as auth_module
 from config import SESSION_COOKIE_NAME
@@ -184,14 +185,22 @@ def test_login_google_callback_error_redirect_drops_provider_query_params(client
     assert "error=" not in response.headers["Location"]
 
 
-def test_chat_echo_as_guest_returns_reply_and_request_id(client):
-    response = client.post("/chat", json={"message": "hello from pytest", "model": "echo"})
+def test_chat_release_model_as_guest_returns_reply_and_request_id(client, monkeypatch):
+    rate_limit_store.clear()
+    monkeypatch.setattr(
+        chat_routes,
+        "get_model_function",
+        lambda _name: lambda _user_id, payload: {"reply": payload.get("message", "")},
+    )
+
+    response = client.post("/chat", json={"message": "hello from pytest", "model": "gemini"})
 
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["ok"] is True
     assert payload["reply"] == "hello from pytest"
     assert response.headers.get("X-Request-Id")
+    rate_limit_store.clear()
 
 
 def test_chat_authenticated_uses_requested_session_id(client, app, create_confirmed_user, login):
@@ -251,7 +260,7 @@ def test_chat_authenticated_uses_requested_session_id(client, app, create_confir
 
 
 def test_chat_demo_image_stream_returns_image_and_persists_history(
-    client, app, monkeypatch, tmp_path
+    client, app, create_confirmed_user, login, monkeypatch, tmp_path
 ):
     generated_dir = tmp_path / "generated_images"
     chats_dir = tmp_path / "chats"
@@ -260,6 +269,13 @@ def test_chat_demo_image_stream_returns_image_and_persists_history(
 
     monkeypatch.setattr(chat_history, "CHATS_FOLDER", chats_dir)
     app.config["CREATE_IMAGE_FOLDER"] = str(generated_dir)
+    rate_limit_store.clear()
+    user_id, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+    csrf_value = client.get(
+        "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
+    ).headers.get("X-CSRF-Token")
+    assert csrf_value
 
     response = client.post(
         "/chat",
@@ -268,6 +284,7 @@ def test_chat_demo_image_stream_returns_image_and_persists_history(
             "model": "demo_image",
             "user_id": "demo_image_session",
         },
+        headers={"User-Agent": "Mozilla/5.0 (pytest)", "X-CSRF-Token": csrf_value},
     )
 
     assert response.status_code == 200
@@ -277,7 +294,13 @@ def test_chat_demo_image_stream_returns_image_and_persists_history(
     assert '"status": "generating_image"' in body
     assert '"/images/' in body
 
-    history = chat_history.load_chat_history("demo_image_session", allow_file_fallback=True)
+    with app.app_context():
+        stored_chat = UserChatHistory.query.filter_by(
+            user_id=user_id,
+            session_id="demo_image_session",
+        ).first()
+        assert stored_chat is not None
+        history = stored_chat.get_messages()
     assert len(history) == 2
 
     assistant_message = history[-1]
@@ -289,6 +312,7 @@ def test_chat_demo_image_stream_returns_image_and_persists_history(
 
     image_name = Path(image_parts[0]["url_path"]).name
     assert (generated_dir / image_name).is_file()
+    rate_limit_store.clear()
 
 
 def test_list_sessions_paginated_with_public_share(client, app, create_confirmed_user, login):
