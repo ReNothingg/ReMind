@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 from flask import request
 
-from utils.auth import User, UserSettings
+from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def get_user_settings_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     if not user_id:
         return {}
     try:
-        u = User.query.get(int(user_id))
+        u = db.session.get(User, int(user_id))
         if not u:
             return {}
         settings = UserSettings.query.filter_by(user_id=u.id).first()
@@ -43,7 +43,7 @@ def get_user_profile_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     if not user_id:
         return {}
     try:
-        user = User.query.get(int(user_id))
+        user = db.session.get(User, int(user_id))
         if not user:
             return {}
         return {

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 
@@ -52,7 +53,6 @@ const CustomSelect = ({
 
   useLayoutEffect(() => {
     if (!isOpen) {
-      setDropdownMaxHeight(null);
       return;
     }
 
@@ -127,7 +127,13 @@ const CustomSelect = ({
 
   const handleToggle = () => {
     if (!disabled) {
-      setIsOpen(!isOpen);
+      if (isOpen) {
+        setIsOpen(false);
+        return;
+      }
+      setDropDirection('down');
+      setDropdownMaxHeight(null);
+      setIsOpen(true);
     }
   };
 
@@ -198,7 +204,7 @@ const CustomSelect = ({
           )}
           ref={dropdownRef}
           role="listbox"
-          style={dropdownMaxHeight ? ({ '--custom-select-dropdown-max-height': `${dropdownMaxHeight}px` } as React.CSSProperties) : undefined}
+          style={dropdownMaxHeight ? ({ '--custom-select-dropdown-max-height': `${dropdownMaxHeight}px` } as CSSProperties) : undefined}
         >
           <div className="custom-select-list ui-scrollbar-thin overflow-x-hidden overflow-y-auto py-1">
             {options.map((option) => (

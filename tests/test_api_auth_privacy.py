@@ -31,6 +31,36 @@ def test_api_auth_login_and_check(client, create_confirmed_user, login):
     assert check_payload["user"]["name"] == "Ada Lovelace"
 
 
+def test_api_auth_config_reports_when_turnstile_is_required(client, monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "TURNSTILE_SITE_KEY", "site-key")
+    monkeypatch.setattr(config, "LOCALHOST_MODE", False)
+
+    response = client.get("/api/auth/config")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["turnstile_site_key"] == "site-key"
+    assert payload["turnstile_required"] is True
+
+    monkeypatch.setattr(config, "LOCALHOST_MODE", True)
+
+    localhost_response = client.get("/api/auth/config")
+
+    assert localhost_response.status_code == 200
+    assert localhost_response.get_json()["turnstile_required"] is False
+
+
+def test_html_security_headers_allow_turnstile_iframe(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    csp = response.headers["Content-Security-Policy"]
+    assert "frame-src 'self' https://challenges.cloudflare.com" in csp
+    assert "Cross-Origin-Embedder-Policy" not in response.headers
+
+
 def test_api_update_profile_returns_validation_errors_and_updates_name(
     client, app, create_confirmed_user, login
 ):
@@ -62,7 +92,7 @@ def test_api_update_profile_returns_validation_errors_and_updates_name(
     assert updated_payload["user"]["name"] == "Ada Lovelace"
 
     with app.app_context():
-        refreshed_user = User.query.get(user_id)
+        refreshed_user = db.session.get(User, user_id)
         assert refreshed_user.username == "updated_user"
         assert refreshed_user.name == "Ada Lovelace"
 
@@ -183,6 +213,43 @@ def test_login_google_callback_error_redirect_drops_provider_query_params(client
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/login")
     assert "error=" not in response.headers["Location"]
+
+
+def test_legacy_register_and_profile_routes_land_on_spa(client, create_confirmed_user, login):
+    register_response = client.get("/register")
+    assert register_response.status_code == 302
+    assert register_response.headers["Location"].endswith("/?auth=register")
+
+    user_id, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+
+    profile_response = client.get("/profile")
+    assert profile_response.status_code == 302
+    assert profile_response.headers["Location"].endswith("/#settings/account")
+
+    good_response = client.get("/good")
+    assert good_response.status_code == 303
+    assert good_response.headers["Location"].endswith("/")
+    assert user_id
+
+
+def test_password_reset_pages_render_without_removed_template_errors(
+    client, app, create_confirmed_user
+):
+    forgot_response = client.get("/forgot_password")
+    assert forgot_response.status_code == 200
+    assert "Сброс пароля" in forgot_response.get_data(as_text=True)
+
+    user_id, _, _ = create_confirmed_user()
+    with app.app_context():
+        user = db.session.get(User, user_id)
+        user.reset_token = "reset-token"
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.session.commit()
+
+    reset_response = client.get("/reset_password/reset-token")
+    assert reset_response.status_code == 200
+    assert "Новый пароль" in reset_response.get_data(as_text=True)
 
 
 def test_chat_release_model_as_guest_returns_reply_and_request_id(client, monkeypatch):
@@ -422,7 +489,7 @@ def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user,
     assert deleted_payload["items_deleted"]["chat_shares"] == 1
 
     with app.app_context():
-        user_exists = User.query.get(user_id)
+        user_exists = db.session.get(User, user_id)
         chats_count = UserChatHistory.query.filter_by(user_id=user_id).count()
         shares_count = ChatShare.query.filter_by(user_id=user_id).count()
         assert user_exists is not None
@@ -451,7 +518,7 @@ def test_privacy_delete_account_removes_user_and_clears_session(
     assert deleted_payload["account_deleted"] is True
 
     with app.app_context():
-        assert User.query.get(user_id) is None
+        assert db.session.get(User, user_id) is None
 
     check_response = client.get("/api/auth/check")
     payload = check_response.get_json()

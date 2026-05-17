@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const Spinwheel = ({ initialState }) => {

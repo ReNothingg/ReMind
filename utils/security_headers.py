@@ -64,7 +64,6 @@ def apply_security_headers(response):
             "max-age=31536000; includeSubDomains; preload"
         )
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     content_type = (response.headers.get("Content-Type") or "").lower()
     is_json_response = "application/json" in content_type

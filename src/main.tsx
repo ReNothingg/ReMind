@@ -1,20 +1,25 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import { initI18n } from './i18n/index'
-import './styles/tailwind.css'
+import { StrictMode } from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { initI18n } from './i18n/index';
+import 'katex/dist/katex.min.css';
+import './styles/tailwind.css';
+
 if (!sessionStorage.getItem('userID')) {
     sessionStorage.setItem('userID', `uid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
 }
 window.pageLoadTime = Date.now();
 
 const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element #root was not found.');
+}
 
 const renderApp = () => {
   ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
+    <StrictMode>
       <App />
-    </React.StrictMode>,
+    </StrictMode>,
   );
 };
 

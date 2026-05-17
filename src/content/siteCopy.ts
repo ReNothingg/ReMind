@@ -47,9 +47,9 @@ type SiteCopy = {
 
 const SITE_COPY: Record<'en' | 'ru', SiteCopy> = {
     en: {
-        metaDescription: 'AI workspace for long-running chats, file analysis, and shareable sessions.',
+        metaDescription: 'ReMind for everyone. Even for those who havent figured out why yet',
         metaKeywords:
-            'ReMind, AI workspace, AI chat, file analysis, shared chat, session workspace, Gemini assistant',
+            'ReMind, AI workspace, AI chat, file analysis, shared chat, session workspace, assistant',
         sharedChatTitle: 'Shared chat',
         sharedChatDescription: 'View a shared ReMind conversation in read-only mode.',
         landing: {
@@ -131,9 +131,9 @@ const SITE_COPY: Record<'en' | 'ru', SiteCopy> = {
         },
     },
     ru: {
-        metaDescription: 'AI-рабочее пространство для длинных диалогов, анализа файлов и общих сессий.',
+        metaDescription: 'ReMind — для всех. Даже для тех, кто ещё не понял зачем.',
         metaKeywords:
-            'ReMind, AI workspace, AI chat, анализ файлов, история чатов, общие ссылки, рабочая сессия, Gemini ассистент',
+            'ReMind, AI workspace, AI chat, анализ файлов, история чатов, общие ссылки, рабочая сессия, ассистент',
         sharedChatTitle: 'Публичный чат',
         sharedChatDescription: 'Откройте shared-сессию ReMind в режиме только для чтения.',
         landing: {

@@ -44,7 +44,7 @@ def test_mind_create_list_pin_and_delete_lifecycle(client, app, create_confirmed
     assert mine_response.status_code == 200
     assert [mind["public_id"] for mind in mine_response.get_json()["minds"]] == [created["public_id"]]
 
-    public_response = client.get(f"/api/minds/{created['public_id']}")
+    public_response = client.application.test_client().get(f"/api/minds/{created['public_id']}")
     assert public_response.status_code == 404
 
     pin_response = client.post(f"/api/minds/{created['public_id']}/pin", headers=headers)

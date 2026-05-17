@@ -47,6 +47,7 @@
       "emailTooLong": "Email must not exceed 100 characters",
       "passwordTooLong": "Password must not exceed 100 characters",
       "turnstileRequired": "Confirm that you are not a robot and try again.",
+      "turnstileLoadError": "Cloudflare verification did not load. Refresh the page or disable blockers for this site.",
       "requestError": "Network or server error"
     }
   },

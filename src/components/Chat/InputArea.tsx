@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
@@ -208,7 +208,8 @@ const InputArea = ({
 
     const handleMouseUp = useCallback(
         (event) => {
-            if (event.target.closest('button, .quote-button')) return;
+            const eventTarget = event.target;
+            if (eventTarget instanceof Element && eventTarget.closest('button, .quote-button')) return;
 
             setTimeout(() => {
                 const selection = window.getSelection();
@@ -227,7 +228,7 @@ const InputArea = ({
                 const commonAncestor = range.commonAncestorContainer;
                 const targetElement =
                     commonAncestor.nodeType === Node.ELEMENT_NODE
-                        ? commonAncestor
+                        ? commonAncestor as Element
                         : commonAncestor.parentElement;
 
                 if (!targetElement) {

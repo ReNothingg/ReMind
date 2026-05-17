@@ -24,8 +24,6 @@ const DEFAULT_CONFIG = {
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|blob):|(?:data:image\/)|[./#])/i,
 };
 
-
-// eslint-disable-next-line react-refresh/only-export-components
 export function sanitizeHtml(html, options = {}) {
     if (!html || typeof html !== 'string') {
         return '';
@@ -34,19 +32,3 @@ export function sanitizeHtml(html, options = {}) {
     const config = { ...DEFAULT_CONFIG, ...(options || {}) };
     return DOMPurify.sanitize(html, config);
 }
-
-
-export function SafeHtmlRenderer({ html, className = '', ...props }) {
-    const sanitized = sanitizeHtml(html);
-
-    return (
-        <div
-            className={className}
-            dangerouslySetInnerHTML={{ __html: sanitized }}
-            {...props}
-        />
-    );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export default sanitizeHtml;

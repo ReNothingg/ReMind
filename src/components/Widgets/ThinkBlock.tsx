@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { cn } from '../../utils/cn';
@@ -6,7 +6,7 @@ import { cn } from '../../utils/cn';
 const ThinkBlock = ({ content, openTime, closeTime }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const { t } = useTranslation();
-    const thinkingTime = React.useMemo(() => {
+    const thinkingTime = useMemo(() => {
         if (openTime && closeTime) {
             return closeTime - openTime;
         }

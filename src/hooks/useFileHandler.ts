@@ -3,6 +3,7 @@ import {
   TEXT_FILE_EXTENSIONS,
   VALID_IMAGE_MIME_TYPES,
 } from "../utils/constants";
+import { showToast } from "../utils/toast";
 
 const MAX_FILES = 10;
 
@@ -33,7 +34,7 @@ export const useFileHandler = ({ enabled = true } = {}) => {
   const hasFileData = useCallback((event) => {
     const types = Array.from(event.dataTransfer?.types || []);
     if (types.includes("Files")) return true;
-    const items = Array.from(event.dataTransfer?.items || []);
+    const items = Array.from(event.dataTransfer?.items || []) as DataTransferItem[];
     return items.some((item) => item.kind === "file");
   }, []);
 
@@ -50,7 +51,7 @@ export const useFileHandler = ({ enabled = true } = {}) => {
 
       const totalFiles = files.length + fileList.length;
       if (totalFiles > MAX_FILES) {
-        alert(`Можно прикрепить не более ${MAX_FILES} файлов.`);
+        showToast(`Можно прикрепить не более ${MAX_FILES} файлов.`, { type: "warning" });
         const remainingSlots = MAX_FILES - files.length;
         if (remainingSlots <= 0) return;
         fileList = fileList.slice(0, remainingSlots);

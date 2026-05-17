@@ -10,7 +10,7 @@ export interface ModelDefinition {
     stage: ModelStage;
 }
 
-export const MODEL_DEFINITIONS: ModelDefinition[] = [
+const MODEL_DEFINITIONS: ModelDefinition[] = [
     {
         id: 'gemini',
         name: 'Gemini',
@@ -55,7 +55,7 @@ export function getModelStageLabel(stage: ModelStage): string | undefined {
     return STAGE_LABELS[stage];
 }
 
-export function canUseModel(model: ModelDefinition, user: AuthUser | null): boolean {
+function canUseModel(model: ModelDefinition, user: AuthUser | null): boolean {
     if (model.stage === 'release') {
         return true;
     }

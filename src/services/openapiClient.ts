@@ -1,5 +1,4 @@
 import type { paths } from '../generated/openapi';
-export { ApiClientError } from './http';
 import { requestJson, type RequestJsonOptions } from './http';
 
 export type AuthCheckResponse = paths['/api/auth/check']['get']['responses']['200']['content']['application/json'];

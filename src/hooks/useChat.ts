@@ -16,6 +16,30 @@ const SESSION_SLUG_KEY = 'session_slug';
 const GUEST_SESSIONS_KEY = 'guest_chat_history_ids';
 const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
 
+type HistoryMode = 'replace' | 'push' | 'none';
+
+type SyncSessionOptions = {
+    previousSessionId?: string | null;
+    historyMode?: HistoryMode;
+    persistToGuestHistory?: boolean;
+};
+
+type LoadSessionOptions = {
+    historyMode?: HistoryMode;
+    clearHistory?: boolean;
+};
+
+type ClearChatOptions = {
+    historyMode?: HistoryMode;
+};
+
+type SendMessageOptions = {
+    webSearch?: boolean;
+    censorship?: boolean;
+    mindId?: string | null;
+    [key: string]: unknown;
+};
+
 function createDefaultSessionAccess() {
     return { ...DEFAULT_SESSION_ACCESS };
 }
@@ -232,7 +256,7 @@ export const useChat = () => {
         }
     }, []);
 
-    const syncSessionIdentity = useCallback((sessionId, slug, options = {}) => {
+    const syncSessionIdentity = useCallback((sessionId, slug, options: SyncSessionOptions = {}) => {
         if (!sessionId) return;
 
         const {
@@ -269,7 +293,7 @@ export const useChat = () => {
         abortActiveChatRequest(true);
     }, [abortActiveChatRequest]);
 
-    const loadSession = useCallback(async (sessionIdOrSlug, options = {}) => {
+    const loadSession = useCallback(async (sessionIdOrSlug, options: LoadSessionOptions = {}) => {
         const { historyMode = 'replace', clearHistory = true } = options;
         const loadRequestId = sessionLoadRequestIdRef.current + 1;
         sessionLoadRequestIdRef.current = loadRequestId;
@@ -342,7 +366,7 @@ export const useChat = () => {
         syncSessionIdentity
     ]);
 
-    const clearChat = useCallback((options = {}) => {
+    const clearChat = useCallback((options: ClearChatOptions = {}) => {
         const { historyMode = 'push' } = options;
         sessionLoadRequestIdRef.current += 1;
         abortActiveChatRequest(true);
@@ -460,7 +484,7 @@ export const useChat = () => {
         }
         return historyArray;
     }, [history]);
-    const sendMessage = useCallback(async (text, files = [], model = 'gemini', options = {}) => {
+    const sendMessage = useCallback(async (text, files = [], model = 'gemini', options: SendMessageOptions = {}) => {
         const { webSearch = false, censorship = false, mindId = undefined, ...metadata } = options;
         if ((!text || !text.trim()) && files.length === 0) return;
         if (isReadOnly) {

@@ -192,19 +192,17 @@ export default function GlobalHeader({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const models: ModelOption[] = getAvailableModels(currentUser).map((model) => ({
-        id: model.id,
-        name: model.name,
-        desc: t(model.descKey, { defaultValue: model.descFallback }),
-        badge: getModelStageLabel(model.stage),
-    }));
-    const defaultModel = models.find((model) => model.id === 'gemini') ?? models[0] ?? {
-        id: 'gemini',
-        name: 'Gemini',
-        desc: t('models.gemini.desc'),
-    };
+    const models: ModelOption[] = getAvailableModels(currentUser).map((model) => {
+        const badge = getModelStageLabel(model.stage);
+        return {
+            id: model.id,
+            name: model.name,
+            desc: t(model.descKey, { defaultValue: model.descFallback }),
+            ...(badge ? { badge } : {}),
+        };
+    });
 
-    const activeModel = models.find((model) => model.id === currentModel) ?? defaultModel;
+    const activeModel = models.find((model) => model.id === currentModel);
     const isShared = !!shareInfo?.isPublic;
     const hasSession = !!currentSessionId;
     const shareButtonTitle = !hasSession

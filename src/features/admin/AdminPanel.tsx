@@ -146,19 +146,19 @@ function userStatus(user: AdminUser): { label: string; tone: string } {
     return { label: 'Active', tone: 'success' };
 }
 
-function restrictionInfo(user: AdminUser): { reason?: string | null; until?: string | null; label: string } | null {
+function restrictionInfo(user: AdminUser): { reason: string | null; until: string | null; label: string } | null {
     if (user.is_banned) {
         return {
             label: 'Ban',
-            reason: user.ban_reason || user.moderation_reason,
-            until: user.banned_until,
+            reason: user.ban_reason || user.moderation_reason || null,
+            until: user.banned_until ?? null,
         };
     }
     if (user.is_blocked) {
         return {
             label: 'Block',
-            reason: user.block_reason || user.moderation_reason,
-            until: user.blocked_until,
+            reason: user.block_reason || user.moderation_reason || null,
+            until: user.blocked_until ?? null,
         };
     }
     return null;

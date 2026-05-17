@@ -108,23 +108,22 @@ def setup_csrf_protection(app):
 
 
 def add_csrf_token_to_response(response):
-    if "X-CSRF-Token" not in response.headers:
-        token = get_csrf_token()
-        if token:
-            response.headers["X-CSRF-Token"] = token
-            try:
-                secure_cookie = bool(current_app.config.get("SESSION_COOKIE_SECURE", False))
-                if is_loopback_hostname(request.host):
-                    secure_cookie = False
-                samesite = current_app.config.get("SESSION_COOKIE_SAMESITE", "Lax")
-                response.set_cookie(
-                    CSRF_COOKIE_KEY,
-                    token,
-                    secure=secure_cookie,
-                    httponly=False,
-                    samesite=samesite,
-                    path="/",
-                )
-            except Exception:
-                pass
+    token = response.headers.get("X-CSRF-Token") or get_csrf_token() or generate_csrf_token()
+    if token:
+        response.headers.setdefault("X-CSRF-Token", token)
+        try:
+            secure_cookie = bool(current_app.config.get("SESSION_COOKIE_SECURE", False))
+            if is_loopback_hostname(request.host):
+                secure_cookie = False
+            samesite = current_app.config.get("SESSION_COOKIE_SAMESITE", "Lax")
+            response.set_cookie(
+                CSRF_COOKIE_KEY,
+                token,
+                secure=secure_cookie,
+                httponly=False,
+                samesite=samesite,
+                path="/",
+            )
+        except Exception:
+            pass
     return response

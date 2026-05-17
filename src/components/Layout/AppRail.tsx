@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -154,9 +154,7 @@ const AppRail = ({
     const [editingSessionId, setEditingSessionId] = useState(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [localSessions, setLocalSessions] = useState(sessions);
-    const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchHintActive, setSearchHintActive] = useState(false);
 
     useEffect(() => {
         if (isExpanded) {
@@ -166,9 +164,7 @@ const AppRail = ({
         setOpenMenuId(null);
         setEditingSessionId(null);
         setEditingTitle('');
-        setSearchOpen(false);
         setSearchQuery('');
-        setSearchHintActive(false);
     }, [isExpanded]);
 
     useEffect(() => {
@@ -327,7 +323,6 @@ const AppRail = ({
                 if (onSessionRenamed) {
                     onSessionRenamed(sessionId, result.title);
                 }
-                console.log('Session renamed successfully:', result.title);
             }
         } catch (error) {
             console.error('Failed to rename session:', error);
@@ -341,14 +336,6 @@ const AppRail = ({
         setEditingTitle('');
     };
 
-    const handleShare = async (sessionId, e) => {
-        e.stopPropagation();
-        try {
-            console.log('Share session:', sessionId);
-        } catch (error) {
-            console.error('Failed to share session:', error);
-        }
-    };
     const sortedSessions = [...localSessions].sort((a, b) => {
         const aIsFavorite = favorites.includes(a.session_id);
         const bIsFavorite = favorites.includes(b.session_id);
@@ -357,8 +344,7 @@ const AppRail = ({
         return 0;
     });
 
-    const searchHint = t('rail.searchHint');
-    const effectiveQuery = searchHintActive ? '' : searchQuery.trim();
+    const effectiveQuery = searchQuery.trim();
 
     const filteredSessions = useMemo(() => {
         if (!effectiveQuery) return sortedSessions;
@@ -375,25 +361,6 @@ const AppRail = ({
 
         return scored.map(item => item.session);
     }, [effectiveQuery, sortedSessions, t]);
-
-    const handleSearchToggle = () => {
-        if (!isExpanded && onToggle) {
-            onToggle();
-        }
-        setSearchOpen((prev) => {
-            const next = !prev;
-            if (!next) {
-                setSearchQuery('');
-                setSearchHintActive(false);
-                return next;
-            }
-            if (!searchQuery) {
-                setSearchQuery(searchHint);
-                setSearchHintActive(true);
-            }
-            return next;
-        });
-    };
 
     return (
         <nav
@@ -437,21 +404,6 @@ const AppRail = ({
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 5v14M5 12h14" />
-                    </svg>
-                </RailActionButton>
-                <RailActionButton
-                    active={searchOpen}
-                    className="rail-icon-btn"
-                    expanded={isExpanded}
-                    id="railChatSearch"
-                    label={t('rail.searchChats')}
-                    onClick={handleSearchToggle}
-                    title={t('rail.searchChats')}
-                    aria-label={t('rail.searchChats')}
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="7" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
                 </RailActionButton>
                 <RailActionButton
@@ -507,31 +459,13 @@ const AppRail = ({
                 </div>
             )}
 
-            {searchOpen && isExpanded && (
+            {isExpanded && (
                 <div className="rail-search-container ui-rail-search-wrap">
                     <input
                         type="text"
-                        className={cn(
-                            'rail-search-input ui-rail-search-input',
-                            searchHintActive && 'is-hint ui-rail-search-input-hint'
-                        )}
+                        className="rail-search-input ui-rail-search-input"
                         value={searchQuery}
-                        onChange={(e) => {
-                            setSearchHintActive(false);
-                            setSearchQuery(e.target.value);
-                        }}
-                        onFocus={() => {
-                            if (searchHintActive) {
-                                setSearchQuery('');
-                                setSearchHintActive(false);
-                            }
-                        }}
-                        onBlur={() => {
-                            if (!searchQuery.trim()) {
-                                setSearchQuery(searchHint);
-                                setSearchHintActive(true);
-                            }
-                        }}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t('rail.searchPlaceholder')}
                         aria-label={t('rail.searchInput')}
                     />
@@ -651,24 +585,6 @@ const AppRail = ({
                                                         }}
                                                     >
                                                         {isFavorite ? t('rail.favorite.remove') : t('rail.favorite.add')}
-                                                    </RailMenuItem>
-                                                    <RailMenuItem
-                                                        className="menu-item"
-                                                        icon={(
-                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <circle cx="18" cy="5" r="3"/>
-                                                                <circle cx="6" cy="12" r="3"/>
-                                                                <circle cx="18" cy="19" r="3"/>
-                                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                                                            </svg>
-                                                        )}
-                                                        onClick={(e) => {
-                                                            handleShare(session.session_id, e);
-                                                            setOpenMenuId(null);
-                                                        }}
-                                                    >
-                                                        {t('rail.share')}
                                                     </RailMenuItem>
                                                     <RailMenuItem
                                                         className="menu-item"

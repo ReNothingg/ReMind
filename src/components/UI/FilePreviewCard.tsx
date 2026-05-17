@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fileService } from '../../services/fileService';
 import { cn } from '../../utils/cn';
@@ -12,14 +12,15 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
         if (fileService.isImageFile(file)) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                setPreview(e.target.result);
-                setFileContent(e.target.result);
+                const result = typeof e.target?.result === 'string' ? e.target.result : '';
+                setPreview(result);
+                setFileContent(result);
             };
             reader.readAsDataURL(file);
         } else if (fileService.isTextFile(file)) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                const text = e.target.result || '';
+                const text = typeof e.target?.result === 'string' ? e.target.result : '';
                 setPreview(`text:${text.substring(0, 200)}`);
                 setFileContent(text);
             };
@@ -62,7 +63,9 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                         src={fileService.getFileIconPath(file.name.split('.').pop()?.toLowerCase())}
                         alt={file.name}
                         className="generic-icon size-8 opacity-70"
-                        onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                        onError={(e) => {
+                            e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                        }}
                     />
                 )}
             </div>
@@ -71,11 +74,13 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                     src={fileService.getFileIconPath(file.name.split('.').pop()?.toLowerCase())}
                     alt="icon"
                     className="file-card-footer-icon size-3.5 shrink-0 opacity-85"
-                    onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                    onError={(e) => {
+                        e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                    }}
                 />
                 <div className="file-card-footer-info min-w-0">
                     <span className="file-card-name block max-w-[55px] truncate text-[0.68rem] leading-[1.2] font-semibold tracking-[0.01em] text-foreground">
-                        {fileService.escapeHtml(file.name)}
+                        {file.name}
                     </span>
                     <span className="file-card-size block text-[0.55rem] text-subtle">
                         {fileService.formatFileSize(file.size)}

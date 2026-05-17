@@ -3,6 +3,7 @@ import { getD3 } from './d3Loader';
 import { getNomnoml } from './nomnomlLoader';
 import { getMermaid } from './mermaidLoader';
 import { buildSvgPreviewDocument, sanitizeSvgMarkup } from './svgPreview';
+import { showToast } from './toast';
 
 
 
@@ -14,7 +15,19 @@ const TRANSPARENT_BACKGROUND_VALUES = new Set([
     'rgba(0,0,0,0)',
 ]);
 
-const resolvePreviewBackgroundColor = (element) => {
+type PanZoomOptions = {
+    minScale?: number;
+    maxScale?: number;
+    zoomSpeed?: number;
+    activeClass?: string;
+    panningClass?: string;
+};
+
+const getErrorMessage = (error: unknown) => (
+    error instanceof Error ? error.message : 'Неизвестная ошибка'
+);
+
+const resolvePreviewBackgroundColor = (element: Element | null) => {
     let current = element instanceof Element ? element : null;
 
     while (current) {
@@ -33,7 +46,11 @@ const resolvePreviewBackgroundColor = (element) => {
     return '#111214';
 };
 
-const setupPanZoom = (container, target, options = {}) => {
+const setupPanZoom = (
+    container: HTMLElement,
+    target: HTMLElement | SVGElement,
+    options: PanZoomOptions = {}
+) => {
     if (!container || !target) return;
     if (container.dataset.hasPan) return;
 
@@ -209,7 +226,10 @@ export const Utils = {
         }
     },
 
-    showPopupWarning: () => {
+    showPopupWarning: (message) => {
+        if (message) {
+            showToast(message, { type: 'warning' });
+        }
         const active = document.activeElement?.closest('button, .action-btn, .send-button, .attach-button');
         const preview = document.querySelector('.attach-area .preview-container');
         const sendBtn = document.querySelector('.send-button');
@@ -273,16 +293,16 @@ export const Utils = {
     },
 
     attachDiagramPan: () => {
-        document.querySelectorAll('.diagram-pan-surface').forEach(container => {
+        document.querySelectorAll<HTMLElement>('.diagram-pan-surface').forEach(container => {
             if (container.dataset.hasPan) return;
-            const target = container.querySelector('.diagram-pan-target') || container.querySelector('canvas, svg');
+            const target = container.querySelector<HTMLElement | SVGElement>('.diagram-pan-target') || container.querySelector<HTMLElement | SVGElement>('canvas, svg');
             if (!target) return;
             setupPanZoom(container, target);
         });
     },
 
     renderSvgPreviews: () => {
-        const containers = document.querySelectorAll('.svg-preview-container');
+        const containers = document.querySelectorAll<HTMLElement>('.svg-preview-container');
         if (!containers.length) return;
 
         containers.forEach(container => {
@@ -303,7 +323,7 @@ export const Utils = {
                 container.classList.add('loading');
                 container.classList.remove('has-error');
 
-                const host = container.querySelector('.svg-preview-frame-host');
+                const host = container.querySelector<HTMLElement>('.svg-preview-frame-host');
                 const codeBlock = container.closest('.code-block');
                 const codeElement = codeBlock?.querySelector('.code-block-content code');
 
@@ -336,7 +356,7 @@ export const Utils = {
                     return;
                 }
 
-                let frame = host.querySelector('.svg-preview-frame');
+                let frame = host.querySelector<HTMLIFrameElement>('iframe.svg-preview-frame');
                 if (!(frame instanceof HTMLIFrameElement)) {
                     frame = document.createElement('iframe');
                     frame.className = 'svg-preview-frame';
@@ -377,7 +397,7 @@ export const Utils = {
     },
 
     renderCharts: async () => {
-        const containers = document.querySelectorAll('.chart-container');
+        const containers = document.querySelectorAll<HTMLElement>('.chart-container');
         if (!containers.length) return;
 
         let Chart;
@@ -386,8 +406,8 @@ export const Utils = {
         } catch (error) {
             console.warn('Chart.js load failed:', error);
             containers.forEach(container => {
-                const loadingEl = container.querySelector('.chart-loading');
-                const errorEl = container.querySelector('.chart-error');
+                const loadingEl = container.querySelector<HTMLElement>('.chart-loading');
+                const errorEl = container.querySelector<HTMLElement>('.chart-error');
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
                     errorEl.textContent = 'Не удалось загрузить Chart.js';
@@ -399,9 +419,9 @@ export const Utils = {
         }
 
         containers.forEach(container => {
-            const canvas = container.querySelector('canvas');
-            const loadingEl = container.querySelector('.chart-loading');
-            const errorEl = container.querySelector('.chart-error');
+            const canvas = container.querySelector<HTMLCanvasElement>('canvas');
+            const loadingEl = container.querySelector<HTMLElement>('.chart-loading');
+            const errorEl = container.querySelector<HTMLElement>('.chart-error');
             const codeBlock = container.closest('.code-block');
             if (!canvas || !loadingEl || !codeBlock) return;
 
@@ -496,11 +516,12 @@ export const Utils = {
                     }
                 });
                 canvas.__chartInstance = chart;
-            } catch {
-                console.warn('Chart.js rendering error:', e);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
+                console.warn('Chart.js rendering error:', error);
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
-                    errorEl.textContent = 'Ошибка загрузки графика: ' + e.message;
+                    errorEl.textContent = `Ошибка загрузки графика: ${message}`;
                     errorEl.style.display = 'flex';
                 }
                 container.classList.remove('loading');
@@ -509,7 +530,7 @@ export const Utils = {
     },
 
     renderD3: async () => {
-        const containers = document.querySelectorAll('.d3-container');
+        const containers = document.querySelectorAll<HTMLElement>('.d3-container');
         if (!containers.length) return;
 
         let d3;
@@ -518,8 +539,8 @@ export const Utils = {
         } catch (error) {
             console.warn('D3 load failed:', error);
             containers.forEach(container => {
-                const loadingEl = container.querySelector('.d3-loading');
-                const errorEl = container.querySelector('.d3-error');
+                const loadingEl = container.querySelector<HTMLElement>('.d3-loading');
+                const errorEl = container.querySelector<HTMLElement>('.d3-error');
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
                     errorEl.textContent = 'Не удалось загрузить D3.js';
@@ -538,9 +559,9 @@ export const Utils = {
         const palette = d3.schemeTableau10 || ['#7c9cff', '#a78bfa', '#60a5fa', '#34d399', '#fbbf24'];
 
         containers.forEach(container => {
-            const loadingEl = container.querySelector('.d3-loading');
-            const errorEl = container.querySelector('.d3-error');
-            const viz = container.querySelector('.d3-visualization');
+            const loadingEl = container.querySelector<HTMLElement>('.d3-loading');
+            const errorEl = container.querySelector<HTMLElement>('.d3-error');
+            const viz = container.querySelector<HTMLElement>('.d3-visualization');
             const codeBlock = container.closest('.code-block');
             if (!viz || !codeBlock) return;
 
@@ -617,14 +638,14 @@ export const Utils = {
                         .enter()
                         .append('path')
                         .attr('d', arc)
-                        .attr('fill', (d, i) => palette[i % palette.length])
+	                        .attr('fill', (_d, i) => palette[i % palette.length])
                         .attr('stroke', 'rgba(0,0,0,0.1)');
 
                     g.selectAll('text')
                         .data(pie)
                         .enter()
                         .append('text')
-                        .text((d, i) => labels[i] || '')
+	                        .text((_d, i) => labels[i] || '')
                         .attr('transform', (d) => `translate(${arc.centroid(d)})`)
                         .attr('text-anchor', 'middle')
                         .attr('font-size', 11)
@@ -722,7 +743,7 @@ export const Utils = {
                 console.warn('D3 render failed:', error);
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
-                    errorEl.textContent = 'Ошибка визуализации D3: ' + error.message;
+	                    errorEl.textContent = 'Ошибка визуализации D3: ' + getErrorMessage(error);
                     errorEl.style.display = 'flex';
                 }
                 container.classList.remove('loading');
@@ -731,7 +752,7 @@ export const Utils = {
     },
 
     renderNomnoml: async () => {
-        const containers = document.querySelectorAll('.nomnoml-container');
+        const containers = document.querySelectorAll<HTMLElement>('.nomnoml-container');
         if (!containers.length) return;
 
         let nomnoml;
@@ -740,8 +761,8 @@ export const Utils = {
         } catch (error) {
             console.warn('Nomnoml load failed:', error);
             containers.forEach(container => {
-                const loadingEl = container.querySelector('.nomnoml-loading');
-                const errorEl = container.querySelector('.nomnoml-error');
+                const loadingEl = container.querySelector<HTMLElement>('.nomnoml-loading');
+                const errorEl = container.querySelector<HTMLElement>('.nomnoml-error');
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
                     errorEl.textContent = 'Не удалось загрузить Nomnoml';
@@ -753,9 +774,9 @@ export const Utils = {
         }
 
         containers.forEach(container => {
-            const loadingEl = container.querySelector('.nomnoml-loading');
-            const errorEl = container.querySelector('.nomnoml-error');
-            const viz = container.querySelector('.nomnoml-visualization');
+            const loadingEl = container.querySelector<HTMLElement>('.nomnoml-loading');
+            const errorEl = container.querySelector<HTMLElement>('.nomnoml-error');
+            const viz = container.querySelector<HTMLElement>('.nomnoml-visualization');
             const codeBlock = container.closest('.code-block');
             if (!viz || !codeBlock) return;
 
@@ -780,7 +801,7 @@ export const Utils = {
             try {
                 const svgText = nomnoml.renderSvg(codeElement.textContent || '');
                 viz.innerHTML = svgText;
-                const svg = viz.querySelector('svg');
+                const svg = viz.querySelector<SVGSVGElement>('svg');
                 if (svg) {
                     svg.classList.add('diagram-pan-target');
                     svg.setAttribute('role', 'img');
@@ -798,7 +819,7 @@ export const Utils = {
                 console.warn('Nomnoml render failed:', error);
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
-                    errorEl.textContent = 'Ошибка схемы Nomnoml: ' + error.message;
+                    errorEl.textContent = 'Ошибка схемы Nomnoml: ' + getErrorMessage(error);
                     errorEl.style.display = 'flex';
                 }
                 container.classList.remove('loading');
@@ -807,7 +828,7 @@ export const Utils = {
     },
 
     renderMermaid: async () => {
-        const containers = document.querySelectorAll('.mermaid-container');
+        const containers = document.querySelectorAll<HTMLElement>('.mermaid-container');
         if (!containers.length) return;
 
         let mermaid;
@@ -823,8 +844,8 @@ export const Utils = {
         } catch (error) {
             console.warn('Mermaid load failed:', error);
             containers.forEach(container => {
-                const loadingEl = container.querySelector('.mermaid-loading');
-                const errorEl = container.querySelector('.mermaid-error');
+                const loadingEl = container.querySelector<HTMLElement>('.mermaid-loading');
+                const errorEl = container.querySelector<HTMLElement>('.mermaid-error');
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
                     errorEl.textContent = 'Не удалось загрузить Mermaid';
@@ -837,9 +858,9 @@ export const Utils = {
 
         let renderIndex = 0;
         for (const container of containers) {
-            const loadingEl = container.querySelector('.mermaid-loading');
-            const errorEl = container.querySelector('.mermaid-error');
-            const viz = container.querySelector('.mermaid-visualization');
+            const loadingEl = container.querySelector<HTMLElement>('.mermaid-loading');
+            const errorEl = container.querySelector<HTMLElement>('.mermaid-error');
+            const viz = container.querySelector<HTMLElement>('.mermaid-visualization');
             const codeBlock = container.closest('.code-block');
             if (!viz || !codeBlock) continue;
 
@@ -894,7 +915,7 @@ export const Utils = {
                     result.bindFunctions(viz);
                 }
 
-                const svg = viz.querySelector('svg');
+                const svg = viz.querySelector<SVGSVGElement>('svg');
                 if (svg) {
                     const parseSvgSize = (value) => {
                         if (!value) return null;
@@ -925,8 +946,8 @@ export const Utils = {
             } catch (error) {
                 console.warn('Mermaid render failed:', error);
                 if (loadingEl) loadingEl.style.display = 'none';
-                if (errorEl) {
-                    errorEl.textContent = 'Ошибка схемы Mermaid: ' + error.message;
+	                if (errorEl) {
+	                    errorEl.textContent = 'Ошибка схемы Mermaid: ' + getErrorMessage(error);
                     errorEl.style.display = 'flex';
                 }
                 container.classList.remove('loading');

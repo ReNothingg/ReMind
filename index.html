@@ -21,7 +21,7 @@
    <meta name="apple-mobile-web-app-title" content="ReMind">
 
    <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net data:; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; script-src-elem 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https: http: wss: ws:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self';">
+      content="default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net data:; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; script-src-elem 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https: http: wss: ws:; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self';">
 
    <meta name="msapplication-TileColor" content="#1a1a1a">
    <link rel="icon" type="image/svg+xml" href="/icons/branding/logo.svg">
@@ -36,9 +36,7 @@
    <link rel="preconnect" href="https://fonts.googleapis.com">
    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
-      integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+   <link rel="preconnect" href="https://challenges.cloudflare.com">
 
    <script type="application/ld+json">
       {
@@ -60,7 +58,7 @@
       }
    </script>
 
-   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
 </head>
 
 <body>

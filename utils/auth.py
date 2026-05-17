@@ -586,113 +586,8 @@ def verify_turnstile(turnstile_response):
 def register_auth_routes(app):
 
     @app.route("/register", methods=["GET", "POST"])
-    @rate_limit(login_limiter, "Too many registration attempts")
     def register():
-        if request.method == "POST":
-            username = request.form.get("username", "").strip()
-            email = request.form.get("email", "").strip()
-            password = request.form.get("password", "")
-            confirm_password = request.form.get("confirm_password", "")
-            turnstile_response = request.form.get("cf-turnstile-response")
-            if not verify_turnstile(turnstile_response):
-                flash(
-                    "Ошибка проверки Cloudflare Turnstile. Пожалуйста, подтвердите, что вы не робот.",
-                    "danger",
-                )
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-            try:
-                username = _validate_unique_username(username)
-            except ValidationError as e:
-                flash(str(e), "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-            try:
-                email = InputValidator.validate_email(email)
-            except ValidationError as e:
-                flash(str(e), "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-            if password != confirm_password:
-                flash("Пароли не совпадают", "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-            try:
-                InputValidator.validate_password(password)
-            except ValidationError as e:
-                flash(str(e), "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-            user_exists = User.query.filter_by(email=email).first()
-            if user_exists:
-                flash("Email уже зарегистрирован", "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-            try:
-                try:
-                    from argon2 import PasswordHasher
-
-                    ph = PasswordHasher()
-                    hashed_password = ph.hash(password)
-                except ImportError:
-                    hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
-
-                confirmation_token = secrets.token_urlsafe(32)
-                confirmation_token_expires = datetime.utcnow() + timedelta(days=7)  # 7 days TTL
-
-                new_user = User(
-                    username=username,
-                    name=username,
-                    email=email,
-                    password=hashed_password,
-                    confirmation_token=confirmation_token,
-                    confirmation_token_expires=confirmation_token_expires,
-                )
-
-                db.session.add(new_user)
-                db.session.commit()
-                confirmation_link = url_for(
-                    "confirm_email", token=confirmation_token, _external=True
-                )
-                template_data = {
-                    "username": InputValidator.sanitize_output(username),
-                    "confirmation_link": confirmation_link,
-                }
-
-                send_email(
-                    to_email=email,
-                    subject="Подтвердите вашу регистрацию",
-                    body="",
-                    template_name="confirmation",
-                    template_data=template_data,
-                )
-
-                flash(
-                    "Регистрация успешна! Проверьте email для подтверждения аккаунта",
-                    "success",
-                )
-                return redirect(url_for("login"))
-
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"Registration error: {str(e)}")
-                flash("Ошибка при регистрации. Пожалуйста, попробуйте позже.", "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-        from config import TURNSTILE_SITE_KEY
-
-        return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
+        return redirect("/?auth=register", code=303 if request.method == "POST" else 302)
 
     @app.route("/confirm/<token>")
     def confirm_email(token):
@@ -819,12 +714,7 @@ def register_auth_routes(app):
 
     @app.route("/good")
     def good():
-        if "user_id" not in session:
-            flash("Пожалуйста, сначала войдите в систему", "warning")
-            return redirect(url_for("login"))
-
-        username = session.get("username")
-        return render_template("good.html", username=username)
+        return redirect("/", code=303)
 
     @app.route("/forgot_password", methods=["GET", "POST"])
     def forgot_password():
@@ -925,14 +815,7 @@ def register_auth_routes(app):
             flash("Пожалуйста, сначала войдите в систему", "warning")
             return redirect(url_for("login"))
 
-        user_id = session.get("user_id")
-        user = User.query.get(user_id)
-        settings = UserSettings.query.filter_by(user_id=user_id).first()
-        personalization = {}
-        if settings:
-            personalization = settings.get_settings() or {}
-
-        return render_template("profile.html", user=user, personalization=personalization)
+        return redirect("/#settings/account", code=302)
 
     @app.route("/login/google")
     def login_google():
@@ -1140,7 +1023,7 @@ def register_auth_routes(app):
     def api_check_auth():
 
         if "user_id" in session:
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
             if user:
                 return jsonify({"authenticated": True, "user": user.to_dict()}), 200
         return jsonify({"authenticated": False, "user": None}), 200
@@ -1148,12 +1031,13 @@ def register_auth_routes(app):
     @app.route("/api/auth/config", methods=["GET"])
     def api_auth_config():
 
-        from config import GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY
+        from config import GOOGLE_CLIENT_ID, LOCALHOST_MODE, TURNSTILE_SITE_KEY
 
         return (
             jsonify(
                 {
                     "turnstile_site_key": TURNSTILE_SITE_KEY,
+                    "turnstile_required": bool(TURNSTILE_SITE_KEY) and not LOCALHOST_MODE,
                     "gauth_available": bool(GOOGLE_CLIENT_ID),
                     "google_login_url": url_for("login_google"),
                 }
@@ -1332,7 +1216,7 @@ def register_auth_routes(app):
         if "user_id" not in session:
             return jsonify({"error": "Не авторизирован"}), 401
 
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user:
             return jsonify({"error": "Пользователь не найден"}), 404
 
@@ -1356,7 +1240,7 @@ def register_auth_routes(app):
 
         try:
             data = request.get_json(silent=True) or {}
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
 
             if not user:
                 return jsonify({"error": "Пользователь не найден"}), 404

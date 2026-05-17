@@ -29,7 +29,7 @@ type ApiServiceError = Error & {
 
 type ChatWidgetUpdate = Record<string, unknown>;
 
-type ChatStreamResult = {
+export type ChatStreamResult = {
     aborted?: boolean;
     end_of_stream?: boolean;
     images?: string[] | string;

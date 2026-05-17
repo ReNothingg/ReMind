@@ -138,10 +138,10 @@
   --color-google-red-raw: 234, 67, 53;
   --color-google-red: rgb(var(--color-google-red-raw));
 
-  --icon-upload-url: url(' /icons/ui/upload.svg');
-  --icon-send-url: url(' /icons/ui/send.svg');
+  --icon-upload-url: url('/icons/ui/upload.svg');
+  --icon-send-url: url('/icons/ui/send.svg');
   --icon-stop-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='18px' height='18px'%3E%3Cpath d='M6 6h12v12H6z'/%3E%3C/svg%3E");
-  --icon-audio-url: url(' /icons/media/audio.svg');
+  --icon-audio-url: url('/icons/media/audio.svg');
   --filter-speak-btn-active: invert(1);
   --sidebar-toggle-icon-filter: invert(0.85);
   --new-chat-icon-filter: invert(0.75);
@@ -481,8 +481,8 @@ html[data-theme='light'] .user-message .message-content {
   color: var(--user-message-text-color);
 }
 html[data-theme='light'] .ai-message .message-content {
-  background: var(--input-pill-bg);
-  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  border: none;
   color: #374151;
 }
 

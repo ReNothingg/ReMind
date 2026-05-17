@@ -47,13 +47,13 @@ def get_user_data_locations(user_id):
 
 
 def export_user_data(user_id):
-    from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings
+    from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
 
     export_data = {
         "exported_at": datetime.utcnow().isoformat(),
         "user_id": user_id,
     }
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if user:
         export_data["profile"] = {
             "username": user.username,
@@ -128,7 +128,7 @@ def delete_user_data(user_id, delete_account=False):
         settings_deleted = UserSettings.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["settings"] = settings_deleted
         if delete_account:
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             if user:
                 db.session.delete(user)
                 results["items_deleted"]["account"] = 1
@@ -153,7 +153,7 @@ def delete_user_data(user_id, delete_account=False):
 def anonymize_user_data(user_id):
     from utils.auth import User, UserChatHistory, UserSettings, db
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return False
     anonymous_id = hashlib.sha256(str(user_id).encode()).hexdigest()[:12]

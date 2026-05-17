@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 const INSTRUMENT_MAP = {
     kick: { name: 'Бас-барабан', icon: 'kick' },
     snare: { name: 'Малый барабан', icon: 'snare' },
@@ -409,7 +409,7 @@ const Beatbox = ({ initialState }) => {
                         const isDragOver = dragOverIndex === trackIndex;
 
                         return (
-                            <React.Fragment key={track.id}>
+                            <Fragment key={track.id}>
                                 <div
                                     className={`track ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
                                     draggable
@@ -428,7 +428,9 @@ const Beatbox = ({ initialState }) => {
                                                 <img
                                                     src={`/icons/instruments/${instrument.icon}.svg`}
                                                     alt={instrument.name}
-                                                    onError={(e) => e.target.style.display='none'}
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }}
                                                 />
                                                 <span style={{fontSize: '10px'}}>{instrument.icon}</span>
                                             </button>
@@ -485,7 +487,7 @@ const Beatbox = ({ initialState }) => {
                                         ))}
                                     </div>
                                 )}
-                            </React.Fragment>
+                            </Fragment>
                         );
                     })}
                 </main>

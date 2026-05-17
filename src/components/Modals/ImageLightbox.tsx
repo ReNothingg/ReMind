@@ -1,26 +1,35 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiService } from '../../services/api';
+import { apiService, type ChatStreamResult } from '../../services/api';
 import { Utils } from '../../utils/utils';
 import ModalShell from '../UI/ModalShell';
 import CustomSelect from '../UI/CustomSelect';
 import { cn } from '../../utils/cn';
 
-const getSourceUserMessageElement = (messageElement) => {
+type ImageLightboxProps = {
+    isOpen: boolean;
+    imageSrc?: string | null;
+    messageElement?: HTMLElement | null;
+    onClose: () => void;
+    currentModel?: string | null;
+    sessionId?: string | null;
+};
+
+const getSourceUserMessageElement = (messageElement?: HTMLElement | null): HTMLElement | null => {
     if (!messageElement) {
         return null;
     }
 
-    let userMessageElement = messageElement.previousElementSibling;
+    let userMessageElement: Element | null = messageElement.previousElementSibling;
 
     while (userMessageElement && !userMessageElement.classList.contains('user-message')) {
         userMessageElement = userMessageElement.previousElementSibling;
     }
 
-    return userMessageElement;
+    return userMessageElement instanceof HTMLElement ? userMessageElement : null;
 };
 
-const getSourcePrompt = (messageElement) => {
+const getSourcePrompt = (messageElement?: HTMLElement | null) => {
     const userMessageElement = getSourceUserMessageElement(messageElement);
     return (
         userMessageElement?.dataset?.rawContent ||
@@ -29,7 +38,7 @@ const getSourcePrompt = (messageElement) => {
     ).trim();
 };
 
-const normalizeModelName = (modelName) => {
+const normalizeModelName = (modelName?: string | null) => {
     if (!modelName) {
         return '';
     }
@@ -39,7 +48,7 @@ const normalizeModelName = (modelName) => {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel, sessionId }) => {
+const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel, sessionId }: ImageLightboxProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [hasImageError, setHasImageError] = useState(false);
     const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
@@ -75,7 +84,7 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
         return () => document.removeEventListener('keydown', handleEscape);
     }, [isOpen, onClose]);
 
-    const translate = (key, defaultValue, options = {}) => t(key, { defaultValue, ...options });
+    const translate = (key: string, defaultValue: string, options: Record<string, unknown> = {}) => t(key, { defaultValue, ...options });
     const sourcePrompt = getSourcePrompt(messageElement);
     const styleOptions = [
         { value: 'realistic', label: translate('imageLightbox.styles.realistic', 'Realistic') },
@@ -127,7 +136,7 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
             formData.append('regenerate_image_only', 'true');
             formData.append('session_id', sessionId || '');
 
-            const result = await new Promise((resolve, reject) => {
+            const result = await new Promise<ChatStreamResult>((resolve, reject) => {
                 apiService.chat(formData, undefined, {
                     onComplete: resolve,
                     onError: reject,

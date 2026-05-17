@@ -16,7 +16,9 @@ os.environ["ALLOW_GUEST_CHATS_SAVE"] = "True"
 
 from app_factory import create_app
 from utils.auth import User, UserSettings, db
+from utils.brute_force import _attempt_store, _lockout_store
 from utils.input_validation import InputValidator
+from utils.rate_limiting import rate_limit_store
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +28,17 @@ def disable_email_dns_validation(monkeypatch):
         "validate_email",
         staticmethod(lambda value: str(value).strip().lower()),
     )
+
+
+@pytest.fixture(autouse=True)
+def isolate_request_guards():
+    rate_limit_store.clear()
+    _attempt_store.clear()
+    _lockout_store.clear()
+    yield
+    rate_limit_store.clear()
+    _attempt_store.clear()
+    _lockout_store.clear()
 
 
 @pytest.fixture()

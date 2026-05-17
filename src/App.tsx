@@ -106,6 +106,9 @@ const MainLayout = () => {
     });
 
     const isRailExpanded = isMobileViewport ? isMobileRailOpen : isRailExpandedDesktop;
+    const selectedModel = isAuthLoading || isModelAvailable(currentModel, user)
+        ? currentModel
+        : getFallbackModelId(user);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -121,13 +124,6 @@ const MainLayout = () => {
 
         return () => mediaQuery.removeEventListener('change', handleViewportChange);
     }, []);
-
-    useEffect(() => {
-        if (isAuthLoading || isModelAvailable(currentModel, user)) {
-            return;
-        }
-        setCurrentModel(getFallbackModelId(user));
-    }, [currentModel, isAuthLoading, user]);
 
     useEffect(() => {
         if (isMobileRailOpen && (!isMobileViewport || !isAuthenticated)) {
@@ -297,12 +293,12 @@ const MainLayout = () => {
             }
 
             notifyOnDoneRef.current = true;
-            sendMessage(text, files, currentModel, {
+            sendMessage(text, files, selectedModel, {
                 ...options,
                 mindId: activeMind?.public_id || null,
             });
         },
-        [activeMind, clearChat, sendMessage, currentModel]
+        [activeMind, clearChat, sendMessage, selectedModel]
     );
 
     useEffect(() => {
@@ -330,11 +326,19 @@ const MainLayout = () => {
             shouldUpdateURL = true;
         }
 
+        const authView = params.get('auth');
+        if (authView && !isAuthLoading) {
+            if (!isAuthenticated && (authView === 'login' || authView === 'register')) {
+                setTimeout(() => setAuthOpen(authView), 0);
+            }
+            shouldUpdateURL = true;
+        }
+
         if (shouldUpdateURL && params.toString()) {
             const cleanURL = `${window.location.pathname}${window.location.hash}`;
             window.history.replaceState(null, '', cleanURL);
         }
-    }, [handleSendMessage]);
+    }, [handleSendMessage, isAuthenticated, isAuthLoading]);
 
     useEffect(() => {
         setTimeout(() => refreshSessions(), 0);
@@ -572,7 +576,7 @@ const MainLayout = () => {
                     isAuthenticated={isAuthenticated}
                     currentUser={user}
                     onMenuToggle={handleRailToggle}
-                    currentModel={currentModel}
+                    currentModel={selectedModel}
                     onModelChange={setCurrentModel}
                     onOpenAuth={() => setAuthOpen('login')}
                     onShowRegister={() => setAuthOpen('register')}

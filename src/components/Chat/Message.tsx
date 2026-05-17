@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
 import { apiService } from '../../services/api';
@@ -754,8 +754,8 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                 }}
                                                 style={{ cursor: !isUser ? 'pointer' : 'default' }}
                                                 onError={(e) => {
-                                                    e.target.src = iconPath;
-                                                    e.target.className = 'generic-icon size-12 object-contain opacity-60';
+                                                    e.currentTarget.src = iconPath;
+                                                    e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
                                                 }}
                                             />
                                         ) : (
@@ -763,7 +763,9 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                 src={iconPath}
                                                 alt={fileName}
                                                 className="generic-icon size-12 object-contain opacity-60"
-                                                onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                                                onError={(e) => {
+                                                    e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                                                }}
                                             />
                                         )}
                                     </div>
@@ -772,7 +774,9 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                             src={iconPath}
                                             alt="icon"
                                             className="attachment-card-footer-icon"
-                                            onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                                            onError={(e) => {
+                                                e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                                            }}
                                         />
                                         <div className="attachment-card-footer-info">
                                             {fullUrl ? (
@@ -783,10 +787,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                     className="file-card-name"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    {fileService.escapeHtml(fileName)}
+                                                    {fileName}
                                                 </a>
                                             ) : (
-                                                <span className="file-card-name">{fileService.escapeHtml(fileName)}</span>
+                                                <span className="file-card-name">{fileName}</span>
                                             )}
                                             {fileSize && <span className="file-card-size">{fileSize}</span>}
                                         </div>

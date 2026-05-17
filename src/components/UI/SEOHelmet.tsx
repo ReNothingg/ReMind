@@ -2,6 +2,17 @@ import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDocumentDirection, getOgLocale, getSiteCopy } from '../../content/siteCopy';
 
+type MetaDescriptor = {
+    name?: string;
+    property?: string;
+    content?: string | null;
+};
+
+type LinkDescriptor = {
+    rel: string;
+    href?: string | null;
+};
+
 function resolveAbsoluteUrl(value, baseUrl) {
     if (!value) return null;
 
@@ -12,7 +23,7 @@ function resolveAbsoluteUrl(value, baseUrl) {
     }
 }
 
-export const SEOHelmet = ({
+const SEOHelmet = ({
     title = null,
     description = null,
     keywords = null,
@@ -49,11 +60,12 @@ export const SEOHelmet = ({
     useEffect(() => {
         const createdNodes = [];
 
-        const upsertMeta = ({ name, property, content }) => {
+        const upsertMeta = ({ name, property, content }: MetaDescriptor) => {
             if (!content) return;
+            if (!name && !property) return;
             const selector = name
                 ? `meta[name="${CSS.escape(name)}"]`
-                : `meta[property="${CSS.escape(property)}"]`;
+                : `meta[property="${CSS.escape(property as string)}"]`;
             let el = document.head.querySelector(selector);
             if (!el) {
                 el = document.createElement('meta');
@@ -66,7 +78,7 @@ export const SEOHelmet = ({
             el.setAttribute('content', content);
         };
 
-        const upsertLink = ({ rel, href }) => {
+        const upsertLink = ({ rel, href }: LinkDescriptor) => {
             if (!href) return;
             const selector = `link[rel="${CSS.escape(rel)}"]`;
             let el = document.head.querySelector(selector);

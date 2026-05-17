@@ -16,7 +16,7 @@
 @import "./components/ui/html-preview-modal.css" layer(components);
 @import "./components/ui/image-lightbox.css" layer(components);
 @import "./components/ui/toast-notifications.css" layer(components);
-@import "./components/ui/sceleton-loader.css" layer(components);
+@import "./components/ui/skeleton-loader.css" layer(components);
 @import "./components/ui/settings-modal.css" layer(components);
 @import "./components/ui/user-settings.css" layer(components);
 @import "./components/chat/formatter.css" layer(components);
@@ -227,13 +227,12 @@
   }
 
   .ui-message-bubble-ai {
-    @apply w-full max-w-full border px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*3)] text-foreground;
-    background: var(--input-pill-bg);
+    @apply w-full max-w-full border-0 px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*3)] text-foreground;
+    background: transparent;
     color: var(--ai-message-text-color);
     min-height: var(--input-area-height-base);
-    border-color: var(--color-border-subtle);
     border-radius: var(--input-area-border-radius);
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
   }
 
   .ui-message-text {

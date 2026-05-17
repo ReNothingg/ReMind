@@ -30,7 +30,7 @@ if (typeof window !== 'undefined') {
     window.Prism = Prism;
 }
 
-export const escapeHtml = (unsafe) => {
+const escapeHtml = (unsafe) => {
     return (unsafe || '')
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -71,7 +71,7 @@ const CODE_LANGUAGE_ALIASES = {
     txt: 'none',
 };
 
-const replaceControlCharacters = (value, replacement = '') => {
+const replaceControlCharacters = (value: string, replacement = '') => {
     return Array.from(value || '').map((char) => (char.charCodeAt(0) < 32 ? replacement : char)).join('');
 };
 
@@ -212,8 +212,8 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
                 <button class="code-tab-btn" data-tab="code" type="button">Код</button>
             </div>
             <div class="code-block-header-actions">
-                <button class="download-code-btn" title="Скачать файл"><img src=" /icons/ui/download.svg" alt="Download"></button>
-                <button class="copy-code-btn" title="Скопировать код"><img src=" /icons/ui/copy.svg" alt="Copy"></button>
+                <button class="download-code-btn" title="Скачать файл"><img src="/icons/ui/download.svg" alt="Download"></button>
+                <button class="copy-code-btn" title="Скопировать код"><img src="/icons/ui/copy.svg" alt="Copy"></button>
                 <button class="toggle-code-btn" title="Развернуть">
                     <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
                     <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
@@ -237,14 +237,14 @@ const md = new MarkdownIt({
 });
 const originalRender = md.render.bind(md);
 md.render = function (str, env) {
-    const toRender = str.replace(/\\\[([\s\S]+?)\\\]/g, (m, expr) => `$$${expr}$$`)
-        .replace(/\\\(([^\n]+?)\\\)/g, (m, expr) => `$${expr}$`);
+    const toRender = str.replace(/\\\[([\s\S]+?)\\\]/g, (_match, expr) => `$$${expr}$$`)
+        .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr) => `$${expr}$`);
     let html = originalRender(toRender, env);
     try {
-        html = html.replace(/\$\$([\s\S]+?)\$\$/g, (m, expr) =>
+        html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_match, expr) =>
             katex.renderToString(expr, { displayMode: true, throwOnError: false })
         );
-        html = html.replace(/\$([^$\n]+?)\$/g, (m, expr) =>
+        html = html.replace(/\$([^$\n]+?)\$/g, (_match, expr) =>
             katex.renderToString(expr, { displayMode: false, throwOnError: false })
         );
     } catch (e) {
@@ -285,8 +285,8 @@ md.renderer.rules.fence = (tokens, idx) => {
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
-                <button class="download-code-btn" title="Скачать файл"><img src=" /icons/ui/download.svg" alt="Download"></button>
-                <button class="copy-code-btn" title="Скопировать код"><img src=" /icons/ui/copy.svg" alt="Copy"></button>
+                <button class="download-code-btn" title="Скачать файл"><img src="/icons/ui/download.svg" alt="Download"></button>
+                <button class="copy-code-btn" title="Скопировать код"><img src="/icons/ui/copy.svg" alt="Copy"></button>
                 <button class="toggle-code-btn" title="Развернуть">
                     <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
                     <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
@@ -344,21 +344,21 @@ const processInteractiveHTMLTags = (text) => {
         }
     };
 
-    text = text.replace(/<beatbox>([\s\S]*?)<\/beatbox>/gi, (match, content) => {
+    text = text.replace(/<beatbox>([\s\S]*?)<\/beatbox>/gi, (_match, content) => {
         const encodedState = toBase64(content.trim());
         return `<div class="beatbox-instance-host" data-beatbox-state-b64='${encodedState}'></div>`;
     });
 
-    text = text.replace(/<quiz>([\s\S]*?)<\/quiz>/gi, (match, content) => {
+    text = text.replace(/<quiz>([\s\S]*?)<\/quiz>/gi, (_match, content) => {
         const encodedState = toBase64(content.trim());
         return `<div class="quiz-instance-host" data-quiz-state-b64='${encodedState}'></div>`;
     });
 
-    text = text.replace(/<spinwheel>([\s\S]*?)<\/spinwheel>/gi, (match, content) => {
+    text = text.replace(/<spinwheel>([\s\S]*?)<\/spinwheel>/gi, (_match, content) => {
         const encodedState = toBase64(content.trim());
         return `<div class="spinwheel-instance-host" data-spinwheel-state-b64='${encodedState}'></div>`;
     });
-    text = text.replace(/<think(?:\s+data-open="(\d+)")?(?:\s+data-close="(\d+)")?>([\s\S]*?)<\/think>/gi, (match, openTime, closeTime, content) => {
+    text = text.replace(/<think(?:\s+data-open="(\d+)")?(?:\s+data-close="(\d+)")?>([\s\S]*?)<\/think>/gi, (_match, openTime, closeTime, content) => {
         const now = Date.now();
         const open = openTime ? parseInt(openTime, 10) : now;
         const close = closeTime ? parseInt(closeTime, 10) : now;
@@ -377,8 +377,8 @@ const processInteractiveHTMLTags = (text) => {
 export const formatText = (text) => {
     if (!text) return '';
     let processedText = processInteractiveHTMLTags(text);
-    processedText = processedText.replace(/\\\[([\s\S]+?)\\\]/g, (m, expr) => `$$${expr}$$`)
-        .replace(/\\\(([^\n]+?)\\\)/g, (m, expr) => `$${expr}$`);
+    processedText = processedText.replace(/\\\[([\s\S]+?)\\\]/g, (_match, expr) => `$$${expr}$$`)
+        .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr) => `$${expr}$`);
 
     let renderedHtml = md.render(processedText);
     renderedHtml = renderedHtml
@@ -444,8 +444,8 @@ userMd.renderer.rules.fence = (tokens, idx) => {
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
-                <button class="download-code-btn" title="Скачать файл"><img src=" /icons/ui/download.svg" alt="Download"></button>
-                <button class="copy-code-btn" title="Скопировать код"><img src=" /icons/ui/copy.svg" alt="Copy"></button>
+                <button class="download-code-btn" title="Скачать файл"><img src="/icons/ui/download.svg" alt="Download"></button>
+                <button class="copy-code-btn" title="Скопировать код"><img src="/icons/ui/copy.svg" alt="Copy"></button>
                 <button class="toggle-code-btn" title="Развернуть">
                     <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
                     <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Accessibility,
@@ -28,7 +28,62 @@ import {
     validateUsername,
 } from '../../utils/accountValidation';
 
-const SettingsTabButton = ({ active, icon, label, onClick }) => (
+type SettingsTabId = 'account' | 'appearance' | 'personalization' | 'interface' | 'accessibility';
+
+type SettingsTabButtonProps = {
+    active: boolean;
+    icon: ReactNode;
+    label: string;
+    onClick: () => void;
+};
+
+type SettingsPaneProps = {
+    children: ReactNode;
+    dataPane: SettingsTabId;
+    className?: string;
+};
+
+type SettingGroupProps = {
+    title?: ReactNode;
+    description?: ReactNode;
+    children: ReactNode;
+    className?: string;
+};
+
+type SettingControlGroupProps = {
+    children: ReactNode;
+    className?: string;
+    withDivider?: boolean;
+};
+
+type SettingFieldProps = {
+    label: ReactNode;
+    hint?: ReactNode;
+    children: ReactNode;
+    className?: string;
+    withDivider?: boolean;
+};
+
+type SettingToggleProps = {
+    title: ReactNode;
+    description: ReactNode;
+    checked: boolean;
+    onClick: () => void | Promise<void>;
+    ariaLabel?: string;
+    withDivider?: boolean;
+};
+
+type SettingsModalProps = {
+    onClose: () => void;
+    onOpenAuth: () => void;
+};
+
+type ProfileMessage = {
+    type: 'success' | 'error';
+    text: string;
+} | null;
+
+const SettingsTabButton = ({ active, icon, label, onClick }: SettingsTabButtonProps) => (
     <button
         type="button"
         className={cn(
@@ -44,7 +99,7 @@ const SettingsTabButton = ({ active, icon, label, onClick }) => (
     </button>
 );
 
-const SettingsPane = ({ children, dataPane, className = '' }) => (
+const SettingsPane = ({ children, dataPane, className = '' }: SettingsPaneProps) => (
     <div
         className={cn(
             'settings-pane active ui-scrollbar-thin',
@@ -56,7 +111,7 @@ const SettingsPane = ({ children, dataPane, className = '' }) => (
     </div>
 );
 
-const SettingGroup = ({ title, description, children, className = '' }) => (
+const SettingGroup = ({ title, description, children, className = '' }: SettingGroupProps) => (
     <section className={cn('setting-group', className)}>
         {title && (
             <h4 className="setting-group-title">
@@ -72,7 +127,7 @@ const SettingGroup = ({ title, description, children, className = '' }) => (
     </section>
 );
 
-const SettingControlGroup = ({ children, className = '', withDivider = false }) => (
+const SettingControlGroup = ({ children, className = '', withDivider = false }: SettingControlGroupProps) => (
     <div
         className={cn(
             'setting-control-group',
@@ -84,7 +139,7 @@ const SettingControlGroup = ({ children, className = '', withDivider = false }) 
     </div>
 );
 
-const SettingField = ({ label, hint, children, className = '', withDivider = false }) => (
+const SettingField = ({ label, hint, children, className = '', withDivider = false }: SettingFieldProps) => (
     <div className={cn('setting-field', withDivider && 'with-divider', className)}>
         <label className="setting-field-label ui-field-label">{label}</label>
         {children}
@@ -92,7 +147,7 @@ const SettingField = ({ label, hint, children, className = '', withDivider = fal
     </div>
 );
 
-const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDivider = false }) => (
+const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDivider = false }: SettingToggleProps) => (
     <div className={cn('setting-toggle', withDivider && 'with-divider')}>
         <div className="setting-toggle-label">
             <div className="setting-toggle-title">
@@ -106,7 +161,7 @@ const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDi
     </div>
 );
 
-const SettingsModal = ({ onClose, onOpenAuth }) => {
+const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const { t, i18n } = useTranslation();
     const { settings, updateSetting } = useSettings();
     const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
@@ -142,7 +197,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
-    const [profileMessage, setProfileMessage] = useState(null);
+    const [profileMessage, setProfileMessage] = useState<ProfileMessage>(null);
 
     useEffect(() => {
         setName(user?.name || '');
@@ -180,12 +235,12 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
         }
     }, [activeTab, isAuthenticated]);
 
-    const handleTabChange = (tab) => {
+    const handleTabChange = (tab: SettingsTabId) => {
         setActiveTab(tab);
         navigateToSettings(tab, true);
     };
 
-    const handleSaveProfile = async (e) => {
+    const handleSaveProfile = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!isAuthenticated) return;
 
@@ -214,16 +269,18 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
 
         try {
             const res = await updateProfile({ name: name.trim(), username: username.trim() });
-            if (res.success) {
-                setFieldErrors({});
-                setProfileMessage({ type: 'success', text: t('settings.account.profileUpdated') });
-            } else {
+            if (res.success === false) {
                 const localizedError = localizeAccountError(res.error, res.field, t);
                 setFieldErrors(localizedError.fieldErrors);
                 setProfileMessage({ type: 'error', text: localizedError.message || t('settings.account.updateError') });
+                return;
             }
+
+            setFieldErrors({});
+            setProfileMessage({ type: 'success', text: t('settings.account.profileUpdated') });
         } catch (err) {
-            setProfileMessage({ type: 'error', text: err.message });
+            const message = err instanceof Error ? err.message : t('settings.account.updateError');
+            setProfileMessage({ type: 'error', text: message });
         } finally {
             setIsSavingProfile(false);
         }
@@ -252,12 +309,21 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                 return;
             }
 
+            if (res.success === false) {
+                setProfileMessage({
+                    type: 'error',
+                    text: res.error || t('settings.account.delete.error')
+                });
+                return;
+            }
+
             setProfileMessage({
                 type: 'error',
-                text: res.error || t('settings.account.delete.error')
+                text: t('settings.account.delete.error')
             });
         } catch (err) {
-            setProfileMessage({ type: 'error', text: err.message || t('settings.account.delete.error') });
+            const message = err instanceof Error ? err.message : t('settings.account.delete.error');
+            setProfileMessage({ type: 'error', text: message });
         } finally {
             setIsDeletingAccount(false);
         }
@@ -269,7 +335,15 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
         : 16;
     const fontSizePercent = ((currentFontSizePx - FONT_SIZE_MIN_PX) / (FONT_SIZE_MAX_PX - FONT_SIZE_MIN_PX)) * 100;
 
-    const tabs = [
+    const optionalPersonalizationTabs: Array<{ id: SettingsTabId; label: string; icon: ReactNode }> = isAuthenticated
+        ? [{
+            id: 'personalization',
+            label: t('settings.tabs.personalization'),
+            icon: <SlidersHorizontal size={18} strokeWidth={1.9} />
+        }]
+        : [];
+
+    const tabs: Array<{ id: SettingsTabId; label: string; icon: ReactNode }> = [
         {
             id: 'account',
             label: t('settings.tabs.account'),
@@ -280,13 +354,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
             label: t('settings.tabs.appearance'),
             icon: <Palette size={18} strokeWidth={1.9} />
         },
-        ...(isAuthenticated
-            ? [{
-                id: 'personalization',
-                label: t('settings.tabs.personalization'),
-                icon: <SlidersHorizontal size={18} strokeWidth={1.9} />
-            }]
-            : []),
+        ...optionalPersonalizationTabs,
         {
             id: 'interface',
             label: t('settings.tabs.interface'),
@@ -302,18 +370,11 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
     const normalizedAccountName = String(user?.name || '').trim();
     const accountDisplayName =
         normalizedAccountName || user?.username || user?.email || t('settings.account.status.guest');
-    const accountProfileDetails = [
-        { key: 'name', label: t('settings.account.fields.name'), value: normalizedAccountName || t('settings.account.unavailable') },
-        { key: 'username', label: t('settings.account.fields.username'), value: user?.username || t('settings.account.unavailable') },
-        { key: 'email', label: t('settings.account.fields.email'), value: user?.email || t('settings.account.unavailable') },
-    ];
     const accountInitial = String(accountDisplayName || '?').trim().charAt(0).toUpperCase() || '?';
 
     const renderAccountTab = () => (
         <SettingsPane dataPane="account" className="account-pane">
             <div className="account-shell">
-
-
                 {profileMessage && (
                     <p
                         className={cn(
@@ -395,7 +456,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                                 setName(e.target.value);
                                                 setFieldErrors((prev) => ({ ...prev, name: undefined }));
                                             }}
-                                            maxLength="100"
+                                            maxLength={100}
                                         />
                                         {fieldErrors.name && (
                                             <span className="text-xs leading-5 text-danger">{fieldErrors.name}</span>
@@ -416,7 +477,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                                 setUsername(e.target.value);
                                                 setFieldErrors((prev) => ({ ...prev, username: undefined }));
                                             }}
-                                            maxLength="50"
+                                            maxLength={50}
                                             required
                                         />
                                         {fieldErrors.username && (
@@ -453,21 +514,6 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                         </div>
 
                         <div className="account-column account-column-side">
-                            <section className="account-card account-card-profile">
-                                <div className="account-card-head">
-                                    <h5 className="account-card-title">{t('settings.account.title')}</h5>
-                                    <p className="account-card-copy">{t('settings.account.description')}</p>
-                                </div>
-                                <div className="account-detail-list">
-                                    {accountProfileDetails.map((item) => (
-                                        <div key={item.key} className="account-detail-row">
-                                            <span className="account-detail-label">{item.label}</span>
-                                            <span className="account-detail-value">{item.value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-
                             <section className="account-card account-danger-card">
                                 <div className="account-card-head">
                                     <h5 className="account-card-title account-danger-title">
@@ -478,9 +524,8 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                 </div>
                                 <SettingField
                                     label={t('settings.account.delete.confirmLabel')}
-                                    hint={t('settings.account.delete.confirmHint', { username: user?.username || '' })}
-                                    className="account-field"
-                                >
+                                            className="account-field"
+                                        >
                                     <input
                                         className={settingsInputClass}
                                         type="text"
@@ -614,7 +659,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                 <SettingField label={t('settings.personalization.instructionsLabel')}>
                                     <textarea
                                         className={cn(settingsInputClass, 'min-h-32 resize-y')}
-                                        rows="5"
+                                        rows={5}
                                         value={settings.personalization_instructions || ''}
                                         onChange={(e) => updateSetting('personalization_instructions', e.target.value)}
                                         placeholder={t('settings.personalization.instructionsPlaceholder')}
@@ -639,7 +684,7 @@ const SettingsModal = ({ onClose, onOpenAuth }) => {
                                 <SettingField label={t('settings.personalization.moreLabel')} withDivider>
                                     <textarea
                                         className={cn(settingsInputClass, 'min-h-24 resize-y')}
-                                        rows="3"
+                                        rows={3}
                                         value={settings.personalization_more || ''}
                                         onChange={(e) => updateSetting('personalization_more', e.target.value)}
                                         placeholder={t('settings.personalization.morePlaceholder')}

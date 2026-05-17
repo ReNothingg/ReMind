@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
@@ -37,6 +37,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const fieldInputClass = 'ui-input min-h-11 rounded-xl bg-interactive px-4 py-3 text-[0.95rem]';
     const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-11 w-full justify-center rounded-xl px-4 py-3 text-[0.95rem] font-semibold';
     const secondaryAuthButtonClass = 'btn btn-google flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4 py-3 text-[0.95rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
+    const shouldUseTurnstile = Boolean(authConfig?.turnstile_site_key) && authConfig?.turnstile_required !== false;
 
     const getTurnstileResponse = (idRef) => {
         try {
@@ -50,7 +51,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     };
 
     const hasRequiredTurnstileToken = (token) => {
-        if (!authConfig?.turnstile_site_key || token) {
+        if (!shouldUseTurnstile || token) {
             return true;
         }
         setMessage({ type: 'error', text: t('authModal.messages.turnstileRequired') });
@@ -84,6 +85,17 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     })();
 
     useEffect(() => {
+        const handleEscapeKey = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscapeKey);
+        return () => document.removeEventListener('keydown', handleEscapeKey);
+    }, [onClose]);
+
+    useEffect(() => {
         const loadAuthConfig = async () => {
             try {
                 const resp = await fetch(`${apiService.baseURL}/api/auth/config`, {
@@ -105,7 +117,6 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const waitForTurnstile = async (maxRetries = 50, delayMs = 100) => {
         for (let i = 0; i < maxRetries; i++) {
             if (window.turnstile) {
-                console.log('Turnstile script loaded successfully');
                 return true;
             }
             await new Promise(resolve => setTimeout(resolve, delayMs));
@@ -115,7 +126,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     };
 
     useEffect(() => {
-        if (!authConfig?.turnstile_site_key) return;
+        if (!shouldUseTurnstile) return;
         let timeoutId;
         let cancelled = false;
 
@@ -124,30 +135,24 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             if (cancelled || !loaded || !window.turnstile) return;
             const targetRef = isLoginView ? loginContainerRef : registerContainerRef;
             const idRef = isLoginView ? loginTurnstileIdRef : registerTurnstileIdRef;
-            timeoutId = setTimeout(() => {
+            const renderTurnstile = () => {
                 if (cancelled || !targetRef.current) return;
                 removeTurnstile(idRef, targetRef);
-                if (isLoginView) {
-                    console.log('Rendering login Turnstile widget');
-                } else {
-                    console.log('Rendering register Turnstile widget');
-                }
                 try {
                     idRef.current = window.turnstile.render(targetRef.current, {
                         sitekey: authConfig.turnstile_site_key,
                         theme: 'dark',
-                        callback: () => {
+                        size: 'normal',
+                        appearance: 'always',
+                        execution: 'render',
+                        'error-callback': (errorCode) => {
                             if (isLoginView) {
-                                console.log('Turnstile challenge solved (login)');
+                                console.error('Turnstile error (login)', errorCode);
                             } else {
-                                console.log('Turnstile challenge solved (register)');
+                                console.error('Turnstile error (register)', errorCode);
                             }
-                        },
-                        'error-callback': () => {
-                            if (isLoginView) {
-                                console.error('Turnstile error (login)');
-                            } else {
-                                console.error('Turnstile error (register)');
+                            if (!cancelled) {
+                                setMessage({ type: 'error', text: t('authModal.messages.turnstileLoadError') });
                             }
                         }
                     });
@@ -158,6 +163,10 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                         console.warn('Failed to render register Turnstile:', err);
                     }
                 }
+            };
+
+            timeoutId = setTimeout(() => {
+                renderTurnstile();
             }, 100);
         };
 
@@ -166,7 +175,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             cancelled = true;
             if (timeoutId !== undefined) clearTimeout(timeoutId);
         };
-    }, [authConfig, isLoginView]);
+    }, [authConfig, isLoginView, shouldUseTurnstile]);
 
     useEffect(() => {
         if (!window.turnstile) return;
@@ -193,18 +202,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             }
 
             const res = await login(email, password, turnstileResponse);
-            if (res.success) {
-                setMessage({ type: 'success', text: res.message || t('authModal.messages.loginSuccess') });
-                try {
-                    if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
-                        window.turnstile.reset(loginTurnstileIdRef.current);
-                    }
-                } catch {
-                }
-                setTimeout(() => {
-                    onClose();
-                }, 1500);
-            } else {
+            if (res.success === false) {
                 try {
                     if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
                         window.turnstile.reset(loginTurnstileIdRef.current);
@@ -212,7 +210,19 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 } catch {
                 }
                 setMessage({ type: 'error', text: res.error || t('authModal.messages.loginError') });
+                return;
             }
+
+            setMessage({ type: 'success', text: res.message || t('authModal.messages.loginSuccess') });
+            try {
+                if (window.turnstile && loginTurnstileIdRef.current !== undefined) {
+                    window.turnstile.reset(loginTurnstileIdRef.current);
+                }
+            } catch {
+            }
+            setTimeout(() => {
+                onClose();
+            }, 1500);
         } catch {
             setMessage({ type: 'error', text: t('authModal.messages.requestError') });
         } finally {
@@ -273,20 +283,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             }
 
             const res = await authService.register(name.trim(), username.trim(), email, password, turnstileResponse);
-            if (res.success) {
-                setFieldErrors({});
-                setMessage({ type: 'success', text: res.message || t('authModal.messages.registerSuccess') });
-                try {
-                    if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
-                        window.turnstile.reset(registerTurnstileIdRef.current);
-                    }
-                } catch {
-                }
-                setTimeout(() => {
-                    setIsLoginView(true);
-                    setMessage(null);
-                }, 2000);
-            } else {
+            if (res.success === false) {
                 const localizedError = localizeAccountError(res.error, res.field, t);
                 setFieldErrors(localizedError.fieldErrors);
                 try {
@@ -296,7 +293,21 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 } catch {
                 }
                 setMessage({ type: 'error', text: localizedError.message || t('authModal.messages.registerError') });
+                return;
             }
+
+            setFieldErrors({});
+            setMessage({ type: 'success', text: res.message || t('authModal.messages.registerSuccess') });
+            try {
+                if (window.turnstile && registerTurnstileIdRef.current !== undefined) {
+                    window.turnstile.reset(registerTurnstileIdRef.current);
+                }
+            } catch {
+            }
+            setTimeout(() => {
+                setIsLoginView(true);
+                setMessage(null);
+            }, 2000);
         } catch {
             setMessage({ type: 'error', text: t('authModal.messages.requestError') });
         } finally {
@@ -320,6 +331,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         <ModalShell
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
             contentClassName="auth-modal-content mx-auto w-full max-w-[420px] rounded-t-[20px] border-border bg-surface px-6 pb-8 pt-6 text-foreground shadow-[var(--shadow-xl)] sm:rounded-2xl sm:px-8 sm:pb-8 sm:pt-8"
+            onBackdropClick={onClose}
         >
             <button
                 className="auth-modal-close ui-icon-control absolute right-4 top-4 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
@@ -362,11 +374,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             />
                         </div>
 
-                        {authConfig?.turnstile_site_key && (
+                        {shouldUseTurnstile && (
                             <div
                                 id="loginTurnstileContainer"
                                 ref={loginContainerRef}
-                                className="overflow-x-auto"
+                                className="recaptcha-container overflow-x-auto"
                             />
                         )}
 
@@ -411,7 +423,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                     setName(e.target.value);
                                     setFieldErrors((prev) => ({ ...prev, name: undefined }));
                                 }}
-                                maxLength="100"
+                                maxLength={100}
                                 required
                             />
                             {fieldErrors.name && (
@@ -429,7 +441,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                     setUsername(e.target.value);
                                     setFieldErrors((prev) => ({ ...prev, username: undefined }));
                                 }}
-                                maxLength="50"
+                                maxLength={50}
                                 required
                             />
                             {fieldErrors.username && (
@@ -444,7 +456,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                 id="regEmail"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                maxLength="100"
+                                maxLength={100}
                                 required
                             />
                         </div>
@@ -456,8 +468,8 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                 id="regPassword"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                minLength="8"
-                                maxLength="100"
+                                minLength={8}
+                                maxLength={100}
                                 required
                             />
                         </div>
@@ -469,16 +481,16 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                 id="regConfirm"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                maxLength="100"
+                                maxLength={100}
                                 required
                             />
                         </div>
 
-                        {authConfig?.turnstile_site_key && (
+                        {shouldUseTurnstile && (
                             <div
                                 id="registerTurnstileContainer"
                                 ref={registerContainerRef}
-                                className="overflow-x-auto"
+                                className="recaptcha-container overflow-x-auto"
                             />
                         )}
 
