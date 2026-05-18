@@ -30,6 +30,13 @@ const getErrorMessage = (error: unknown) => (
 const resolvePreviewBackgroundColor = (element: Element | null) => {
     let current = element instanceof Element ? element : null;
 
+    if (current) {
+        const previewCanvasBg = window.getComputedStyle(current).getPropertyValue('--svg-preview-canvas-bg').trim();
+        if (previewCanvasBg && !TRANSPARENT_BACKGROUND_VALUES.has(previewCanvasBg.toLowerCase())) {
+            return previewCanvasBg;
+        }
+    }
+
     while (current) {
         const { backgroundColor } = window.getComputedStyle(current);
         if (backgroundColor && !TRANSPARENT_BACKGROUND_VALUES.has(backgroundColor.trim().toLowerCase())) {

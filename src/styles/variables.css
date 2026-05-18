@@ -142,10 +142,22 @@
   --icon-send-url: url('/icons/ui/send.svg');
   --icon-stop-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='18px' height='18px'%3E%3Cpath d='M6 6h12v12H6z'/%3E%3C/svg%3E");
   --icon-audio-url: url('/icons/media/audio.svg');
-  --filter-speak-btn-active: invert(1);
-  --sidebar-toggle-icon-filter: invert(0.85);
-  --new-chat-icon-filter: invert(0.75);
-  --icon-filter: none;
+  --icon-color-primary: var(--color-text-primary);
+  --icon-color-secondary: var(--color-text-secondary);
+  --icon-color-muted: var(--color-text-tertiary);
+  --icon-color-on-solid: #ffffff;
+  --icon-filter-primary: none;
+  --icon-filter-secondary: none;
+  --icon-filter-muted: none;
+  --icon-filter-on-accent: brightness(0) saturate(100%);
+  --icon-opacity-primary: 0.92;
+  --icon-opacity-secondary: 0.74;
+  --icon-opacity-muted: 0.52;
+  --filter-speak-btn-active: var(--icon-filter-primary);
+  --sidebar-toggle-icon-filter: var(--icon-filter-secondary);
+  --new-chat-icon-filter: var(--icon-filter-secondary);
+  --icon-filter: var(--icon-filter-secondary);
+  --svg-preview-canvas-bg: #111214;
   --theme-toggle-icon-url: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>');
 
   --font-family-main:
@@ -413,9 +425,22 @@ html[data-theme='light'] {
   --toggle-btn-active-text: #ffffff;
   --toggle-btn-active-hover-bg: color-mix(in srgb, rgb(var(--color-accent-raw)), black 10%);
 
-  --icon-filter: brightness(0) opacity(0.7);
-  --sidebar-toggle-icon-filter: brightness(0) opacity(0.6);
-  --new-chat-icon-filter: brightness(0) opacity(0.6);
+  --icon-color-primary: var(--color-text-primary);
+  --icon-color-secondary: var(--color-text-secondary);
+  --icon-color-muted: var(--color-text-tertiary);
+  --icon-color-on-solid: #ffffff;
+  --icon-filter-primary: brightness(0) saturate(100%);
+  --icon-filter-secondary: brightness(0) saturate(100%);
+  --icon-filter-muted: brightness(0) saturate(100%);
+  --icon-filter-on-accent: brightness(0) invert(1);
+  --icon-opacity-primary: 0.88;
+  --icon-opacity-secondary: 0.68;
+  --icon-opacity-muted: 0.48;
+  --filter-speak-btn-active: var(--icon-filter-primary);
+  --sidebar-toggle-icon-filter: var(--icon-filter-secondary);
+  --new-chat-icon-filter: var(--icon-filter-secondary);
+  --icon-filter: var(--icon-filter-secondary);
+  --svg-preview-canvas-bg: #1f2937;
 
   --theme-toggle-icon-url: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>');
 }
@@ -465,7 +490,7 @@ html[data-theme='light'] .input-wrapper textarea#promptInput {
 
 html[data-theme='light'] .attach-button,
 html[data-theme='light'] .send-button:not(.stop-button) {
-  filter: invert(1);
+  filter: none;
 }
 html[data-theme='light'] .send-button {
   background-color: #111827;
@@ -594,7 +619,8 @@ html[data-theme='light'] .web-search-toggle {
 }
 html[data-theme='light'] .censorship-button img,
 html[data-theme='light'] .web-search-toggle img {
-  filter: invert(1) opacity(0.8);
+  filter: var(--icon-filter-secondary);
+  opacity: var(--icon-opacity-secondary);
 }
 html[data-theme='light'] .censorship-button.active,
 html[data-theme='light'] .web-search-toggle.active {
@@ -603,7 +629,8 @@ html[data-theme='light'] .web-search-toggle.active {
 }
 html[data-theme='light'] .censorship-button.active img,
 html[data-theme='light'] .web-search-toggle.active img {
-  filter: invert(0);
+  filter: var(--icon-filter-on-accent);
+  opacity: 1;
 }
 
 html[data-theme='light'] ::selection {

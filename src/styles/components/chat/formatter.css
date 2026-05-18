@@ -337,6 +337,10 @@
   justify-content: center;
 }
 
+.svg-preview-surface {
+  background: var(--svg-preview-canvas-bg);
+}
+
 .diagram-block .chart-container,
 .diagram-block .d3-container,
 .diagram-block .nomnoml-container,

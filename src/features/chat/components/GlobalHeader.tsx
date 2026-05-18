@@ -202,7 +202,11 @@ export default function GlobalHeader({
         };
     });
 
-    const activeModel = models.find((model) => model.id === currentModel);
+    const activeModel = models.find((model) => model.id === currentModel) ?? models[0] ?? {
+        id: currentModel,
+        name: currentModel,
+        desc: '',
+    };
     const isShared = !!shareInfo?.isPublic;
     const hasSession = !!currentSessionId;
     const shareButtonTitle = !hasSession

@@ -107,6 +107,8 @@
 
 .attach-button,
 .send-button {
+  --composer-icon-url: var(--icon-upload-url);
+
   height: 40px;
   width: 40px;
   min-width: 40px;
@@ -117,17 +119,33 @@
   flex-shrink: 0;
   padding: 0;
 
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 50%;
+  position: relative;
+  color: var(--icon-color-secondary);
+  background-color: var(--input-button-bg);
+  background-image: none;
   margin-left: calc(var(--spacing-unit) * 0.75);
-  background-image: var(--icon-upload-url);
   border-radius: var(--input-area-border-radius);
   border: none;
   outline: none;
   box-shadow: none;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.attach-button::before,
+.send-button::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: var(--composer-icon-url) center / contain no-repeat;
+  mask: var(--composer-icon-url) center / contain no-repeat;
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .attach-button:focus,
@@ -139,12 +157,14 @@
 }
 
 .send-button {
+  --composer-icon-url: var(--icon-send-url);
+
   background-color: var(--input-send-button-bg);
-  background-image: var(--icon-send-url);
+  color: var(--icon-color-on-solid) !important;
 }
 
 .send-button.stop-button {
-  background-image: var(--icon-stop-url);
+  --composer-icon-url: var(--icon-stop-url);
 }
 
 .send-button.stop-button:hover {
@@ -152,12 +172,25 @@
 }
 
 .send-button.audio-link-button {
-  background-image: var(--icon-audio-url);
+  --composer-icon-url: var(--icon-audio-url);
 }
 
 .attach-button:hover,
 .send-button:hover {
   background-color: var(--input-button-hover-bg);
+}
+
+.send-button:hover {
+  background-color: var(--input-send-button-hover-bg);
+}
+
+.send-button.stop-button:hover {
+  background-color: var(--color-danger);
+}
+
+.attach-button:hover::before,
+.send-button:hover::before {
+  transform: scale(1.08);
 }
 
 .file-card {

@@ -122,6 +122,51 @@
     @apply inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-border-strong bg-surface-alt text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  .ui-icon-control > img,
+  .ui-action-button > img,
+  .ui-message-variant-button > img,
+  .action-btn > img,
+  .message-action-btn > img,
+  .share-copy-icon > img,
+  .code-block-header-actions button > img,
+  .copy-table-btn img,
+  .table-wrapper .table-copy-btn img,
+  .censorship-button img,
+  .web-search-toggle img,
+  .theme-toggle-btn img,
+  .web-sources-header img {
+    filter: var(--icon-filter-secondary);
+    opacity: var(--icon-opacity-secondary);
+    transition:
+      filter var(--transition-fast),
+      opacity var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  .ui-icon-control:hover > img,
+  .ui-action-button:hover > img,
+  .action-btn:hover > img,
+  .message-action-btn:hover > img,
+  .share-copy-icon:hover > img,
+  .code-block-header-actions button:hover > img,
+  .copy-table-btn:hover img,
+  .table-wrapper .table-copy-btn:hover img,
+  .censorship-button:hover img,
+  .web-search-toggle:hover img,
+  .theme-toggle-btn:hover img {
+    opacity: var(--icon-opacity-primary);
+  }
+
+  .censorship-button.active img,
+  .web-search-toggle.active img {
+    filter: var(--icon-filter-on-accent);
+    opacity: 1;
+  }
+
+  .action-btn.speak-btn.error img {
+    opacity: 1;
+  }
+
   .ui-button-primary {
     @apply inline-flex items-center justify-center rounded-md bg-accent-brand px-3 py-2 text-sm font-semibold text-accent-contrast transition duration-200 ease-out hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60;
   }
