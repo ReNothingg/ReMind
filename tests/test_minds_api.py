@@ -133,6 +133,48 @@ def test_mind_validation_rejects_html_instructions(client, create_confirmed_user
     assert response.get_json()["error"]["code"] == "validation_error"
 
 
+def test_mind_validation_allows_instruction_dialogue_examples(client, create_confirmed_user, login):
+    _, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+    headers = _csrf_headers(client)
+    instructions = """Ты — Monday, EMO-ИИ из ReMind.
+
+<user>
+Какой первый шаг при смене грязного подгузника?
+</user>
+
+<assistant>
+Ладно, аккуратно положи ребёнка на поверхность для переодевания.
+</assistant>
+
+Никогда не начинай свои ответы с междометий вроде «А», «О», «Отлично», «Ладно», «Вау».
+Начинай сразу с ответа."""
+
+    response = client.post(
+        "/api/minds",
+        json=_mind_payload(instructions=instructions),
+        headers=headers,
+    )
+
+    assert response.status_code == 201
+    assert response.get_json()["mind"]["instructions"] == instructions
+
+
+def test_mind_validation_rejects_unsafe_instruction_markup(client, create_confirmed_user, login):
+    _, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+    headers = _csrf_headers(client)
+
+    response = client.post(
+        "/api/minds",
+        json=_mind_payload(instructions="Answer helpfully. <img src=x onerror=alert(1)>"),
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "validation_error"
+
+
 def test_chat_resolves_mind_context_server_side(client, create_confirmed_user, login, monkeypatch):
     rate_limit_store.clear()
     _, email, password = create_confirmed_user()

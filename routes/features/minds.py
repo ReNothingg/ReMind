@@ -16,6 +16,14 @@ from utils.responses import make_ok
 PUBLIC_ID_RE = re.compile(r"^[A-Za-z0-9_-]{3,128}$")
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 HTML_TAG_RE = re.compile(r"<[^>]+>")
+UNSAFE_HTML_RE = re.compile(
+    r"</?\s*(?:script|style|iframe|object|embed|svg|math|link|meta|base|form|"
+    r"input|button|textarea|select|option|video|audio|source|track|img|image|"
+    r"foreignobject)\b"
+    r"|<[^>]+\s(?:on[a-z]+\s*=|(?:href|src|xlink:href)\s*=\s*['\"]?\s*"
+    r"(?:javascript:|data:text/html))",
+    re.IGNORECASE,
+)
 
 MIND_CATEGORIES = [
     {"id": "general", "label": "Общее"},
@@ -54,6 +62,7 @@ def _clean_text_field(
     min_length: int,
     max_length: int,
     multiline: bool = False,
+    allow_markup_examples: bool = False,
 ) -> str:
     if not isinstance(value, str):
         raise ApiError(f"{field_name} is required", status=400, code="validation_error")
@@ -70,7 +79,12 @@ def _clean_text_field(
             status=400,
             code="validation_error",
         )
-    if CONTROL_CHARS_RE.search(text) or HTML_TAG_RE.search(text):
+    has_invalid_markup = (
+        UNSAFE_HTML_RE.search(text)
+        if allow_markup_examples
+        else HTML_TAG_RE.search(text)
+    )
+    if CONTROL_CHARS_RE.search(text) or has_invalid_markup:
         raise ApiError(
             f"{field_name} contains invalid characters",
             status=400,
@@ -232,6 +246,7 @@ def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> d
             min_length=16,
             max_length=8000,
             multiline=True,
+            allow_markup_examples=True,
         )
     if not partial or "starters" in data or "conversation_starters" in data:
         fields["starters"] = _normalize_starters(
