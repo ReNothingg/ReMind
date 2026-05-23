@@ -16,7 +16,6 @@ from ai_engine import get_model_function
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
-from services.model_access import can_user_access_model, get_model_stage
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
@@ -27,11 +26,12 @@ from services.chat_history import (
     resolve_session_identifier,
 )
 from services.files import handle_file_upload
+from services.model_access import can_user_access_model, get_model_stage
 from services.voice import synthesize_text_segments
+from utils.auth import UserChatHistory
 from utils.input_validation import InputValidator, ValidationError
 from utils.rate_limiting import RateLimiter, rate_limit
 from utils.responses import logger, make_ok
-from utils.auth import UserChatHistory
 
 PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
 chat_limiter = RateLimiter(max_requests=60, time_window=3600)

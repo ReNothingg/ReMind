@@ -10,9 +10,9 @@ import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.flask_client import OAuth
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
-from sqlalchemy import func, inspect, text
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import BadData, URLSafeTimedSerializer
+from sqlalchemy import func, inspect, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .input_validation import InputValidator, ValidationError
