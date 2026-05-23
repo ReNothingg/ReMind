@@ -480,11 +480,7 @@
   height: 6px;
   appearance: none;
   border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--color-accent) var(--settings-range-progress, 50%),
-    var(--color-bg-interactive) var(--settings-range-progress, 50%)
-  );
+  background: var(--color-accent) var(--settings-range-progress, 50%);
   outline: none;
 }
 
@@ -606,8 +602,7 @@
   gap: 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(var(--color-accent-raw), 0.06), transparent 72%),
+  background: rgba(var(--color-accent-raw), 0.06),
     var(--color-bg-surface);
   box-shadow: var(--shadow-xs);
   padding: 14px;
@@ -681,11 +676,7 @@
 
 .user-settings-modal .account-card-accent {
   border-color: rgba(var(--color-accent-raw), 0.22);
-  background: linear-gradient(
-      180deg,
-      rgba(var(--color-accent-raw), 0.08),
-      transparent 70%
-    ),
+  background: rgba(var(--color-accent-raw), 0.08),
     var(--color-bg-surface);
 }
 
@@ -798,12 +789,7 @@
 
 .user-settings-modal .account-danger-card {
   border-color: rgba(var(--color-error-raw), 0.24);
-  background: linear-gradient(
-      180deg,
-      rgba(var(--color-error-raw), 0.06),
-      transparent 72%
-    ),
-    var(--color-bg-surface);
+  background: var(--color-bg-surface);
 }
 
 .user-settings-modal .account-danger-title {

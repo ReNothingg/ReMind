@@ -1118,11 +1118,7 @@ html[data-theme='light'] .settings-tabs {
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-accent-raw), 0.08),
-    rgba(var(--color-white-raw), 0.02)
-  );
+  background: rgba(var(--color-accent-raw), 0.08);
   opacity: 0;
   transition: opacity var(--transition-fast);
   z-index: -1;
