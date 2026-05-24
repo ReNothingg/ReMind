@@ -173,23 +173,22 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/1
 
 Если `GEMINI_API_KEY` пока нет, для локального smoke-теста UI и стриминга можно использовать модели `echo` и `demo_image`.
 
-### 4. Запуск backend
-
-```bash
-python main.py
-```
-
-Backend поднимается на `http://127.0.0.1:5000`.
-
-### 5. Запуск frontend
+### 4. Запуск frontend и backend
 
 ```bash
 npm run dev
 ```
 
-Vite dev server работает на `http://127.0.0.1:5173` и проксирует API на backend.
+Команда одновременно поднимает backend на `http://127.0.0.1:5000` и Vite dev server на `http://127.0.0.1:5173`. Vite проксирует API-запросы на backend.
 
-### 6. Дополнительно
+Если нужно запустить части отдельно:
+
+```bash
+npm run dev:backend
+npm run dev:frontend
+```
+
+### 5. Дополнительно
 
 Celery worker:
 
