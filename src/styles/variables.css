@@ -685,6 +685,12 @@ html[data-theme='light'] .message-text {
 html[data-theme='light'] a {
   color: var(--color-text-link);
 }
+
+html[data-theme='light'][data-accent-color='white'] {
+  --color-text-link: #2563eb;
+  --color-text-link-hover: #1d4ed8;
+}
+
 html[data-theme='light'] button:not(.active):not(.primary) {
   color: #374151 !important;
 }
@@ -755,6 +761,11 @@ html[data-theme='light'] button:not(.active):not(.primary) {
   --link-hover-color: var(--color-text-primary);
   --hero-grid-line-color: rgb(var(--palette-text-raw));
   --news-meta-color: var(--color-text-tertiary);
+}
+
+html:not([data-theme='light'])[data-accent-color='white'] {
+  --color-text-link: #93c5fd;
+  --color-text-link-hover: #bfdbfe;
 }
 
 html[data-theme='light'] {

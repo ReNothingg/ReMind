@@ -477,6 +477,7 @@
   }
 }
 
+.message-text a,
 .link-enhanced {
   position: relative;
   text-decoration: underline;
@@ -485,6 +486,14 @@
   transition:
     color var(--transition-fast),
     text-decoration-color var(--transition-fast);
-  color: var(--color-link);
+  color: var(--color-text-link) !important;
   text-decoration-color: rgba(var(--color-accent-raw), 0.4);
+}
+
+.message-text a:hover,
+.message-text a:focus-visible,
+.link-enhanced:hover,
+.link-enhanced:focus-visible {
+  color: var(--color-text-link-hover) !important;
+  text-decoration-color: currentColor;
 }

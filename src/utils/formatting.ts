@@ -39,6 +39,20 @@ const escapeHtml = (unsafe) => {
         .replace(/'/g, "&#039;");
 };
 
+const linkifyEscapedText = (escapedText) => {
+    return escapedText.replace(/https?:\/\/[^\s<]+/g, (rawUrl) => {
+        const trailingMatch = rawUrl.match(/[.,!?;:)\]]+$/);
+        const trailing = trailingMatch ? trailingMatch[0] : '';
+        const url = trailing ? rawUrl.slice(0, -trailing.length) : rawUrl;
+
+        if (!url) {
+            return rawUrl;
+        }
+
+        return `<a class="link-enhanced" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${trailing}`;
+    });
+};
+
 const CODE_LANGUAGE_ALIASES = {
     'c++': 'cpp',
     'c#': 'csharp',
@@ -405,7 +419,7 @@ export const formatText = (text) => {
 
 export const formatPlainText = (text) => {
     if (!text) return '';
-    return escapeHtml(text).replace(/\n/g, '<br>');
+    return linkifyEscapedText(escapeHtml(text)).replace(/\n/g, '<br>');
 };
 
 const userMd = new MarkdownIt({

@@ -45,6 +45,23 @@
   cursor: pointer;
 }
 
+html[data-theme='light'] .quote-action-button,
+html[data-theme='light'] .ui-selection-quote-button {
+  color: var(--color-text-primary) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(17, 24, 39, 0.14) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+html[data-theme='light'] .quote-action-button:hover,
+html[data-theme='light'] .quote-action-button:focus-visible,
+html[data-theme='light'] .ui-selection-quote-button:hover,
+html[data-theme='light'] .ui-selection-quote-button:focus-visible {
+  color: var(--color-text-primary) !important;
+  background: #ffffff !important;
+  border-color: rgba(var(--color-accent-raw), 0.45) !important;
+}
+
 .quote-preview-area {
   margin-right: calc(var(--spacing-unit) * 1);
   display: flex;
