@@ -126,32 +126,151 @@
   font-style: italic;
 }
 
-.ai-attachments .attached-img {
-  max-width: 100%;
-  height: auto;
-  max-height: 350px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-medium);
-  object-fit: cover;
-  cursor: pointer;
-  transition: transform var(--transition-fast);
+.message-image-grid {
+  margin-top: calc(var(--spacing-unit) * 2.5);
+  display: grid;
+  gap: calc(var(--spacing-unit) * 2);
+  width: min(100%, 720px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
 
-.ai-attachments .attached-img:hover {
-  transform: scale(1.02);
+.message-image-grid[data-count='1'] {
+  width: min(100%, 640px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.ai-attachments .attached-img {
-  max-width: 100%;
-  height: auto;
-  max-height: 350px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-medium);
-  object-fit: cover;
-  cursor: pointer;
-  transition: transform var(--transition-fast);
+.message-image-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) + 2px);
+  border: 1px solid rgba(var(--color-white-raw), 0.12);
+  background:
+    linear-gradient(180deg, rgba(var(--color-white-raw), 0.03), rgba(var(--color-black-raw), 0.08)),
+    rgba(var(--color-black-raw), 0.18);
+  box-shadow: var(--shadow-xs);
 }
 
-.ai-attachments .attached-img:hover {
-  transform: scale(1.02);
+.message-image-button {
+  position: relative;
+  display: flex;
+  min-height: 220px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at top right, rgba(var(--color-white-raw), 0.09), transparent 42%),
+    rgba(var(--color-black-raw), 0.2);
+  aspect-ratio: 16 / 11;
+}
+
+.message-image-button.is-interactive {
+  cursor: zoom-in;
+}
+
+.message-image-button.is-static {
+  cursor: default;
+}
+
+.message-image-element {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+  background: transparent;
+  transition:
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.message-image-card.is-loaded .message-image-element {
+  opacity: 1;
+}
+
+.message-image-button.is-interactive:hover .message-image-element {
+  transform: scale(1.015);
+}
+
+.message-image-loader,
+.message-image-overlay,
+.message-image-fallback {
+  position: absolute;
+  inset: 0;
+}
+
+.message-image-loader {
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(var(--color-black-raw), 0.22), rgba(var(--color-white-raw), 0.05)),
+    rgba(var(--color-black-raw), 0.18);
+}
+
+.message-image-loader-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgba(var(--color-white-raw), 0.08) 32%,
+    rgba(var(--color-white-raw), 0.18) 48%,
+    rgba(var(--color-white-raw), 0.08) 64%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: shimmer-flow 1.8s linear infinite;
+}
+
+.message-image-overlay {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 14px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.message-image-button.is-interactive:hover .message-image-overlay,
+.message-image-button.is-interactive:focus-visible .message-image-overlay {
+  opacity: 1;
+}
+
+.message-image-overlay-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(var(--color-white-raw), 0.14);
+  background: rgba(var(--color-black-raw), 0.58);
+  color: var(--color-text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(10px);
+}
+
+.message-image-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.message-image-fallback-title {
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.message-image-fallback-subtitle {
+  max-width: 220px;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }

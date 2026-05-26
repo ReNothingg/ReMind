@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ModalShell from '../UI/ModalShell';
 
@@ -13,12 +13,12 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
         const iframe = iframeRef.current;
         if (!iframe) return;
 
-        setIsLoading(true);
+        const frame = window.requestAnimationFrame(() => setIsLoading(true));
 
         if (isHtml) {
             try {
                 iframe.srcdoc = urlOrHtml || '';
-            } catch (_err) {
+            } catch {
                 const blob = new Blob([urlOrHtml || ''], { type: 'text/html' });
                 iframe.src = URL.createObjectURL(blob);
             }
@@ -33,6 +33,7 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
         iframe.addEventListener('error', handleError);
 
         return () => {
+            window.cancelAnimationFrame(frame);
             iframe.removeEventListener('load', handleLoad);
             iframe.removeEventListener('error', handleError);
         };
@@ -63,7 +64,7 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
                 if (iframeRef.current) {
                     try {
                         iframeRef.current.srcdoc = '';
-                    } catch (_err) {
+                    } catch {
                     }
                     iframeRef.current.src = 'about:blank';
                 }
@@ -89,7 +90,7 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
                 title={t('common.closeEsc')}
                 type="button"
             >
-                Г—
+                x
             </button>
             <div id="htmlPreviewFrameWrap" className="h-full w-full overflow-hidden rounded-[inherit]">
                 {isLoading && (

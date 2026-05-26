@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { fileService } from '../../services/fileService';
@@ -23,6 +24,89 @@ const MessageActionButton = ({ className, title, onClick, children, disabled = f
         {children}
     </button>
 );
+
+const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false);
+    const { t } = useTranslation();
+
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            setIsLoaded(false);
+            setHasError(false);
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [src]);
+
+    const imageContent = (
+        <>
+            {!hasError && (
+                <>
+                    {!isLoaded && (
+                        <span className="message-image-loader" aria-hidden="true">
+                            <span className="message-image-loader-shimmer" />
+                        </span>
+                    )}
+                    <img
+                        className="attached-img message-image-element"
+                        src={src}
+                        alt={alt}
+                        loading="lazy"
+                        decoding="async"
+                        onLoad={() => setIsLoaded(true)}
+                        onError={() => {
+                            setHasError(true);
+                            setIsLoaded(false);
+                        }}
+                    />
+                </>
+            )}
+            {hasError && (
+                <span className="message-image-fallback">
+                    <span className="message-image-fallback-title">
+                        {t('chatImage.unavailableTitle', { defaultValue: 'Превью недоступно' })}
+                    </span>
+                    <span className="message-image-fallback-subtitle">
+                        {t('chatImage.unavailableDescription', {
+                            defaultValue: 'Изображение не удалось загрузить.',
+                        })}
+                    </span>
+                </span>
+            )}
+            {isInteractive && !hasError && (
+                <span className="message-image-overlay" aria-hidden="true">
+                    <span className="message-image-overlay-chip">
+                        {t('chatImage.open', { defaultValue: 'Открыть' })}
+                    </span>
+                </span>
+            )}
+        </>
+    );
+
+    return (
+        <div className={cn('message-image-card', isLoaded && 'is-loaded', hasError && 'is-error')}>
+            {isInteractive ? (
+                <button
+                    type="button"
+                    className="message-image-button is-interactive"
+                    onClick={() => {
+                        if (window.openImageLightbox) {
+                            window.openImageLightbox(src, messageId);
+                        }
+                    }}
+                    aria-label="Open image preview"
+                >
+                    {imageContent}
+                </button>
+            ) : (
+                <div className="message-image-button is-static" role="img" aria-label={alt}>
+                    {imageContent}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const { role, content, images, files, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts } = message;
@@ -306,76 +390,90 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     }, [widgetUpdate, message.id, isUser]);
 
     const markdownEnabledForMessage = isUser ? !!settings.renderUserMarkdown : !!settings.renderMarkdown;
-    useEffect(() => {
-        if (markdownEnabledForMessage && contentRef.current) {
-            setTimeout(() => {
-                if (window.Prism) {
-                    window.Prism.highlightAllUnder(contentRef.current);
-                } else {
-                    highlightCode();
-                }
-                requestAnimationFrame(() => {
-                    const codeBlocks = contentRef.current.querySelectorAll('pre.line-numbers');
-                    codeBlocks.forEach(pre => {
-                        if (window.Prism && window.Prism.plugins && window.Prism.plugins.lineNumbers) {
-                            try {
-                                if (!pre.querySelector('.line-numbers-rows')) {
-                                    window.Prism.plugins.lineNumbers.resize(pre);
-                                } else {
-                                    window.Prism.plugins.lineNumbers.resize(pre);
-                                }
-                            } catch (e) {
-                                console.warn('Failed to initialize line numbers:', e);
-                            }
-                        }
-                    });
-                });
-                const codeBlockContents = contentRef.current.querySelectorAll('.code-block-content');
-                codeBlockContents.forEach(content => {
-                    if (!content.dataset.initialMaxHeight) {
-                        const computedStyle = window.getComputedStyle(content);
-                        const maxHeight = computedStyle.maxHeight || '200px';
-                        content.dataset.initialMaxHeight = maxHeight;
-                        content.style.maxHeight = maxHeight;
-                    }
-                    requestAnimationFrame(() => {
-                        if (!content.classList.contains('expanded')) {
-                            const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200');
-                            if (content.scrollHeight > initialMaxHeight) {
-                                content.classList.add('has-overflow');
-                            } else {
-                                content.classList.remove('has-overflow');
-                            }
-                        }
-                    });
-                });
-            }, 0);
-
-            const renderVisuals = async () => {
-                if (Utils.renderCharts) {
-                    await Utils.renderCharts();
-                }
-
-                if (Utils.renderD3) {
-                    await Utils.renderD3();
-                }
-
-                if (Utils.renderNomnoml) {
-                    await Utils.renderNomnoml();
-                }
-
-                if (Utils.renderMermaid) {
-                    await Utils.renderMermaid();
-                }
-
-                if (Utils.attachDiagramPan) {
-                    Utils.attachDiagramPan();
-                }
-            };
-
-            renderVisuals();
+    const htmlContent = useMemo(() => {
+        if (isUser) {
+            return markdownEnabledForMessage ? formatUserText(content || '') : formatPlainText(content || '');
         }
-    }, [displayContent, markdownEnabledForMessage, widgets]);
+        return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
+    }, [displayContent, isUser, content, markdownEnabledForMessage]);
+    useEffect(() => {
+        if (!markdownEnabledForMessage || !contentRef.current) return;
+
+        const currentRef = contentRef.current;
+
+        const applySyntaxHighlighting = () => {
+            highlightCode(currentRef);
+
+            const codeBlocks = currentRef.querySelectorAll('pre.line-numbers');
+            codeBlocks.forEach(pre => {
+                if (window.Prism?.plugins?.lineNumbers) {
+                    try {
+                        window.Prism.plugins.lineNumbers.resize(pre);
+                    } catch (e) {
+                        console.warn('Failed to initialize line numbers:', e);
+                    }
+                }
+            });
+
+            const codeBlockContents = currentRef.querySelectorAll('.code-block-content');
+            codeBlockContents.forEach(content => {
+                if (!content.dataset.initialMaxHeight) {
+                    const computedStyle = window.getComputedStyle(content);
+                    const maxHeight = computedStyle.maxHeight || '200px';
+                    content.dataset.initialMaxHeight = maxHeight;
+                    content.style.maxHeight = maxHeight;
+                }
+
+                if (!content.classList.contains('expanded')) {
+                    const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200', 10);
+                    if (content.scrollHeight > initialMaxHeight) {
+                        content.classList.add('has-overflow');
+                    } else {
+                        content.classList.remove('has-overflow');
+                    }
+                }
+            });
+        };
+
+        const frame = window.requestAnimationFrame(() => {
+            applySyntaxHighlighting();
+        });
+
+        const renderVisuals = async () => {
+            if (Utils.renderSvgPreviews) {
+                Utils.renderSvgPreviews();
+                requestAnimationFrame(() => {
+                    Utils.renderSvgPreviews();
+                });
+            }
+
+            if (Utils.renderCharts) {
+                await Utils.renderCharts();
+            }
+
+            if (Utils.renderD3) {
+                await Utils.renderD3();
+            }
+
+            if (Utils.renderNomnoml) {
+                await Utils.renderNomnoml();
+            }
+
+            if (Utils.renderMermaid) {
+                await Utils.renderMermaid();
+            }
+
+            if (Utils.attachDiagramPan) {
+                Utils.attachDiagramPan();
+            }
+        };
+
+        renderVisuals();
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+        };
+    }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
     useEffect(() => {
         if (!audio.isVisible || !waveformCanvasRef.current || !audio.waveformPoints) return;
         const canvas = waveformCanvasRef.current;
@@ -496,7 +594,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 const filename = codeBlock.dataset.filename || 'code.txt';
                 const language = codeBlock.dataset.language || 'plaintext';
                 const extension = language === 'plaintext' ? 'txt' : language;
-                Utils.downloadFile(codeText, `${filename}.${extension}`, `text/${language}`);
+                const hasExtension = filename.toLowerCase().endsWith(`.${extension}`);
+                const downloadName = hasExtension ? filename : `${filename}.${extension}`;
+                const mimeType = language === 'svg' ? 'image/svg+xml' : `text/${language}`;
+                Utils.downloadFile(codeText, downloadName, mimeType);
             } else if (target.classList.contains('toggle-code-btn')) {
                 const content = codeBlock.querySelector('.code-block-content');
                 if (!content) return;
@@ -565,12 +666,6 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         setEditedContent(content);
         setIsEditingUserMessage(false);
     };
-    const htmlContent = useMemo(() => {
-        if (isUser) {
-            return markdownEnabledForMessage ? formatUserText(content || '') : formatPlainText(content || '');
-        }
-        return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
-    }, [displayContent, isUser, content, markdownEnabledForMessage]);
     const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
     const messageClassName = cn(
         'message ui-message-shell',
@@ -585,35 +680,46 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     );
 
     return (
-        <div className={messageClassName} data-message-id={message.id}>
+        <div
+            className={messageClassName}
+            data-message-id={message.id}
+            data-raw-content={isUser ? (content || '') : undefined}
+        >
             <div className={messageContentClassName}>
-                {(displayImages?.length > 0 || displayFiles?.length > 0) && (
+                {displayImages?.length > 0 && (
+                    <div
+                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
+                        data-count={displayImages.length}
+                    >
+                        {displayImages.map((src, idx) => {
+                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
+                            if (!imagePath) {
+                                return null;
+                            }
+
+                            const fullSrc = imagePath.startsWith('http')
+                                ? imagePath
+                                : `${apiService.baseURL}${imagePath}`;
+                            return (
+                                <MessageImageAttachment
+                                    key={`${message.id}-image-${idx}`}
+                                    src={fullSrc}
+                                    alt={`Chat image ${idx + 1}`}
+                                    messageId={message.id}
+                                    isInteractive={!isUser}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
+
+                {displayFiles?.length > 0 && (
                     <div
                         className={cn(
                             'message-attachments mt-2.5 flex flex-wrap gap-2',
                             isUser ? 'user-attachments' : 'ai-attachments'
                         )}
                     >
-                        {displayImages?.map((src, idx) => {
-                            const fullSrc = src.startsWith('http') ? src : `${apiService.baseURL}${src}`;
-                            return (
-                                <img
-                                    key={idx}
-                                    className={cn(
-                                        'attached-img max-w-full rounded-[var(--radius-md)] border border-border object-cover shadow-[var(--shadow-xs)] transition duration-150 ease-out',
-                                        !isUser && 'cursor-pointer hover:scale-[1.02]'
-                                    )}
-                                    src={fullSrc}
-                                    alt="attachment"
-                                    onClick={() => {
-                                        if (!isUser && window.openImageLightbox) {
-                                            window.openImageLightbox(fullSrc, message.id);
-                                        }
-                                    }}
-                                    style={{ cursor: !isUser ? 'pointer' : 'default' }}
-                                />
-                            );
-                        })}
                         {displayFiles?.map((f, idx) => {
                             const file = f.file || f;
                             if (!file || typeof file === 'string' || (!file.url_path && !file.original_name && !file.name)) {
@@ -648,8 +754,8 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                 }}
                                                 style={{ cursor: !isUser ? 'pointer' : 'default' }}
                                                 onError={(e) => {
-                                                    e.target.src = iconPath;
-                                                    e.target.className = 'generic-icon size-12 object-contain opacity-60';
+                                                    e.currentTarget.src = iconPath;
+                                                    e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
                                                 }}
                                             />
                                         ) : (
@@ -657,7 +763,9 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                 src={iconPath}
                                                 alt={fileName}
                                                 className="generic-icon size-12 object-contain opacity-60"
-                                                onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                                                onError={(e) => {
+                                                    e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                                                }}
                                             />
                                         )}
                                     </div>
@@ -666,7 +774,9 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                             src={iconPath}
                                             alt="icon"
                                             className="attachment-card-footer-icon"
-                                            onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                                            onError={(e) => {
+                                                e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                                            }}
                                         />
                                         <div className="attachment-card-footer-info">
                                             {fullUrl ? (
@@ -677,10 +787,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                                     className="file-card-name"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    {fileService.escapeHtml(fileName)}
+                                                    {fileName}
                                                 </a>
                                             ) : (
-                                                <span className="file-card-name">{fileService.escapeHtml(fileName)}</span>
+                                                <span className="file-card-name">{fileName}</span>
                                             )}
                                             {fileSize && <span className="file-card-size">{fileSize}</span>}
                                         </div>

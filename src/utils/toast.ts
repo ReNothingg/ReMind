@@ -1,9 +1,19 @@
-let toastContainer = null;
+type ToastType = 'info' | 'success' | 'warning' | 'error';
 
-function getToastContainer() {
+type ToastOptions = {
+    durationMs?: number;
+    type?: ToastType;
+};
+
+let toastContainer: HTMLDivElement | null = null;
+
+function getToastContainer(): HTMLDivElement {
     if (toastContainer && document.body.contains(toastContainer)) return toastContainer;
-    toastContainer = document.querySelector('.toast-container');
-    if (toastContainer) return toastContainer;
+    const existingContainer = document.querySelector<HTMLDivElement>('.toast-container');
+    if (existingContainer) {
+        toastContainer = existingContainer;
+        return existingContainer;
+    }
 
     toastContainer = document.createElement('div');
     toastContainer.className = 'toast-container';
@@ -11,7 +21,10 @@ function getToastContainer() {
     return toastContainer;
 }
 
-export function showToast(message, { type = 'info', durationMs = 3200 } = {}) {
+export function showToast(
+    message: string,
+    { type = 'info', durationMs = 3200 }: ToastOptions = {}
+): void {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (!message) return;
 

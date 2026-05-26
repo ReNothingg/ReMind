@@ -16,7 +16,7 @@
 @import "./components/ui/html-preview-modal.css" layer(components);
 @import "./components/ui/image-lightbox.css" layer(components);
 @import "./components/ui/toast-notifications.css" layer(components);
-@import "./components/ui/sceleton-loader.css" layer(components);
+@import "./components/ui/skeleton-loader.css" layer(components);
 @import "./components/ui/settings-modal.css" layer(components);
 @import "./components/ui/user-settings.css" layer(components);
 @import "./components/chat/formatter.css" layer(components);
@@ -35,6 +35,8 @@
 @import "./components/auth/guest-mode.css" layer(components);
 @import "./components/auth/auth.css" layer(components);
 @import "./components/ui/spinwheel.css" layer(components);
+@import "./features/minds.css" layer(components);
+@import "./features/admin.css" layer(components);
 
 @source "../../index.html";
 @source "../**/*.{js,jsx,ts,tsx}";
@@ -85,7 +87,7 @@
 
   html {
     scroll-behavior: smooth;
-    font-size: 12px;
+    font-size: 16px;
   }
 
   body {
@@ -118,6 +120,51 @@
 
   .ui-icon-control {
     @apply inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-border-strong bg-surface-alt text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .ui-icon-control > img,
+  .ui-action-button > img,
+  .ui-message-variant-button > img,
+  .action-btn > img,
+  .message-action-btn > img,
+  .share-copy-icon > img,
+  .code-block-header-actions button > img,
+  .copy-table-btn img,
+  .table-wrapper .table-copy-btn img,
+  .censorship-button img,
+  .web-search-toggle img,
+  .theme-toggle-btn img,
+  .web-sources-header img {
+    filter: var(--icon-filter-secondary);
+    opacity: var(--icon-opacity-secondary);
+    transition:
+      filter var(--transition-fast),
+      opacity var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  .ui-icon-control:hover > img,
+  .ui-action-button:hover > img,
+  .action-btn:hover > img,
+  .message-action-btn:hover > img,
+  .share-copy-icon:hover > img,
+  .code-block-header-actions button:hover > img,
+  .copy-table-btn:hover img,
+  .table-wrapper .table-copy-btn:hover img,
+  .censorship-button:hover img,
+  .web-search-toggle:hover img,
+  .theme-toggle-btn:hover img {
+    opacity: var(--icon-opacity-primary);
+  }
+
+  .censorship-button.active img,
+  .web-search-toggle.active img {
+    filter: var(--icon-filter-on-accent);
+    opacity: 1;
+  }
+
+  .action-btn.speak-btn.error img {
+    opacity: 1;
   }
 
   .ui-button-primary {
@@ -225,9 +272,12 @@
   }
 
   .ui-message-bubble-ai {
-    @apply w-full max-w-full px-0 py-[calc(var(--spacing-unit)*1)] text-foreground;
-    background: var(--ai-message-bg);
+    @apply w-full max-w-full border-0 px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*3)] text-foreground;
+    background: transparent;
     color: var(--ai-message-text-color);
+    min-height: var(--input-area-height-base);
+    border-radius: var(--input-area-border-radius);
+    box-shadow: none;
   }
 
   .ui-message-text {
@@ -405,8 +455,8 @@
   }
 
   .ui-rail-shell {
-    @apply fixed inset-y-0 left-0 z-[var(--z-sidebar)] hidden flex-col overflow-hidden border-r transition-[width,background-color] duration-300 md:flex;
-    border-color: var(--color-border-strong);
+    @apply fixed inset-y-0 left-0 z-[var(--z-sidebar)] hidden flex-col overflow-hidden border-r transition-[width,background-color] duration-200 md:flex;
+    border-color: var(--color-border-subtle);
   }
 
   .ui-rail-shell-collapsed {
@@ -414,65 +464,112 @@
   }
 
   .ui-rail-shell-expanded {
-    @apply w-[var(--rail-width-expanded)] bg-surface;
+    @apply w-[var(--rail-width-expanded)] bg-page;
   }
 
   .ui-rail-toggle-zone {
-    @apply flex h-[60px] items-center justify-center border-b;
+    @apply flex h-12 items-center justify-center border-b;
     border-color: var(--color-border-subtle);
   }
 
   .ui-rail-toggle-button {
-    @apply inline-flex size-11 items-center justify-center rounded-md border-0 bg-transparent p-0 text-muted shadow-none transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
+    @apply inline-flex size-9 items-center justify-center rounded-md border-0 bg-transparent p-0 text-muted shadow-none transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
     appearance: none;
     -webkit-appearance: none;
+  }
+
+  .ui-rail-toggle-button svg {
+    @apply size-[18px];
   }
 
   .ui-rail-actions {
-    @apply relative z-10 flex flex-col gap-1.5 p-2;
+    @apply relative z-10 flex flex-col gap-1 p-2;
   }
 
   .ui-rail-action-button {
-    @apply flex h-11 items-center rounded-md border-0 bg-transparent text-[0.85rem] font-medium text-muted transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
+    @apply flex h-9 items-center rounded-md border-0 bg-transparent text-[0.82rem] font-medium text-muted transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
     appearance: none;
     -webkit-appearance: none;
+  }
+
+  .ui-rail-action-button svg {
+    @apply size-[18px] shrink-0;
   }
 
   .ui-rail-action-button-active {
     @apply bg-interactive text-foreground;
-    box-shadow: inset 0 0 0 1px var(--color-border-medium);
+    box-shadow: inset 0 0 0 1px var(--color-border-subtle);
   }
 
   .ui-rail-action-button-collapsed {
-    @apply w-11 justify-center;
+    @apply w-9 justify-center;
   }
 
   .ui-rail-action-button-expanded {
-    @apply w-full justify-start gap-2 px-2.5;
+    @apply w-full justify-start gap-2 px-2;
+  }
+
+  .ui-rail-action-label {
+    @apply min-w-0 truncate;
   }
 
   .ui-rail-search-wrap {
-    @apply px-3 pb-3;
+    @apply px-2 pb-2;
     border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .ui-rail-search-input {
-    @apply h-10 w-full rounded-md border bg-interactive px-3 text-sm text-foreground outline-none transition duration-150 ease-out placeholder:text-subtle;
+    @apply h-9 w-full rounded-md border bg-interactive px-2.5 text-[0.82rem] text-foreground outline-none transition duration-150 ease-out placeholder:text-subtle;
     border-color: var(--color-border-medium);
   }
 
   .ui-rail-search-input:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(var(--color-accent-raw), 0.1);
-    transform: scale(1.02);
+    box-shadow: 0 0 0 2px rgba(var(--color-accent-raw), 0.12);
   }
 
   .ui-rail-search-input-hint {
     @apply italic text-subtle;
   }
 
+  .ui-rail-pinned-minds {
+    @apply flex flex-col gap-1 border-b px-2 pb-2;
+    border-color: var(--color-border-subtle);
+  }
+
+  .ui-rail-pinned-minds-collapsed {
+    @apply items-center;
+  }
+
+  .ui-rail-pinned-mind {
+    @apply flex h-8 items-center rounded-md border border-transparent bg-transparent text-muted transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
+  }
+
+  .ui-rail-pinned-mind-expanded {
+    @apply w-full justify-start gap-2 px-2;
+  }
+
+  .ui-rail-pinned-mind-collapsed {
+    @apply w-9 justify-center;
+  }
+
+  .ui-rail-pinned-mind-active {
+    @apply bg-interactive text-foreground;
+    border-color: rgba(var(--color-accent-raw), 0.28);
+  }
+
+  .ui-rail-pinned-mind-avatar {
+    @apply inline-flex size-5 shrink-0 items-center justify-center rounded-md text-[0.62rem] font-bold;
+    background: rgba(var(--color-accent-raw), 0.14);
+    color: var(--color-accent);
+  }
+
+  .ui-rail-pinned-mind-label {
+    @apply min-w-0 flex-1 truncate text-left text-[0.82rem] font-medium;
+  }
+
   .ui-rail-section-label {
-    @apply items-center gap-2 px-3 py-2 text-[0.75rem] font-semibold uppercase tracking-[0.5px] text-subtle;
+    @apply items-center gap-2 px-2.5 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.5px] text-subtle;
   }
 
   .ui-rail-content {
@@ -488,20 +585,18 @@
   }
 
   .ui-rail-list {
-    @apply m-0 min-h-0 flex-1 list-none overflow-y-auto overflow-x-visible p-0;
+    @apply m-0 min-h-0 flex-1 list-none overflow-y-auto overflow-x-visible px-1.5 pb-1.5;
     scrollbar-gutter: stable both-edges;
     -ms-overflow-style: -ms-autohiding-scrollbar;
     -webkit-overflow-scrolling: touch;
   }
 
   .ui-rail-item {
-    @apply relative flex cursor-pointer items-start justify-between gap-2 border-b px-2.5 py-2 transition duration-150 ease-out;
-    border-color: var(--color-border-subtle);
+    @apply relative flex cursor-pointer items-start justify-between gap-2 rounded-md border border-transparent px-2 py-1.5 transition duration-150 ease-out;
   }
 
   .ui-rail-item:hover {
     @apply bg-interactive;
-    transform: translateX(4px);
   }
 
   .ui-rail-item-favorite {
@@ -518,11 +613,11 @@
   }
 
   .ui-rail-title {
-    @apply min-w-0 flex-1 truncate text-sm font-medium text-foreground;
+    @apply min-w-0 flex-1 truncate text-[0.82rem] font-medium text-foreground;
   }
 
   .ui-rail-preview {
-    @apply truncate text-[0.78rem] text-subtle;
+    @apply truncate text-[0.72rem] text-subtle;
     opacity: 0.85;
   }
 
@@ -543,6 +638,10 @@
     @apply relative flex items-center;
     z-index: 101;
     height: 100%;
+  }
+
+  .ui-rail-menu-anchor-open {
+    z-index: 10001;
   }
 
   .ui-rail-menu-trigger {
@@ -583,7 +682,7 @@
 
   .ui-rail-menu-item svg {
     @apply h-4 w-4 shrink-0;
-    color: var(--color-text-tertiary);
+    color: currentColor;
   }
 
   .ui-rail-menu-item:focus-visible {
@@ -600,11 +699,11 @@
   }
 
   .ui-rail-menu-item-danger svg {
-    color: var(--color-error);
+    color: currentColor;
   }
 
   .favorite-menu-item.ui-rail-menu-item svg {
-    color: var(--color-accent);
+    color: currentColor;
   }
 
   .ui-rail-empty {
@@ -617,7 +716,7 @@
   }
 
   .ui-rail-footer-button {
-    @apply text-sm;
+    @apply text-[0.82rem];
   }
 
   .ui-rail-rename-input {
@@ -631,83 +730,61 @@
   }
 
   .ui-landing-shell {
-    @apply mx-auto flex min-h-screen w-full max-w-[980px] flex-col items-center justify-center gap-8 px-4 pb-44 pt-28 md:px-6;
+    @apply mx-auto flex w-full flex-col items-center justify-center px-4 py-16 md:px-6;
+    min-height: calc(100vh - 1rem);
+  }
+
+  .ui-landing-center-stack {
+    @apply flex flex-col items-stretch gap-5;
+    position: fixed;
+    top: 50%;
+    left: calc(50% + (var(--app-rail-offset) / 2));
+    z-index: 1;
+    width: var(--app-content-width-dynamic);
+    min-width: 0;
+    max-width: var(--app-content-max-width-dynamic);
+    transform: translate(-50%, -90px);
+  }
+
+  .ui-landing-copy {
+    @apply w-full text-center;
+  }
+
+  .ui-landing-greeting {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 2.05rem;
+    font-weight: 620;
+    letter-spacing: 0;
+    line-height: 1.18;
+    text-wrap: balance;
   }
 
   .ui-landing-readonly {
-    @apply w-full max-w-[720px];
-  }
-
-  .ui-landing-welcome {
-    @apply mx-auto flex min-h-[40vh] max-w-[700px] items-center justify-center px-4 py-6 text-center text-[clamp(1.8rem,3vw,2.5rem)] font-normal leading-[1.35] text-muted;
-    opacity: 0.9;
-    animation: fadeIn 0.7s ease-out;
-  }
-
-  .ui-landing-composer {
     @apply w-full;
   }
 
-  .ui-prompt-grid {
-    @apply relative z-[var(--z-content)] mx-auto flex w-full max-w-[900px] flex-wrap justify-center gap-3 px-1 py-2;
-    box-sizing: border-box;
-    opacity: 1;
-    transition: opacity var(--transition-normal);
+  @media (min-width: 768px) {
+    .ui-landing-greeting {
+      font-size: 2.35rem;
+    }
   }
 
-  .ui-prompt-grid.hidden {
-    @apply pointer-events-none opacity-0;
-  }
+  @media (max-width: 767px) {
+    .ui-landing-shell {
+      @apply px-3 py-14;
+      min-height: calc(100vh - 0.5rem);
+    }
 
-  .ui-prompt-card {
-    @apply inline-flex min-h-11 max-w-[200px] flex-[1_1_calc(50%-8px)] items-center justify-center gap-2 rounded-md border px-4 py-3 text-center text-[0.9rem] font-medium text-muted transition duration-200 ease-out sm:flex-none;
-    background: rgba(var(--color-white-raw), 0.04);
-    border-color: rgba(var(--color-white-raw), 0.08);
-    white-space: normal;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    box-sizing: border-box;
-    flex-shrink: 0;
-    user-select: none;
-    backdrop-filter: blur(8px);
-    animation: suggestion-fade-in 0.3s ease-out backwards;
-  }
+    .ui-landing-center-stack {
+      width: min(100%, var(--app-content-width-dynamic));
+      left: 50%;
+      transform: translate(-50%, -85px);
+    }
 
-  .ui-prompt-card:hover {
-    background: rgba(var(--color-white-raw), 0.08);
-    border-color: rgba(var(--color-accent-raw), 0.3);
-    color: var(--color-text-primary);
-  }
-
-  .ui-prompt-card:active {
-    background: rgba(var(--color-white-raw), 0.06);
-  }
-
-  .ui-prompt-card:focus,
-  .ui-prompt-card:focus-visible {
-    outline: none;
-    border-color: rgba(var(--color-accent-raw), 0.4);
-    box-shadow: none;
-  }
-
-  .ui-prompt-card-label {
-    @apply block text-center text-[0.9rem] font-medium leading-[1.3] tracking-[-0.003em];
-  }
-
-  .ui-prompt-card:nth-child(1) {
-    animation-delay: 0.05s;
-  }
-
-  .ui-prompt-card:nth-child(2) {
-    animation-delay: 0.1s;
-  }
-
-  .ui-prompt-card:nth-child(3) {
-    animation-delay: 0.15s;
-  }
-
-  .ui-prompt-card:nth-child(4) {
-    animation-delay: 0.2s;
+    .ui-landing-greeting {
+      font-size: 1.65rem;
+    }
   }
 
   .ui-selection-quote-button {
@@ -792,12 +869,14 @@
   .ui-composer-textarea {
     @apply min-h-[calc(var(--input-area-item-height)-var(--spacing-unit)*4)] flex-1 resize-none bg-transparent px-1 py-1 text-base leading-6 outline-none placeholder:text-subtle disabled:cursor-not-allowed;
     color: var(--input-text-color);
+    padding-block: calc(var(--spacing-unit) * 2.25) calc(var(--spacing-unit) * 0.75);
   }
 
   .ui-composer-icon-button {
     @apply inline-flex size-10 min-w-10 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-foreground shadow-none outline-none transition duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60;
     appearance: none;
     -webkit-appearance: none;
+    border-radius: var(--input-area-border-radius);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 50%;
@@ -828,6 +907,18 @@
     @apply fixed bottom-[calc(4*var(--spacing-unit))] z-[100] flex w-[var(--app-content-width-dynamic)] max-w-[var(--app-content-max-width-dynamic)] flex-col items-stretch gap-1 bg-transparent p-0 transition duration-200;
     left: calc(50% + (var(--app-rail-offset) / 2));
     transform: translateX(-50%);
+  }
+
+  .ui-main-input-shell.landing {
+    position: static;
+    bottom: auto;
+    left: auto;
+    z-index: 1;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    transform: none;
   }
 
   .ui-dropzone-card {
@@ -1263,18 +1354,6 @@
     background: var(--scrollbar-thumb-bg-hover);
   }
 
-  @media (max-width: 1024px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 2.5);
-      padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 1);
-    }
-
-    .ui-prompt-card {
-      padding: calc(var(--spacing-unit) * 1.75) calc(var(--spacing-unit) * 3);
-      font-size: 0.88rem;
-    }
-  }
-
   @media (max-width: 768px) {
     .ui-guest-inline-actions {
       gap: 8px;
@@ -1305,84 +1384,6 @@
 
     .ui-guest-modal-title {
       font-size: 24px;
-    }
-  }
-
-  @media (max-width: 1024px) and (min-width: 481px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 2);
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1.5);
-      max-width: 100%;
-    }
-
-    .ui-prompt-card {
-      flex: 0 1 calc(50% - var(--spacing-unit));
-      min-width: unset;
-      max-width: unset;
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
-      font-size: 0.87rem;
-    }
-  }
-
-  @media (max-width: 768px) and (min-width: 481px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 1.5);
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1.5);
-      max-width: 100%;
-    }
-
-    .ui-prompt-card {
-      flex: 1 1 calc(50% - calc(var(--spacing-unit) * 0.75));
-      min-width: 120px;
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
-      font-size: 0.85rem;
-    }
-
-    .ui-prompt-card-label {
-      font-size: 0.85rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .ui-prompt-grid {
-      max-width: 100%;
-      flex-wrap: wrap;
-      gap: calc(var(--spacing-unit) * 1);
-      padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 1);
-    }
-
-    .ui-prompt-card {
-      flex: 1 1 calc(50% - calc(var(--spacing-unit) * 0.5));
-      min-height: 44px;
-      min-width: unset;
-      max-width: unset;
-      gap: calc(var(--spacing-unit) * 1.5);
-      padding: calc(var(--spacing-unit) * 1.25) calc(var(--spacing-unit) * 1.5);
-      font-size: 0.8rem;
-    }
-
-    .ui-prompt-card-label {
-      font-size: 0.8rem;
-      line-height: 1.2;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .ui-prompt-grid {
-      gap: calc(var(--spacing-unit) * 0.75);
-      padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 0.75);
-    }
-
-    .ui-prompt-card {
-      flex: 1 1 100%;
-      min-height: 40px;
-      gap: calc(var(--spacing-unit) * 1);
-      padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5);
-      font-size: 0.78rem;
-    }
-
-    .ui-prompt-card-label {
-      font-size: 0.78rem;
     }
   }
 
@@ -1430,57 +1431,4 @@
     }
   }
 
-  @media (prefers-contrast: more) {
-    .ui-prompt-card {
-      border-color: rgba(var(--color-white-raw), 0.15);
-      background: rgba(var(--color-white-raw), 0.06);
-    }
-
-    .ui-prompt-card:hover {
-      border-color: rgba(var(--color-accent-raw), 0.5);
-      background: rgba(var(--color-white-raw), 0.12);
-    }
-  }
-
-  body.compact-mode .ui-prompt-grid {
-    gap: calc(var(--spacing-unit) * 2);
-  }
-
-  body.compact-mode .ui-prompt-card {
-    padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
-    font-size: 0.85rem;
-  }
-
-  body.has-rail .ui-prompt-grid {
-    max-width: 100%;
-  }
-
-  html[data-theme='light'] .ui-prompt-card {
-    background: rgba(var(--color-white-raw), 0.5);
-    border-color: var(--color-border-subtle);
-    color: var(--color-text-secondary);
-  }
-
-  html[data-theme='light'] .ui-prompt-card:hover {
-    background: rgba(var(--color-white-raw), 0.7);
-    border-color: var(--color-border-focus);
-    color: var(--color-text-primary);
-  }
-
-  html[data-theme='light'] .ui-prompt-card:focus,
-  html[data-theme='light'] .ui-prompt-card:focus-visible {
-    border-color: var(--color-border-focus);
-  }
-}
-
-@keyframes suggestion-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }

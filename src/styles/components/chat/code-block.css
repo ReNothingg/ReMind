@@ -171,6 +171,91 @@
   height: auto !important;
 }
 
+.code-block-content code[class*='language-'],
+pre[class*='language-'] {
+  color: var(--code-token-plain);
+  text-shadow: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--code-token-comment);
+}
+
+.token.punctuation,
+.token.attr-equals,
+.token.namespace {
+  color: var(--code-token-punctuation);
+}
+
+.token.property,
+.token.tag,
+.token.attr-name,
+.token.selector {
+  color: var(--code-token-property);
+}
+
+.token.operator,
+.token.entity,
+.token.url {
+  color: var(--code-token-operator);
+}
+
+.token.keyword,
+.token.atrule {
+  color: var(--code-token-keyword);
+}
+
+.token.string,
+.token.attr-value,
+.token.char,
+.token.builtin {
+  color: var(--code-token-string);
+}
+
+.token.number,
+.token.symbol {
+  color: var(--code-token-number);
+}
+
+.token.function {
+  color: var(--code-token-function);
+}
+
+.token.class-name,
+.token.maybe-class-name {
+  color: var(--code-token-class-name);
+}
+
+.token.regex {
+  color: var(--code-token-regex);
+}
+
+.token.boolean,
+.token.constant {
+  color: var(--code-token-constant);
+}
+
+.token.inserted {
+  color: var(--code-token-inserted);
+}
+
+.token.deleted {
+  color: var(--code-token-deleted);
+}
+
+.token.important,
+.token.bold {
+  color: var(--code-token-important);
+  font-weight: 700;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
 body.code-wrap-enabled .code-block-content {
   overflow-x: hidden;
 }
@@ -285,7 +370,9 @@ pre.line-numbers {
 
 pre.line-numbers > code {
   position: relative;
-  white-space: pre !important;
+  display: block;
+  white-space: inherit !important;
+  line-height: inherit !important;
   background: transparent !important;
 }
 
@@ -293,7 +380,10 @@ pre.line-numbers > code {
   position: absolute;
   pointer-events: none;
   top: 0;
-  left: 0;
+  left: -3.8em;
+  bottom: 0;
+  font-size: 100%;
+  line-height: inherit !important;
   width: 3em;
   letter-spacing: -1px;
   border-right: 1px solid var(--line-numbers-border) !important;
@@ -309,6 +399,7 @@ pre.line-numbers > code {
 .line-numbers-rows > span {
   display: block;
   counter-increment: linenumber;
+  line-height: inherit !important;
 }
 
 .line-numbers-rows > span:before {
@@ -317,6 +408,7 @@ pre.line-numbers > code {
   display: block;
   padding-right: 0.8em;
   text-align: right;
+  line-height: inherit !important;
 }
 
 .code-block-content {

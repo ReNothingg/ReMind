@@ -2,7 +2,7 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
-from flask import Flask, g, request
+from flask import Flask, g, request, session
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -21,7 +21,7 @@ from config import (
     CORS_ORIGINS,
     CORS_SEND_WILDCARD,
     CREATE_IMAGE_FOLDER,
-    IS_PRODUCTION,
+    ENABLE_STRICT_HTTPS,
     MAX_CONTENT_LENGTH,
     SECRET_KEY,
     SESSION_COOKIE_DOMAIN,
@@ -73,7 +73,7 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=SQLALCHEMY_DATABASE_URI,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
-        PREFERRED_URL_SCHEME="https",
+        PREFERRED_URL_SCHEME="https" if ENABLE_STRICT_HTTPS else "http",
         REDIS_URL=os.getenv("REDIS_URL"),
         CELERY_BROKER_URL=os.getenv("CELERY_BROKER_URL"),
         CELERY_RESULT_BACKEND=os.getenv("CELERY_RESULT_BACKEND"),
@@ -86,7 +86,7 @@ def create_app():
     app.config["SESSION_PERMANENT"] = True
     app.config["SESSION_USE_SIGNER"] = True
     app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
-    app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+    app.config["SESSION_COOKIE_SECURE"] = ENABLE_STRICT_HTTPS
     app.config["SESSION_COOKIE_HTTPONLY"] = True 
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
@@ -142,6 +142,40 @@ def create_app():
             )
             return make_error(error_message, status=403, code="invalid_user_agent")
         g.anonymized_ip = anonymize_ip(request.remote_addr)
+
+    @app.before_request
+    def enforce_active_account_status():
+        allowed_paths = {
+            "/api/auth/check",
+            "/api/auth/config",
+            "/api/auth/logout",
+            "/logout",
+            "/health",
+            "/metrics",
+        }
+        if request.path in allowed_paths:
+            return None
+
+        raw_user_id = session.get("user_id")
+        if raw_user_id is None:
+            return None
+
+        try:
+            user_id = int(raw_user_id)
+        except (TypeError, ValueError):
+            return None
+
+        from utils.auth import User, db, format_account_restriction_message, is_account_disabled
+
+        user = db.session.get(User, user_id)
+        if user and is_account_disabled(user):
+            return make_error(
+                format_account_restriction_message(user),
+                status=403,
+                code="account_disabled",
+            )
+
+        return None
 
     @app.after_request
     def add_security_headers(response):

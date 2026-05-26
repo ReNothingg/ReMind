@@ -17,6 +17,39 @@
     "login": "تسجيل الدخول",
     "register": "التسجيل"
   },
+  "authModal": {
+    "loginTitle": "سجّل الدخول إلى حسابك",
+    "registerTitle": "أنشئ حسابًا",
+    "fields": {
+      "email": "Email:",
+      "password": "كلمة المرور:",
+      "username": "اسم المستخدم:",
+      "confirmPassword": "أكّد كلمة المرور:",
+      "name": "الاسم:"
+    },
+    "actions": {
+      "loginLoading": "جارٍ تسجيل الدخول...",
+      "loginWithGoogle": "سجّل الدخول باستخدام Google",
+      "registerLoading": "جارٍ إنشاء الحساب...",
+      "registerWithGoogle": "سجّل باستخدام Google"
+    },
+    "switch": {
+      "noAccount": "ليس لديك حساب؟",
+      "haveAccount": "هل لديك حساب بالفعل؟"
+    },
+    "messages": {
+      "loginSuccess": "تم تسجيل الدخول بنجاح",
+      "loginError": "فشل تسجيل الدخول",
+      "registerSuccess": "تم إنشاء الحساب بنجاح. تحقق من بريدك الإلكتروني لتأكيد الحساب.",
+      "registerError": "فشل إنشاء الحساب",
+      "passwordsMismatch": "كلمات المرور غير متطابقة",
+      "usernameTooLong": "يجب ألا يتجاوز اسم المستخدم 100 حرف",
+      "emailTooLong": "يجب ألا يتجاوز البريد الإلكتروني 100 حرف",
+      "passwordTooLong": "يجب ألا تتجاوز كلمة المرور 100 حرف",
+      "turnstileRequired": "أكّد أنك لست روبوتًا ثم حاول مرة أخرى.",
+      "requestError": "خطأ في الشبكة أو الخادم"
+    }
+  },
   "common": {
     "loading": "جارٍ التحميل...",
     "closeEsc": "إغلاق (Esc)",
@@ -30,6 +63,7 @@
   "landing": {
     "ariaLabel": "شاشة البدء",
     "readonlyBanner": "دردشة عامة: للقراءة فقط",
+    "greeting": "على ماذا تعمل؟",
     "welcomeMessages": [
       "مرحبًا!",
       "مرحبًا! كيف يمكنني المساعدة اليوم؟",
@@ -63,8 +97,7 @@
     "quote": "اقتباس"
   },
   "files": {
-    "removeFile": "إزالة الملف",
-    "model3d": "نموذج ثلاثي الأبعاد"
+    "removeFile": "إزالة الملف"
   },
   "share": {
     "title": "مشاركة الدردشة",
@@ -150,7 +183,8 @@
         "status": "الحالة",
         "email": "البريد الإلكتروني",
         "id": "المعرّف",
-        "username": "اسم المستخدم"
+        "username": "اسم المستخدم",
+        "name": "الاسم"
       },
       "signedIn": "أنت مسجل الدخول",
       "guestMode": "أنت تستخدم وضع الضيف",
@@ -158,12 +192,37 @@
       "ctaTitle": "سجّل الدخول أو أنشئ ملفًا",
       "ctaDescription": "سجّل الدخول لحفظ الإعدادات والسجل.",
       "signInOrRegister": "تسجيل الدخول أو التسجيل",
+      "nameHint": "يُستخدم في تخصيص الذكاء الاصطناعي عندما لا يكون هناك لقب محدد.",
+      "usernameHint": "من 3 إلى 50 حرفًا: أحرف وأرقام وشرطة سفلية وشرطة.",
       "emailReadonlyHint": "لا يمكن تغيير البريد الإلكتروني.",
       "saving": "جارٍ الحفظ...",
       "saveChanges": "حفظ التغييرات",
       "signOut": "تسجيل الخروج",
       "profileUpdated": "تم تحديث الملف الشخصي",
-      "updateError": "فشل التحديث"
+      "updateError": "فشل التحديث",
+      "validation": {
+        "nameRequired": "أدخل الاسم",
+        "nameLength": "يجب أن يكون الاسم بين 1 و100 حرف",
+        "nameInvalidCharacters": "يحتوي الاسم على أحرف غير صالحة",
+        "usernameRequired": "أدخل اسم المستخدم",
+        "usernameLength": "يجب أن يكون اسم المستخدم بين 3 و50 حرفًا",
+        "usernameCharset": "يمكن أن يحتوي اسم المستخدم على أحرف وأرقام وشرطة سفلية وشرطة فقط",
+        "usernameStartsWith": "لا يمكن أن يبدأ اسم المستخدم بشرطة سفلية أو شرطة",
+        "usernameTaken": "اسم المستخدم هذا مستخدم بالفعل",
+        "emailTaken": "هذا البريد الإلكتروني مسجل بالفعل"
+      },
+      "delete": {
+        "title": "حذف الحساب",
+        "description": "سيؤدي هذا إلى حذف ملفك الشخصي وإعداداتك وسجلك والدردشات المشتركة نهائيًا.",
+        "confirmLabel": "تأكيد الحذف",
+        "confirmHint": "اكتب اسم المستخدم الحالي: {{username}}",
+        "confirmPlaceholder": "أدخل اسم المستخدم",
+        "confirmationMismatch": "أدخل اسم المستخدم الحالي لحذف الحساب",
+        "action": "حذف الحساب",
+        "actionLoading": "جارٍ حذف الحساب...",
+        "success": "تم حذف الحساب",
+        "error": "تعذر حذف الحساب"
+      }
     },
     "appearance": {
       "themeGroup": "السمة",
@@ -218,10 +277,6 @@
       "showChatPreview": {
         "title": "عرض المعاينة",
         "description": "عرض آخر رسالة في قائمة الدردشات."
-      },
-      "showSuggestions": {
-        "title": "عرض الاقتراحات",
-        "description": "عرض اقتراحات المطالبات في الصفحة الرئيسية."
       },
       "autocomplete": {
         "title": "إكمال تلقائي",
@@ -317,5 +372,100 @@
   },
   "spinwheel": {
     "spin": "أدر"
+  },
+  "minds": {
+    "subtitle": "أنشئ وأدر minds ذكاء اصطناعي مخصصة لمهام وأنماط محادثة مختلفة.",
+    "create": "إنشاء",
+    "searchPlaceholder": "البحث في minds",
+    "searchAria": "البحث في minds",
+    "tabsAria": "أقسام minds",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "minds الخاصة بي"
+    },
+    "categoriesAria": "فئات minds",
+    "categories": {
+      "all": "الكل",
+      "general": "عام",
+      "education": "تعليم",
+      "development": "تطوير",
+      "productivity": "إنتاجية",
+      "creative": "إبداعي",
+      "business": "أعمال",
+      "security": "أمان"
+    },
+    "visibility": {
+      "private": "أنا فقط",
+      "link": "عبر الرابط",
+      "linkShort": "عبر الرابط",
+      "linkLong": "كل من لديه الرابط",
+      "store": "Mind store"
+    },
+    "verified": "معتمد من المنشئ",
+    "startersAria": "بدايات المحادثة",
+    "openChat": "فتح الدردشة",
+    "pinTitle": "تثبيت في app-rail",
+    "unpinTitle": "إزالة من app-rail",
+    "pinAria": "تثبيت mind",
+    "unpinAria": "إلغاء تثبيت mind",
+    "edit": "تعديل",
+    "editAria": "تعديل mind",
+    "delete": "حذف",
+    "loading": "جارٍ تحميل minds...",
+    "emptyMine": "لم تنشئ أي minds بعد.",
+    "emptyStore": "لم يتم العثور على minds لهذا البحث.",
+    "confirmDelete": "هل تريد حذف mind \"{{name}}\"؟",
+    "pinnedAria": "minds المثبتة",
+    "disableActive": "تعطيل mind",
+    "errors": {
+      "load": "تعذر تحميل minds. حاول تحديث الصفحة.",
+      "pin": "تعذر تحديث تثبيت mind.",
+      "delete": "تعذر حذف mind.",
+      "authRequired": "سجّل الدخول لتنفيذ هذا الإجراء.",
+      "accessDenied": "ليست لديك صلاحية الوصول إلى هذا mind.",
+      "notFound": "خدمة minds غير متاحة أو لم يتم العثور على mind. تأكد من تشغيل backend بمسارات API الجديدة.",
+      "rateLimited": "طلبات كثيرة جدًا. انتظر قليلًا ثم حاول مرة أخرى.",
+      "editAccess": "ليست لديك صلاحية تعديل هذا mind.",
+      "editorLoad": "تعذر تحميل محرر mind.",
+      "save": "تعذر حفظ mind. تحقق من الحقول وحاول مرة أخرى."
+    },
+    "validation": {
+      "name": "يجب أن يحتوي الاسم على حرفين على الأقل.",
+      "description": "يجب أن يحتوي الوصف على 8 أحرف على الأقل.",
+      "instructions": "يجب أن تحتوي التعليمات على 16 حرفًا على الأقل.",
+      "category": "اختر فئة لـ Mind store."
+    },
+    "editor": {
+      "authTitle": "إنشاء minds متاح بعد تسجيل الدخول",
+      "back": "رجوع",
+      "editTitle": "تعديل mind",
+      "createTitle": "إنشاء mind",
+      "editSubtitle": "إدارة الإعدادات والوصول.",
+      "createSubtitle": "إعداد الذكاء الاصطناعي الخاص بك.",
+      "loading": "جارٍ تحميل المحرر...",
+      "fields": {
+        "name": "الاسم",
+        "description": "الوصف",
+        "instructions": "التعليمات",
+        "starters": "بدايات المحادثة"
+      },
+      "placeholders": {
+        "name": "سمّ mind الخاص بك",
+        "description": "صف بإيجاز ما يفعله mind",
+        "instructions": "ماذا يفعل mind، كيف يتصرف، شخصيته ووظيفته",
+        "starter": "زر اقتراح للمستخدمين"
+      },
+      "removeStarter": "حذف الاقتراح",
+      "addStarter": "إضافة اقتراح",
+      "access": "الوصول",
+      "category": "الفئة",
+      "check": "التحقق",
+      "basicReady": "تم ملء الحقول الأساسية",
+      "startersReady": "الاقتراحات جاهزة",
+      "saving": "جارٍ الحفظ...",
+      "saveChanges": "حفظ التغييرات",
+      "createAction": "إنشاء mind"
+    },
+    "activeLabel": "mind نشط"
   }
 }

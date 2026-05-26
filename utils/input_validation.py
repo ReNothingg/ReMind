@@ -14,6 +14,21 @@ class ValidationError(Exception):
 class InputValidator:
 
     @staticmethod
+    def validate_name(name, min_length=1, max_length=100):
+
+        if not name or not isinstance(name, str):
+            raise ValidationError("Name must be a non-empty string")
+
+        normalized = " ".join(name.strip().split())
+        if len(normalized) < min_length or len(normalized) > max_length:
+            raise ValidationError(f"Name must be {min_length}-{max_length} characters")
+
+        if re.search(r"[\x00-\x1f\x7f<>]", normalized):
+            raise ValidationError("Name contains invalid characters")
+
+        return normalized
+
+    @staticmethod
     def validate_email(email):
 
         try:

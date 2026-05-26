@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { authService } from '../services/auth';
 import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from '../i18n/index';
@@ -43,15 +43,14 @@ const DEFAULT_SETTINGS = {
     codeWrap: true,
     compactMode: false,
     showChatPreview: true,
-    showSuggestions: true,
     autocomplete: true,
     autoscroll: true,
     notifyOnThinkingDone: false,
     requireCtrlEnterToSend: false,
     snowBackground: false,
     autoSave: true,
-    fontFamily: "'Nunito', 'SF Pro Text', 'Ubuntu', 'Segoe UI', sans-serif",
-    fontSize: '12px',
+    fontFamily: "'Manrope', 'Inter', 'Segoe UI', sans-serif",
+    fontSize: '16px',
     keyboardSupport: true,
     highContrast: false,
     interface_language: detectInterfaceLanguage(),
@@ -111,10 +110,10 @@ export const SettingsProvider = ({ children }) => {
         }
         if (typeof merged.fontSize === 'string' && merged.fontSize.trim().endsWith('rem')) {
             const remMap = {
-                '0.875rem': '12px',
-                '1rem': '14px',
-                '1.125rem': '16px',
-                '1.25rem': '18px'
+                '0.875rem': '14px',
+                '1rem': '16px',
+                '1.125rem': '18px',
+                '1.25rem': '20px'
             };
             merged.fontSize = remMap[merged.fontSize.trim()] || DEFAULT_SETTINGS.fontSize;
         }
@@ -248,28 +247,11 @@ export const SettingsProvider = ({ children }) => {
         const prevAuthState = lastAuthStateRef.current;
         lastAuthStateRef.current = isAuthenticated;
 
-        if (isAuthenticated && !prevAuthState) {
-            setTimeout(() => loadSettingsFromDB(), 0);
-        } else if (!isAuthenticated && prevAuthState) {
+        if (!isAuthenticated && prevAuthState) {
             pendingSavesRef.current = {};
         }
-    }, [isAuthenticated, loadSettingsFromDB]);
-    useEffect(() => {
-        if (isAuthenticated) {
-            setTimeout(() => loadSettingsFromDB(), 0);
-        }
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('theme')) {
-            const theme = decodeURIComponent(params.get('theme'));
-            if (['light', 'dark', 'system'].includes(theme)) {
-                updateSetting('theme', theme);
-            }
-        }
-        if (params.get('accent')) {
-            const accent = decodeURIComponent(params.get('accent'));
-            updateSetting('accentColor', accent);
-        }
-    }, []); // Только при монтировании
+        return undefined;
+    }, [isAuthenticated]);
 
     const updateSetting = useCallback((key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -282,10 +264,56 @@ export const SettingsProvider = ({ children }) => {
             pendingSavesRef.current[key] = value;
             clearTimeout(saveDebounceTimerRef.current);
             saveDebounceTimerRef.current = setTimeout(() => {
-                saveToDB();
+                void saveToDB();
             }, 500);
         }
     }, [isAuthenticated, saveToDB]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            const timer = window.setTimeout(() => {
+                void loadSettingsFromDB();
+            }, 0);
+            return () => window.clearTimeout(timer);
+        }
+
+        return undefined;
+    }, [isAuthenticated, loadSettingsFromDB]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const updates = [];
+        const theme = params.get('theme');
+        if (theme) {
+            const decodedTheme = decodeURIComponent(theme);
+            if (['light', 'dark', 'system'].includes(decodedTheme)) {
+                updates.push(['theme', decodedTheme]);
+            }
+        }
+
+        const accent = params.get('accent');
+        if (accent) {
+            updates.push(['accentColor', decodeURIComponent(accent)]);
+        }
+
+        if (updates.length === 0) {
+            return undefined;
+        }
+
+        const frame = window.requestAnimationFrame(() => {
+            updates.forEach(([key, value]) => {
+                updateSetting(key, value);
+            });
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [updateSetting]);
+
+    useEffect(() => () => {
+        if (saveDebounceTimerRef.current) {
+            clearTimeout(saveDebounceTimerRef.current);
+        }
+    }, []);
 
     return (
         <SettingsContext.Provider value={{ settings, updateSetting }}>
@@ -294,4 +322,5 @@ export const SettingsProvider = ({ children }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSettings = () => useContext(SettingsContext);
