@@ -1,12 +1,15 @@
 import io
 import json
+import time
 
+import routes.features.chat as chat_routes
+import services.chat_history as chat_history
 from routes.features.chat import chat_limiter
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.rate_limiting import rate_limit_store
 
 
-def test_chat_rate_limit_returns_429_and_headers(client):
+def test_chat_rate_limit_returns_429_and_headers(client, monkeypatch):
     original_max = chat_limiter.max_requests
     original_window = chat_limiter.time_window
     original_redis_mode = chat_limiter.use_redis
@@ -15,12 +18,17 @@ def test_chat_rate_limit_returns_429_and_headers(client):
     chat_limiter.time_window = 120
     chat_limiter.use_redis = False
     rate_limit_store.clear()
+    monkeypatch.setattr(
+        chat_routes,
+        "get_model_function",
+        lambda _name: lambda _user_id, payload: {"reply": payload.get("message", "")},
+    )
 
     try:
-        first = client.post("/chat", json={"message": "first", "model": "echo"})
+        first = client.post("/chat", json={"message": "first", "model": "gemini"})
         assert first.status_code == 200
 
-        second = client.post("/chat", json={"message": "second", "model": "echo"})
+        second = client.post("/chat", json={"message": "second", "model": "gemini"})
         assert second.status_code == 429
         payload = second.get_json()
         assert payload["ok"] is False
@@ -95,6 +103,85 @@ def test_public_share_is_read_only_for_guest_chat_write(client, app, create_conf
     payload = read_only_attempt.get_json()
     assert payload["ok"] is False
     assert payload["error"]["code"] == "chat_read_only"
+
+
+def test_dev_models_are_restricted_to_admin_users(
+    client, create_confirmed_user, login, monkeypatch
+):
+    rate_limit_store.clear()
+    create_confirmed_user(username="root_admin")
+    _, user_email, user_password = create_confirmed_user(username="plain_user")
+    assert login(user_email, user_password).status_code == 200
+    csrf_token = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_token
+    monkeypatch.setattr(
+        chat_routes,
+        "get_model_function",
+        lambda _name: lambda _user_id, payload: {"reply": payload.get("message", "")},
+    )
+
+    response = client.post(
+        "/chat",
+        json={"message": "probe", "model": "echo", "session_id": "plain_dev_access"},
+        headers={"X-CSRF-Token": csrf_token},
+    )
+
+    assert response.status_code == 403
+    payload = response.get_json()
+    assert payload["error"]["code"] == "model_access_denied"
+    assert payload["error"]["stage"] == "dev"
+    rate_limit_store.clear()
+
+
+def test_guest_chat_cannot_load_or_overwrite_existing_file_history_without_token(
+    client, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(chat_history, "CHATS_FOLDER", tmp_path)
+    monkeypatch.setattr(chat_history, "ALLOW_GUEST_CHATS_SAVE", True)
+    monkeypatch.setattr(chat_routes, "ALLOW_GUEST_CHATS_SAVE", True)
+    monkeypatch.setattr(chat_history, "SECRET_KEY", "pytest-secret")
+
+    session_id = "victim_file_session"
+    chat_history.write_chat_file(
+        session_id,
+        {
+            "history": [{"role": "user", "parts": [{"text": "private history"}]}],
+            "title": "Private",
+        },
+    )
+
+    def history_echo(_user_id, payload):
+        history = payload.get("history") or []
+        if not history:
+            return {"reply": "no-history"}
+        return {"reply": history[0]["parts"][0]["text"]}
+
+    monkeypatch.setattr(chat_routes, "get_model_function", lambda _name: history_echo)
+    rate_limit_store.clear()
+
+    try:
+        no_token_response = client.post(
+            "/chat",
+            json={"message": "probe", "model": "gemini", "session_id": session_id},
+        )
+        assert no_token_response.status_code == 200
+        assert no_token_response.get_json()["reply"] == "no-history"
+        assert "session_token" not in no_token_response.get_json()
+
+        stored_after_probe = chat_history.read_chat_file(session_id)
+        assert len(stored_after_probe["history"]) == 1
+        assert stored_after_probe["history"][0]["parts"][0]["text"] == "private history"
+
+        token = chat_history._generate_guest_session_token(session_id, int(time.time()))
+        token_response = client.post(
+            "/chat",
+            json={"message": "probe", "model": "gemini", "session_id": session_id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert token_response.status_code == 200
+        assert token_response.get_json()["reply"] == "private history"
+    finally:
+        rate_limit_store.clear()
 
 
 def test_upload_validation_rejects_invalid_extension_for_authenticated_user(

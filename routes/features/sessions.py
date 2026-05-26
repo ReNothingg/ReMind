@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
+from routes.features.minds import get_mind_for_session_binding, serialize_mind_for_session
 from services.chat_history import (
     _verify_guest_session_token,
     build_share_url,
@@ -38,6 +39,12 @@ def _session_timestamp(chat: UserChatHistory) -> float:
     if chat.created_at:
         return chat.created_at.timestamp()
     return 0.0
+
+
+def _session_mind_payload(chat: UserChatHistory | None, viewer_id: int | None) -> dict | None:
+    if not chat:
+        return None
+    return serialize_mind_for_session(chat.mind_id, viewer_id)
 
 
 def _parse_guest_tokens_header() -> dict[str, str]:
@@ -83,6 +90,7 @@ def register_session_routes(api_bp):
                     "session_id": resolved_session_id,
                     "history": history,
                     "title": title,
+                    "mind": _session_mind_payload(chat, db_user_id),
                     "is_public": True,
                     "is_owner": is_owner,
                     "public_id": share_entry.public_id if share_entry else None,
@@ -101,6 +109,7 @@ def register_session_routes(api_bp):
                         "session_id": resolved_session_id,
                         "history": chat.get_messages(),
                         "title": chat.title,
+                        "mind": _session_mind_payload(chat, db_user_id),
                         "is_public": False,
                         "is_owner": True,
                     }
@@ -118,6 +127,7 @@ def register_session_routes(api_bp):
                 "session_id": resolved_session_id,
                 "history": history,
                 "title": title,
+                "mind": None,
                 "is_public": False,
                 "is_owner": False,
             }
@@ -169,6 +179,7 @@ def register_session_routes(api_bp):
                         "last_message": _safe_session_preview(chat.get_messages()),
                         "is_public": bool(is_public),
                         "public_id": public_id,
+                        "mind": _session_mind_payload(chat, db_user_id),
                     }
                 )
 
@@ -243,6 +254,45 @@ def register_session_routes(api_bp):
         db.session.add(chat)
         db.session.commit()
         return make_ok({"session_id": session_id})
+
+    @api_bp.route("/sessions/<session_id>/mind", methods=["PUT", "DELETE"])
+    @api_error_boundary("session_mind_update_failed")
+    def update_session_mind(session_id):
+        db_user_id = require_authenticated_user_id()
+        resolved_session_id, _share_entry = resolve_session_identifier(session_id)
+        chat = UserChatHistory.query.filter_by(
+            user_id=db_user_id, session_id=resolved_session_id
+        ).first()
+        if not chat:
+            raise ApiError("Chat not found", status=404, code="not_found")
+
+        if request.method == "DELETE":
+            chat.mind_id = None
+            db.session.commit()
+            return make_ok({"session_id": resolved_session_id, "mind": None})
+
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
+
+        public_mind_id = data.get("mind_id")
+        if public_mind_id is None or str(public_mind_id).strip() == "":
+            chat.mind_id = None
+            db.session.commit()
+            return make_ok({"session_id": resolved_session_id, "mind": None})
+
+        mind = get_mind_for_session_binding(str(public_mind_id), db_user_id)
+        if mind is None:
+            raise ApiError("Mind not found", status=404, code="not_found")
+
+        chat.mind_id = mind.id
+        db.session.commit()
+        return make_ok(
+            {
+                "session_id": resolved_session_id,
+                "mind": serialize_mind_for_session(mind.id, db_user_id),
+            }
+        )
 
     @api_bp.route("/sessions/<session_id>", methods=["DELETE"])
     @api_error_boundary("session_delete_failed")

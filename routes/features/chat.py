@@ -15,15 +15,20 @@ from werkzeug.utils import secure_filename
 from ai_engine import get_model_function
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
+from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
+    chat_file_exists,
+    has_valid_guest_session_token,
     load_chat_history,
     normalize_message,
     resolve_session_identifier,
 )
 from services.files import handle_file_upload
+from services.model_access import can_user_access_model, get_model_stage
 from services.voice import synthesize_text_segments
+from utils.auth import UserChatHistory
 from utils.input_validation import InputValidator, ValidationError
 from utils.rate_limiting import RateLimiter, rate_limit
 from utils.responses import logger, make_ok
@@ -40,6 +45,23 @@ def _resolve_db_user_id() -> int | None:
         return int(raw_user_id)
     except (TypeError, ValueError):
         return None
+
+
+def _resolve_chat_mind_context(
+    requested_mind_id: str | None,
+    session_id: str,
+    user_id: int | None,
+) -> dict[str, Any] | None:
+    if requested_mind_id:
+        return resolve_mind_context_for_chat(requested_mind_id, user_id)
+
+    if user_id is None:
+        return None
+
+    chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id).first()
+    if not chat:
+        return None
+    return resolve_bound_mind_context_for_chat(chat.mind_id, user_id)
 
 
 def _validate_message_in_payload(payload: dict) -> None:
@@ -61,6 +83,10 @@ def _extract_uploaded_files() -> list:
     return uploaded_files
 
 
+def _extract_session_identifier(payload: dict[str, Any]) -> Any:
+    return payload.get("session_id") or payload.get("user_id")
+
+
 def _has_files_payload(value) -> bool:
     if value is None:
         return False
@@ -74,11 +100,26 @@ def _has_files_payload(value) -> bool:
 def process_request_data() -> tuple[str, dict[str, Any], str]:
     auth_user_id = session.get("user_id")
 
+    def resolve_session_id(raw_identifier: Any) -> str:
+        if raw_identifier is None or not str(raw_identifier).strip():
+            if auth_user_id is not None:
+                raise ApiError(
+                    "Session ID is required for authenticated chats.",
+                    status=400,
+                    code="missing_session_id",
+                )
+            return f"guest_{uuid.uuid4().hex}"
+
+        safe_identifier = secure_filename(str(raw_identifier))[:200]
+        if not safe_identifier:
+            raise ApiError("Invalid session ID", status=400, code="invalid_session_id")
+        return safe_identifier
+
     if request.is_json:
         data: dict[str, Any] = request.get_json(silent=True) or {}
-        raw_identifier = str(auth_user_id) if auth_user_id else data.get("user_id", "")
-        user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
+        session_id = resolve_session_id(_extract_session_identifier(data))
         model_name = data.get("model", "gemini")
+        data["session_id"] = session_id
         data.setdefault("files", [])
         if auth_user_id is None and _has_files_payload(data.get("files")):
             raise ApiError(
@@ -87,15 +128,15 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
                 code="guest_file_upload_disabled",
             )
         _validate_message_in_payload(data)
-        return user_id, data, model_name
+        return session_id, data, model_name
 
     if not request.form and not request.files:
         raise ApiError("Empty request", status=400, code="empty_request")
 
     user_data: dict[str, Any] = request.form.to_dict()
-    raw_identifier = str(auth_user_id) if auth_user_id else user_data.get("user_id", "")
-    user_id = secure_filename(str(raw_identifier))[:200] or f"guest_{uuid.uuid4().hex}"
+    session_id = resolve_session_id(_extract_session_identifier(user_data))
     model_name = user_data.get("model", "gemini")
+    user_data["session_id"] = session_id
     _validate_message_in_payload(user_data)
 
     uploaded_files = _extract_uploaded_files()
@@ -105,7 +146,9 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             status=403,
             code="guest_file_upload_disabled",
         )
-    processed_files = [handle_file_upload(file_storage, user_id) for file_storage in uploaded_files]
+    processed_files = [
+        handle_file_upload(file_storage, session_id) for file_storage in uploaded_files
+    ]
     user_data["files"] = [file_info for file_info in processed_files if file_info is not None]
 
     if "meta" in user_data and isinstance(user_data["meta"], str):
@@ -114,7 +157,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         except json.JSONDecodeError:
             user_data["meta"] = {}
 
-    return user_id, user_data, model_name
+    return session_id, user_data, model_name
 
 
 def _build_user_message_parts(original_message: str, files: list[dict]) -> list[dict]:
@@ -140,6 +183,53 @@ def _build_user_message_parts(original_message: str, files: list[dict]) -> list[
     return parts
 
 
+def _coerce_image_parts(images: Any) -> list[dict[str, str]]:
+    if isinstance(images, str):
+        raw_images = [images]
+    elif isinstance(images, (list, tuple)):
+        raw_images = list(images)
+    else:
+        return []
+
+    normalized_images: list[dict[str, str]] = []
+    for image in raw_images:
+        if isinstance(image, str):
+            url_path = image.strip()
+            mime_type = ""
+            original_name = ""
+        elif isinstance(image, dict):
+            url_path = str(
+                image.get("url_path") or image.get("url") or image.get("path") or ""
+            ).strip()
+            mime_type = str(image.get("mime_type") or "").strip()
+            original_name = str(image.get("original_name") or "").strip()
+        else:
+            continue
+
+        if not url_path:
+            continue
+
+        image_part = {"url_path": url_path}
+        if mime_type:
+            image_part["mime_type"] = mime_type
+        if original_name:
+            image_part["original_name"] = original_name
+        normalized_images.append(image_part)
+
+    return normalized_images
+
+
+def _build_model_message_parts(reply_text: str, images: Any) -> list[dict]:
+    parts: list[dict] = []
+    if reply_text:
+        parts.append({"text": reply_text})
+
+    for image_part in _coerce_image_parts(images):
+        parts.append({"image": image_part})
+
+    return parts
+
+
 def _resolve_history(
     user_data: dict[str, Any], resolved_session_id: str, db_user_id: int | None
 ) -> list:
@@ -151,7 +241,23 @@ def _resolve_history(
             return json.loads(history_field)
         except json.JSONDecodeError:
             return []
-    return load_chat_history(resolved_session_id, db_user_id)
+    guest_file_access_allowed = db_user_id is None and has_valid_guest_session_token(
+        resolved_session_id
+    )
+    return load_chat_history(
+        resolved_session_id,
+        db_user_id,
+        allow_file_fallback=guest_file_access_allowed,
+        require_guest_token=guest_file_access_allowed,
+    )
+
+
+def _allow_guest_file_persistence(resolved_session_id: str, db_user_id: int | None) -> bool:
+    if db_user_id is not None or not ALLOW_GUEST_CHATS_SAVE:
+        return False
+    if has_valid_guest_session_token(resolved_session_id):
+        return True
+    return not chat_file_exists(resolved_session_id)
 
 
 def _stream_chat_response(
@@ -161,6 +267,8 @@ def _stream_chat_response(
     user_data: dict,
     resolved_session_id: str,
     user_message_for_history: dict,
+    allow_guest_file_persistence: bool,
+    mind_context: dict[str, Any] | None,
 ):
     captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
 
@@ -200,7 +308,8 @@ def _stream_chat_response(
                     yield f"data: {json.dumps({'reply_part': chunk_str})}\n\n"
 
                 final_data["reply"] = full_response
-                if db_user_id is None and ALLOW_GUEST_CHATS_SAVE:
+                final_data["sessionId"] = resolved_session_id
+                if allow_guest_file_persistence:
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
                     )
@@ -211,19 +320,30 @@ def _stream_chat_response(
                 yield f"data: {json.dumps({'error': 'stream_failed'})}\n\n"
 
             finally:
-                model_parts = [{"text": full_response}] if full_response else []
+                reply_text = str(final_data.get("reply") or full_response or "")
+                model_parts = _build_model_message_parts(reply_text, final_data.get("images"))
                 new_messages_batch = [
                     user_message_for_history,
                     {"role": "model", "parts": model_parts},
                 ]
                 try:
                     append_messages_to_history(
-                        resolved_session_id, new_messages_batch, model_name, db_user_id
+                        resolved_session_id,
+                        new_messages_batch,
+                        model_name,
+                        db_user_id,
+                        allow_guest_file_persistence=allow_guest_file_persistence,
+                        mind_id=mind_context.get("id") if mind_context else None,
                     )
                 except OSError as exc:
                     logger.warning("Failed to persist stream messages: %s", exc)
                     append_messages_to_history(
-                        resolved_session_id, [user_message_for_history], model_name, db_user_id
+                        resolved_session_id,
+                        [user_message_for_history],
+                        model_name,
+                        db_user_id,
+                        allow_guest_file_persistence=allow_guest_file_persistence,
+                        mind_id=mind_context.get("id") if mind_context else None,
                     )
 
     response = Response(stream_generator(), mimetype="text/event-stream")
@@ -233,19 +353,12 @@ def _stream_chat_response(
 
 
 def _maybe_return_direct_image(model_output):
-    is_direct_image = "DirectImageResponse" in str(type(model_output))
-    if not is_direct_image:
-        try:
-            from ai_engine.MindArt import DirectImageResponse
-
-            is_direct_image = isinstance(model_output, DirectImageResponse)
-        except ImportError:
-            is_direct_image = False
-
-    if not is_direct_image:
+    image_bytes = getattr(model_output, "image_bytes", None)
+    mime_type = getattr(model_output, "mime_type", None)
+    if not isinstance(image_bytes, (bytes, bytearray)) or not isinstance(mime_type, str):
         return None
 
-    return send_file(io.BytesIO(model_output.image_bytes), mimetype=model_output.mime_type)
+    return send_file(io.BytesIO(image_bytes), mimetype=mime_type)
 
 
 def register_chat_routes(api_bp):
@@ -263,8 +376,27 @@ def register_chat_routes(api_bp):
             and not (db_user_id and share_entry.user_id == db_user_id)
         ):
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
+        if not can_user_access_model(model_name, db_user_id):
+            stage = get_model_stage(model_name).value
+            raise ApiError(
+                f"Model '{model_name}' is not available for this account.",
+                status=403,
+                code="model_access_denied",
+                extra={"model": model_name, "stage": stage},
+            )
 
         history = _resolve_history(user_data, resolved_session_id, db_user_id)
+        mind_context = _resolve_chat_mind_context(
+            user_data.get("mind_id"),
+            resolved_session_id,
+            db_user_id,
+        )
+        if mind_context:
+            user_data["active_mind"] = mind_context
+            user_data["mind_id"] = mind_context["public_id"]
+        allow_guest_file_persistence = _allow_guest_file_persistence(
+            resolved_session_id, db_user_id
+        )
         original_user_message = user_data.get("message", "")
         user_data["history"] = history
 
@@ -289,17 +421,28 @@ def register_chat_routes(api_bp):
                 user_data=user_data,
                 resolved_session_id=resolved_session_id,
                 user_message_for_history=user_message_for_history,
+                allow_guest_file_persistence=allow_guest_file_persistence,
+                mind_context=mind_context,
             )
 
         model_output = model_func(db_user_id, user_data)
-        model_parts = []
-        if isinstance(model_output, dict) and model_output.get("reply"):
-            model_parts.append({"text": str(model_output.get("reply"))})
-        elif not isinstance(model_output, dict):
-            model_parts.append({"text": str(model_output)})
+        if isinstance(model_output, dict):
+            model_parts = _build_model_message_parts(
+                str(model_output.get("reply") or ""),
+                model_output.get("images"),
+            )
+        else:
+            model_parts = _build_model_message_parts(str(model_output), None)
 
         new_messages_batch = [user_message_for_history, {"role": "model", "parts": model_parts}]
-        append_messages_to_history(resolved_session_id, new_messages_batch, model_name, db_user_id)
+        append_messages_to_history(
+            resolved_session_id,
+            new_messages_batch,
+            model_name,
+            db_user_id,
+            allow_guest_file_persistence=allow_guest_file_persistence,
+            mind_id=mind_context.get("id") if mind_context else None,
+        )
 
         direct_image_response = _maybe_return_direct_image(model_output)
         if direct_image_response is not None:
@@ -310,10 +453,11 @@ def register_chat_routes(api_bp):
         else:
             response_data = {"ok": True, "reply": str(model_output)}
 
-        if db_user_id is None and ALLOW_GUEST_CHATS_SAVE:
+        if allow_guest_file_persistence:
             response_data["session_token"] = _generate_guest_session_token(
                 resolved_session_id, int(time.time())
             )
+        response_data["sessionId"] = resolved_session_id
 
         return make_ok(response_data)
 

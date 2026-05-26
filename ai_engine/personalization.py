@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 from flask import request
 
-from utils.auth import User, UserSettings
+from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +29,30 @@ def get_user_settings_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     if not user_id:
         return {}
     try:
-        u = User.query.get(int(user_id))
+        u = db.session.get(User, int(user_id))
         if not u:
             return {}
         settings = UserSettings.query.filter_by(user_id=u.id).first()
         return settings.get_settings() if settings else {}
     except Exception as e:
         logger.exception(f"Failed to load user settings for {user_id}: {e}")
+        return {}
+
+
+def get_user_profile_by_id(user_id: Optional[int]) -> Dict[str, Any]:
+    if not user_id:
+        return {}
+    try:
+        user = db.session.get(User, int(user_id))
+        if not user:
+            return {}
+        return {
+            "username": user.username or "",
+            "name": user.name or "",
+            "email": user.email or "",
+        }
+    except Exception as e:
+        logger.exception(f"Failed to load user profile for {user_id}: {e}")
         return {}
 
 
@@ -83,6 +100,12 @@ def build_interaction_metadata(user_data: dict, history: list) -> Dict[str, Any]
         or _compute_avg_message_length(history),
         "active_days_last_30": meta.get("active_days_last_30") or None,
         "interface_language": meta.get("interface_language") or "ru",
+        "telegram_id": meta.get("telegram_id") or "",
+        "telegram_is_premium": meta.get("telegram_is_premium"),
+        "telegram_username": meta.get("telegram_username") or "",
+        "telegram_first_name": meta.get("telegram_first_name") or "",
+        "telegram_last_name": meta.get("telegram_last_name") or "",
+        "telegram_full_name": meta.get("telegram_full_name") or "",
     }
 
     return metadata
@@ -117,10 +140,12 @@ def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
         return ""
 
     settings = get_user_settings_by_id(user_id)
+    user_profile = get_user_profile_by_id(user_id)
+    account_name = user_profile.get("name") or user_profile.get("username") or ""
     mapping = {
         "PREFERRED_NAME": settings.get("personalization_nickname")
-        or settings.get("username")
         or metadata.get("personalization_nickname")
+        or account_name
         or "",
         "ROLE": settings.get("personalization_profession")
         or metadata.get("personalization_profession")
@@ -142,6 +167,23 @@ def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
         "AVG_MESSAGE_LENGTH": str(metadata.get("avg_message_length") or ""),
         "AVG_CONVERSATION_DEPTH": str(metadata.get("avg_conversation_depth") or ""),
         "INTERFACE_LANGUAGE": metadata.get("interface_language") or "ru",
+        "HOUR": str(metadata.get("local_hour") or ""),
+        "FLOAT": str(metadata.get("avg_message_length") or 0),
+        "NUMBER": str(metadata.get("avg_conversation_depth") or 0),
+        "COUNTRY": metadata.get("country") or "",
+        "PLAN_TYPE": metadata.get("plan_type") or "",
+        "ACCOUNT_NAME": account_name
+        or metadata.get("personalization_nickname")
+        or settings.get("personalization_nickname")
+        or metadata.get("telegram_full_name")
+        or metadata.get("telegram_username")
+        or "",
+        "TELEGRAM_ID": metadata.get("telegram_id") or "",
+        "TELEGRAM_IS_PREMIUM": "yes" if metadata.get("telegram_is_premium") else "no",
+        "TELEGRAM_USERNAME": metadata.get("telegram_username") or "",
+        "TELEGRAM_FIRST_NAME": metadata.get("telegram_first_name") or "",
+        "TELEGRAM_LAST_NAME": metadata.get("telegram_last_name") or "",
+        "TELEGRAM_FULL_NAME": metadata.get("telegram_full_name") or "",
     }
 
     out = template
@@ -167,8 +209,36 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
+    mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     if base and user_md:
-        return base + "\n\n" + "PERSONALIZATION FOR USER:\n" + user_md
-    if user_md:
-        return user_md
-    return base
+        prompt = base + "\n\n" + "PERSONALIZATION FOR USER:\n" + user_md
+    elif user_md:
+        prompt = user_md
+    else:
+        prompt = base
+
+    if mind_prompt:
+        return prompt + "\n\n" + mind_prompt
+    return prompt
+
+
+def render_active_mind_prompt(active_mind: Any) -> str:
+    if not isinstance(active_mind, dict):
+        return ""
+
+    name = str(active_mind.get("name") or "").strip()
+    description = str(active_mind.get("description") or "").strip()
+    instructions = str(active_mind.get("instructions") or "").strip()
+    if not name or not instructions:
+        return ""
+
+    return (
+        "ACTIVE MIND PROFILE:\n"
+        "The user selected a custom Mind for this conversation. Follow this Mind profile "
+        "when answering, unless it conflicts with platform safety rules, privacy rules, "
+        "or higher-priority system requirements.\n"
+        f"Name: {name}\n"
+        f"Description: {description}\n"
+        "Mind instructions:\n"
+        f"{instructions}"
+    )

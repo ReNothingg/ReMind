@@ -2,15 +2,14 @@ import { useState, useRef, useCallback } from "react";
 import {
   TEXT_FILE_EXTENSIONS,
   VALID_IMAGE_MIME_TYPES,
-  VALID_3D_MODEL_EXTENSIONS,
-  VALID_3D_MODEL_MIME_TYPES,
 } from "../utils/constants";
+import { showToast } from "../utils/toast";
 
 const MAX_FILES = 10;
 
 export const useFileHandler = ({ enabled = true } = {}) => {
   const [files, setFiles] = useState([]);
-  const [dragCounter, setDragCounter] = useState(0); // Используется для отслеживания вложенных drag событий
+  const [, setDragCounter] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const dragHasFilesRef = useRef(false);
   const fileInputRef = useRef(null);
@@ -32,19 +31,10 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     );
   };
 
-  const is3DModelFile = (file) => {
-    if (!file?.name) return false;
-    const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    return (
-      VALID_3D_MODEL_EXTENSIONS.includes(extension) ||
-      VALID_3D_MODEL_MIME_TYPES.includes(file.type)
-    );
-  };
-
   const hasFileData = useCallback((event) => {
     const types = Array.from(event.dataTransfer?.types || []);
     if (types.includes("Files")) return true;
-    const items = Array.from(event.dataTransfer?.items || []);
+    const items = Array.from(event.dataTransfer?.items || []) as DataTransferItem[];
     return items.some((item) => item.kind === "file");
   }, []);
 
@@ -61,7 +51,7 @@ export const useFileHandler = ({ enabled = true } = {}) => {
 
       const totalFiles = files.length + fileList.length;
       if (totalFiles > MAX_FILES) {
-        alert(`Можно прикрепить не более ${MAX_FILES} файлов.`);
+        showToast(`Можно прикрепить не более ${MAX_FILES} файлов.`, { type: "warning" });
         const remainingSlots = MAX_FILES - files.length;
         if (remainingSlots <= 0) return;
         fileList = fileList.slice(0, remainingSlots);
@@ -180,7 +170,6 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     clearFiles,
     formatFileSize,
     isTextFile,
-    is3DModelFile,
     handleFileInputChange,
     handleDragEnter,
     handleDragLeave,
@@ -188,7 +177,5 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     handleDrop,
     MAX_FILES,
     VALID_IMAGE_MIME_TYPES,
-    VALID_3D_MODEL_EXTENSIONS,
-    VALID_3D_MODEL_MIME_TYPES,
   };
 };

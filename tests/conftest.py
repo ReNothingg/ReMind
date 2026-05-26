@@ -16,7 +16,9 @@ os.environ["ALLOW_GUEST_CHATS_SAVE"] = "True"
 
 from app_factory import create_app
 from utils.auth import User, UserSettings, db
+from utils.brute_force import _attempt_store, _lockout_store
 from utils.input_validation import InputValidator
+from utils.rate_limiting import rate_limit_store
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +28,17 @@ def disable_email_dns_validation(monkeypatch):
         "validate_email",
         staticmethod(lambda value: str(value).strip().lower()),
     )
+
+
+@pytest.fixture(autouse=True)
+def isolate_request_guards():
+    rate_limit_store.clear()
+    _attempt_store.clear()
+    _lockout_store.clear()
+    yield
+    rate_limit_store.clear()
+    _attempt_store.clear()
+    _lockout_store.clear()
 
 
 @pytest.fixture()
@@ -51,13 +64,20 @@ def client(app):
 
 @pytest.fixture()
 def create_confirmed_user(app):
-    def _create(email: str = None, password: str = "Password1!", username: str = None):
+    def _create(
+        email: str = None,
+        password: str = "Password1!",
+        username: str = None,
+        name: str = None,
+    ):
         real_email = email or f"user_{uuid.uuid4().hex[:8]}@example.com"
         real_username = username or f"user_{uuid.uuid4().hex[:8]}"
+        real_name = name if name is not None else real_username
 
         with app.app_context():
             user = User(
                 username=real_username,
+                name=real_name,
                 email=real_email,
                 password=generate_password_hash(password),
                 is_confirmed=True,

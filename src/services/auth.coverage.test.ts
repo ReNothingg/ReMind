@@ -53,15 +53,15 @@ describe('authService coverage', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         const longValue = 'x'.repeat(101);
-        await expect(authService.register(longValue, 'user@example.com', 'Password1!', null)).resolves.toMatchObject({
+        await expect(authService.register(longValue, 'user', 'user@example.com', 'Password1!', null)).resolves.toMatchObject({
             success: false,
             error: expect.stringContaining('100'),
         });
-        await expect(authService.register('user', `${longValue}@example.com`, 'Password1!', null)).resolves.toMatchObject({
+        await expect(authService.register('Name', 'user', `${longValue}@example.com`, 'Password1!', null)).resolves.toMatchObject({
             success: false,
             error: expect.stringContaining('100'),
         });
-        await expect(authService.register('user', 'user@example.com', longValue, null)).resolves.toMatchObject({
+        await expect(authService.register('Name', 'user', 'user@example.com', longValue, null)).resolves.toMatchObject({
             success: false,
             error: expect.stringContaining('100'),
         });
@@ -76,24 +76,24 @@ describe('authService coverage', () => {
             .mockRejectedValueOnce(new Error('network down'));
         vi.stubGlobal('fetch', fetchMock);
 
-        await expect(authService.register('demo', 'demo@example.com', 'Password1!', 'token')).resolves.toEqual({
+        await expect(authService.register('Demo User', 'demo', 'demo@example.com', 'Password1!', 'token')).resolves.toEqual({
             success: true,
             message: 'created',
             user_id: 42,
         });
-        await expect(authService.register('demo', 'demo@example.com', 'Password1!', 'token')).resolves.toEqual({
+        await expect(authService.register('Demo User', 'demo', 'demo@example.com', 'Password1!', 'token')).resolves.toEqual({
             success: false,
             error: 'already exists',
         });
-        await expect(authService.register('demo', 'demo@example.com', 'Password1!', 'token')).resolves.toEqual({
+        await expect(authService.register('Demo User', 'demo', 'demo@example.com', 'Password1!', 'token')).resolves.toEqual({
             success: false,
             error: 'network down',
         });
 
         const [, options] = fetchMock.mock.calls[0];
-        const headers = options.headers as Record<string, string>;
-        expect(headers['X-CSRF-Token']).toBe('test_csrf');
-        expect(headers['Content-Type']).toBe('application/json');
+        const headers = new Headers(options.headers as HeadersInit);
+        expect(headers.get('X-CSRF-Token')).toBe('test_csrf');
+        expect(headers.get('Content-Type')).toBe('application/json');
     });
 
     it('logs out and reads profile and settings endpoints', async () => {
@@ -117,6 +117,22 @@ describe('authService coverage', () => {
         await expect(authService.getSettings()).resolves.toEqual({ theme: 'dark' });
         await expect(authService.getSettings()).resolves.toEqual({ error: 'Failed to get settings' });
         await expect(authService.getSettings()).resolves.toEqual({ error: 'settings error' });
+    });
+
+    it('deletes an account through the privacy endpoint', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(createJsonResponse({ deleted: { account_deleted: true } }))
+            .mockResolvedValueOnce(createJsonResponse({ error: 'delete failed' }, false));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(authService.deleteAccount()).resolves.toEqual({
+            success: true,
+            deleted: { account_deleted: true },
+        });
+        await expect(authService.deleteAccount()).resolves.toEqual({
+            success: false,
+            error: 'delete failed',
+        });
     });
 
     it('updates profile and settings with success and error responses', async () => {

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ShieldCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -113,18 +114,47 @@ const RailMenuItem = ({ children, className, danger = false, icon, ...props }) =
     </button>
 );
 
-const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, onSettingsClick, onSessionDeleted, onSessionRenamed }) => {
+const getMindInitials = (mind) => {
+    const words = (mind?.name || 'M')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+    return words.map((word) => word[0]).join('').toUpperCase() || 'M';
+};
+
+const MindRailIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8.5 6.5a3 3 0 0 1 5.7-1.3A3.2 3.2 0 0 1 19 8a3.3 3.3 0 0 1-.7 6.5 4.2 4.2 0 0 1-7.8 2.6A3.7 3.7 0 0 1 5 13.7 3.9 3.9 0 0 1 8.5 6.5Z" />
+        <path d="M9 10h6M10 14h4" />
+    </svg>
+);
+
+const AppRail = ({
+    activeMindId = null,
+    currentPath = '/',
+    currentSessionId,
+    isExpanded,
+    onAdminClick,
+    onMindsClick,
+    onNewChat,
+    onSelectMind,
+    onSelectSession,
+    onSessionDeleted,
+    onSessionRenamed,
+    onSettingsClick,
+    onToggle,
+    pinnedMinds = [],
+    sessions,
+}) => {
     const { t } = useTranslation();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const { settings } = useSettings();
     const [favorites, setFavorites] = useState([]);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [editingSessionId, setEditingSessionId] = useState(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [localSessions, setLocalSessions] = useState(sessions);
-    const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchHintActive, setSearchHintActive] = useState(false);
 
     useEffect(() => {
         if (isExpanded) {
@@ -134,9 +164,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
         setOpenMenuId(null);
         setEditingSessionId(null);
         setEditingTitle('');
-        setSearchOpen(false);
         setSearchQuery('');
-        setSearchHintActive(false);
     }, [isExpanded]);
 
     useEffect(() => {
@@ -227,6 +255,12 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
         e.stopPropagation();
         try {
             await apiService.deleteSession(sessionId);
+            setLocalSessions((prevSessions) => prevSessions.filter((session) => session.session_id !== sessionId));
+            setFavorites((prevFavorites) => prevFavorites.filter((id) => id !== sessionId));
+            if (editingSessionId === sessionId) {
+                setEditingSessionId(null);
+                setEditingTitle('');
+            }
             if (onSessionDeleted) {
                 onSessionDeleted(sessionId);
             }
@@ -236,6 +270,12 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                     let list = raw ? JSON.parse(raw) : [];
                     list = list.filter(id => id !== sessionId);
                     localStorage.setItem('guest_chat_history_ids', JSON.stringify(list));
+                    const rawTokens = localStorage.getItem('guest_chat_tokens');
+                    const tokens = rawTokens ? JSON.parse(rawTokens) : {};
+                    if (tokens && typeof tokens === 'object' && sessionId in tokens) {
+                        delete tokens[sessionId];
+                        localStorage.setItem('guest_chat_tokens', JSON.stringify(tokens));
+                    }
                 } catch (e) {
                     console.warn('Failed to update guest sessions list', e);
                 }
@@ -252,7 +292,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
 
         setEditingSessionId(sessionId);
         setEditingTitle(currentTitle);
-        setOpenMenuId(null); // Закрываем меню
+        setOpenMenuId(null);
     };
 
     const handleSaveRename = async (sessionId) => {
@@ -283,7 +323,6 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                 if (onSessionRenamed) {
                     onSessionRenamed(sessionId, result.title);
                 }
-                console.log('Session renamed successfully:', result.title);
             }
         } catch (error) {
             console.error('Failed to rename session:', error);
@@ -297,14 +336,6 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
         setEditingTitle('');
     };
 
-    const handleShare = async (sessionId, e) => {
-        e.stopPropagation();
-        try {
-            console.log('Share session:', sessionId);
-        } catch (error) {
-            console.error('Failed to share session:', error);
-        }
-    };
     const sortedSessions = [...localSessions].sort((a, b) => {
         const aIsFavorite = favorites.includes(a.session_id);
         const bIsFavorite = favorites.includes(b.session_id);
@@ -313,8 +344,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
         return 0;
     });
 
-    const searchHint = t('rail.searchHint');
-    const effectiveQuery = searchHintActive ? '' : searchQuery.trim();
+    const effectiveQuery = searchQuery.trim();
 
     const filteredSessions = useMemo(() => {
         if (!effectiveQuery) return sortedSessions;
@@ -331,25 +361,6 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
 
         return scored.map(item => item.session);
     }, [effectiveQuery, sortedSessions, t]);
-
-    const handleSearchToggle = () => {
-        if (!isExpanded && onToggle) {
-            onToggle();
-        }
-        setSearchOpen((prev) => {
-            const next = !prev;
-            if (!next) {
-                setSearchQuery('');
-                setSearchHintActive(false);
-                return next;
-            }
-            if (!searchQuery) {
-                setSearchQuery(searchHint);
-                setSearchHintActive(true);
-            }
-            return next;
-        });
-    };
 
     return (
         <nav
@@ -396,47 +407,65 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                     </svg>
                 </RailActionButton>
                 <RailActionButton
-                    active={searchOpen}
+                    active={currentPath === '/minds' || currentPath.startsWith('/minds/editor') || !!activeMindId}
                     className="rail-icon-btn"
                     expanded={isExpanded}
-                    id="railChatSearch"
-                    label={t('rail.searchChats')}
-                    onClick={handleSearchToggle}
-                    title={t('rail.searchChats')}
-                    aria-label={t('rail.searchChats')}
+                    id="railMinds"
+                    label="Minds"
+                    onClick={onMindsClick}
+                    title="Minds"
+                    aria-label="Minds"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="7" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
+                    <MindRailIcon />
                 </RailActionButton>
+                {user?.is_admin && (
+                    <RailActionButton
+                        active={currentPath === '/admin' || currentPath.startsWith('/admin/')}
+                        className="rail-icon-btn"
+                        expanded={isExpanded}
+                        id="railAdmin"
+                        label="Admin"
+                        onClick={onAdminClick}
+                        title="Admin"
+                        aria-label="Admin"
+                    >
+                        <ShieldCheck size={20} />
+                    </RailActionButton>
+                )}
             </div>
 
-            {searchOpen && isExpanded && (
+            {isExpanded && pinnedMinds.length > 0 && (
+                <div
+                    className="ui-rail-pinned-minds ui-rail-pinned-minds-expanded"
+                    aria-label={t('minds.pinnedAria')}
+                >
+                    {pinnedMinds.map((mind) => (
+                        <button
+                            key={mind.public_id}
+                            type="button"
+                            className={cn(
+                                'ui-rail-pinned-mind ui-rail-pinned-mind-expanded',
+                                activeMindId === mind.public_id && 'ui-rail-pinned-mind-active'
+                            )}
+                            title={mind.name}
+                            onClick={() => onSelectMind?.(mind)}
+                        >
+                            <span className="ui-rail-pinned-mind-avatar">{getMindInitials(mind)}</span>
+                            <span className="ui-rail-pinned-mind-label">
+                                {mind.name}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {isExpanded && (
                 <div className="rail-search-container ui-rail-search-wrap">
                     <input
                         type="text"
-                        className={cn(
-                            'rail-search-input ui-rail-search-input',
-                            searchHintActive && 'is-hint ui-rail-search-input-hint'
-                        )}
+                        className="rail-search-input ui-rail-search-input"
                         value={searchQuery}
-                        onChange={(e) => {
-                            setSearchHintActive(false);
-                            setSearchQuery(e.target.value);
-                        }}
-                        onFocus={() => {
-                            if (searchHintActive) {
-                                setSearchQuery('');
-                                setSearchHintActive(false);
-                            }
-                        }}
-                        onBlur={() => {
-                            if (!searchQuery.trim()) {
-                                setSearchQuery(searchHint);
-                                setSearchHintActive(true);
-                            }
-                        }}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t('rail.searchPlaceholder')}
                         aria-label={t('rail.searchInput')}
                     />
@@ -470,6 +499,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                                 key={session.session_id}
                                 className={cn(
                                     'chat-history-item ui-rail-item',
+                                    currentSessionId === session.session_id && 'active ui-rail-item-active',
                                     isFavorite && 'favorite ui-rail-item-favorite'
                                 )}
                                 title={title}
@@ -519,7 +549,12 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                                 </div>
                                 <span className="chat-item-details ui-rail-item-details">
                                     <div className="chat-item-actions ui-rail-item-actions">
-                                        <div className="chat-menu-wrapper ui-rail-menu-anchor">
+                                        <div
+                                            className={cn(
+                                                'chat-menu-wrapper ui-rail-menu-anchor',
+                                                openMenuId === session.session_id && 'ui-rail-menu-anchor-open'
+                                            )}
+                                        >
                                             <button
                                                 type="button"
                                                 className="chat-menu-btn ui-rail-menu-trigger"
@@ -540,7 +575,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                                                     <RailMenuItem
                                                         className="menu-item favorite-menu-item"
                                                         icon={(
-                                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                                                                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                                                             </svg>
                                                         )}
@@ -550,24 +585,6 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                                                         }}
                                                     >
                                                         {isFavorite ? t('rail.favorite.remove') : t('rail.favorite.add')}
-                                                    </RailMenuItem>
-                                                    <RailMenuItem
-                                                        className="menu-item"
-                                                        icon={(
-                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <circle cx="18" cy="5" r="3"/>
-                                                                <circle cx="6" cy="12" r="3"/>
-                                                                <circle cx="18" cy="19" r="3"/>
-                                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                                                            </svg>
-                                                        )}
-                                                        onClick={(e) => {
-                                                            handleShare(session.session_id, e);
-                                                            setOpenMenuId(null);
-                                                        }}
-                                                    >
-                                                        {t('rail.share')}
                                                     </RailMenuItem>
                                                     <RailMenuItem
                                                         className="menu-item"
@@ -588,7 +605,7 @@ const AppRail = ({ isExpanded, onToggle, sessions, onNewChat, onSelectSession, o
                                                         className="menu-item delete-menu-item"
                                                         danger
                                                         icon={(
-                                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
                                                                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                                                             </svg>
                                                         )}

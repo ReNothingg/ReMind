@@ -61,6 +61,24 @@ export interface components {
       text: string;
       [key: string]: unknown;
     };
+    Mind: {
+      can_edit: boolean;
+      category: string;
+      created_at?: string | null;
+      description: string;
+      id: number;
+      instructions?: string;
+      is_owner: boolean;
+      is_pinned: boolean;
+      is_system: boolean;
+      is_verified: boolean;
+      name: string;
+      public_id: string;
+      starters: string[];
+      updated_at?: string | null;
+      visibility: "private" | "link" | "store";
+      [key: string]: unknown;
+    };
     PrivacyDeleteRequest: {
       delete_account?: boolean;
     };
@@ -93,6 +111,7 @@ export interface components {
       history: components["schemas"]["ChatMessage"][];
       is_owner?: boolean;
       is_public?: boolean;
+      mind?: components["schemas"]["Mind"] | null;
       ok: boolean;
       public_id?: string | null;
       read_only?: boolean;
@@ -115,6 +134,7 @@ export interface components {
       is_public?: boolean;
       last_message: string;
       last_updated: number;
+      mind?: components["schemas"]["Mind"] | null;
       public_id?: string | null;
       session_id: string;
       title: string;
