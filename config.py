@@ -4,8 +4,9 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
-env_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path=env_path)
+env_path = os.getenv("DOTENV_PATH", os.path.join(os.path.dirname(__file__), ".env"))
+if os.getenv("LOAD_DOTENV", "true").lower() not in ("0", "false", "no"):
+    load_dotenv(dotenv_path=env_path)
 
 BASE_PATH: Path = Path(__file__).resolve().parent
 
@@ -13,11 +14,12 @@ DB_PATH: Path = BASE_PATH / "database"
 
 UPLOAD_FOLDER: Path = DB_PATH / "uploads"
 CHATS_FOLDER: Path = DB_PATH / "chats"
+TELEGRAM_CHATS_FOLDER: Path = DB_PATH / "telegram_chats"
 CREATE_IMAGE_FOLDER: Path = DB_PATH / "generated_images"
 
 LOGS_FOLDER: Path = BASE_PATH / "logs"
 
-for folder in [UPLOAD_FOLDER, CHATS_FOLDER, CREATE_IMAGE_FOLDER, LOGS_FOLDER]:
+for folder in [UPLOAD_FOLDER, CHATS_FOLDER, TELEGRAM_CHATS_FOLDER, CREATE_IMAGE_FOLDER, LOGS_FOLDER]:
     folder.mkdir(parents=True, exist_ok=True)
 
 try:
@@ -98,6 +100,7 @@ CORS_ALLOW_HEADERS = [
 
 CORS_EXPOSE_HEADERS = [
     "Content-Type",
+    "X-CSRF-Token",
     "X-Request-Id",
     "X-Total-Count",
     "X-Page-Number",
@@ -176,6 +179,8 @@ if not SECRET_KEY:
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_BOT_DEFAULT_MODEL = os.getenv("TELEGRAM_BOT_DEFAULT_MODEL", "gemini").strip() or "gemini"
 
 _flask_debug = os.getenv("FLASK_DEBUG", "0")
 _is_debug = _flask_debug == "1" or _flask_debug.lower() == "true"
@@ -225,7 +230,9 @@ ALLOW_GUEST_CHATS_SAVE: bool = os.getenv("ALLOW_GUEST_CHATS_SAVE", "False").lowe
     "yes",
 )
 
-ENABLE_STRICT_HTTPS = IS_PRODUCTION
+ENABLE_STRICT_HTTPS = os.getenv(
+    "ENABLE_STRICT_HTTPS", "true" if IS_PRODUCTION else "false"
+).lower() in ("1", "true", "yes")
 
 RATELIMIT_ENABLED = True
 RATELIMIT_STORAGE_URL = os.getenv("REDIS_URL", "memory://")

@@ -115,12 +115,15 @@
 }
 
 .ai-message .message-content {
-  background: var(--ai-message-bg);
+  background: transparent;
   color: var(--ai-message-text-color);
   font-weight: 500;
   letter-spacing: -0.003em;
-  padding: calc(var(--spacing-unit) * 1) 0;
-
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 4);
+  min-height: var(--input-area-height-base);
+  border: none;
+  border-radius: var(--input-area-border-radius);
+  box-shadow: none;
   width: 100%;
   max-width: 100%;
 }

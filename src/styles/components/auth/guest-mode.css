@@ -3,8 +3,7 @@ body.guest-mode .app-rail {
 }
 
 body.guest-mode .model-selector-new,
-body.guest-mode .new-chat-btn,
-body.guest-mode #promptSuggestions {
+body.guest-mode .new-chat-btn {
   display: none !important;
 }
 
@@ -30,10 +29,13 @@ body.guest-mode .global-controls {
 body.guest-mode .chat-container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 240px);
-  padding: 60px 20px;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: var(--app-content-width-dynamic);
+  max-width: var(--app-content-max-width-dynamic);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 60px 20px 200px;
   background: var(--color-bg-main);
 }
 
@@ -51,7 +53,10 @@ body.guest-mode .main-input-area {
   }
 
   body.guest-mode .chat-container {
-    min-height: calc(100vh - 300px);
-    padding: 40px 16px;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 72px 12px 160px;
   }
 }

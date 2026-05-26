@@ -8,6 +8,7 @@ from flask import (
     Response,
     current_app,
     jsonify,
+    redirect,
     render_template,
     request,
     send_file,
@@ -96,6 +97,22 @@ def register_system_routes(api_bp):
     @api_bp.route("/")
     def root_index():
         return send_from_directory(current_app.static_folder, "index.html")
+
+    @api_bp.route("/minds")
+    @api_bp.route("/minds/<path:anything>")
+    def spa_minds_route(anything=None):
+        return send_from_directory(current_app.static_folder, "index.html")
+
+    @api_bp.route("/admin")
+    @api_bp.route("/admin/<path:anything>")
+    def spa_admin_route(anything=None):
+        return send_from_directory(current_app.static_folder, "index.html")
+
+    @api_bp.route("/editor")
+    @api_bp.route("/editor/<path:anything>")
+    def legacy_editor_route(anything=None):
+        suffix = f"/{anything}" if anything else ""
+        return redirect(f"/minds/editor{suffix}", code=308)
 
     @api_bp.route("/c/<path:anything>")
     def spa_chat_route(anything):

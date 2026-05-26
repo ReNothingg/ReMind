@@ -35,6 +35,8 @@ def get_user_data_locations(user_id):
             "user_settings",
             "user_chat_history",
             "chat_share",
+            "mind",
+            "mind_pin",
         ],
         "files": {
             "chats": CHATS_FOLDER,
@@ -45,16 +47,17 @@ def get_user_data_locations(user_id):
 
 
 def export_user_data(user_id):
-    from utils.auth import ChatShare, User, UserChatHistory, UserSettings
+    from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
 
     export_data = {
         "exported_at": datetime.utcnow().isoformat(),
         "user_id": user_id,
     }
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if user:
         export_data["profile"] = {
             "username": user.username,
+            "name": user.name,
             "email": user.email,
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "is_confirmed": user.is_confirmed,
@@ -67,13 +70,23 @@ def export_user_data(user_id):
     export_data["chats"] = [chat.to_dict() for chat in chats]
     shares = ChatShare.query.filter_by(user_id=user_id).all()
     export_data["shares"] = [share.to_dict() for share in shares]
+    minds = Mind.query.filter_by(user_id=user_id).all()
+    export_data["minds"] = [mind.to_dict(viewer_id=user_id) for mind in minds]
+    pins = MindPin.query.filter_by(user_id=user_id).all()
+    export_data["mind_pins"] = [
+        {
+            "mind_id": pin.mind_id,
+            "created_at": pin.created_at.isoformat() if pin.created_at else None,
+        }
+        for pin in pins
+    ]
 
     return export_data
 
 
 def delete_user_data(user_id, delete_account=False):
     from utils.audit_log import AuditEvents, log_audit_event
-    from utils.auth import ChatShare, User, UserChatHistory, UserSettings, db
+    from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
 
     results = {
         "user_id": user_id,
@@ -99,10 +112,23 @@ def delete_user_data(user_id, delete_account=False):
             except Exception:
                 pass
         results["items_deleted"]["chat_files"] = files_deleted
+        owned_mind_ids = [mind.id for mind in Mind.query.filter_by(user_id=user_id).all()]
+        pins_deleted = MindPin.query.filter_by(user_id=user_id).delete()
+        if owned_mind_ids:
+            pins_deleted += MindPin.query.filter(MindPin.mind_id.in_(owned_mind_ids)).delete(
+                synchronize_session=False
+            )
+            UserChatHistory.query.filter(UserChatHistory.mind_id.in_(owned_mind_ids)).update(
+                {"mind_id": None},
+                synchronize_session=False,
+            )
+        minds_deleted = Mind.query.filter_by(user_id=user_id).delete()
+        results["items_deleted"]["minds"] = minds_deleted
+        results["items_deleted"]["mind_pins"] = pins_deleted
         settings_deleted = UserSettings.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["settings"] = settings_deleted
         if delete_account:
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             if user:
                 db.session.delete(user)
                 results["items_deleted"]["account"] = 1
@@ -114,6 +140,8 @@ def delete_user_data(user_id, delete_account=False):
             {"items_deleted": results["items_deleted"], "account_deleted": delete_account},
             user_id,
         )
+        if delete_account:
+            log_audit_event(AuditEvents.DELETE_ACCOUNT, {"account_deleted": True}, user_id)
 
         return results
 
@@ -125,11 +153,12 @@ def delete_user_data(user_id, delete_account=False):
 def anonymize_user_data(user_id):
     from utils.auth import User, UserChatHistory, UserSettings, db
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return False
     anonymous_id = hashlib.sha256(str(user_id).encode()).hexdigest()[:12]
     user.username = f"deleted_user_{anonymous_id}"
+    user.name = "Deleted User"
     user.email = f"{anonymous_id}@deleted.invalid"
     user.password = None
     user.confirmation_token = None

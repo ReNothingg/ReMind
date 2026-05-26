@@ -1,125 +1,458 @@
-import { API_BASE_URL } from '../utils/constants';
 import { SERIOUS_ERROR_KEYPHRASES } from '../utils/constants';
 import {
     apiGetSessionHistory,
     apiListSessions,
     apiSynthesize,
-    apiTranslate
+    apiTranslate,
+    type ListSessionsResponse,
+    type SessionHistoryResponse,
+    type SynthesizeResponse,
+    type TranslateResponse,
 } from './openapiClient';
+import {
+    buildApiUrl,
+    getCsrfToken,
+    requestJson,
+    withCsrfHeaders,
+    type RequestJsonOptions,
+} from './http';
 
-const CSRF_COOKIE_KEY = 'csrf_token';
-const CSRF_HEADER_KEY = 'X-CSRF-Token';
 const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
-const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return '';
-}
+type GuestSessionTokenMap = Record<string, string>;
 
-export function getCsrfToken() {
-    return getCookie(CSRF_COOKIE_KEY);
-}
+type ApiServiceError = Error & {
+    data?: unknown;
+    isSerious?: boolean;
+    status?: number;
+};
 
-function getGuestSessionToken(sessionId) {
+type ChatWidgetUpdate = Record<string, unknown>;
+
+export type ChatStreamResult = {
+    aborted?: boolean;
+    end_of_stream?: boolean;
+    images?: string[] | string;
+    reply?: string;
+    reply_part?: string;
+    sessionId?: string;
+    sessionSlug?: string;
+    sources?: unknown[];
+    status?: string;
+    thinkingTime?: number;
+    widget_update?: ChatWidgetUpdate;
+    [key: string]: unknown;
+};
+
+type ChatCallbacks = {
+    onError?: (error: Error) => void;
+    onComplete?: (data: ChatStreamResult) => void;
+    onPart?: (data: ChatStreamResult) => void;
+    onWidgetUpdate?: (widgetData: ChatWidgetUpdate) => void;
+};
+
+type ListSessionsOptions =
+    | string
+    | {
+          idsQuery?: string;
+          page?: number;
+          pageSize?: number;
+      };
+
+type SessionShareResponse = {
+    is_owner?: boolean;
+    is_public?: boolean;
+    public_id?: string | null;
+    read_only?: boolean;
+    session_id?: string;
+    share_url?: string | null;
+    [key: string]: unknown;
+};
+
+type SessionRenameResponse = {
+    title?: string;
+    [key: string]: unknown;
+};
+
+export type MindVisibility = 'private' | 'link' | 'store';
+
+export type MindCategory = {
+    id: string;
+    label: string;
+};
+
+export type Mind = {
+    id: number;
+    public_id: string;
+    name: string;
+    description: string;
+    instructions?: string;
+    starters: string[];
+    category: string;
+    visibility: MindVisibility;
+    is_verified: boolean;
+    is_system: boolean;
+    is_featured?: boolean;
+    is_banned?: boolean;
+    moderation_reason?: string | null;
+    is_owner: boolean;
+    can_edit: boolean;
+    is_pinned: boolean;
+    created_at?: string | null;
+    updated_at?: string | null;
+};
+
+export type MindPayload = {
+    name: string;
+    description: string;
+    instructions: string;
+    starters: string[];
+    category: string;
+    visibility: MindVisibility;
+};
+
+type MindListResponse = {
+    minds?: Mind[];
+    categories?: MindCategory[];
+};
+
+type MindResponse = {
+    mind?: Mind;
+};
+
+export type SessionHistoryWithMind = SessionHistoryResponse & {
+    mind?: Mind | null;
+};
+
+type SessionMindResponse = {
+    mind?: Mind | null;
+    session_id?: string;
+};
+
+type MindCategoryResponse = {
+    categories?: MindCategory[];
+};
+
+export type AdminPagination = {
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type AdminUser = {
+    id: number;
+    username: string;
+    name?: string | null;
+    email: string;
+    is_confirmed: boolean;
+    is_admin: boolean;
+    is_super_admin: boolean;
+    is_banned: boolean;
+    is_blocked: boolean;
+    moderation_reason?: string | null;
+    ban_reason?: string | null;
+    block_reason?: string | null;
+    banned_until?: string | null;
+    blocked_until?: string | null;
+    oauth_provider?: string | null;
+    created_at?: string | null;
+    mind_count: number;
+    chat_count: number;
+};
+
+export type AdminMind = {
+    id: number;
+    public_id: string;
+    name: string;
+    description: string;
+    category: string;
+    visibility: MindVisibility;
+    is_verified: boolean;
+    is_featured: boolean;
+    is_banned: boolean;
+    is_system: boolean;
+    moderation_reason?: string | null;
+    owner?: {
+        id: number;
+        username: string;
+        email: string;
+    } | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+};
+
+export type AdminOverview = {
+    admin: {
+        id: number;
+        username: string;
+        is_super_admin: boolean;
+    };
+    stats: {
+        users: {
+            total: number;
+            confirmed: number;
+            admins: number;
+            banned: number;
+            blocked: number;
+            new_24h: number;
+        };
+        minds: {
+            total: number;
+            store: number;
+            featured: number;
+            banned: number;
+            verified: number;
+            new_24h: number;
+        };
+        sessions: {
+            total: number;
+            updated_24h: number;
+        };
+    };
+    server: {
+        status: string;
+        uptime_seconds: number;
+        started_at?: string | null;
+        timestamp: string;
+        process: {
+            pid: number;
+            python: string;
+            platform: string;
+            memory: {
+                max_rss_bytes?: number | null;
+            };
+            python_executable?: string;
+            implementation?: string;
+            machine?: string;
+            processor?: string;
+            cpu_count?: number | null;
+            thread_count?: number | null;
+            cwd?: string;
+            debug?: boolean;
+            env?: string;
+            load_average?: number[] | null;
+        };
+        components: {
+            database: { status: string; engine?: string };
+            redis: { status: string };
+            storage: Array<{
+                key: string;
+                path: string;
+                exists: boolean;
+                writable: boolean;
+                disk?: {
+                    total_bytes: number;
+                    used_bytes: number;
+                    free_bytes: number;
+                } | null;
+            }>;
+        };
+    };
+    operations: {
+        health: {
+            score: number;
+            level: string;
+            issues: string[];
+        };
+        alerts: Array<{
+            tone: string;
+            title: string;
+            detail: string;
+            action: string;
+        }>;
+        queues: {
+            unconfirmed_users: number;
+            restricted_users: number;
+            store_minds: number;
+            unverified_store_minds: number;
+            banned_minds: number;
+        };
+        growth_7d: {
+            users: number;
+            minds: number;
+            sessions: number;
+        };
+        top_users: Array<{
+            id: number;
+            username: string;
+            email: string;
+            chat_count: number;
+            mind_count: number;
+            is_restricted: boolean;
+            created_at?: string | null;
+        }>;
+        recent_audit: Array<{
+            timestamp?: string | null;
+            event_type: string;
+            severity: string;
+            endpoint?: string | null;
+            method?: string | null;
+            client_type?: string | null;
+            user_hash?: string | null;
+            details?: Record<string, unknown>;
+        }>;
+    };
+};
+
+type AdminUsersResponse = {
+    users?: AdminUser[];
+    pagination?: AdminPagination;
+};
+
+type AdminUserResponse = {
+    user?: AdminUser;
+};
+
+type AdminMindsResponse = {
+    minds?: AdminMind[];
+    pagination?: AdminPagination;
+};
+
+type AdminMindResponse = {
+    mind?: AdminMind;
+};
+
+type AdminUserUpdatePayload = {
+    is_banned?: boolean;
+    is_blocked?: boolean;
+    moderation_reason?: string | null;
+    ban_reason?: string | null;
+    block_reason?: string | null;
+    banned_until?: string | null;
+    blocked_until?: string | null;
+    restriction_until?: string | null;
+};
+
+type AdminMindUpdatePayload = {
+    is_banned?: boolean;
+    is_featured?: boolean;
+    is_verified?: boolean;
+    moderation_reason?: string | null;
+};
+
+type CanvasActionResponse = Record<string, unknown>;
+type LinkMetadataResponse = Record<string, unknown>;
+type PrivacyDeleteResponse = Record<string, unknown>;
+type SessionDeleteResponse = Record<string, unknown>;
+type MindDeleteResponse = Record<string, unknown> | null;
+
+export { getCsrfToken };
+
+function getGuestSessionToken(sessionId: string): string {
     if (!sessionId) return '';
+
     try {
         const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
-        const tokens = raw ? JSON.parse(raw) : {};
+        const tokens = raw ? (JSON.parse(raw) as GuestSessionTokenMap) : {};
         return tokens[sessionId] || '';
-    } catch (e) {
+    } catch {
         return '';
     }
 }
 
-function getGuestSessionTokens() {
+function getGuestSessionTokens(): GuestSessionTokenMap {
     try {
         const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
-        const tokens = raw ? JSON.parse(raw) : {};
-        return tokens && typeof tokens === 'object' ? tokens : {};
-    } catch (e) {
+        const tokens = raw ? (JSON.parse(raw) as unknown) : {};
+        return tokens && typeof tokens === 'object' ? (tokens as GuestSessionTokenMap) : {};
+    } catch {
         return {};
     }
 }
 
-function withCsrfHeaders(options = {}) {
-    const method = (options.method || 'GET').toUpperCase();
-    const headers = new Headers(options.headers || {});
-    if (!SAFE_METHODS.includes(method)) {
-        const token = getCsrfToken();
-        if (token && !headers.has(CSRF_HEADER_KEY)) {
-            headers.set(CSRF_HEADER_KEY, token);
+function toApiServiceError(error: unknown): ApiServiceError {
+    return error instanceof Error ? (error as ApiServiceError) : new Error(String(error));
+}
+
+function isGenericHttpMessage(message: string): boolean {
+    return /^HTTP error: \d+$/.test(message.trim());
+}
+
+async function fetchApi<TResponse = unknown>(
+    endpoint: string,
+    options: RequestJsonOptions = {}
+): Promise<TResponse> {
+    try {
+        return await requestJson<TResponse>(endpoint, options);
+    } catch (error) {
+        const typedError = toApiServiceError(error);
+        if (typeof typedError.data === 'string' && typedError.data.trim()) {
+            typedError.message = typedError.data;
+            typedError.data = { error: typedError.data };
+        } else if (isGenericHttpMessage(typedError.message)) {
+            const structuredData =
+                typedError.data && typeof typedError.data === 'object'
+                    ? (typedError.data as { error?: string })
+                    : undefined;
+            if (structuredData?.error) {
+                typedError.message = structuredData.error;
+            }
         }
+        const normalizedMessage = typedError.message.toLowerCase();
+
+        if (SERIOUS_ERROR_KEYPHRASES.some((phrase) => normalizedMessage.includes(phrase))) {
+            typedError.isSerious = true;
+        }
+
+        if (
+            !(
+                normalizedMessage.includes('failed to fetch') ||
+                typedError.name === 'AbortError'
+            )
+        ) {
+            const errorDetails = typedError.data ? JSON.stringify(typedError.data) : '';
+            console.error(
+                `API Error (${endpoint}):`,
+                typedError.message,
+                errorDetails || typedError
+            );
+        }
+
+        throw typedError;
     }
-    return { ...options, headers };
 }
 
 export const apiService = {
-    baseURL: API_BASE_URL || '',
+    baseURL: buildApiUrl(''),
 
-    async _fetch(endpoint, options = {}) {
-        try {
-            const url = this.baseURL ? `${this.baseURL}${endpoint}` : endpoint;
-            const requestOptions = withCsrfHeaders({
-                credentials: options.credentials || 'include',
-                ...options
-            });
-            const response = await fetch(url, requestOptions);
-            if (!response.ok) {
-                let errorData = { error: `HTTP error! status: ${response.status} ${response.statusText}`, status: response.status };
-                try {
-                    const errorJson = await response.json();
-                    errorData = { ...errorData, ...errorJson };
-                } catch (e) {
-                    try {
-                        const errorText = await response.text();
-                        if (errorText) errorData.error = errorText;
-                    } catch (_textError) {
-                    }
-                }
-                const err = new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                err.status = response.status;
-                err.data = errorData;
-                throw err;
-            }
-            return response.status === 204 ? null : response.json();
-        } catch (error) {
-            const emsg = (error?.message || '').toLowerCase();
-            if (SERIOUS_ERROR_KEYPHRASES.some(phrase => emsg.includes(phrase))) {
-                error.isSerious = true;
-            }
-            if (!(emsg.includes("failed to fetch") || error.name === 'AbortError')) {
-                const errorMessage = error?.message || String(error);
-                const errorDetails = error?.data ? JSON.stringify(error.data) : '';
-                console.error(`API Error (${endpoint}):`, errorMessage, errorDetails || error);
-            }
-            throw error;
-        }
-    },
-    async chat(formData, signal, callbacks = {}) {
+    _fetch: fetchApi,
+
+    async chat(
+        formData: FormData,
+        signal?: AbortSignal,
+        callbacks: ChatCallbacks = {}
+    ): Promise<void> {
         const { onPart, onComplete, onError, onWidgetUpdate } = callbacks;
+
         try {
-            const url = this.baseURL ? `${this.baseURL}/chat` : '/chat';
-            const response = await fetch(url, withCsrfHeaders({
-                method: 'POST',
-                body: formData,
-                signal,
-                credentials: 'include'
-            }));
+            const response = await fetch(
+                buildApiUrl('/chat'),
+                withCsrfHeaders({
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include',
+                    ...(signal ? { signal } : {}),
+                })
+            );
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const fallbackMessage = `HTTP error! status: ${response.status}`;
+                const errorData = (await response
+                    .json()
+                    .catch(() => ({ error: fallbackMessage }))) as { error?: string };
+                throw new Error(errorData.error || fallbackMessage);
             }
 
-            const contentType = response.headers.get("content-type");
-            if (contentType?.includes("text/event-stream")) {
-                const reader = response.body.getReader();
+            const contentType = response.headers.get('content-type');
+            if (contentType?.includes('text/event-stream')) {
+                const reader = response.body?.getReader();
+                if (!reader) {
+                    throw new Error('Streaming response body is missing.');
+                }
+
                 const decoder = new TextDecoder();
                 let buffer = '';
-                let finalData = {};
+                let finalData: ChatStreamResult = {};
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -127,65 +460,107 @@ export const apiService = {
 
                     buffer += decoder.decode(value, { stream: true });
                     const parts = buffer.split('\n\n');
-                    buffer = parts.pop();
+                    buffer = parts.pop() ?? '';
 
                     for (const part of parts) {
-                        if (part.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(part.substring(6));
-                                if (data.widget_update && onWidgetUpdate) {
-                                    try {
-                                        onWidgetUpdate(data.widget_update);
-                                    } catch (e) {
-                                        console.warn('onWidgetUpdate handler error', e);
-                                    }
-                                    finalData = { ...finalData, widget_update: data.widget_update };
-                                    continue;
+                        if (!part.startsWith('data: ')) {
+                            continue;
+                        }
+
+                        try {
+                            const data = JSON.parse(part.substring(6)) as ChatStreamResult;
+
+                            if (data.widget_update && onWidgetUpdate) {
+                                try {
+                                    onWidgetUpdate(data.widget_update);
+                                } catch (widgetError) {
+                                    console.warn('onWidgetUpdate handler error', widgetError);
                                 }
 
-                                if (data.reply || data.end_of_stream) {
-                                    finalData = { ...finalData, ...data };
-                                }
-                                if (data.reply_part) {
-                                    if (onPart) onPart(data);
-                                    if (data.sources) finalData.sources = data.sources;
-                                    if (data.images) finalData.images = data.images;
-                                    if (data.thinkingTime) finalData.thinkingTime = data.thinkingTime;
-                                }
-                                if (data.sessionId) finalData.sessionId = data.sessionId;
-                                if (data.sessionSlug) finalData.sessionSlug = data.sessionSlug;
-                                const known = ['reply', 'reply_part', 'end_of_stream', 'images', 'sources', 'thinkingTime', 'status', 'aborted', 'sessionId', 'sessionSlug'];
-                                Object.keys(data).forEach(k => {
-                                    if (!known.includes(k)) {
-                                        finalData[k] = data[k];
-                                    } else if (k === 'sessionId' || k === 'sessionSlug') {
-                                        finalData[k] = data[k];
-                                    }
-                                });
-                            } catch (e) {
-                                console.error("Error parsing stream data chunk:", e, "Chunk:", part.substring(6));
+                                finalData = { ...finalData, widget_update: data.widget_update };
+                                continue;
                             }
+
+                            const shouldEmitPart = [
+                                'reply_part',
+                                'status',
+                                'images',
+                                'sources',
+                                'thinkingTime',
+                            ].some((key) => key in data);
+
+                            if (shouldEmitPart) {
+                                onPart?.(data);
+                            }
+
+                            if ('reply' in data || data.end_of_stream) {
+                                finalData = { ...finalData, ...data };
+                            }
+
+                            if ('sources' in data) finalData.sources = data.sources;
+                            if ('images' in data) finalData.images = data.images;
+                            if ('thinkingTime' in data) {
+                                finalData.thinkingTime = data.thinkingTime;
+                            }
+                            if ('status' in data) finalData.status = data.status;
+                            if ('sessionId' in data) finalData.sessionId = data.sessionId;
+                            if ('sessionSlug' in data) {
+                                finalData.sessionSlug = data.sessionSlug;
+                            }
+
+                            const knownKeys = new Set([
+                                'reply',
+                                'reply_part',
+                                'end_of_stream',
+                                'images',
+                                'sources',
+                                'thinkingTime',
+                                'status',
+                                'aborted',
+                                'sessionId',
+                                'sessionSlug',
+                                'widget_update',
+                            ]);
+
+                            Object.keys(data).forEach((key) => {
+                                if (!knownKeys.has(key)) {
+                                    finalData[key] = data[key];
+                                }
+                            });
+                        } catch (chunkError) {
+                            console.error(
+                                'Error parsing stream data chunk:',
+                                chunkError,
+                                'Chunk:',
+                                part.substring(6)
+                            );
                         }
                     }
                 }
-                if (onComplete) onComplete(finalData);
-            } else {
-                const data = await response.json();
-                if (onComplete) onComplete(data);
+
+                onComplete?.(finalData);
+                return;
             }
+
+            const data = (await response.json()) as ChatStreamResult;
+            onComplete?.(data);
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error("API Chat Error:", error);
-                if (onError) onError(error);
+            const typedError = toApiServiceError(error);
+
+            if (typedError.name !== 'AbortError') {
+                console.error('API Chat Error:', typedError);
+                onError?.(typedError);
             } else {
-                if (onComplete) onComplete({ aborted: true });
+                onComplete?.({ aborted: true });
             }
         }
     },
 
-    async listSessions(options: string | { idsQuery?: string; page?: number; pageSize?: number } = '') {
+    async listSessions(
+        options: ListSessionsOptions = ''
+    ): Promise<ListSessionsResponse> {
         const guestTokens = getGuestSessionTokens();
-        const headers = Object.keys(guestTokens).length
+        const headers: HeadersInit | undefined = Object.keys(guestTokens).length
             ? { 'X-Guest-Tokens': JSON.stringify(guestTokens) }
             : undefined;
 
@@ -201,58 +576,263 @@ export const apiService = {
             pageSize = Number(options.pageSize || 50);
         }
 
-        return apiListSessions(
+        if (typeof options === 'string') {
+            return apiListSessions(idsQuery ? { ids: idsQuery } : {}, headers);
+        }
+
+        const query: { ids?: string; page: number; page_size: number } = {
+            page,
+            page_size: pageSize,
+        };
+        if (idsQuery) query.ids = idsQuery;
+
+        return apiListSessions(query, headers);
+    },
+
+    async getSessionHistory(sessionId: string): Promise<SessionHistoryWithMind> {
+        const token = getGuestSessionToken(sessionId);
+        const headers: HeadersInit | undefined = token
+            ? { Authorization: `Bearer ${token}` }
+            : undefined;
+        return apiGetSessionHistory(sessionId, headers) as Promise<SessionHistoryWithMind>;
+    },
+
+    async toggleShare(
+        sessionId: string,
+        isPublic = true
+    ): Promise<SessionShareResponse> {
+        return fetchApi<SessionShareResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/share`,
             {
-                ids: idsQuery || undefined,
-                page,
-                page_size: pageSize
-            },
-            headers
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_public: Boolean(isPublic) }),
+            }
         );
     },
 
-    async getSessionHistory(sessionId) {
+    async deleteSession(sessionId: string): Promise<SessionDeleteResponse> {
         const token = getGuestSessionToken(sessionId);
-        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-        return apiGetSessionHistory(sessionId, headers);
-    },
-
-    async toggleShare(sessionId, isPublic = true) {
-        return this._fetch(`/sessions/${encodeURIComponent(sessionId)}/share`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_public: Boolean(isPublic) })
+        const headers: HeadersInit | undefined = token
+            ? { Authorization: `Bearer ${token}` }
+            : undefined;
+        return fetchApi<SessionDeleteResponse>(`/sessions/${encodeURIComponent(sessionId)}`, {
+            method: 'DELETE',
+            ...(headers ? { headers } : {}),
         });
     },
 
-    async deleteSession(sessionId) {
-        const token = getGuestSessionToken(sessionId);
-        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-        return this._fetch(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE', headers });
+    async renameSession(
+        sessionId: string,
+        newTitle: string
+    ): Promise<SessionRenameResponse> {
+        return fetchApi<SessionRenameResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/rename`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle }),
+            }
+        );
     },
 
-    async renameSession(sessionId, newTitle) {
-        return this._fetch(`/sessions/${encodeURIComponent(sessionId)}/rename`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: newTitle })
+    async setSessionMind(sessionId: string, mindId: string | null): Promise<Mind | null> {
+        const data = await fetchApi<SessionMindResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/mind`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mind_id: mindId }),
+            }
+        );
+        return data.mind || null;
+    },
+
+    async listMindCategories(): Promise<MindCategory[]> {
+        const data = await fetchApi<MindCategoryResponse>('/api/minds/categories', {
+            method: 'GET',
+        });
+        return data.categories || [];
+    },
+
+    async listMinds(params: {
+        category?: string;
+        limit?: number;
+        mine?: boolean;
+        q?: string;
+    } = {}): Promise<MindListResponse> {
+        return fetchApi<MindListResponse>('/api/minds', {
+            method: 'GET',
+            query: {
+                category: params.category,
+                limit: params.limit,
+                mine: params.mine ? '1' : undefined,
+                q: params.q,
+            },
         });
     },
 
-    async canvasAction(actionData, signal) {
-        return this._fetch('/canvas-action', {
+    async getMind(publicId: string): Promise<Mind | null> {
+        const data = await fetchApi<MindResponse>(
+            `/api/minds/${encodeURIComponent(publicId)}`,
+            { method: 'GET' }
+        );
+        return data.mind || null;
+    },
+
+    async createMind(payload: MindPayload): Promise<Mind> {
+        const data = await fetchApi<MindResponse>('/api/minds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!data.mind) {
+            throw new Error('Mind was not returned by the server.');
+        }
+        return data.mind;
+    },
+
+    async updateMind(publicId: string, payload: MindPayload): Promise<Mind> {
+        const data = await fetchApi<MindResponse>(
+            `/api/minds/${encodeURIComponent(publicId)}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }
+        );
+        if (!data.mind) {
+            throw new Error('Mind was not returned by the server.');
+        }
+        return data.mind;
+    },
+
+    async deleteMind(publicId: string): Promise<MindDeleteResponse> {
+        return fetchApi<MindDeleteResponse>(`/api/minds/${encodeURIComponent(publicId)}`, {
+            method: 'DELETE',
+        });
+    },
+
+    async listPinnedMinds(): Promise<Mind[]> {
+        const data = await fetchApi<MindListResponse>('/api/minds/pinned', {
+            method: 'GET',
+        });
+        return data.minds || [];
+    },
+
+    async setMindPinned(publicId: string, pinned: boolean): Promise<Mind | null> {
+        const data = await fetchApi<MindResponse>(
+            `/api/minds/${encodeURIComponent(publicId)}/pin`,
+            {
+                method: pinned ? 'POST' : 'DELETE',
+            }
+        );
+        return data.mind || null;
+    },
+
+    async getAdminOverview(): Promise<AdminOverview> {
+        return fetchApi<AdminOverview>('/api/admin/overview', { method: 'GET' });
+    },
+
+    async listAdminUsers(params: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        status?: string;
+    } = {}): Promise<{ users: AdminUser[]; pagination: AdminPagination }> {
+        const data = await fetchApi<AdminUsersResponse>('/api/admin/users', {
+            method: 'GET',
+            query: {
+                page: params.page,
+                page_size: params.pageSize,
+                q: params.q,
+                status: params.status,
+            },
+        });
+        return {
+            users: data.users || [],
+            pagination: data.pagination || { page: 1, page_size: 25, total: 0 },
+        };
+    },
+
+    async updateAdminUser(userId: number, payload: AdminUserUpdatePayload): Promise<AdminUser> {
+        const data = await fetchApi<AdminUserResponse>(`/api/admin/users/${userId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!data.user) {
+            throw new Error('User was not returned by the server.');
+        }
+        return data.user;
+    },
+
+    async setAdminRole(userId: number, isAdmin: boolean): Promise<AdminUser> {
+        const data = await fetchApi<AdminUserResponse>(`/api/admin/users/${userId}/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_admin: isAdmin }),
+        });
+        if (!data.user) {
+            throw new Error('User was not returned by the server.');
+        }
+        return data.user;
+    },
+
+    async listAdminMinds(params: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        status?: string;
+    } = {}): Promise<{ minds: AdminMind[]; pagination: AdminPagination }> {
+        const data = await fetchApi<AdminMindsResponse>('/api/admin/minds', {
+            method: 'GET',
+            query: {
+                page: params.page,
+                page_size: params.pageSize,
+                q: params.q,
+                status: params.status,
+            },
+        });
+        return {
+            minds: data.minds || [],
+            pagination: data.pagination || { page: 1, page_size: 25, total: 0 },
+        };
+    },
+
+    async updateAdminMind(publicId: string, payload: AdminMindUpdatePayload): Promise<AdminMind> {
+        const data = await fetchApi<AdminMindResponse>(
+            `/api/admin/minds/${encodeURIComponent(publicId)}`,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            }
+        );
+        if (!data.mind) {
+            throw new Error('Mind was not returned by the server.');
+        }
+        return data.mind;
+    },
+
+    async canvasAction(
+        actionData: Record<string, unknown>,
+        signal?: AbortSignal
+    ): Promise<CanvasActionResponse> {
+        return fetchApi<CanvasActionResponse>('/canvas-action', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(actionData),
-            signal
+            ...(signal ? { signal } : {}),
         });
     },
 
-    async translate(text, targetLang) {
+    async translate(text: string, targetLang: string): Promise<TranslateResponse> {
         try {
             return await apiTranslate({ text, target_lang: targetLang });
         } catch (error) {
             console.warn('Primary translation API failed, trying fallback:', error);
+
             try {
                 return await this._translateWithFallback(text, targetLang);
             } catch (fallbackError) {
@@ -262,61 +842,79 @@ export const apiService = {
         }
     },
 
-    _translateWithFallback(text, targetLang) {
-        const fallbackTranslations = {
-            'en': { 'ru': { 'hello': 'привет', 'world': 'мир' } },
-            'ru': { 'en': { 'привет': 'hello', 'мир': 'world' } }
+    _translateWithFallback(text: string, targetLang: string): Promise<TranslateResponse> {
+        const fallbackTranslations: Record<string, Record<string, Record<string, string>>> = {
+            en: { ru: { hello: '\u043f\u0440\u0438\u0432\u0435\u0442', world: '\u043c\u0438\u0440' } },
+            ru: { en: { '\u043f\u0440\u0438\u0432\u0435\u0442': 'hello', '\u043c\u0438\u0440': 'world' } },
         };
-        const sourceLang = /[а-яё]/i.test(text) ? 'ru' : 'en';
+
+        const sourceLang = /\p{Script=Cyrillic}/u.test(text) ? 'ru' : 'en';
         const translations = fallbackTranslations[sourceLang]?.[targetLang];
+
         if (translations) {
             let translatedText = text;
+
             for (const [original, translated] of Object.entries(translations)) {
-                translatedText = translatedText.replace(new RegExp(`\\b${original}\\b`, 'gi'), translated);
+                translatedText = translatedText.replace(
+                    new RegExp(`\\b${original}\\b`, 'gi'),
+                    translated
+                );
             }
+
             return Promise.resolve({
+                ok: true,
                 translated_text: translatedText,
                 source_lang: sourceLang,
                 target_lang: targetLang,
-                fallback: true
-            });
+                fallback: true,
+            } as TranslateResponse);
         }
+
         return Promise.reject(new Error('Fallback translation not available'));
     },
 
-    async synthesize(text) {
+    async synthesize(text: string): Promise<SynthesizeResponse> {
         return apiSynthesize({ text });
     },
 
-    async getLinkMetadata(url) {
-        return this._fetch('/get-link-metadata', {
+    async getLinkMetadata(url: string): Promise<LinkMetadataResponse> {
+        return fetchApi<LinkMetadataResponse>('/get-link-metadata', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
+            body: JSON.stringify({ url }),
         });
     },
 
-    async exportPrivacyData() {
-        return this._fetch('/api/privacy/export', { method: 'GET' });
+    async exportPrivacyData(): Promise<unknown> {
+        return fetchApi('/api/privacy/export', { method: 'GET' });
     },
 
-    async deletePrivacyData(deleteAccount = false) {
-        return this._fetch('/api/privacy/delete', {
+    async deletePrivacyData(
+        deleteAccount = false
+    ): Promise<PrivacyDeleteResponse> {
+        return fetchApi<PrivacyDeleteResponse>('/api/privacy/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ delete_account: Boolean(deleteAccount) })
+            body: JSON.stringify({ delete_account: Boolean(deleteAccount) }),
         });
     },
 
-    async fetchTextResource(filePath) {
+    async fetchTextResource(filePath: string): Promise<string[]> {
         try {
-            const response = await fetch(filePath, { cache: "no-store" });
-            if (!response.ok) throw new Error(`Network response was not ok for ${filePath}`);
+            const response = await fetch(filePath, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`Network response was not ok for ${filePath}`);
+            }
+
             const textContent = await response.text();
-            return textContent.split('\n').filter(phrase => phrase.trim() !== '');
+            return textContent.split('\n').filter((phrase) => phrase.trim() !== '');
         } catch (error) {
-            console.warn(`Failed to load text resource ${filePath}:`, error.message);
+            const typedError = toApiServiceError(error);
+            console.warn(
+                `Failed to load text resource ${filePath}:`,
+                typedError.message
+            );
             return [];
         }
-    }
+    },
 };

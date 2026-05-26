@@ -11,13 +11,19 @@ if __name__ == "__main__":
     try:
         from waitress import serve
 
-        serve(
-            app,
-            host="0.0.0.0",
-            port=5000,
-            threads=SERVER_THREADS,
-            connection_limit=SERVER_CONNECTION_LIMIT,
-            channel_timeout=SERVER_CHANNEL_TIMEOUT,
-        )
+        try:
+            serve(
+                app,
+                host="0.0.0.0",
+                port=5000,
+                threads=SERVER_THREADS,
+                connection_limit=SERVER_CONNECTION_LIMIT,
+                channel_timeout=SERVER_CHANNEL_TIMEOUT,
+            )
+        except KeyboardInterrupt:
+            print("\nReMind AI Server stopped")
     except ImportError:
-        app.run(host="0.0.0.0", port=5000, debug=False)
+        try:
+            app.run(host="0.0.0.0", port=5000, debug=False)
+        except KeyboardInterrupt:
+            print("\nReMind AI Server stopped")

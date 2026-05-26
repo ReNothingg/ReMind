@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fileService } from '../../services/fileService';
 import { cn } from '../../utils/cn';
@@ -12,19 +12,15 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
         if (fileService.isImageFile(file)) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                setPreview(e.target.result);
-                setFileContent(e.target.result);
+                const result = typeof e.target?.result === 'string' ? e.target.result : '';
+                setPreview(result);
+                setFileContent(result);
             };
-            reader.readAsDataURL(file);
-        } else if (fileService.is3DModelFile(file)) {
-            setPreview('3d-model');
-            const reader = new FileReader();
-            reader.onload = (e) => setFileContent(e.target.result);
             reader.readAsDataURL(file);
         } else if (fileService.isTextFile(file)) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                const text = e.target.result || '';
+                const text = typeof e.target?.result === 'string' ? e.target.result : '';
                 setPreview(`text:${text.substring(0, 200)}`);
                 setFileContent(text);
             };
@@ -39,12 +35,10 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
     };
 
     const isImage = fileService.isImageFile(file);
-    const is3dModel = fileService.is3DModelFile(file);
     const isText = fileService.isTextFile(file);
     const previewClass = [
         'file-card-preview',
-        isText ? 'is-text' : '',
-        is3dModel ? 'is-3d-model' : ''
+        isText ? 'is-text' : ''
     ].filter(Boolean).join(' ');
 
     return (
@@ -53,16 +47,13 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                 className={cn(
                     previewClass,
                     'file-card-preview mx-1.5 mt-1.5 flex flex-1 items-center justify-center overflow-hidden rounded-[14px] border border-[rgba(var(--color-white-raw),0.08)] bg-[rgba(var(--color-black-raw),0.2)]',
-                    isText && 'is-text items-start p-1.5 font-mono text-[0.6rem] leading-[1.35] text-muted',
-                    is3dModel && 'is-3d-model'
+                    isText && 'is-text items-start p-1.5 font-mono text-[0.6rem] leading-[1.35] text-muted'
                 )}
                 onClick={handleClick}
                 style={{ cursor: onPreview ? 'pointer' : 'default' }}
             >
                 {isImage && preview ? (
                     <img src={preview} alt={file.name} className="image-thumbnail" />
-                ) : is3dModel ? (
-                    <div className="is-3d-model text-center text-[0.68rem] font-medium text-muted">{t('files.model3d')}</div>
                 ) : isText && preview ? (
                     <pre className="max-h-[60px] overflow-hidden whitespace-pre-wrap break-all [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)]">
                         {preview.substring(5)}
@@ -72,7 +63,9 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                         src={fileService.getFileIconPath(file.name.split('.').pop()?.toLowerCase())}
                         alt={file.name}
                         className="generic-icon size-8 opacity-70"
-                        onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                        onError={(e) => {
+                            e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                        }}
                     />
                 )}
             </div>
@@ -81,11 +74,13 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                     src={fileService.getFileIconPath(file.name.split('.').pop()?.toLowerCase())}
                     alt="icon"
                     className="file-card-footer-icon size-3.5 shrink-0 opacity-85"
-                    onError={(e) => e.target.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg'}
+                    onError={(e) => {
+                        e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                    }}
                 />
                 <div className="file-card-footer-info min-w-0">
                     <span className="file-card-name block max-w-[55px] truncate text-[0.68rem] leading-[1.2] font-semibold tracking-[0.01em] text-foreground">
-                        {fileService.escapeHtml(file.name)}
+                        {file.name}
                     </span>
                     <span className="file-card-size block text-[0.55rem] text-subtle">
                         {fileService.formatFileSize(file.size)}

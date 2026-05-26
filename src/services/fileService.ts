@@ -1,11 +1,9 @@
-import { VALID_IMAGE_MIME_TYPES, VALID_3D_MODEL_EXTENSIONS, VALID_3D_MODEL_MIME_TYPES, TEXT_FILE_EXTENSIONS } from '../utils/constants';
+import { VALID_IMAGE_MIME_TYPES, TEXT_FILE_EXTENSIONS } from '../utils/constants';
 
 export const fileService = {
     MAX_FILES: 10,
     TEXT_EXTENSIONS: TEXT_FILE_EXTENSIONS,
     VALID_IMAGE_MIME_TYPES,
-    VALID_3D_MODEL_EXTENSIONS,
-    VALID_3D_MODEL_MIME_TYPES,
 
     validateFile(file) {
         if (!file) return { valid: false, error: 'Файл отсутствует' };
@@ -40,13 +38,6 @@ export const fileService = {
 
     isImageFile(file) {
         return this.VALID_IMAGE_MIME_TYPES.includes(file.type);
-    },
-
-    is3DModelFile(file) {
-        if (!file?.name) return false;
-        const extension = file.name.split('.').pop()?.toLowerCase() || '';
-        return this.VALID_3D_MODEL_EXTENSIONS.includes(extension) ||
-            this.VALID_3D_MODEL_MIME_TYPES.includes(file.type);
     },
 
     formatFileSize(bytes, decimals = 2) {
