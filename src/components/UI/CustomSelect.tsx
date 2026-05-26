@@ -1,6 +1,23 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import '../../styles/components/ui/custom-select.css';
+import { cn } from '../../utils/cn';
+
+type SelectOption = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+};
+
+type CustomSelectProps = {
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  label?: string;
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
+};
 
 const CustomSelect = ({
   value,
@@ -10,17 +27,20 @@ const CustomSelect = ({
   disabled = false,
   className = '',
   placeholder
-}) => {
+}: CustomSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
-  const dropdownRef = useRef(null);
-  const selectedOptionRef = useRef(null);
+  const [dropDirection, setDropDirection] = useState<'down' | 'up'>('down');
+  const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const selectedOption = options.find(opt => opt.value === value);
   const displayText = selectedOption?.label || placeholder || t('common.selectOption');
+
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target instanceof Node ? e.target : null;
+      if (containerRef.current && target && !containerRef.current.contains(target)) {
         setIsOpen(false);
       }
     };
@@ -30,10 +50,47 @@ const CustomSelect = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const updateDropdownPlacement = () => {
+      if (!containerRef.current || !dropdownRef.current) {
+        return;
+      }
+
+      const viewportGap = 12;
+      const triggerGap = 6;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const dropdownHeight = Math.min(dropdownRef.current.scrollHeight, 280);
+      const spaceBelow = window.innerHeight - containerRect.bottom - viewportGap;
+      const spaceAbove = containerRect.top - viewportGap;
+      const shouldOpenUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+      const availableSpace = Math.max(
+        120,
+        Math.floor((shouldOpenUp ? spaceAbove : spaceBelow) - triggerGap)
+      );
+
+      setDropDirection(shouldOpenUp ? 'up' : 'down');
+      setDropdownMaxHeight(Math.min(280, availableSpace));
+    };
+
+    updateDropdownPlacement();
+    window.addEventListener('resize', updateDropdownPlacement);
+    window.addEventListener('scroll', updateDropdownPlacement, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownPlacement);
+      window.removeEventListener('scroll', updateDropdownPlacement, true);
+    };
+  }, [isOpen, options.length]);
+
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsOpen(false);
         return;
@@ -63,38 +120,67 @@ const CustomSelect = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, value, options, onChange]);
 
-  const handleSelect = (optionValue) => {
+  const handleSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
   };
 
   const handleToggle = () => {
     if (!disabled) {
-      setIsOpen(!isOpen);
+      if (isOpen) {
+        setIsOpen(false);
+        return;
+      }
+      setDropDirection('down');
+      setDropdownMaxHeight(null);
+      setIsOpen(true);
     }
   };
 
   return (
     <div
       ref={containerRef}
-      className={`custom-select-wrapper ${className}`}
+      className={cn(
+        'custom-select-wrapper flex w-full flex-col gap-1.5',
+        isOpen && 'is-open',
+        isOpen && dropDirection === 'up' && 'is-drop-up',
+        className
+      )}
     >
-      {label && <label className="custom-select-label">{label}</label>}
+      {label && (
+        <label className="custom-select-label text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
+          {label}
+        </label>
+      )}
 
       <div
-        className={`custom-select-container ${isOpen ? 'open' : ''} ${disabled ? 'disabled' : ''}`}
+        className={cn(
+          'custom-select-container relative flex h-8 w-full cursor-pointer items-center rounded-md border border-border bg-interactive px-2 text-sm text-foreground transition duration-200 ease-out select-none',
+          isOpen && 'open rounded-b-none border-accent-brand bg-surface',
+          disabled && 'disabled cursor-not-allowed opacity-50',
+          !disabled && 'hover:border-border-heavy hover:bg-surface-alt'
+        )}
         onClick={handleToggle}
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-expanded={isOpen}
+        aria-haspopup="listbox"
         aria-label={label}
       >
-        <div className="custom-select-value">
-          <span className={selectedOption ? 'selected-text' : 'placeholder-text'}>
+        <div className="custom-select-value flex w-full items-center justify-between gap-1.5">
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate text-sm',
+              selectedOption ? 'selected-text text-foreground' : 'placeholder-text text-subtle'
+            )}
+          >
             {displayText}
           </span>
           <svg
-            className="custom-select-arrow"
+            className={cn(
+              'custom-select-arrow size-4 shrink-0 text-muted transition-transform duration-200 ease-out',
+              isOpen && 'rotate-180'
+            )}
             width="16"
             height="16"
             viewBox="0 0 16 16"
@@ -108,28 +194,45 @@ const CustomSelect = ({
             <polyline points="6 6 8 4 10 6" />
           </svg>
         </div>
-
-        {isOpen && (
-          <div className="custom-select-dropdown" ref={dropdownRef}>
-            <div className="custom-select-list">
-              {options.map((option) => (
-                <div
-                  key={option.value}
-                  className={`custom-select-option ${
-                    option.value === value ? 'selected' : ''
-                  } ${option.disabled ? 'disabled' : ''}`}
-                  onClick={() => !option.disabled && handleSelect(option.value)}
-                  role="option"
-                  aria-selected={option.value === value}
-                >
-                  <span className="option-dot"></span>
-                  <span className="option-label">{option.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {isOpen && (
+        <div
+          className={cn(
+            'custom-select-dropdown absolute inset-x-0 z-[1000] overflow-hidden rounded-md border border-border-strong bg-surface shadow-[var(--shadow-lg)]',
+            dropDirection === 'up' ? 'custom-select-dropdown-up' : 'custom-select-dropdown-down'
+          )}
+          ref={dropdownRef}
+          role="listbox"
+          style={dropdownMaxHeight ? ({ '--custom-select-dropdown-max-height': `${dropdownMaxHeight}px` } as CSSProperties) : undefined}
+        >
+          <div className="custom-select-list ui-scrollbar-thin overflow-x-hidden overflow-y-auto py-1">
+            {options.map((option) => (
+              <div
+                key={option.value}
+                className={cn(
+                  'custom-select-option flex items-center gap-2 px-2.5 py-2 text-sm text-foreground transition duration-150 ease-out select-none',
+                  option.value === value && 'selected bg-interactive font-medium text-accent-brand',
+                  option.disabled
+                    ? 'disabled cursor-not-allowed text-subtle opacity-50'
+                    : 'cursor-pointer hover:bg-surface-alt'
+                )}
+                onClick={() => !option.disabled && handleSelect(option.value)}
+                role="option"
+                aria-selected={option.value === value}
+              >
+                <span
+                  className={cn(
+                    'option-dot size-1.5 shrink-0 rounded-full bg-transparent transition-all duration-150 ease-out',
+                    option.value === value && 'size-2 bg-accent-brand'
+                  )}
+                ></span>
+                <span className="option-label min-w-0 flex-1 truncate">{option.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

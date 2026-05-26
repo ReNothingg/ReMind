@@ -8,7 +8,7 @@ export async function requestNotificationPermission() {
         if (Notification.permission === 'granted') return 'granted';
         if (Notification.permission === 'denied') return 'denied';
         return await Notification.requestPermission();
-    } catch (e) {
+    } catch {
         return Notification.permission || 'default';
     }
 }

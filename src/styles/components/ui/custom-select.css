@@ -1,4 +1,5 @@
 .custom-select-wrapper {
+  position: relative;
   width: 100%;
 }
 
@@ -48,6 +49,12 @@ html[data-theme='light'] .custom-select-container:hover:not(.disabled) {
   border-color: var(--color-accent);
   border-bottom: 1px solid transparent;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.custom-select-wrapper.is-drop-up .custom-select-container.open {
+  border-top: 1px solid transparent;
+  border-bottom-color: var(--color-accent);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .custom-select-container.disabled {
@@ -112,18 +119,28 @@ html[data-theme='light'] .custom-select-arrow {
 
 .custom-select-dropdown {
   position: absolute;
-  top: calc(100% - 1px);
   left: 0;
   right: 0;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
-  border-top: none;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
   margin-top: 0;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   overflow: hidden;
+}
+
+.custom-select-dropdown.custom-select-dropdown-down {
+  top: calc(100% - 1px);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.custom-select-dropdown.custom-select-dropdown-up {
+  bottom: calc(100% - 1px);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  animation: slideUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html[data-theme='light'] .custom-select-dropdown {
@@ -143,8 +160,19 @@ html[data-theme='light'] .custom-select-dropdown {
   }
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .custom-select-list {
-  max-height: 280px;
+  max-height: var(--custom-select-dropdown-max-height, 280px);
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px 0;
@@ -280,6 +308,15 @@ html[data-theme='light'] .custom-select-option.disabled {
   }
 
   @keyframes slideDown {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
     from {
       opacity: 0;
     }

@@ -17,6 +17,39 @@
     "login": "Iniciar sessão",
     "register": "Registar-se"
   },
+  "authModal": {
+    "loginTitle": "Entrar na sua conta",
+    "registerTitle": "Criar uma conta",
+    "fields": {
+      "email": "Email:",
+      "password": "Senha:",
+      "username": "Nome de usuário:",
+      "confirmPassword": "Confirme a senha:",
+      "name": "Nome:"
+    },
+    "actions": {
+      "loginLoading": "Entrando...",
+      "loginWithGoogle": "Entrar com Google",
+      "registerLoading": "Criando conta...",
+      "registerWithGoogle": "Registrar-se com Google"
+    },
+    "switch": {
+      "noAccount": "Não tem uma conta?",
+      "haveAccount": "Já tem uma conta?"
+    },
+    "messages": {
+      "loginSuccess": "Login realizado com sucesso",
+      "loginError": "Falha no login",
+      "registerSuccess": "Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta.",
+      "registerError": "Falha no cadastro",
+      "passwordsMismatch": "As senhas não coincidem",
+      "usernameTooLong": "O nome de usuário não deve exceder 100 caracteres",
+      "emailTooLong": "O email não deve exceder 100 caracteres",
+      "passwordTooLong": "A senha não deve exceder 100 caracteres",
+      "turnstileRequired": "Confirme que você não é um robô e tente novamente.",
+      "requestError": "Erro de rede ou do servidor"
+    }
+  },
   "common": {
     "loading": "A carregar...",
     "closeEsc": "Fechar (Esc)",
@@ -30,6 +63,7 @@
   "landing": {
     "ariaLabel": "Ecrã inicial",
     "readonlyBanner": "Chat público: só leitura",
+    "greeting": "Em que está a trabalhar?",
     "welcomeMessages": [
       "Bem-vindo!",
       "Olá! Como posso ajudar hoje?",
@@ -63,8 +97,7 @@
     "quote": "Citar"
   },
   "files": {
-    "removeFile": "Remover ficheiro",
-    "model3d": "Modelo 3D"
+    "removeFile": "Remover ficheiro"
   },
   "share": {
     "title": "Partilha de chat",
@@ -150,7 +183,8 @@
         "status": "Estado",
         "email": "Email",
         "id": "ID",
-        "username": "Nome de utilizador"
+        "username": "Nome de utilizador",
+        "name": "Nome"
       },
       "signedIn": "Tem sessão iniciada",
       "guestMode": "Está a usar o modo convidado",
@@ -163,7 +197,32 @@
       "saveChanges": "Guardar alterações",
       "signOut": "Terminar sessão",
       "profileUpdated": "Perfil atualizado",
-      "updateError": "Falha na atualização"
+      "updateError": "Falha na atualização",
+      "nameHint": "Usado na personalização de IA quando não existe uma alcunha definida.",
+      "usernameHint": "3-50 caracteres: letras, números, underscore e hífen.",
+      "delete": {
+        "title": "Eliminar conta",
+        "description": "Isto remove permanentemente o seu perfil, definições, histórico e conversas partilhadas.",
+        "confirmLabel": "Confirmar eliminação",
+        "confirmHint": "Escreva o seu nome de utilizador atual: {{username}}",
+        "confirmPlaceholder": "Introduza o seu nome de utilizador",
+        "confirmationMismatch": "Introduza o seu nome de utilizador atual para eliminar a conta",
+        "action": "Eliminar conta",
+        "actionLoading": "A eliminar conta...",
+        "success": "Conta eliminada",
+        "error": "Falha ao eliminar a conta"
+      },
+      "validation": {
+        "nameRequired": "Introduza o seu nome",
+        "nameLength": "O nome deve ter entre 1 e 100 caracteres",
+        "nameInvalidCharacters": "O nome contém caracteres inválidos",
+        "usernameRequired": "Introduza um nome de utilizador",
+        "usernameLength": "O nome de utilizador deve ter entre 3 e 50 caracteres",
+        "usernameCharset": "O nome de utilizador só pode conter letras, números, underscore e hífen",
+        "usernameStartsWith": "O nome de utilizador não pode começar com underscore ou hífen",
+        "usernameTaken": "Este nome de utilizador já está em uso",
+        "emailTaken": "Este email já está registado"
+      }
     },
     "appearance": {
       "themeGroup": "Tema",
@@ -218,10 +277,6 @@
       "showChatPreview": {
         "title": "Mostrar pré-visualização",
         "description": "Mostrar a última mensagem na lista de chats."
-      },
-      "showSuggestions": {
-        "title": "Mostrar sugestões",
-        "description": "Mostrar sugestões de prompts na página inicial."
       },
       "autocomplete": {
         "title": "Autocompletar",
@@ -317,5 +372,100 @@
   },
   "spinwheel": {
     "spin": "Girar"
+  },
+  "minds": {
+    "subtitle": "Crie e gira minds de IA personalizados para diferentes tarefas e estilos de conversa.",
+    "create": "Criar",
+    "searchPlaceholder": "Pesquisar minds",
+    "searchAria": "Pesquisar minds",
+    "tabsAria": "Secções de minds",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "Os meus minds"
+    },
+    "categoriesAria": "Categorias de minds",
+    "categories": {
+      "all": "Tudo",
+      "general": "Geral",
+      "education": "Educação",
+      "development": "Desenvolvimento",
+      "productivity": "Produtividade",
+      "creative": "Criativo",
+      "business": "Negócios",
+      "security": "Segurança"
+    },
+    "visibility": {
+      "private": "Só eu",
+      "link": "Por link",
+      "linkShort": "Por link",
+      "linkLong": "Qualquer pessoa com o link",
+      "store": "Mind store"
+    },
+    "verified": "Aprovado pelo criador",
+    "startersAria": "Inícios de conversa",
+    "openChat": "Abrir chat",
+    "pinTitle": "Fixar no app-rail",
+    "unpinTitle": "Remover do app-rail",
+    "pinAria": "Fixar mind",
+    "unpinAria": "Desafixar mind",
+    "edit": "Editar",
+    "editAria": "Editar mind",
+    "delete": "Eliminar",
+    "loading": "A carregar minds...",
+    "emptyMine": "Ainda não criou nenhum mind.",
+    "emptyStore": "Não foram encontrados minds para esta pesquisa.",
+    "confirmDelete": "Eliminar o mind \"{{name}}\"?",
+    "pinnedAria": "Minds fixados",
+    "disableActive": "Desativar mind",
+    "errors": {
+      "load": "Não foi possível carregar os minds. Atualize a página.",
+      "pin": "Não foi possível atualizar a fixação do mind.",
+      "delete": "Não foi possível eliminar o mind.",
+      "authRequired": "Inicie sessão para executar esta ação.",
+      "accessDenied": "Não tem acesso a este mind.",
+      "notFound": "O serviço minds está indisponível ou o mind não foi encontrado. Verifique se o backend tem as novas rotas API.",
+      "rateLimited": "Demasiados pedidos. Aguarde um pouco e tente novamente.",
+      "editAccess": "Não tem permissão para editar este mind.",
+      "editorLoad": "Não foi possível carregar o editor de mind.",
+      "save": "Não foi possível guardar o mind. Verifique os campos e tente novamente."
+    },
+    "validation": {
+      "name": "O nome deve ter pelo menos 2 caracteres.",
+      "description": "A descrição deve ter pelo menos 8 caracteres.",
+      "instructions": "As instruções devem ter pelo menos 16 caracteres.",
+      "category": "Escolha uma categoria para o Mind store."
+    },
+    "editor": {
+      "authTitle": "A criação de minds está disponível após iniciar sessão",
+      "back": "Voltar",
+      "editTitle": "Editar mind",
+      "createTitle": "Criar mind",
+      "editSubtitle": "Gerir definições e acesso.",
+      "createSubtitle": "Configure a sua própria IA.",
+      "loading": "A carregar editor...",
+      "fields": {
+        "name": "Nome",
+        "description": "Descrição",
+        "instructions": "Instruções",
+        "starters": "Inícios de conversa"
+      },
+      "placeholders": {
+        "name": "Dê um nome ao seu mind",
+        "description": "Descreva brevemente o que o seu mind faz",
+        "instructions": "O que o mind faz, como se comporta, a sua personalidade e função",
+        "starter": "Botão de sugestão para utilizadores"
+      },
+      "removeStarter": "Remover sugestão",
+      "addStarter": "Adicionar sugestão",
+      "access": "Acesso",
+      "category": "Categoria",
+      "check": "Verificação",
+      "basicReady": "Campos principais preenchidos",
+      "startersReady": "Sugestões prontas",
+      "saving": "A guardar...",
+      "saveChanges": "Guardar alterações",
+      "createAction": "Criar mind"
+    },
+    "activeLabel": "Mind ativo"
   }
 }

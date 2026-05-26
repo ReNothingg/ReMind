@@ -1,0 +1,14 @@
+services:
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+  app:
+    environment:
+      - ENABLE_STRICT_HTTPS=True
+  worker:
+    environment:
+      - ENABLE_STRICT_HTTPS=True

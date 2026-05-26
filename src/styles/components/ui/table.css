@@ -315,11 +315,7 @@
     border-radius: var(--radius-md);
     overflow: hidden;
     transition: transform var(--transition-normal);
-    background: linear-gradient(
-      180deg,
-      rgba(var(--color-white-raw), 0.015),
-      rgba(var(--color-white-raw), 0.006)
-    );
+    background: rgba(var(--color-white-raw), 0.015);
   }
 
   .table-scroll tbody tr td {

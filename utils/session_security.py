@@ -17,6 +17,11 @@ def _extract_hostname(raw_host: str | None) -> str:
     return (parsed.hostname or host).strip(".").lower()
 
 
+def is_loopback_hostname(hostname: str | None) -> bool:
+    host = _extract_hostname(hostname)
+    return host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
+
 def resolve_cookie_domain(
     configured_domain: str | None, request_host: str | None = None
 ) -> str | None:
@@ -40,6 +45,11 @@ class RequestAwareSessionInterface(SecureCookieSessionInterface):
     def get_cookie_domain(self, app):
         configured_domain = app.config.get("SESSION_COOKIE_DOMAIN")
         return resolve_cookie_domain(configured_domain)
+
+    def get_cookie_secure(self, app):
+        if has_request_context() and is_loopback_hostname(request.host):
+            return False
+        return super().get_cookie_secure(app)
 
 
 def regenerate_session():
@@ -131,9 +141,9 @@ class SessionConfig:
 
 
 def configure_session(app):
-    from config import IS_PRODUCTION, SESSION_COOKIE_DOMAIN, SESSION_COOKIE_NAME
+    from config import ENABLE_STRICT_HTTPS, SESSION_COOKIE_DOMAIN, SESSION_COOKIE_NAME
 
-    app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+    app.config["SESSION_COOKIE_SECURE"] = ENABLE_STRICT_HTTPS
     app.config["SESSION_COOKIE_HTTPONLY"] = SessionConfig.COOKIE_HTTPONLY
     app.config["SESSION_COOKIE_SAMESITE"] = SessionConfig.COOKIE_SAMESITE
     app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN

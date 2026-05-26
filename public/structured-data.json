@@ -7,9 +7,9 @@
   "offers": {
     "@type": "Offer",
     "price": "0",
-    "priceCurrency": "RUB"
+    "priceCurrency": "USD"
   },
-  "description": "ReMind для всех. Даже для тех, кто еще не понял, зачем.",
+  "description": "ReMind for everyone. Even for those who haven't figured out why yet.",
   "author": {
     "@type": "Organization",
     "name": "SynvexAI"

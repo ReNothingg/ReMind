@@ -27,6 +27,9 @@ describe('authService', () => {
         const result = await authService.login('demo@example.com', 'Password1!', null);
 
         expect(result.success).toBe(true);
+        if (!result.success) {
+            throw new Error('Expected successful login result.');
+        }
         expect(result.user?.username).toBe('demo');
     });
 
@@ -41,6 +44,10 @@ describe('authService', () => {
         const result = await authService.login('demo@example.com', 'bad-pass', null);
 
         expect(result.success).toBe(false);
-        expect(result.error).toBe('Неверный email или пароль');
+        if (result.success === false) {
+            expect(result.error).toBe('Неверный email или пароль');
+            return;
+        }
+        throw new Error('Expected failed login result.');
     });
 });

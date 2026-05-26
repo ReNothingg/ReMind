@@ -412,9 +412,45 @@
           "title": { "type": "string" },
           "last_message": { "type": "string" },
           "is_public": { "type": "boolean" },
-          "public_id": { "type": ["string", "null"] }
+          "public_id": { "type": ["string", "null"] },
+          "mind": { "anyOf": [{ "$ref": "#/components/schemas/Mind" }, { "type": "null" }] }
         },
         "additionalProperties": false
+      },
+      "Mind": {
+        "type": "object",
+        "required": [
+          "id",
+          "public_id",
+          "name",
+          "description",
+          "starters",
+          "category",
+          "visibility",
+          "is_verified",
+          "is_system",
+          "is_owner",
+          "can_edit",
+          "is_pinned"
+        ],
+        "properties": {
+          "id": { "type": "integer" },
+          "public_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "instructions": { "type": "string" },
+          "starters": { "type": "array", "items": { "type": "string" } },
+          "category": { "type": "string" },
+          "visibility": { "type": "string", "enum": ["private", "link", "store"] },
+          "is_verified": { "type": "boolean" },
+          "is_system": { "type": "boolean" },
+          "is_owner": { "type": "boolean" },
+          "can_edit": { "type": "boolean" },
+          "is_pinned": { "type": "boolean" },
+          "created_at": { "type": ["string", "null"] },
+          "updated_at": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
       },
       "SessionListResponse": {
         "type": "object",
@@ -445,6 +481,7 @@
             "items": { "$ref": "#/components/schemas/ChatMessage" }
           },
           "title": { "type": ["string", "null"] },
+          "mind": { "anyOf": [{ "$ref": "#/components/schemas/Mind" }, { "type": "null" }] },
           "is_public": { "type": "boolean" },
           "is_owner": { "type": "boolean" },
           "public_id": { "type": ["string", "null"] },

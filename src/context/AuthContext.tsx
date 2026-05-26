@@ -1,41 +1,66 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { authService } from '../services/auth';
+import type { AuthCheckResult, AuthUser } from '../services/auth';
 
-const AuthContext = createContext(null);
+type AuthContextValue = {
+    user: AuthUser | null;
+    isAuthenticated: boolean;
+    loading: boolean;
+    login: typeof authService.login;
+    logout: typeof authService.logout;
+    checkAuth: () => Promise<AuthCheckResult>;
+    updateProfile: typeof authService.updateProfile;
+    deleteAccount: typeof authService.deleteAccount;
+    getSettings: typeof authService.getSettings;
+    updateSettings: typeof authService.updateSettings;
+    getPreferences: typeof authService.getPreferences;
+    updatePreferences: typeof authService.updatePreferences;
+};
 
-export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<AuthUser | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    const checkAuth = async () => {
+    const checkAuth = async (): Promise<AuthCheckResult> => {
         try {
             const data = await authService.checkAuth();
             setIsAuthenticated(data.authenticated);
             setUser(data.user || null);
+            return data;
         } catch (e) {
             console.error('Auth check error:', e);
             setIsAuthenticated(false);
             setUser(null);
+            return { authenticated: false, user: null };
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        checkAuth();
+        void checkAuth();
     }, []);
 
-    const login = async (email, pass, token) => {
+    const login: typeof authService.login = async (email, pass, token) => {
         const res = await authService.login(email, pass, token);
         if (res.success) {
-            await checkAuth(); // Обновить состояние
-            window.location.reload(); // Для сброса серверных сессий Flask, как в оригинале
+            const authState = await checkAuth();
+            if (!authState.authenticated) {
+                return {
+                    success: false,
+                    error: 'Не удалось подтвердить сессию после входа. Проверьте, что cookies разрешены для этого сайта.',
+                };
+            }
+            window.location.reload();
         }
         return res;
     };
 
-    const logout = async () => {
+    const logout: typeof authService.logout = async () => {
         const res = await authService.logout();
         setIsAuthenticated(false);
         setUser(null);
@@ -45,7 +70,16 @@ export const AuthProvider = ({ children }) => {
         return res;
     };
 
-    const updateProfile = async (profileData) => {
+    const deleteAccount: typeof authService.deleteAccount = async () => {
+        const res = await authService.deleteAccount();
+        if (res.success) {
+            setIsAuthenticated(false);
+            setUser(null);
+        }
+        return res;
+    };
+
+    const updateProfile: typeof authService.updateProfile = async (profileData) => {
         const res = await authService.updateProfile(profileData);
         if (res.success && res.user) {
             setUser(res.user);
@@ -53,39 +87,49 @@ export const AuthProvider = ({ children }) => {
         return res;
     };
 
-    const getSettings = async () => {
+    const getSettings: typeof authService.getSettings = async () => {
         return await authService.getSettings();
     };
 
-    const updateSettings = async (settingsData) => {
+    const updateSettings: typeof authService.updateSettings = async (settingsData) => {
         return await authService.updateSettings(settingsData);
     };
 
-    const getPreferences = async () => {
+    const getPreferences: typeof authService.getPreferences = async () => {
         return await authService.getPreferences();
     };
 
-    const updatePreferences = async (preferences) => {
+    const updatePreferences: typeof authService.updatePreferences = async (preferences) => {
         return await authService.updatePreferences(preferences);
     };
 
     return (
-        <AuthContext.Provider value={{
-            user,
-            isAuthenticated,
-            loading,
-            login,
-            logout,
-            checkAuth,
-            updateProfile,
-            getSettings,
-            updateSettings,
-            getPreferences,
-            updatePreferences
-        }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                isAuthenticated,
+                loading,
+                login,
+                logout,
+                checkAuth,
+                updateProfile,
+                deleteAccount,
+                getSettings,
+                updateSettings,
+                getPreferences,
+                updatePreferences,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within AuthProvider');
+    }
+    return context;
+};
