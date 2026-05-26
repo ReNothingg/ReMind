@@ -3,6 +3,7 @@
 # ==========================
 .env
 .env.*
+.env.dev.example
 !.env.example
 !.env.*.example
 *.local

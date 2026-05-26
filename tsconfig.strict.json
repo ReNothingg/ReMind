@@ -7,5 +7,14 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true
   },
-  "include": ["src/features/**/*.ts", "src/features/**/*.tsx"]
+  "include": [
+    "src/features/**/*.ts",
+    "src/features/**/*.tsx",
+    "src/services/http.ts",
+    "src/services/openapiClient.ts",
+    "src/services/auth.ts",
+    "src/services/api.ts",
+    "src/utils/svgPreview.ts",
+    "src/utils/notifications.ts"
+  ]
 }

@@ -1,11 +1,11 @@
-import i18n from 'i18next';
+import i18n, { type BackendModule, type ReadCallback } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-export const SUPPORTED_LANGUAGES = ['ru', 'en', 'zh', 'es', 'ar', 'hi', 'fr', 'bn', 'pt'];
+const SUPPORTED_LANGUAGES = ['ru', 'en', 'zh', 'es', 'ar', 'hi', 'fr', 'bn', 'pt'];
 export const DEFAULT_LANGUAGE = 'en';
 export const LANGUAGE_STORAGE_KEY = 'remind:language';
 
-const localeModules = import.meta.glob('./locales/*/*.json');
+const localeModules = import.meta.glob<{ default: unknown }>('./locales/*/*.json');
 
 export function normalizeLanguage(language) {
   const value = String(language || '').toLowerCase();
@@ -19,9 +19,10 @@ function detectInitialLanguage() {
   return normalizeLanguage(navigator.language);
 }
 
-const lazyBackend = {
+const lazyBackend: BackendModule = {
   type: 'backend',
-  read(language, namespace, callback) {
+  init: () => undefined,
+  read(language: string, namespace: string, callback: ReadCallback) {
     const lng = normalizeLanguage(language);
     const key = `./locales/${lng}/${namespace}.json`;
     const loader = localeModules[key];
@@ -75,9 +76,3 @@ export function initI18n() {
 
   return initPromise;
 }
-
-export function getLanguage() {
-  return normalizeLanguage(i18n.resolvedLanguage || i18n.language);
-}
-
-export default i18n;

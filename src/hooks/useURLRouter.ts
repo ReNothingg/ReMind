@@ -59,13 +59,13 @@ export const useURLRouter = () => {
     const navigateToSettings = useCallback((tab = 'appearance', replaceHistory = false) => {
         navigate(`settings/${tab}`, replaceHistory);
     }, [navigate]);
-    const updateQueryParams = useCallback((params) => {
+    const updateQueryParams = useCallback((params: Record<string, string | number | boolean | null | undefined>) => {
         const newParams = new URLSearchParams(queryParams);
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === undefined) {
                 newParams.delete(key);
             } else {
-                newParams.set(key, value);
+                newParams.set(key, String(value));
             }
         });
 

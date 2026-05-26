@@ -22,7 +22,8 @@ function createStorageShim() {
 }
 
 function ensureStorage(name: 'localStorage' | 'sessionStorage') {
-    const existing = globalThis[name];
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
+    const existing = descriptor && 'value' in descriptor ? descriptor.value : undefined;
     if (existing && typeof existing.clear === 'function') {
         return existing;
     }

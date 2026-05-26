@@ -110,8 +110,7 @@ def test_load_append_and_resolve_chat_history(app, create_confirmed_user, monkey
         append_messages_to_history(session_id, messages, "echo", user_id=user_id)
 
         file_data = chat_history.read_chat_file(session_id)
-        assert file_data["title"].startswith("Hello from the first message")
-        assert len(file_data["history"]) == 1
+        assert file_data == {}
 
         loaded_from_db = load_chat_history(session_id, user_id=user_id)
         assert len(loaded_from_db) == 1

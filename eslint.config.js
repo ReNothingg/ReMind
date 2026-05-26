@@ -7,7 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'build', '.git', 'public'] },
+  { ignores: ['coverage', 'dist', 'node_modules', 'build', '.git', 'public', 'playwright-report', 'test-results'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
@@ -16,7 +16,7 @@ export default tseslint.config(
     files: ['**/*.{ts,tsx,js,jsx}'],
     settings: {
       react: {
-        version: 'detect', // Автоматически определять версию React
+        version: 'detect',
       },
     },
     languageOptions: {
@@ -24,7 +24,7 @@ export default tseslint.config(
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
-          jsx: true, // Разрешаем JSX
+          jsx: true,
         },
       },
       globals: {

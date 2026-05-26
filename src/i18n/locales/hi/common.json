@@ -17,6 +17,39 @@
     "login": "लॉगिन",
     "register": "रजिस्टर"
   },
+  "authModal": {
+    "loginTitle": "अपने खाते में साइन इन करें",
+    "registerTitle": "खाता बनाएं",
+    "fields": {
+      "email": "Email:",
+      "password": "पासवर्ड:",
+      "username": "उपयोगकर्ता नाम:",
+      "confirmPassword": "पासवर्ड दोबारा दर्ज करें:",
+      "name": "नाम:"
+    },
+    "actions": {
+      "loginLoading": "साइन इन हो रहा है...",
+      "loginWithGoogle": "Google से साइन इन करें",
+      "registerLoading": "खाता बनाया जा रहा है...",
+      "registerWithGoogle": "Google से साइन अप करें"
+    },
+    "switch": {
+      "noAccount": "क्या आपका खाता नहीं है?",
+      "haveAccount": "क्या आपके पास पहले से खाता है?"
+    },
+    "messages": {
+      "loginSuccess": "सफलतापूर्वक साइन इन किया गया",
+      "loginError": "साइन इन विफल",
+      "registerSuccess": "पंजीकरण सफल रहा। खाता पुष्टि करने के लिए अपना ईमेल जांचें।",
+      "registerError": "पंजीकरण विफल",
+      "passwordsMismatch": "पासवर्ड मेल नहीं खाते",
+      "usernameTooLong": "उपयोगकर्ता नाम 100 वर्णों से अधिक नहीं होना चाहिए",
+      "emailTooLong": "Email 100 वर्णों से अधिक नहीं होना चाहिए",
+      "passwordTooLong": "पासवर्ड 100 वर्णों से अधिक नहीं होना चाहिए",
+      "turnstileRequired": "पुष्टि करें कि आप रोबोट नहीं हैं और फिर कोशिश करें।",
+      "requestError": "नेटवर्क या सर्वर त्रुटि"
+    }
+  },
   "common": {
     "loading": "लोड हो रहा है...",
     "closeEsc": "बंद करें (Esc)",
@@ -30,6 +63,7 @@
   "landing": {
     "ariaLabel": "स्टार्ट स्क्रीन",
     "readonlyBanner": "सार्वजनिक चैट: केवल पढ़ने के लिए",
+    "greeting": "आप किस पर काम कर रहे हैं?",
     "welcomeMessages": [
       "स्वागत है!",
       "नमस्ते! आज मैं कैसे मदद कर सकता हूं?",
@@ -63,8 +97,7 @@
     "quote": "उद्धरण"
   },
   "files": {
-    "removeFile": "फ़ाइल हटाएं",
-    "model3d": "3D मॉडल"
+    "removeFile": "फ़ाइल हटाएं"
   },
   "share": {
     "title": "चैट साझा करना",
@@ -150,20 +183,46 @@
         "status": "स्थिति",
         "email": "ईमेल",
         "id": "आईडी",
-        "username": "यूज़रनेम"
+        "username": "यूज़रनेम",
+        "name": "नाम"
       },
       "signedIn": "आप साइन इन हैं",
       "guestMode": "आप अतिथि मोड का उपयोग कर रहे हैं",
       "unavailable": "उपलब्ध नहीं",
-      "ctaTitle": "साइन इन करें या प्रोफ़ाइल बनाएं",
+      "ctaTitle": "साइन इन करें या प्रोफ़ाइल बनाएँ",
       "ctaDescription": "सेटिंग्स और इतिहास सहेजने के लिए साइन इन करें।",
       "signInOrRegister": "साइन इन करें या रजिस्टर करें",
+      "nameHint": "यदि कोई उपनाम सेट नहीं है, तो यह AI वैयक्तिकरण में उपयोग होता है।",
+      "usernameHint": "3-50 अक्षर: अक्षर, अंक, अंडरस्कोर और हाइफ़न।",
       "emailReadonlyHint": "ईमेल बदला नहीं जा सकता।",
       "saving": "सहेजा जा रहा है...",
       "saveChanges": "परिवर्तन सहेजें",
       "signOut": "साइन आउट",
       "profileUpdated": "प्रोफ़ाइल अपडेट हो गई",
-      "updateError": "अपडेट विफल"
+      "updateError": "अपडेट विफल",
+      "validation": {
+        "nameRequired": "अपना नाम दर्ज करें",
+        "nameLength": "नाम 1 से 100 अक्षरों के बीच होना चाहिए",
+        "nameInvalidCharacters": "नाम में अमान्य अक्षर हैं",
+        "usernameRequired": "उपयोगकर्ता नाम दर्ज करें",
+        "usernameLength": "उपयोगकर्ता नाम 3 से 50 अक्षरों के बीच होना चाहिए",
+        "usernameCharset": "उपयोगकर्ता नाम में केवल अक्षर, अंक, अंडरस्कोर और हाइफ़न हो सकते हैं",
+        "usernameStartsWith": "उपयोगकर्ता नाम अंडरस्कोर या हाइफ़न से शुरू नहीं हो सकता",
+        "usernameTaken": "यह उपयोगकर्ता नाम पहले से लिया जा चुका है",
+        "emailTaken": "यह ईमेल पहले से पंजीकृत है"
+      },
+      "delete": {
+        "title": "खाता हटाएँ",
+        "description": "इससे आपकी प्रोफ़ाइल, सेटिंग्स, इतिहास और साझा चैट स्थायी रूप से हट जाएँगे।",
+        "confirmLabel": "हटाने की पुष्टि",
+        "confirmHint": "अपना मौजूदा उपयोगकर्ता नाम लिखें: {{username}}",
+        "confirmPlaceholder": "अपना उपयोगकर्ता नाम दर्ज करें",
+        "confirmationMismatch": "खाता हटाने के लिए अपना मौजूदा उपयोगकर्ता नाम दर्ज करें",
+        "action": "खाता हटाएँ",
+        "actionLoading": "खाता हटाया जा रहा है...",
+        "success": "खाता हटा दिया गया",
+        "error": "खाता हटाया नहीं जा सका"
+      }
     },
     "appearance": {
       "themeGroup": "थीम",
@@ -218,10 +277,6 @@
       "showChatPreview": {
         "title": "प्रीव्यू दिखाएं",
         "description": "चैट सूची में अंतिम संदेश दिखाएं।"
-      },
-      "showSuggestions": {
-        "title": "सुझाव दिखाएं",
-        "description": "स्टार्ट पेज पर प्रॉम्प्ट सुझाव दिखाएं।"
       },
       "autocomplete": {
         "title": "ऑटोकम्प्लीट",
@@ -317,5 +372,100 @@
   },
   "spinwheel": {
     "spin": "स्पिन करें"
+  },
+  "minds": {
+    "subtitle": "अलग-अलग कार्यों और बातचीत की शैलियों के लिए अपने कस्टम AI minds बनाएं और प्रबंधित करें।",
+    "create": "बनाएं",
+    "searchPlaceholder": "minds खोजें",
+    "searchAria": "minds खोजें",
+    "tabsAria": "minds अनुभाग",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "मेरे minds"
+    },
+    "categoriesAria": "mind श्रेणियां",
+    "categories": {
+      "all": "सभी",
+      "general": "सामान्य",
+      "education": "शिक्षा",
+      "development": "विकास",
+      "productivity": "उत्पादकता",
+      "creative": "रचनात्मक",
+      "business": "व्यवसाय",
+      "security": "सुरक्षा"
+    },
+    "visibility": {
+      "private": "केवल मैं",
+      "link": "लिंक से",
+      "linkShort": "लिंक से",
+      "linkLong": "लिंक वाले सभी लोग",
+      "store": "Mind store"
+    },
+    "verified": "निर्माता द्वारा स्वीकृत",
+    "startersAria": "बातचीत शुरू करने वाले संकेत",
+    "openChat": "चैट खोलें",
+    "pinTitle": "app-rail में पिन करें",
+    "unpinTitle": "app-rail से हटाएं",
+    "pinAria": "mind पिन करें",
+    "unpinAria": "mind अनपिन करें",
+    "edit": "संपादित करें",
+    "editAria": "mind संपादित करें",
+    "delete": "हटाएं",
+    "loading": "minds लोड हो रहे हैं...",
+    "emptyMine": "आपने अभी तक कोई mind नहीं बनाया है।",
+    "emptyStore": "इस खोज के लिए कोई mind नहीं मिला।",
+    "confirmDelete": "mind \"{{name}}\" हटाएं?",
+    "pinnedAria": "पिन किए गए minds",
+    "disableActive": "mind बंद करें",
+    "errors": {
+      "load": "minds लोड नहीं हो सके। पेज रीफ्रेश करें।",
+      "pin": "mind पिनिंग अपडेट नहीं हो सकी।",
+      "delete": "mind हटाया नहीं जा सका।",
+      "authRequired": "यह कार्रवाई करने के लिए साइन इन करें।",
+      "accessDenied": "आपके पास इस mind की पहुंच नहीं है।",
+      "notFound": "minds सेवा उपलब्ध नहीं है या mind नहीं मिला। जांचें कि backend नए API routes के साथ चल रहा है।",
+      "rateLimited": "बहुत अधिक अनुरोध। थोड़ा इंतज़ार करें और फिर कोशिश करें।",
+      "editAccess": "आपको इस mind को संपादित करने की अनुमति नहीं है।",
+      "editorLoad": "mind editor लोड नहीं हो सका।",
+      "save": "mind सहेजा नहीं जा सका। फ़ील्ड जांचें और फिर कोशिश करें।"
+    },
+    "validation": {
+      "name": "नाम में कम से कम 2 अक्षर होने चाहिए।",
+      "description": "विवरण में कम से कम 8 अक्षर होने चाहिए।",
+      "instructions": "निर्देशों में कम से कम 16 अक्षर होने चाहिए।",
+      "category": "Mind store के लिए श्रेणी चुनें।"
+    },
+    "editor": {
+      "authTitle": "minds बनाना साइन इन के बाद उपलब्ध है",
+      "back": "वापस",
+      "editTitle": "mind संपादित करें",
+      "createTitle": "mind बनाएं",
+      "editSubtitle": "सेटिंग्स और पहुंच प्रबंधित करें।",
+      "createSubtitle": "अपना AI कॉन्फ़िगर करें।",
+      "loading": "editor लोड हो रहा है...",
+      "fields": {
+        "name": "नाम",
+        "description": "विवरण",
+        "instructions": "निर्देश",
+        "starters": "बातचीत शुरू करने वाले संकेत"
+      },
+      "placeholders": {
+        "name": "अपने mind को नाम दें",
+        "description": "संक्षेप में बताएं कि आपका mind क्या करता है",
+        "instructions": "mind क्या करता है, कैसे व्यवहार करता है, उसका व्यक्तित्व और भूमिका क्या है",
+        "starter": "उपयोगकर्ताओं के लिए prompt button"
+      },
+      "removeStarter": "संकेत हटाएं",
+      "addStarter": "संकेत जोड़ें",
+      "access": "पहुंच",
+      "category": "श्रेणी",
+      "check": "जांच",
+      "basicReady": "मुख्य फ़ील्ड भरे गए हैं",
+      "startersReady": "संकेत तैयार हैं",
+      "saving": "सहेज रहे हैं...",
+      "saveChanges": "बदलाव सहेजें",
+      "createAction": "mind बनाएं"
+    },
+    "activeLabel": "mind सक्रिय"
   }
 }

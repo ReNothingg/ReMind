@@ -1,7 +1,7 @@
 import base64
 import io
 import logging
-import os
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Union
 
 import google.generativeai as genai
@@ -12,52 +12,86 @@ from ai_engine.personalization import build_system_prompt
 from config import GEMINI_API_KEY, GEMINI_MODEL_NAME
 
 logger = logging.getLogger(__name__)
-try:
+
+_SYSTEM_PROMPT_PATH = Path(__file__).with_name("prompt.md")
+_gemini_configured = False
+
+
+def _ensure_gemini_configured() -> None:
+    global _gemini_configured
+
+    if _gemini_configured:
+        return
+
     if not GEMINI_API_KEY or GEMINI_API_KEY == "ВАШ_API_КЛЮЧ":
         raise ValueError(
-            "GEMINI_API_KEY не установлен или имеет значение по умолчанию. Проверьте файл config.py."
+            "GEMINI_API_KEY не установлен или имеет значение по умолчанию. Проверьте config.py."
         )
+
     genai.configure(api_key=GEMINI_API_KEY)
+    _gemini_configured = True
     logger.info("Модуль Gemini успешно настроен.")
-except (ValueError, Exception) as e:
-    logger.critical(f"КРИТИЧЕСКАЯ ОШИБКА: Не удалось настроить API. Ошибка: {e}")
 
 
 def _load_system_prompt() -> Optional[str]:
-
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        prompt_file_path = os.path.join(script_dir, "prompt.md")
-
-        logger.debug(f"Попытка загрузить системный промпт из: {prompt_file_path}")
-
-        if os.path.exists(prompt_file_path):
-            with open(prompt_file_path, "r", encoding="utf-8") as f:
-                prompt_content = f.read().strip()
-                if prompt_content:
-                    logger.info(f"Системный промпт успешно загружен из файла '{prompt_file_path}'.")
-                    return prompt_content
-                else:
-                    logger.error(f"Файл системного промпта '{prompt_file_path}' пуст.")
-        else:
+        logger.debug("Попытка загрузить системный промпт из: %s", _SYSTEM_PROMPT_PATH)
+        if not _SYSTEM_PROMPT_PATH.exists():
             logger.error(
-                f"Файл системного промпта '{prompt_file_path}' не найден. Модель будет инициализирована без него."
+                "Файл системного промпта '%s' не найден. Модель будет инициализирована без него.",
+                _SYSTEM_PROMPT_PATH,
             )
-    except Exception as e:
-        logger.error(f"Ошибка при чтении файла системного промпта: {e}", exc_info=True)
+            return None
+
+        prompt_content = _SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
+        if prompt_content:
+            logger.info(
+                "Системный промпт успешно загружен из файла '%s'.",
+                _SYSTEM_PROMPT_PATH,
+            )
+            return prompt_content
+
+        logger.error("Файл системного промпта '%s' пуст.", _SYSTEM_PROMPT_PATH)
+    except Exception as exc:
+        logger.error("Ошибка при чтении файла системного промпта: %s", exc, exc_info=True)
 
     return None
 
 
 def _prepare_history(history_from_main: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    prepared_history: List[Dict[str, Any]] = []
+    for message in history_from_main or []:
+        if not isinstance(message, dict):
+            continue
 
-    return history_from_main or []
+        role = str(message.get("role") or "").strip().lower()
+        if role not in {"user", "model"}:
+            continue
+
+        prepared_parts = _prepare_history_parts(message.get("parts", []))
+        if not prepared_parts:
+            continue
+
+        prepared_history.append({"role": role, "parts": prepared_parts})
+
+    return prepared_history
 
 
-def _prepare_new_message(
-    user_message_data: Dict[str, Any],
-) -> List[Union[str, Image.Image]]:
+def _prepare_history_parts(parts: Any) -> List[Dict[str, str]]:
+    prepared_parts: List[Dict[str, str]] = []
+    if not isinstance(parts, list):
+        return prepared_parts
 
+    for part in parts:
+        if isinstance(part, dict) and part.get("text") is not None:
+            text = str(part.get("text") or "").strip()
+            if text:
+                prepared_parts.append({"text": text})
+
+    return prepared_parts
+
+
+def _prepare_new_message(user_message_data: Dict[str, Any]) -> List[Union[str, Image.Image]]:
     content_parts: List[Union[str, Image.Image]] = []
 
     text = user_message_data.get("message", "")
@@ -69,9 +103,11 @@ def _prepare_new_message(
             model_part = file_info.get("model_part")
             if not model_part:
                 logger.warning(
-                    f"Файл '{file_info.get('original_name')}' не содержит 'model_part'. Пропускаем."
+                    "Файл '%s' не содержит 'model_part'. Пропускаем.",
+                    file_info.get("original_name"),
                 )
                 continue
+
             if "inline_data" in model_part:
                 mime_type = model_part["inline_data"].get("mime_type")
                 base64_data = model_part["inline_data"].get("data")
@@ -80,25 +116,29 @@ def _prepare_new_message(
                     image = Image.open(io.BytesIO(image_bytes))
                     content_parts.append(image)
                     logger.info(
-                        f"Изображение '{file_info.get('original_name')}' добавлено в запрос."
+                        "Изображение '%s' добавлено в запрос.",
+                        file_info.get("original_name"),
                     )
                 else:
                     logger.warning(
-                        f"Некорректные данные изображения для файла '{file_info.get('original_name')}'."
+                        "Некорректные данные изображения для файла '%s'.",
+                        file_info.get("original_name"),
                     )
             elif "text" in model_part:
                 content_parts.append(model_part["text"])
                 logger.info(
-                    f"Текстовое содержимое файла '{file_info.get('original_name')}' добавлено в запрос."
+                    "Текстовое содержимое файла '%s' добавлено в запрос.",
+                    file_info.get("original_name"),
                 )
-
-        except Exception as e:
+        except Exception as exc:
             logger.error(
-                f"Критическая ошибка при обработке файла '{file_info.get('original_name')}': {e}",
+                "Критическая ошибка при обработке файла '%s': %s",
+                file_info.get("original_name"),
+                exc,
                 exc_info=True,
             )
             content_parts.append(
-                f"\n<error>Ошибка обработки файла</error>"
+                "\n<error>Ошибка обработки файла</error>"
                 f"Не удалось обработать файл '{file_info.get('original_name')}'."
             )
 
@@ -107,11 +147,14 @@ def _prepare_new_message(
 
 def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[str, None, None]:
     try:
+        _ensure_gemini_configured()
+
         try:
             system_prompt = build_system_prompt(user_id, user_message_data)
-        except Exception as e:
-            logger.exception(f"Failed to build system prompt for user {user_id}: {e}")
+        except Exception as exc:
+            logger.exception("Failed to build system prompt for user %s: %s", user_id, exc)
             system_prompt = _load_system_prompt()
+
         model_kwargs = {"model_name": GEMINI_MODEL_NAME}
         if system_prompt:
             model_kwargs["system_instruction"] = system_prompt
@@ -120,8 +163,11 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
         history = _prepare_history(user_message_data.get("history", []))
         chat_session = model.start_chat(history=history)
         logger.info(
-            f"Gemini: Сессия чата для '{user_id}' создана с {len(history)} сообщениями в истории."
+            "Gemini: Сессия чата для '%s' создана с %s сообщениями в истории.",
+            user_id,
+            len(history),
         )
+
         new_message_parts = _prepare_new_message(user_message_data)
         if not new_message_parts:
             yield "Пожалуйста, введите сообщение или прикрепите файл для начала диалога."
@@ -129,44 +175,58 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
 
         response_stream = None
         any_text_generated = False
+
         try:
             response_stream = chat_session.send_message(new_message_parts, stream=True)
             for chunk in response_stream:
                 if not chunk.parts:
                     logger.warning(
-                        f"Gemini: Получен пустой 'chunk' для '{user_id}'. Вероятно, сработал фильтр безопасности."
+                        "Gemini: Получен пустой chunk для '%s'. Вероятно, сработал фильтр безопасности.",
+                        user_id,
                     )
                     continue
+
                 if chunk.text:
                     yield chunk.text
                     any_text_generated = True
 
-        except google_exceptions.GoogleAPICallError as e:
-            logger.error(f"Ошибка вызова API для '{user_id}': {e}", exc_info=True)
-            yield f"<error>Ошибка API</error>Произошла ошибка при обращении к API Google: {e.message}"
+        except google_exceptions.GoogleAPICallError as exc:
+            logger.error("Ошибка вызова API для '%s': %s", user_id, exc, exc_info=True)
+            yield (
+                "<error>Ошибка API</error>"
+                f"Произошла ошибка при обращении к API Google: {exc.message}"
+            )
             return
-        except Exception as e:
+        except Exception as exc:
             logger.error(
-                f"Неожиданная ошибка при отправке сообщения для '{user_id}': {e}",
+                "Неожиданная ошибка при отправке сообщения для '%s': %s",
+                user_id,
+                exc,
                 exc_info=True,
             )
-            yield "<error>Внутренняя ошибка</error>Произошла внутренняя ошибка при отправке вашего сообщения модели."
+            yield (
+                "<error>Внутренняя ошибка</error>"
+                "Произошла внутренняя ошибка при отправке вашего сообщения модели."
+            )
             return
+
         if not any_text_generated:
-            logger.warning(f"Поток для '{user_id}' завершился без генерации текста.")
+            logger.warning("Поток для '%s' завершился без генерации текста.", user_id)
             try:
                 if response_stream and response_stream.prompt_feedback:
                     block_reason = response_stream.prompt_feedback.block_reason
                     logger.error(
-                        f"Ответ для '{user_id}' был заблокирован. Причина: {block_reason}."
+                        "Ответ для '%s' был заблокирован. Причина: %s.",
+                        user_id,
+                        block_reason,
                     )
                     yield (
                         "<error>Запрос заблокирован</error>"
-                        "Модель не сгенерировала ответ. Ваш запрос или контекст диалога мог быть заблокирован "
-                        "по соображениям безопасности. Попробуйте переформулировать его."
+                        "Модель не сгенерировала ответ. Ваш запрос или контекст диалога мог быть "
+                        "заблокирован по соображениям безопасности. Попробуйте переформулировать его."
                     )
                 else:
-                    logger.error("Ответ для '{user_id}' пуст, причина блокировки не найдена.")
+                    logger.error("Ответ для '%s' пуст, причина блокировки не найдена.", user_id)
                     yield (
                         "<error>Пустой ответ</error>"
                         "Модель не сгенерировала ответ. Это могло произойти из-за внутренних правил "
@@ -174,7 +234,9 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
                     )
             except Exception as feedback_error:
                 logger.error(
-                    f"Ошибка при получении prompt_feedback для '{user_id}': {feedback_error}",
+                    "Ошибка при получении prompt_feedback для '%s': %s",
+                    user_id,
+                    feedback_error,
                     exc_info=True,
                 )
                 yield (
@@ -183,12 +245,14 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
                     "Попробуйте переформулировать запрос."
                 )
 
-    except Exception as e:
+    except Exception as exc:
         logger.critical(
-            f"КРИТИЧЕСКАЯ неперехваченная ошибка в `gemini_stream` для '{user_id}': {e}",
+            "КРИТИЧЕСКАЯ неперехваченная ошибка в gemini_stream для '%s': %s",
+            user_id,
+            exc,
             exc_info=True,
         )
-        error_text = str(e)
+        error_text = str(exc)
         if "API key not valid" in error_text:
             yield (
                 "<error>Недействительный API-ключ</error>"
