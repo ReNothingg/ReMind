@@ -1,6 +1,7 @@
 import json
 import re
 import secrets
+import unicodedata
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
@@ -11,23 +12,26 @@ from authlib.integrations.flask_client import OAuth
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import BadData, URLSafeTimedSerializer
+from sqlalchemy import func, inspect, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .input_validation import InputValidator, ValidationError
 from .mailer import send_email
 from .rate_limiting import login_limiter, rate_limit
 from .responses import make_error
-from .session_security import resolve_cookie_domain
+from .session_security import is_loopback_hostname, resolve_cookie_domain
 
 db: Any = SQLAlchemy()
 oauth = OAuth()
 OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
+ROOT_ADMIN_USER_ID = 1
 
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=True)
     is_confirmed = db.Column(db.Boolean, default=False)
@@ -38,19 +42,94 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     oauth_provider = db.Column(db.String(20), nullable=True)
     oauth_id = db.Column(db.String(100), nullable=True)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_banned = db.Column(db.Boolean, default=False, nullable=False)
+    is_blocked = db.Column(db.Boolean, default=False, nullable=False)
+    moderation_reason = db.Column(db.String(280), nullable=True)
+    ban_reason = db.Column(db.String(280), nullable=True)
+    block_reason = db.Column(db.String(280), nullable=True)
+    banned_until = db.Column(db.DateTime, nullable=True)
+    blocked_until = db.Column(db.DateTime, nullable=True)
 
     def __repr__(self):
         return f"<User {self.username}>"
 
     def to_dict(self):
+        is_super_admin = self.id == ROOT_ADMIN_USER_ID
+        restriction = get_account_restriction(self)
         return {
             "id": self.id,
             "username": self.username,
+            "name": self.name,
             "email": self.email,
             "is_confirmed": self.is_confirmed,
+            "is_admin": bool(self.is_admin or is_super_admin),
+            "is_super_admin": is_super_admin,
+            "is_banned": bool(restriction and restriction["type"] == "ban"),
+            "is_blocked": bool(restriction and restriction["type"] == "block"),
+            "moderation_reason": restriction["reason"] if restriction else None,
+            "ban_reason": self.ban_reason,
+            "block_reason": self.block_reason,
+            "banned_until": self.banned_until.isoformat() if self.banned_until else None,
+            "blocked_until": self.blocked_until.isoformat() if self.blocked_until else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "oauth_provider": self.oauth_provider,
         }
+
+
+def is_super_admin_user(user: User | None) -> bool:
+    return bool(user and user.id == ROOT_ADMIN_USER_ID)
+
+
+def is_admin_user(user: User | None) -> bool:
+    return bool(user and (user.id == ROOT_ADMIN_USER_ID or user.is_admin))
+
+
+def _restriction_is_active(enabled: bool | None, expires_at: datetime | None) -> bool:
+    if not enabled:
+        return False
+    return expires_at is None or expires_at > datetime.utcnow()
+
+
+def get_account_restriction(user: User | None) -> dict[str, Any] | None:
+    if not user:
+        return None
+    if _restriction_is_active(user.is_banned, user.banned_until):
+        return {
+            "type": "ban",
+            "label": "бан",
+            "reason": user.ban_reason or user.moderation_reason,
+            "until": user.banned_until,
+        }
+    if _restriction_is_active(user.is_blocked, user.blocked_until):
+        return {
+            "type": "block",
+            "label": "блокировка",
+            "reason": user.block_reason or user.moderation_reason,
+            "until": user.blocked_until,
+        }
+    return None
+
+
+def format_account_restriction_message(user: User | None) -> str:
+    restriction = get_account_restriction(user)
+    if not restriction:
+        return "Аккаунт ограничен администратором"
+
+    parts = [f"Аккаунт ограничен администратором: {restriction['label']}."]
+    reason = restriction.get("reason")
+    if reason:
+        parts.append(f"Причина: {reason}.")
+    until = restriction.get("until")
+    if isinstance(until, datetime):
+        parts.append(f"Срок: до {until.strftime('%Y-%m-%d %H:%M UTC')}.")
+    else:
+        parts.append("Срок: бессрочно.")
+    return " ".join(parts)
+
+
+def is_account_disabled(user: User | None) -> bool:
+    return get_account_restriction(user) is not None
 
 
 class UserSettings(db.Model):
@@ -84,6 +163,7 @@ class UserChatHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     session_id = db.Column(db.String(100), nullable=False)
+    mind_id = db.Column(db.Integer, db.ForeignKey("mind.id", ondelete="SET NULL"), nullable=True, index=True)
     title = db.Column(db.String(200), default="Новый чат")
     messages_data = db.Column(db.Text, default="[]")  # JSON array of messages
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -106,6 +186,7 @@ class UserChatHistory(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "session_id": self.session_id,
+            "mind_id": self.mind_id,
             "title": self.title,
             "messages": self.get_messages(),
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -133,6 +214,103 @@ class ChatShare(db.Model):
         }
 
 
+class Mind(db.Model):
+    __tablename__ = "mind"
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True, index=True)
+    name = db.Column(db.String(80), nullable=False)
+    description = db.Column(db.String(280), nullable=False)
+    instructions = db.Column(db.Text, nullable=False)
+    starters_data = db.Column(db.Text, default="[]", nullable=False)
+    category = db.Column(db.String(50), default="general", nullable=False, index=True)
+    visibility = db.Column(db.String(20), default="private", nullable=False, index=True)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    is_system = db.Column(db.Boolean, default=False, nullable=False)
+    is_featured = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_banned = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    moderation_reason = db.Column(db.String(280), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def get_starters(self):
+        try:
+            parsed = json.loads(self.starters_data) if self.starters_data else []
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+
+    def set_starters(self, starters):
+        self.starters_data = json.dumps(starters or [], ensure_ascii=False)
+
+    def to_dict(self, viewer_id=None, pinned=False):
+        is_owner = bool(viewer_id is not None and self.user_id == viewer_id)
+        return {
+            "id": self.id,
+            "public_id": self.public_id,
+            "name": self.name,
+            "description": self.description,
+            "instructions": self.instructions if is_owner else "",
+            "starters": self.get_starters(),
+            "category": self.category,
+            "visibility": self.visibility,
+            "is_verified": bool(self.is_verified),
+            "is_system": bool(self.is_system),
+            "is_featured": bool(self.is_featured),
+            "is_banned": bool(self.is_banned),
+            "moderation_reason": self.moderation_reason if is_owner else None,
+            "is_owner": is_owner,
+            "can_edit": is_owner and not self.is_system,
+            "is_pinned": bool(pinned),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class MindPin(db.Model):
+    __tablename__ = "mind_pin"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "mind_id", name="uq_mind_pin_user_mind"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    mind_id = db.Column(db.Integer, db.ForeignKey("mind.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+LEGACY_DEFAULT_MIND_PUBLIC_IDS = (
+    "mind_study_coach",
+    "mind_code_reviewer",
+    "mind_product_strategist",
+    "mind_security_auditor",
+)
+
+
+def _remove_legacy_default_minds(app):
+    try:
+        minds = (
+            Mind.query.filter(
+                Mind.public_id.in_(LEGACY_DEFAULT_MIND_PUBLIC_IDS),
+                Mind.is_system.is_(True),
+            )
+            .all()
+        )
+        if not minds:
+            return
+
+        mind_ids = [mind.id for mind in minds]
+        MindPin.query.filter(MindPin.mind_id.in_(mind_ids)).delete(synchronize_session=False)
+        for mind in minds:
+            db.session.delete(mind)
+        db.session.commit()
+        app.logger.info("Removed %s legacy default minds", len(minds))
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Failed to remove legacy default minds")
+
+
 def is_valid_password(password):
 
     if len(password) < 8:
@@ -142,6 +320,58 @@ def is_valid_password(password):
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return False
     return True
+
+
+def _is_username_taken(username: str, exclude_user_id: int | None = None) -> bool:
+    query = User.query.filter(func.lower(User.username) == username.lower())
+    if exclude_user_id is not None:
+        query = query.filter(User.id != exclude_user_id)
+    return query.first() is not None
+
+
+def _validate_unique_username(username: str, exclude_user_id: int | None = None) -> str:
+    normalized = InputValidator.validate_username(username)
+    if _is_username_taken(normalized, exclude_user_id=exclude_user_id):
+        raise ValidationError("Username is already taken")
+    return normalized
+
+
+def _normalize_username_candidate(value: str | None) -> str:
+    if not value:
+        return ""
+
+    normalized = unicodedata.normalize("NFKD", str(value))
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii").lower()
+    candidate = re.sub(r"[^a-z0-9_-]+", "_", ascii_value)
+    candidate = re.sub(r"_+", "_", candidate).strip("_-")
+
+    if len(candidate) < 3:
+        return ""
+
+    return candidate[:50].strip("_-")
+
+
+def _build_unique_username(*candidates: str | None) -> str:
+    normalized_candidates = []
+    for candidate in candidates:
+        normalized = _normalize_username_candidate(candidate)
+        if normalized and normalized not in normalized_candidates:
+            normalized_candidates.append(normalized)
+
+    if not normalized_candidates:
+        normalized_candidates = [f"user_{secrets.token_hex(4)}"]
+
+    for base in normalized_candidates:
+        for suffix_index in range(1000):
+            suffix = "" if suffix_index == 0 else f"_{suffix_index}"
+            trimmed_base = base[: max(3, 50 - len(suffix))].strip("_-")
+            candidate = f"{trimmed_base}{suffix}".strip("_-")
+            if len(candidate) < 3:
+                continue
+            if not _is_username_taken(candidate):
+                return candidate
+
+    return f"user_{secrets.token_hex(6)}"[:50]
 
 
 def _is_argon2_hash(stored_password: str) -> bool:
@@ -223,8 +453,7 @@ def _is_allowed_hostname(hostname: str | None, allowed_hosts) -> bool:
 
 
 def _is_loopback_hostname(hostname: str) -> bool:
-    host = (hostname or "").lower().strip(".")
-    return host in {"localhost", "127.0.0.1", "::1"}
+    return is_loopback_hostname(hostname)
 
 
 def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:
@@ -357,112 +586,8 @@ def verify_turnstile(turnstile_response):
 def register_auth_routes(app):
 
     @app.route("/register", methods=["GET", "POST"])
-    @rate_limit(login_limiter, "Too many registration attempts")
     def register():
-        if request.method == "POST":
-            username = request.form.get("username", "").strip()
-            email = request.form.get("email", "").strip()
-            password = request.form.get("password", "")
-            confirm_password = request.form.get("confirm_password", "")
-            turnstile_response = request.form.get("cf-turnstile-response")
-            if not verify_turnstile(turnstile_response):
-                flash(
-                    "Ошибка проверки Cloudflare Turnstile. Пожалуйста, подтвердите, что вы не робот.",
-                    "danger",
-                )
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-            try:
-                username = InputValidator.validate_username(username)
-            except ValidationError as e:
-                flash(str(e), "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-            try:
-                email = InputValidator.validate_email(email)
-            except ValidationError as e:
-                flash(str(e), "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-            if password != confirm_password:
-                flash("Пароли не совпадают", "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-            try:
-                InputValidator.validate_password(password)
-            except ValidationError as e:
-                flash(str(e), "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-            user_exists = User.query.filter_by(email=email).first()
-            if user_exists:
-                flash("Email уже зарегистрирован", "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-            try:
-                try:
-                    from argon2 import PasswordHasher
-
-                    ph = PasswordHasher()
-                    hashed_password = ph.hash(password)
-                except ImportError:
-                    hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
-
-                confirmation_token = secrets.token_urlsafe(32)
-                confirmation_token_expires = datetime.utcnow() + timedelta(days=7)  # 7 days TTL
-
-                new_user = User(
-                    username=username,
-                    email=email,
-                    password=hashed_password,
-                    confirmation_token=confirmation_token,
-                    confirmation_token_expires=confirmation_token_expires,
-                )
-
-                db.session.add(new_user)
-                db.session.commit()
-                confirmation_link = url_for(
-                    "confirm_email", token=confirmation_token, _external=True
-                )
-                template_data = {
-                    "username": InputValidator.sanitize_output(username),
-                    "confirmation_link": confirmation_link,
-                }
-
-                send_email(
-                    to_email=email,
-                    subject="Подтвердите вашу регистрацию",
-                    body="",
-                    template_name="confirmation",
-                    template_data=template_data,
-                )
-
-                flash(
-                    "Регистрация успешна! Проверьте email для подтверждения аккаунта",
-                    "success",
-                )
-                return redirect(url_for("login"))
-
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"Registration error: {str(e)}")
-                flash("Ошибка при регистрации. Пожалуйста, попробуйте позже.", "danger")
-                from config import TURNSTILE_SITE_KEY
-
-                return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
-
-        from config import TURNSTILE_SITE_KEY
-
-        return render_template("register.html", turnstile_site_key=TURNSTILE_SITE_KEY)
+        return redirect("/?auth=register", code=303 if request.method == "POST" else 302)
 
     @app.route("/confirm/<token>")
     def confirm_email(token):
@@ -536,6 +661,14 @@ def register_auth_routes(app):
 
                 return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
 
+            if is_account_disabled(user):
+                record_login_attempt(email, False)
+                log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "account_disabled")
+                flash(format_account_restriction_message(user), "danger")
+                from config import TURNSTILE_SITE_KEY
+
+                return render_template("login.html", turnstile_site_key=TURNSTILE_SITE_KEY)
+
             if not user.is_confirmed:
                 log_auth_event(AuditEvents.AUTH_LOGIN_FAILED, email, False, "email_not_confirmed")
                 flash("Пожалуйста, подтвердите ваш email перед входом", "warning")
@@ -581,12 +714,7 @@ def register_auth_routes(app):
 
     @app.route("/good")
     def good():
-        if "user_id" not in session:
-            flash("Пожалуйста, сначала войдите в систему", "warning")
-            return redirect(url_for("login"))
-
-        username = session.get("username")
-        return render_template("good.html", username=username)
+        return redirect("/", code=303)
 
     @app.route("/forgot_password", methods=["GET", "POST"])
     def forgot_password():
@@ -687,14 +815,7 @@ def register_auth_routes(app):
             flash("Пожалуйста, сначала войдите в систему", "warning")
             return redirect(url_for("login"))
 
-        user_id = session.get("user_id")
-        user = User.query.get(user_id)
-        settings = UserSettings.query.filter_by(user_id=user_id).first()
-        personalization = {}
-        if settings:
-            personalization = settings.get_settings() or {}
-
-        return render_template("profile.html", user=user, personalization=personalization)
+        return redirect("/#settings/account", code=302)
 
     @app.route("/login/google")
     def login_google():
@@ -827,9 +948,20 @@ def register_auth_routes(app):
             user = User.query.filter_by(email=email).first()
 
             if not user:
-                username = user_info.get("name", email.split("@")[0])
+                account_name = (
+                    user_info.get("name")
+                    or user_info.get("given_name")
+                    or email.split("@")[0]
+                )
+                username = _build_unique_username(
+                    user_info.get("preferred_username"),
+                    user_info.get("given_name"),
+                    user_info.get("name"),
+                    email.split("@")[0],
+                )
                 new_user = User(
                     username=username,
+                    name=account_name,
                     email=email,
                     is_confirmed=True,
                     oauth_provider="google",
@@ -843,6 +975,12 @@ def register_auth_routes(app):
                 user.oauth_provider = "google"
                 user.oauth_id = google_id
                 user.is_confirmed = True
+                if not user.name:
+                    user.name = (
+                        user_info.get("name")
+                        or user_info.get("given_name")
+                        or user.username
+                    )
                 db.session.commit()
                 flash("Ваш аккаунт связан с Google", "success")
             from utils.session_security import regenerate_session
@@ -885,7 +1023,7 @@ def register_auth_routes(app):
     def api_check_auth():
 
         if "user_id" in session:
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
             if user:
                 return jsonify({"authenticated": True, "user": user.to_dict()}), 200
         return jsonify({"authenticated": False, "user": None}), 200
@@ -893,12 +1031,13 @@ def register_auth_routes(app):
     @app.route("/api/auth/config", methods=["GET"])
     def api_auth_config():
 
-        from config import GOOGLE_CLIENT_ID, TURNSTILE_SITE_KEY
+        from config import GOOGLE_CLIENT_ID, LOCALHOST_MODE, TURNSTILE_SITE_KEY
 
         return (
             jsonify(
                 {
                     "turnstile_site_key": TURNSTILE_SITE_KEY,
+                    "turnstile_required": bool(TURNSTILE_SITE_KEY) and not LOCALHOST_MODE,
                     "gauth_available": bool(GOOGLE_CLIENT_ID),
                     "google_login_url": url_for("login_google"),
                 }
@@ -913,6 +1052,7 @@ def register_auth_routes(app):
         try:
             data = request.get_json(silent=True) or {}
             username = data.get("username", "")
+            name = data.get("name", "")
             email = data.get("email", "")
             password = data.get("password", "")
             from config import TURNSTILE_SITE_KEY
@@ -925,11 +1065,24 @@ def register_auth_routes(app):
                 return jsonify({"error": "Все поля обязательны"}), 400
 
             try:
-                username = InputValidator.validate_username(username)
+                username = _validate_unique_username(username)
                 email = InputValidator.validate_email(email)
                 InputValidator.validate_password(password)
+                account_name = (
+                    InputValidator.validate_name(name)
+                    if isinstance(name, str) and name.strip()
+                    else username
+                )
             except ValidationError as e:
-                return jsonify({"error": str(e)}), 400
+                message = str(e)
+                field = "username"
+                if message.startswith("Name "):
+                    field = "name"
+                elif message.startswith("Password "):
+                    field = "password"
+                elif "email" in message.lower():
+                    field = "email"
+                return jsonify({"error": message, "field": field}), 400
 
             user_exists = User.query.filter_by(email=email).first()
             if user_exists:
@@ -946,6 +1099,7 @@ def register_auth_routes(app):
 
             new_user = User(
                 username=username,
+                name=account_name,
                 email=email,
                 password=hashed_password,
                 confirmation_token=confirmation_token,
@@ -1025,6 +1179,10 @@ def register_auth_routes(app):
                 record_login_attempt(email, False)
                 return jsonify({"error": "Неверный email или пароль"}), 401
 
+            if is_account_disabled(user):
+                record_login_attempt(email, False)
+                return jsonify({"error": format_account_restriction_message(user)}), 403
+
             if not user.is_confirmed:
                 return (
                     jsonify({"error": "Пожалуйста, подтвердите ваш email перед входом"}),
@@ -1058,7 +1216,7 @@ def register_auth_routes(app):
         if "user_id" not in session:
             return jsonify({"error": "Не авторизирован"}), 401
 
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if not user:
             return jsonify({"error": "Пользователь не найден"}), 404
 
@@ -1082,17 +1240,32 @@ def register_auth_routes(app):
 
         try:
             data = request.get_json(silent=True) or {}
-            user = User.query.get(session["user_id"])
+            user = db.session.get(User, session["user_id"])
 
             if not user:
                 return jsonify({"error": "Пользователь не найден"}), 404
 
             if "username" in data:
-                user.username = InputValidator.validate_username(data["username"])
+                user.username = _validate_unique_username(
+                    data["username"], exclude_user_id=user.id
+                )
+                session["username"] = InputValidator.sanitize_output(user.username)
+            if "name" in data:
+                raw_name = data.get("name")
+                user.name = (
+                    InputValidator.validate_name(raw_name)
+                    if isinstance(raw_name, str) and raw_name.strip()
+                    else None
+                )
 
             db.session.commit()
 
             return jsonify({"message": "Профиль обновлен", "user": user.to_dict()}), 200
+
+        except ValidationError as e:
+            db.session.rollback()
+            field = "username" if "Username" in str(e) else "name"
+            return jsonify({"error": str(e), "field": field}), 400
 
         except Exception as e:
             db.session.rollback()
@@ -1459,5 +1632,85 @@ def setup_auth(app):
         app.logger.info("Google OAuth registered successfully")
     with app.app_context():
         db.create_all()
+        _remove_legacy_default_minds(app)
+        inspector = inspect(db.engine)
+        date_time_type = (
+            "TIMESTAMP"
+            if db.engine.dialect.name in {"postgresql", "postgres"}
+            else "DATETIME"
+        )
+        if "user" in inspector.get_table_names():
+            user_columns = {column["name"] for column in inspector.get_columns("user")}
+            if "name" not in user_columns:
+                with db.engine.begin() as connection:
+                    connection.execute(text('ALTER TABLE "user" ADD COLUMN name VARCHAR(100)'))
+                    connection.execute(
+                        text(
+                            'UPDATE "user" SET name = username '
+                            "WHERE name IS NULL OR TRIM(name) = ''"
+                        )
+                    )
+                app.logger.info("Added missing user.name column to existing database")
+            user_admin_columns = {
+                "is_admin": 'ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE NOT NULL',
+                "is_banned": 'ALTER TABLE "user" ADD COLUMN is_banned BOOLEAN DEFAULT FALSE NOT NULL',
+                "is_blocked": 'ALTER TABLE "user" ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE NOT NULL',
+                "moderation_reason": 'ALTER TABLE "user" ADD COLUMN moderation_reason VARCHAR(280)',
+                "ban_reason": 'ALTER TABLE "user" ADD COLUMN ban_reason VARCHAR(280)',
+                "block_reason": 'ALTER TABLE "user" ADD COLUMN block_reason VARCHAR(280)',
+                "banned_until": f'ALTER TABLE "user" ADD COLUMN banned_until {date_time_type}',
+                "blocked_until": f'ALTER TABLE "user" ADD COLUMN blocked_until {date_time_type}',
+            }
+            missing_user_admin_columns = [
+                (column_name, ddl)
+                for column_name, ddl in user_admin_columns.items()
+                if column_name not in user_columns
+            ]
+            if missing_user_admin_columns:
+                with db.engine.begin() as connection:
+                    for _column_name, ddl in missing_user_admin_columns:
+                        connection.execute(text(ddl))
+                app.logger.info("Added missing user admin/moderation columns")
+        if "mind" in inspector.get_table_names():
+            mind_columns = {column["name"] for column in inspector.get_columns("mind")}
+            mind_admin_columns = {
+                "is_featured": "ALTER TABLE mind ADD COLUMN is_featured BOOLEAN DEFAULT FALSE NOT NULL",
+                "is_banned": "ALTER TABLE mind ADD COLUMN is_banned BOOLEAN DEFAULT FALSE NOT NULL",
+                "moderation_reason": "ALTER TABLE mind ADD COLUMN moderation_reason VARCHAR(280)",
+            }
+            missing_mind_admin_columns = [
+                (column_name, ddl)
+                for column_name, ddl in mind_admin_columns.items()
+                if column_name not in mind_columns
+            ]
+            if missing_mind_admin_columns:
+                with db.engine.begin() as connection:
+                    for _column_name, ddl in missing_mind_admin_columns:
+                        connection.execute(text(ddl))
+                    connection.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_mind_is_featured "
+                            "ON mind (is_featured)"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_mind_is_banned "
+                            "ON mind (is_banned)"
+                        )
+                    )
+                app.logger.info("Added missing mind admin/moderation columns")
+        if "user_chat_history" in inspector.get_table_names():
+            chat_columns = {column["name"] for column in inspector.get_columns("user_chat_history")}
+            if "mind_id" not in chat_columns:
+                with db.engine.begin() as connection:
+                    connection.execute(text('ALTER TABLE user_chat_history ADD COLUMN mind_id INTEGER'))
+                    connection.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_user_chat_history_mind_id "
+                            "ON user_chat_history (mind_id)"
+                        )
+                    )
+                app.logger.info("Added missing user_chat_history.mind_id column")
         app.logger.info("Database tables created successfully")
     register_auth_routes(app)

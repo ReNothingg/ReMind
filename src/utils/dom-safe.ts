@@ -67,8 +67,8 @@ export const DOMSafeUtils = {
         const parser = new DOMParser();
         try {
             const doc = parser.parseFromString(htmlString, 'text/html');
-            if (doc.body.firstChild && doc.body.firstChild.tagName !== 'PARSERERROR') {
-                return doc.body.firstChild;
+            if (doc.body.firstElementChild && doc.body.firstElementChild.tagName !== 'PARSERERROR') {
+                return doc.body.firstElementChild;
             }
             return null;
         } catch (e) {
@@ -93,7 +93,7 @@ export const DOMSafeUtils = {
     },
 
 
-    createButton(options = {}) {
+    createButton(options: { text?: string; className?: string; title?: string; onClick?: EventListener } = {}) {
         const button = document.createElement('button');
         if (options.text) button.textContent = options.text;
         if (options.className) button.className = options.className;

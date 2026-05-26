@@ -1,13 +1,13 @@
 from flask import has_request_context, request
 
-from config import IS_PRODUCTION
+from config import ENABLE_STRICT_HTTPS
 
 
 def get_csp_header():
     directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.google.com https://www.googletagmanager.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+        "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
         "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com https://cdn.jsdelivr.net data:",
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
@@ -17,8 +17,8 @@ def get_csp_header():
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests" if IS_PRODUCTION else "",
-        "block-all-mixed-content" if IS_PRODUCTION else "",
+        "upgrade-insecure-requests" if ENABLE_STRICT_HTTPS else "",
+        "block-all-mixed-content" if ENABLE_STRICT_HTTPS else "",
     ]
 
     return "; ".join(d for d in directives if d)
@@ -59,12 +59,11 @@ def apply_security_headers(response):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = get_permissions_policy()
-    if IS_PRODUCTION:
+    if ENABLE_STRICT_HTTPS:
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains; preload"
         )
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     content_type = (response.headers.get("Content-Type") or "").lower()
     is_json_response = "application/json" in content_type

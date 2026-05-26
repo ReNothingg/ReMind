@@ -1,16 +1,20 @@
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
+import routes.features.chat as chat_routes
+import services.chat_history as chat_history
 import utils.auth as auth_module
 from config import SESSION_COOKIE_NAME
 from utils.auth import ChatShare, User, UserChatHistory, db
+from utils.rate_limiting import rate_limit_store
 from utils.session_security import resolve_cookie_domain
 
 
 def test_api_auth_login_and_check(client, create_confirmed_user, login):
-    user_id, email, password = create_confirmed_user()
+    user_id, email, password = create_confirmed_user(name="Ada Lovelace")
 
     login_response = login(email, password)
     assert login_response.status_code == 200
@@ -24,6 +28,73 @@ def test_api_auth_login_and_check(client, create_confirmed_user, login):
     check_payload = check_response.get_json()
     assert check_payload["authenticated"] is True
     assert check_payload["user"]["id"] == user_id
+    assert check_payload["user"]["name"] == "Ada Lovelace"
+
+
+def test_api_auth_config_reports_when_turnstile_is_required(client, monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "TURNSTILE_SITE_KEY", "site-key")
+    monkeypatch.setattr(config, "LOCALHOST_MODE", False)
+
+    response = client.get("/api/auth/config")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["turnstile_site_key"] == "site-key"
+    assert payload["turnstile_required"] is True
+
+    monkeypatch.setattr(config, "LOCALHOST_MODE", True)
+
+    localhost_response = client.get("/api/auth/config")
+
+    assert localhost_response.status_code == 200
+    assert localhost_response.get_json()["turnstile_required"] is False
+
+
+def test_html_security_headers_allow_turnstile_iframe(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    csp = response.headers["Content-Security-Policy"]
+    assert "frame-src 'self' https://challenges.cloudflare.com" in csp
+    assert "Cross-Origin-Embedder-Policy" not in response.headers
+
+
+def test_api_update_profile_returns_validation_errors_and_updates_name(
+    client, app, create_confirmed_user, login
+):
+    user_id, email, password = create_confirmed_user(username="valid_user", name="Old Name")
+
+    login_response = login(email, password)
+    assert login_response.status_code == 200
+    csrf_value = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    invalid_response = client.put(
+        "/api/auth/profile",
+        json={"username": "bad name"},
+        headers={"User-Agent": "Mozilla/5.0 (pytest)", "X-CSRF-Token": csrf_value},
+    )
+    assert invalid_response.status_code == 400
+    invalid_payload = invalid_response.get_json()
+    assert invalid_payload["field"] == "username"
+    assert "Username can only contain" in invalid_payload["error"]
+
+    update_response = client.put(
+        "/api/auth/profile",
+        json={"username": "updated_user", "name": "Ada Lovelace"},
+        headers={"User-Agent": "Mozilla/5.0 (pytest)", "X-CSRF-Token": csrf_value},
+    )
+    assert update_response.status_code == 200
+    updated_payload = update_response.get_json()
+    assert updated_payload["user"]["username"] == "updated_user"
+    assert updated_payload["user"]["name"] == "Ada Lovelace"
+
+    with app.app_context():
+        refreshed_user = db.session.get(User, user_id)
+        assert refreshed_user.username == "updated_user"
+        assert refreshed_user.name == "Ada Lovelace"
 
 
 def test_api_login_wrong_password_for_argon2_hash_returns_401(client, app):
@@ -56,6 +127,27 @@ def test_api_login_wrong_password_for_argon2_hash_returns_401(client, app):
 def test_resolve_cookie_domain_uses_host_only_cookies_for_local_requests():
     assert resolve_cookie_domain(".synvexai.com", "127.0.0.1:5000") is None
     assert resolve_cookie_domain(".synvexai.com", "chat.synvexai.com") == ".synvexai.com"
+
+
+def test_login_uses_non_secure_session_cookie_on_local_http(client, app, create_confirmed_user):
+    app.config["SESSION_COOKIE_SECURE"] = True
+    _, email, password = create_confirmed_user()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": password},
+        base_url="http://127.0.0.1:5000",
+        headers={"User-Agent": "Mozilla/5.0 (pytest)"},
+    )
+
+    assert response.status_code == 200
+    cookies = response.headers.getlist("Set-Cookie")
+    session_cookie = next(
+        cookie for cookie in cookies if cookie.startswith(f"{SESSION_COOKIE_NAME}=")
+    )
+    csrf_cookie = next(cookie for cookie in cookies if cookie.startswith("csrf_token="))
+    assert "Secure" not in session_cookie
+    assert "Secure" not in csrf_cookie
 
 
 def test_login_google_uses_host_only_cookies_on_local_host(client, monkeypatch):
@@ -123,14 +215,171 @@ def test_login_google_callback_error_redirect_drops_provider_query_params(client
     assert "error=" not in response.headers["Location"]
 
 
-def test_chat_echo_as_guest_returns_reply_and_request_id(client):
-    response = client.post("/chat", json={"message": "hello from pytest", "model": "echo"})
+def test_legacy_register_and_profile_routes_land_on_spa(client, create_confirmed_user, login):
+    register_response = client.get("/register")
+    assert register_response.status_code == 302
+    assert register_response.headers["Location"].endswith("/?auth=register")
+
+    user_id, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+
+    profile_response = client.get("/profile")
+    assert profile_response.status_code == 302
+    assert profile_response.headers["Location"].endswith("/#settings/account")
+
+    good_response = client.get("/good")
+    assert good_response.status_code == 303
+    assert good_response.headers["Location"].endswith("/")
+    assert user_id
+
+
+def test_password_reset_pages_render_without_removed_template_errors(
+    client, app, create_confirmed_user
+):
+    forgot_response = client.get("/forgot_password")
+    assert forgot_response.status_code == 200
+    assert "Сброс пароля" in forgot_response.get_data(as_text=True)
+
+    user_id, _, _ = create_confirmed_user()
+    with app.app_context():
+        user = db.session.get(User, user_id)
+        user.reset_token = "reset-token"
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.session.commit()
+
+    reset_response = client.get("/reset_password/reset-token")
+    assert reset_response.status_code == 200
+    assert "Новый пароль" in reset_response.get_data(as_text=True)
+
+
+def test_chat_release_model_as_guest_returns_reply_and_request_id(client, monkeypatch):
+    rate_limit_store.clear()
+    monkeypatch.setattr(
+        chat_routes,
+        "get_model_function",
+        lambda _name: lambda _user_id, payload: {"reply": payload.get("message", "")},
+    )
+
+    response = client.post("/chat", json={"message": "hello from pytest", "model": "gemini"})
 
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["ok"] is True
     assert payload["reply"] == "hello from pytest"
     assert response.headers.get("X-Request-Id")
+    rate_limit_store.clear()
+
+
+def test_chat_authenticated_uses_requested_session_id(client, app, create_confirmed_user, login):
+    rate_limit_store.clear()
+    try:
+        user_id, email, password = create_confirmed_user()
+        login_response = login(email, password)
+        assert login_response.status_code == 200
+
+        csrf_value = client.get(
+            "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
+        ).headers.get("X-CSRF-Token")
+        assert csrf_value
+
+        request_headers = {
+            "User-Agent": "Mozilla/5.0 (pytest)",
+            "X-CSRF-Token": csrf_value,
+        }
+        session_a = "user_session_alpha_1234567890"
+        session_b = "user_session_beta_1234567890"
+
+        first_response = client.post(
+            "/chat",
+            json={"message": "first message", "model": "echo", "user_id": session_a},
+            headers=request_headers,
+        )
+        second_response = client.post(
+            "/chat",
+            json={"message": "second message", "model": "echo", "user_id": session_b},
+            headers=request_headers,
+        )
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+
+        with app.app_context():
+            first_chat = UserChatHistory.query.filter_by(
+                user_id=user_id, session_id=session_a
+            ).first()
+            second_chat = UserChatHistory.query.filter_by(
+                user_id=user_id, session_id=session_b
+            ).first()
+
+            assert first_chat is not None
+            assert second_chat is not None
+            assert first_chat.session_id == session_a
+            assert second_chat.session_id == session_b
+
+            first_messages = first_chat.get_messages()
+            second_messages = second_chat.get_messages()
+
+            assert first_messages[0]["parts"][0]["text"] == "first message"
+            assert second_messages[0]["parts"][0]["text"] == "second message"
+            assert first_messages != second_messages
+    finally:
+        rate_limit_store.clear()
+
+
+def test_chat_demo_image_stream_returns_image_and_persists_history(
+    client, app, create_confirmed_user, login, monkeypatch, tmp_path
+):
+    generated_dir = tmp_path / "generated_images"
+    chats_dir = tmp_path / "chats"
+    generated_dir.mkdir()
+    chats_dir.mkdir()
+
+    monkeypatch.setattr(chat_history, "CHATS_FOLDER", chats_dir)
+    app.config["CREATE_IMAGE_FOLDER"] = str(generated_dir)
+    rate_limit_store.clear()
+    user_id, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+    csrf_value = client.get(
+        "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
+    ).headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "Draw a bright demo skyline at sunset",
+            "model": "demo_image",
+            "user_id": "demo_image_session",
+        },
+        headers={"User-Agent": "Mozilla/5.0 (pytest)", "X-CSRF-Token": csrf_value},
+    )
+
+    assert response.status_code == 200
+    assert response.headers.get("Content-Type", "").startswith("text/event-stream")
+
+    body = response.get_data(as_text=True)
+    assert '"status": "generating_image"' in body
+    assert '"/images/' in body
+
+    with app.app_context():
+        stored_chat = UserChatHistory.query.filter_by(
+            user_id=user_id,
+            session_id="demo_image_session",
+        ).first()
+        assert stored_chat is not None
+        history = stored_chat.get_messages()
+    assert len(history) == 2
+
+    assistant_message = history[-1]
+    image_parts = [part["image"] for part in assistant_message["parts"] if "image" in part]
+    assert image_parts
+    assert any(
+        part.get("text") == "Тестовое изображение готово." for part in assistant_message["parts"]
+    )
+
+    image_name = Path(image_parts[0]["url_path"]).name
+    assert (generated_dir / image_name).is_file()
+    rate_limit_store.clear()
 
 
 def test_list_sessions_paginated_with_public_share(client, app, create_confirmed_user, login):
@@ -240,12 +489,40 @@ def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user,
     assert deleted_payload["items_deleted"]["chat_shares"] == 1
 
     with app.app_context():
-        user_exists = User.query.get(user_id)
+        user_exists = db.session.get(User, user_id)
         chats_count = UserChatHistory.query.filter_by(user_id=user_id).count()
         shares_count = ChatShare.query.filter_by(user_id=user_id).count()
         assert user_exists is not None
         assert chats_count == 0
         assert shares_count == 0
+
+
+def test_privacy_delete_account_removes_user_and_clears_session(
+    client, app, create_confirmed_user, login
+):
+    user_id, email, password = create_confirmed_user(name="Delete Me")
+
+    login_response = login(email, password)
+    assert login_response.status_code == 200
+
+    csrf_value = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    delete_response = client.post(
+        "/api/privacy/delete",
+        json={"delete_account": True},
+        headers={"X-CSRF-Token": csrf_value},
+    )
+    assert delete_response.status_code == 200
+    deleted_payload = delete_response.get_json()["deleted"]
+    assert deleted_payload["account_deleted"] is True
+
+    with app.app_context():
+        assert db.session.get(User, user_id) is None
+
+    check_response = client.get("/api/auth/check")
+    payload = check_response.get_json()
+    assert payload["authenticated"] is False
 
 
 def test_health_full_includes_component_checks(client):

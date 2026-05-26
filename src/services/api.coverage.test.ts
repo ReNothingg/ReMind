@@ -60,6 +60,31 @@ describe('apiService coverage', () => {
         });
     });
 
+    it('refreshes the csrf token and retries csrf failures once', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(createJsonResponse(
+                { error: { code: 'csrf_validation_failed', message: 'CSRF token validation failed' } },
+                { ok: false, status: 403 },
+            ))
+            .mockResolvedValueOnce(createJsonResponse(
+                { ok: true },
+                { headers: { 'X-CSRF-Token': 'fresh_csrf' } },
+            ))
+            .mockResolvedValueOnce(createJsonResponse({ ok: true, saved: true }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(apiService._fetch('/csrf-retry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hello: 'world' }),
+        })).resolves.toEqual({ ok: true, saved: true });
+
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(String(fetchMock.mock.calls[1][0])).toContain('/health?format=json');
+        const retryHeaders = (fetchMock.mock.calls[2][1] as RequestInit).headers as Headers;
+        expect(retryHeaders.get('X-CSRF-Token')).toBe('fresh_csrf');
+    });
+
     it('falls back to text errors and marks serious network failures', async () => {
         const textErrorFetch = vi.fn().mockResolvedValue({
             ok: false,
@@ -92,12 +117,14 @@ describe('apiService coverage', () => {
                 .mockResolvedValueOnce({
                     done: false,
                     value: encoder.encode(
+                        'data: {"status":"generating_image","prompt":"demo skyline"}\n\n' +
                         'data: {"reply_part":"Hello","sources":["s1"],"sessionId":"abc"}\n\n',
                     ),
                 })
                 .mockResolvedValueOnce({
                     done: false,
                     value: encoder.encode(
+                        'data: {"images":["/images/demo.png"]}\n\n' +
                         'data: {"widget_update":{"kind":"status"}}\n\n' +
                         'data: {"reply":"Hello world","end_of_stream":true,"sessionSlug":"hello-world","thinkingTime":12}\n\n',
                     ),
@@ -119,11 +146,14 @@ describe('apiService coverage', () => {
 
         await apiService.chat(new FormData(), undefined, { onPart, onWidgetUpdate, onComplete });
 
+        expect(onPart).toHaveBeenCalledWith(expect.objectContaining({ status: 'generating_image' }));
         expect(onPart).toHaveBeenCalledWith(expect.objectContaining({ reply_part: 'Hello' }));
+        expect(onPart).toHaveBeenCalledWith(expect.objectContaining({ images: ['/images/demo.png'] }));
         expect(onWidgetUpdate).toHaveBeenCalledWith({ kind: 'status' });
         expect(onComplete).toHaveBeenCalledWith(
             expect.objectContaining({
                 reply: 'Hello world',
+                images: ['/images/demo.png'],
                 sessionId: 'abc',
                 sessionSlug: 'hello-world',
                 thinkingTime: 12,

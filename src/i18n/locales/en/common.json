@@ -17,6 +17,40 @@
     "login": "Login",
     "register": "Register"
   },
+  "authModal": {
+    "loginTitle": "Sign in to your account",
+    "registerTitle": "Create an account",
+    "fields": {
+      "name": "Name:",
+      "email": "Email:",
+      "password": "Password:",
+      "username": "Username:",
+      "confirmPassword": "Confirm password:"
+    },
+    "actions": {
+      "loginLoading": "Signing in...",
+      "loginWithGoogle": "Sign in with Google",
+      "registerLoading": "Creating account...",
+      "registerWithGoogle": "Sign up with Google"
+    },
+    "switch": {
+      "noAccount": "Don't have an account?",
+      "haveAccount": "Already have an account?"
+    },
+    "messages": {
+      "loginSuccess": "Successfully signed in",
+      "loginError": "Login failed",
+      "registerSuccess": "Registration successful. Check your email to confirm your account.",
+      "registerError": "Registration failed",
+      "passwordsMismatch": "Passwords do not match",
+      "usernameTooLong": "Username must not exceed 100 characters",
+      "emailTooLong": "Email must not exceed 100 characters",
+      "passwordTooLong": "Password must not exceed 100 characters",
+      "turnstileRequired": "Confirm that you are not a robot and try again.",
+      "turnstileLoadError": "Cloudflare verification did not load. Refresh the page or disable blockers for this site.",
+      "requestError": "Network or server error"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "closeEsc": "Close (Esc)",
@@ -30,6 +64,7 @@
   "landing": {
     "ariaLabel": "Start screen",
     "readonlyBanner": "Public chat: read-only",
+    "greeting": "What are you working on?",
     "welcomeMessages": [
       "Welcome!",
       "Hi! How can I help today?",
@@ -64,7 +99,11 @@
   },
   "files": {
     "removeFile": "Remove file",
-    "model3d": "3D model"
+    "preview": "Preview",
+    "code": "Code",
+    "lines": "{{count}} lines",
+    "previewAlt": "Preview of {{name}}",
+    "previewUnavailable": "Preview for file \"{{name}}\" is not available."
   },
   "share": {
     "title": "Chat sharing",
@@ -87,8 +126,10 @@
   "models": {
     "choose": "Choose a model",
     "gemini": {
-      "desc": "General-purpose Google model",
-      "badge": "Beta"
+      "desc": "General-purpose Google model"
+    },
+    "demoImage": {
+      "desc": "Image generation model in development"
     },
     "echo": {
       "desc": "Echo bot for testing"
@@ -148,6 +189,7 @@
       },
       "fields": {
         "status": "Status",
+        "name": "Name",
         "email": "Email",
         "id": "ID",
         "username": "Username"
@@ -158,12 +200,37 @@
       "ctaTitle": "Sign in or create a profile",
       "ctaDescription": "Sign in to save settings and history.",
       "signInOrRegister": "Sign in or sign up",
+      "nameHint": "Used in AI personalization when no nickname is set.",
+      "usernameHint": "3-50 characters: letters, numbers, underscore, and hyphen.",
       "emailReadonlyHint": "Email can't be changed.",
       "saving": "Saving...",
       "saveChanges": "Save changes",
       "signOut": "Sign out",
       "profileUpdated": "Profile updated",
-      "updateError": "Update failed"
+      "updateError": "Update failed",
+      "validation": {
+        "nameRequired": "Enter your name",
+        "nameLength": "Name must be 1-100 characters",
+        "nameInvalidCharacters": "Name contains invalid characters",
+        "usernameRequired": "Enter a username",
+        "usernameLength": "Username must be 3-50 characters",
+        "usernameCharset": "Username can only contain letters, numbers, underscore, and hyphen",
+        "usernameStartsWith": "Username cannot start with underscore or hyphen",
+        "usernameTaken": "This username is already taken",
+        "emailTaken": "This email is already registered"
+      },
+      "delete": {
+        "title": "Delete account",
+        "description": "This permanently removes your profile, settings, history, and shared chats.",
+        "confirmLabel": "Confirm deletion",
+        "confirmHint": "Type your current username: {{username}}",
+        "confirmPlaceholder": "Enter your username",
+        "confirmationMismatch": "Enter your current username to delete the account",
+        "action": "Delete account",
+        "actionLoading": "Deleting account...",
+        "success": "Account deleted",
+        "error": "Failed to delete account"
+      }
     },
     "appearance": {
       "themeGroup": "Theme",
@@ -218,10 +285,6 @@
       "showChatPreview": {
         "title": "Show preview",
         "description": "Show the last message in the chat list."
-      },
-      "showSuggestions": {
-        "title": "Show suggestions",
-        "description": "Show prompt suggestions on the start page."
       },
       "autocomplete": {
         "title": "Autocomplete",
@@ -306,6 +369,49 @@
       "bengali": "Bengali"
     }
   },
+  "chatImage": {
+    "open": "Open",
+    "unavailableTitle": "Preview unavailable",
+    "unavailableDescription": "The image could not be loaded."
+  },
+  "imageLightbox": {
+    "badge": "Preview",
+    "title": "Image preview",
+    "demoTitle": "ReMind demo image",
+    "subtitle": "Review the full image, regenerate it in another style, or download the file.",
+    "previewAlt": "Image preview",
+    "close": "Close",
+    "styleLabel": "Style",
+    "promptLabel": "Original prompt",
+    "promptFallback": "The original prompt is unavailable for this image.",
+    "actions": {
+      "regenerate": "Regenerate",
+      "regenerating": "Generating...",
+      "download": "Download"
+    },
+    "styles": {
+      "realistic": "Realistic",
+      "cartoon": "Cartoon",
+      "anime": "Anime",
+      "oilPainting": "Oil painting",
+      "watercolor": "Watercolor",
+      "pencilSketch": "Pencil sketch"
+    },
+    "details": {
+      "style": "Style: {{style}}",
+      "resolution": "{{width}} x {{height}} px"
+    },
+    "errors": {
+      "missingSourceMessage": "Could not find the original user message.",
+      "missingPrompt": "No source prompt was found for image regeneration.",
+      "missingResult": "The model did not return a new image.",
+      "missingImage": "No image is available for download.",
+      "regenerateFailed": "Could not regenerate the image: {{message}}",
+      "downloadFailed": "Could not download the image. The original file will be opened in a new tab.",
+      "previewTitle": "Image preview unavailable",
+      "previewDescription": "Check the file path or regenerate the image."
+    }
+  },
   "quiz": {
     "dataError": "Quiz data error",
     "completed": "Quiz completed!",
@@ -317,5 +423,100 @@
   },
   "spinwheel": {
     "spin": "Spin"
+  },
+  "minds": {
+    "subtitle": "Create and manage custom AI minds for different tasks and conversation styles.",
+    "create": "Create",
+    "searchPlaceholder": "Search minds",
+    "searchAria": "Search minds",
+    "tabsAria": "Minds sections",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "My minds"
+    },
+    "categoriesAria": "Mind categories",
+    "categories": {
+      "all": "All",
+      "general": "General",
+      "education": "Education",
+      "development": "Development",
+      "productivity": "Productivity",
+      "creative": "Creative",
+      "business": "Business",
+      "security": "Security"
+    },
+    "visibility": {
+      "private": "Only me",
+      "link": "Anyone with the link",
+      "linkShort": "By link",
+      "linkLong": "Anyone with the link",
+      "store": "Mind store"
+    },
+    "verified": "Approved by the creator",
+    "startersAria": "Conversation starters",
+    "openChat": "Open chat",
+    "pinTitle": "Pin to app rail",
+    "unpinTitle": "Unpin from app rail",
+    "pinAria": "Pin mind",
+    "unpinAria": "Unpin mind",
+    "edit": "Edit",
+    "editAria": "Edit mind",
+    "delete": "Delete",
+    "loading": "Loading minds...",
+    "emptyMine": "You have not created any minds yet.",
+    "emptyStore": "No minds found for this query.",
+    "confirmDelete": "Delete mind \"{{name}}\"?",
+    "pinnedAria": "Pinned minds",
+    "disableActive": "Disable mind",
+    "errors": {
+      "load": "Could not load minds. Try refreshing the page.",
+      "pin": "Could not update mind pinning.",
+      "delete": "Could not delete mind.",
+      "authRequired": "Sign in to perform this action.",
+      "accessDenied": "You do not have access to this mind.",
+      "notFound": "The minds service is unavailable or the mind was not found. Check that the backend is running with the new API routes.",
+      "rateLimited": "Too many requests. Wait a bit and try again.",
+      "editAccess": "You do not have permission to edit this mind.",
+      "editorLoad": "Could not load the mind editor.",
+      "save": "Could not save the mind. Check the fields and try again."
+    },
+    "validation": {
+      "name": "Name must contain at least 2 characters.",
+      "description": "Description must contain at least 8 characters.",
+      "instructions": "Instructions must contain at least 16 characters.",
+      "category": "Choose a category for Mind store."
+    },
+    "editor": {
+      "authTitle": "Creating minds is available after sign in",
+      "back": "Back",
+      "editTitle": "Edit mind",
+      "createTitle": "Create mind",
+      "editSubtitle": "Manage settings and access.",
+      "createSubtitle": "Configure your own AI.",
+      "loading": "Loading editor...",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "instructions": "Instructions",
+        "starters": "Conversation starters"
+      },
+      "placeholders": {
+        "name": "Name your mind",
+        "description": "Briefly describe what your mind does",
+        "instructions": "What does the mind do, how does it behave, what is its personality and role?",
+        "starter": "Prompt button for users"
+      },
+      "removeStarter": "Remove starter",
+      "addStarter": "Add starter",
+      "access": "Access",
+      "category": "Category",
+      "check": "Check",
+      "basicReady": "Main fields are filled",
+      "startersReady": "Starters are ready",
+      "saving": "Saving...",
+      "saveChanges": "Save changes",
+      "createAction": "Create mind"
+    },
+    "activeLabel": "Mind active"
   }
 }
