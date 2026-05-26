@@ -2,7 +2,7 @@
   position: fixed;
   top: calc(var(--spacing-unit) * 3 + env(safe-area-inset-top));
 
-  left: calc(64px + var(--spacing-unit) * 3 + env(safe-area-inset-left));
+  left: calc(var(--app-rail-offset) + var(--spacing-unit) * 3 + env(safe-area-inset-left));
   right: calc(var(--spacing-unit) * 3 + env(safe-area-inset-right));
 
   display: flex;

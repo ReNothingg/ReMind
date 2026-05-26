@@ -1,10 +1,12 @@
-FROM node:20-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /app
-COPY package*.json vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY package*.json ./
+RUN npm ci
+COPY vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY src ./src
 COPY public ./public
 COPY index.html ./
-RUN npm ci && npm run build
+RUN npm run build
 FROM python:3.11-slim AS builder
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \

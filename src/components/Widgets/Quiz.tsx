@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const Quiz = ({ initialState }) => {
@@ -8,17 +8,15 @@ const Quiz = ({ initialState }) => {
     const [score, setScore] = useState(0);
     const [showResult, setShowResult] = useState(false);
     const [selectedChoice, setSelectedChoice] = useState(null);
-    const [isCorrect, setIsCorrect] = useState(null);
     const [showHint, setShowHint] = useState(false);
 
     const currentCard = cards[currentIndex];
 
     const handleChoice = (choiceIndex) => {
-        if (selectedChoice !== null) return; // Block interaction
+        if (selectedChoice !== null) return;
 
         const correct = choiceIndex === currentCard.correct_index;
         setSelectedChoice(choiceIndex);
-        setIsCorrect(correct);
         if (correct) setScore(s => s + 1);
     };
 
@@ -26,7 +24,6 @@ const Quiz = ({ initialState }) => {
         if (currentIndex < cards.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setSelectedChoice(null);
-            setIsCorrect(null);
             setShowHint(false);
         } else {
             setShowResult(true);
@@ -38,7 +35,6 @@ const Quiz = ({ initialState }) => {
         setScore(0);
         setShowResult(false);
         setSelectedChoice(null);
-        setIsCorrect(null);
         setShowHint(false);
     };
 

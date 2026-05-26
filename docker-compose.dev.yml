@@ -1,0 +1,148 @@
+name: remind_dev
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: frontend-dev
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://backend:5000
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dev
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: backend-dev
+    command: flask --app app_factory:create_app run --host=0.0.0.0 --port=5000 --debug
+    ports:
+      - "5000:5000"
+    env_file:
+      - path: .env.dev
+        required: false
+    environment:
+      - ENVIRONMENT=development
+      - LOAD_DOTENV=false
+      - FLASK_SKIP_DOTENV=1
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - SECRET_KEY=dev-secret-key-change-me
+      - GEMINI_MODEL_NAME=gemini-2.5-flash
+      - BACKEND_URL=http://127.0.0.1:5000
+      - DATABASE_URL=postgresql://remind:remind-dev-password@db:5432/remind_db
+      - REDIS_URL=redis://:remind-dev-redis-password@redis:6379/0
+      - CELERY_BROKER_URL=redis://:remind-dev-redis-password@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:remind-dev-redis-password@redis:6379/1
+      - LOCALHOST_MODE=True
+      - ALLOW_GUEST_CHATS_SAVE=True
+      - ENABLE_STRICT_HTTPS=False
+      - VALIDATE_USER_AGENT=False
+      - CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
+      - ALLOWED_HOSTS=127.0.0.1,localhost,backend
+      - SESSION_COOKIE_DOMAIN=
+      - SESSION_COOKIE_NAME=remind_dev_session
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - dev
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: backend-dev
+    command: python scripts/reload_on_change.py -- celery -A celery_worker.celery worker --loglevel=info --concurrency=2 --pool=solo
+    env_file:
+      - path: .env.dev
+        required: false
+    environment:
+      - ENVIRONMENT=development
+      - LOAD_DOTENV=false
+      - FLASK_SKIP_DOTENV=1
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - SECRET_KEY=dev-secret-key-change-me
+      - DATABASE_URL=postgresql://remind:remind-dev-password@db:5432/remind_db
+      - REDIS_URL=redis://:remind-dev-redis-password@redis:6379/0
+      - CELERY_BROKER_URL=redis://:remind-dev-redis-password@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:remind-dev-redis-password@redis:6379/1
+      - ENABLE_STRICT_HTTPS=False
+      - VALIDATE_USER_AGENT=False
+      - SESSION_COOKIE_DOMAIN=
+      - SESSION_COOKIE_NAME=remind_dev_session
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - dev
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: remind
+      POSTGRES_PASSWORD: remind-dev-password
+      POSTGRES_DB: remind_db
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remind -d remind_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      - REDISCLI_AUTH=remind-dev-redis-password
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - remind-dev-redis-password
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - dev
+
+volumes:
+  frontend_node_modules:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  dev:

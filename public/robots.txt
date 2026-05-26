@@ -4,4 +4,4 @@ Disallow: /admin
 Disallow: /api
 Disallow: /database
 
-Sitemap: https://chat.synvexai.com/public/sitemap.xml
+Sitemap: https://chat.synvexai.com/sitemap.xml

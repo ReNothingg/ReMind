@@ -1,19 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { fileURLToPath, URL } from 'node:url'
+
+const backendTarget = process.env.VITE_BACKEND_URL || process.env.BACKEND_URL || 'http://127.0.0.1:5000'
+const srcDir = fileURLToPath(new URL('./src', import.meta.url))
+const nodeBuiltinBrowserStub = fileURLToPath(new URL('./src/utils/nodeBuiltinBrowserStub.ts', import.meta.url))
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": "/src"
+      "@": srcDir,
+      "fs": nodeBuiltinBrowserStub,
+      "path": nodeBuiltinBrowserStub,
     }
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          'cytoscape': ['cytoscape-fcose'],
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'vendor': ['react', 'react-dom'],
           'markdown': ['markdown-it', 'prismjs', 'dompurify', 'katex']
         }
       }
@@ -21,46 +28,56 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000
   },
   server: {
-    port: 5000,
+    port: 5173,
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/chat': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+      '/health': {
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+      '/images': {
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/sessions': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/login': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/synthesize': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/translate': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
       '/canvas-action': {
-        target: 'http://127.0.0.1:5000',
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },

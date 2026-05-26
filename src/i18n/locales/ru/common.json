@@ -17,6 +17,40 @@
     "login": "Войти",
     "register": "Регистрация"
   },
+  "authModal": {
+    "loginTitle": "Войти в аккаунт",
+    "registerTitle": "Создать аккаунт",
+    "fields": {
+      "email": "Email:",
+      "name": "Имя:",
+      "password": "Пароль:",
+      "username": "Имя пользователя:",
+      "confirmPassword": "Повторите пароль:"
+    },
+    "actions": {
+      "loginLoading": "Вход...",
+      "loginWithGoogle": "Войти с Google",
+      "registerLoading": "Регистрация...",
+      "registerWithGoogle": "Зарегистрироваться с Google"
+    },
+    "switch": {
+      "noAccount": "Нет аккаунта?",
+      "haveAccount": "Уже есть аккаунт?"
+    },
+    "messages": {
+      "loginSuccess": "Успешный вход",
+      "loginError": "Ошибка входа",
+      "registerSuccess": "Регистрация успешна. Проверьте email для подтверждения аккаунта.",
+      "registerError": "Ошибка регистрации",
+      "passwordsMismatch": "Пароли не совпадают",
+      "usernameTooLong": "Имя пользователя не должно превышать 100 символов",
+      "emailTooLong": "Email не должен превышать 100 символов",
+      "passwordTooLong": "Пароль не должен превышать 100 символов",
+      "turnstileRequired": "Подтвердите, что вы не робот, и попробуйте снова.",
+      "turnstileLoadError": "Проверка Cloudflare не загрузилась. Обновите страницу или отключите блокировщики для этого сайта.",
+      "requestError": "Ошибка сети или сервера"
+    }
+  },
   "common": {
     "loading": "Загрузка...",
     "closeEsc": "Закрыть (Esc)",
@@ -30,6 +64,7 @@
   "landing": {
     "ariaLabel": "Стартовый экран",
     "readonlyBanner": "Публичный чат: только чтение",
+    "greeting": "Над чем ты работаешь?",
     "welcomeMessages": [
       "Добро пожаловать!",
       "Привет! Чем могу помочь сегодня?",
@@ -64,7 +99,11 @@
   },
   "files": {
     "removeFile": "Удалить файл",
-    "model3d": "3D модель"
+    "preview": "Просмотр",
+    "code": "Код",
+    "lines": "{{count}} строк",
+    "previewAlt": "Предпросмотр файла {{name}}",
+    "previewUnavailable": "Предпросмотр файла \"{{name}}\" недоступен."
   },
   "share": {
     "title": "Общий доступ к чату",
@@ -87,8 +126,10 @@
   "models": {
     "choose": "Выберите модель",
     "gemini": {
-      "desc": "Универсальная модель от Google",
-      "badge": "Beta"
+      "desc": "Универсальная модель от Google"
+    },
+    "demoImage": {
+      "desc": "Модель генерации изображений в разработке"
     },
     "echo": {
       "desc": "Эхо-бот для тестов"
@@ -149,6 +190,7 @@
       "fields": {
         "status": "Статус",
         "email": "Email",
+        "name": "Имя",
         "id": "ID",
         "username": "Имя пользователя"
       },
@@ -158,12 +200,37 @@
       "ctaTitle": "Войдите или создайте профиль",
       "ctaDescription": "Авторизуйтесь, чтобы сохранять настройки и историю.",
       "signInOrRegister": "Войти или зарегистрироваться",
+      "nameHint": "Используется в персонализации ИИ, если псевдоним не указан.",
+      "usernameHint": "3-50 символов: буквы, цифры, подчёркивание и дефис.",
       "emailReadonlyHint": "Email нельзя изменить.",
       "saving": "Сохранение...",
       "saveChanges": "Сохранить изменения",
       "signOut": "Выйти из аккаунта",
-      "profileUpdated": "Профиль обновлен",
-      "updateError": "Ошибка обновления"
+      "profileUpdated": "Профиль обновлён",
+      "updateError": "Ошибка обновления",
+      "validation": {
+        "nameRequired": "Укажите имя",
+        "nameLength": "Имя должно содержать от 1 до 100 символов",
+        "nameInvalidCharacters": "Имя содержит недопустимые символы",
+        "usernameRequired": "Укажите имя пользователя",
+        "usernameLength": "Имя пользователя должно содержать от 3 до 50 символов",
+        "usernameCharset": "Имя пользователя может содержать только буквы, цифры, подчёркивание и дефис",
+        "usernameStartsWith": "Имя пользователя не может начинаться с подчёркивания или дефиса",
+        "usernameTaken": "Это имя пользователя уже занято",
+        "emailTaken": "Этот email уже зарегистрирован"
+      },
+      "delete": {
+        "title": "Удалить аккаунт",
+        "description": "Это навсегда удалит ваш профиль, настройки, историю и общие чаты.",
+        "confirmLabel": "Подтверждение удаления",
+        "confirmHint": "Введите текущее имя пользователя: {{username}}",
+        "confirmPlaceholder": "Введите имя пользователя",
+        "confirmationMismatch": "Введите текущее имя пользователя, чтобы удалить аккаунт",
+        "action": "Удалить аккаунт",
+        "actionLoading": "Удаление аккаунта...",
+        "success": "Аккаунт удалён",
+        "error": "Не удалось удалить аккаунт"
+      }
     },
     "appearance": {
       "themeGroup": "Тема оформления",
@@ -218,10 +285,6 @@
       "showChatPreview": {
         "title": "Показывать предпросмотр",
         "description": "Отображать последнее сообщение в списке чатов."
-      },
-      "showSuggestions": {
-        "title": "Показывать подсказки",
-        "description": "Отображать предложения промптов на главной странице."
       },
       "autocomplete": {
         "title": "Автодополнение",
@@ -306,6 +369,48 @@
       "bengali": "Бенгальский"
     }
   },
+  "chatImage": {
+    "open": "Открыть",
+    "unavailableTitle": "Превью недоступно",
+    "unavailableDescription": "Изображение не удалось загрузить."
+  },
+  "imageLightbox": {
+    "badge": "Превью",
+    "title": "Просмотр изображения",
+    "demoTitle": "Демо-изображение ReMind",
+    "previewAlt": "Предпросмотр изображения",
+    "close": "Закрыть",
+    "styleLabel": "Стиль",
+    "promptLabel": "Исходный запрос",
+    "promptFallback": "Для этого изображения не удалось получить исходный запрос.",
+    "actions": {
+      "regenerate": "Регенерировать",
+      "regenerating": "Генерация...",
+      "download": "Скачать"
+    },
+    "styles": {
+      "realistic": "Реалистичный",
+      "cartoon": "Мультяшный",
+      "anime": "Аниме",
+      "oilPainting": "Масляная живопись",
+      "watercolor": "Акварель",
+      "pencilSketch": "Карандашный набросок"
+    },
+    "details": {
+      "style": "Стиль: {{style}}",
+      "resolution": "{{width}} x {{height}} px"
+    },
+    "errors": {
+      "missingSourceMessage": "Не удалось найти исходное сообщение пользователя.",
+      "missingPrompt": "Нет текста запроса для регенерации изображения.",
+      "missingResult": "Модель не вернула новое изображение.",
+      "missingImage": "Нет изображения для скачивания.",
+      "regenerateFailed": "Не удалось регенерировать изображение: {{message}}",
+      "downloadFailed": "Не удалось скачать изображение. Открою оригинал в новой вкладке.",
+      "previewTitle": "Не удалось открыть изображение",
+      "previewDescription": "Проверьте путь к файлу или попробуйте заново сгенерировать картинку."
+    }
+  },
   "quiz": {
     "dataError": "Ошибка данных квиза",
     "completed": "Квиз завершён!",
@@ -317,5 +422,100 @@
   },
   "spinwheel": {
     "spin": "Вращать"
+  },
+  "minds": {
+    "subtitle": "Создавайте и управляйте собственными ИИ для разных задач и стилей общения.",
+    "create": "Создать",
+    "searchPlaceholder": "Поиск по minds",
+    "searchAria": "Поиск по minds",
+    "tabsAria": "Разделы minds",
+    "tabs": {
+      "store": "Mind store",
+      "mine": "Мои minds"
+    },
+    "categoriesAria": "Категории minds",
+    "categories": {
+      "all": "Все",
+      "general": "Общее",
+      "education": "Обучение",
+      "development": "Разработка",
+      "productivity": "Продуктивность",
+      "creative": "Креатив",
+      "business": "Бизнес",
+      "security": "Безопасность"
+    },
+    "visibility": {
+      "private": "Только я",
+      "link": "По ссылке",
+      "linkShort": "По ссылке",
+      "linkLong": "Все, у кого есть ссылка",
+      "store": "Mind store"
+    },
+    "verified": "Одобрено создателем",
+    "startersAria": "Начало обсуждения",
+    "openChat": "Открыть чат",
+    "pinTitle": "Закрепить в app-rail",
+    "unpinTitle": "Открепить из app-rail",
+    "pinAria": "Закрепить mind",
+    "unpinAria": "Открепить mind",
+    "edit": "Изменить",
+    "editAria": "Редактировать mind",
+    "delete": "Удалить",
+    "loading": "Загрузка minds...",
+    "emptyMine": "У вас пока нет созданных minds.",
+    "emptyStore": "По этому запросу minds не найдены.",
+    "confirmDelete": "Удалить mind \"{{name}}\"?",
+    "pinnedAria": "Закрепленные minds",
+    "disableActive": "Отключить mind",
+    "errors": {
+      "load": "Не удалось загрузить minds. Попробуйте обновить страницу.",
+      "pin": "Не удалось обновить закрепление mind.",
+      "delete": "Не удалось удалить mind.",
+      "authRequired": "Войдите в аккаунт, чтобы выполнить это действие.",
+      "accessDenied": "У вас нет доступа к этому mind.",
+      "notFound": "Сервис minds недоступен или mind не найден. Проверьте, что backend запущен с новыми API routes.",
+      "rateLimited": "Слишком много запросов. Подождите немного и попробуйте снова.",
+      "editAccess": "У вас нет доступа к редактированию этого mind.",
+      "editorLoad": "Не удалось загрузить редактор mind.",
+      "save": "Не удалось сохранить mind. Проверьте поля и попробуйте еще раз."
+    },
+    "validation": {
+      "name": "Название должно содержать минимум 2 символа.",
+      "description": "Описание должно содержать минимум 8 символов.",
+      "instructions": "Инструкции должны содержать минимум 16 символов.",
+      "category": "Выберите категорию для Mind store."
+    },
+    "editor": {
+      "authTitle": "Создание minds доступно после входа",
+      "back": "Назад",
+      "editTitle": "Редактировать mind",
+      "createTitle": "Создать mind",
+      "editSubtitle": "Управление настройками и доступом.",
+      "createSubtitle": "Настройка собственного ИИ.",
+      "loading": "Загрузка редактора...",
+      "fields": {
+        "name": "Название",
+        "description": "Описание",
+        "instructions": "Инструкции",
+        "starters": "Начало обсуждения"
+      },
+      "placeholders": {
+        "name": "Назовите свой mind",
+        "description": "Краткое описание того, что делает ваш mind",
+        "instructions": "Что делает mind, как он себя ведет, его характер и функцию",
+        "starter": "Подсказка-кнопка для пользователей"
+      },
+      "removeStarter": "Удалить подсказку",
+      "addStarter": "Добавить подсказку",
+      "access": "Доступ",
+      "category": "Категория",
+      "check": "Проверка",
+      "basicReady": "Основные поля заполнены",
+      "startersReady": "Подсказки готовы",
+      "saving": "Сохранение...",
+      "saveChanges": "Сохранить изменения",
+      "createAction": "Создать mind"
+    },
+    "activeLabel": "Активный mind"
   }
 }
