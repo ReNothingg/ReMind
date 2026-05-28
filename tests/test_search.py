@@ -28,7 +28,137 @@ def test_extract_text_from_html_removes_script_and_style():
     assert ".hidden" not in text
 
 
+def test_robots_txt_allows_uses_specific_group_and_allow_precedence(monkeypatch):
+    web_search._robots_policy_for_origin.cache_clear()
+
+    class FakeResponse:
+        status_code = 200
+        encoding = "utf-8"
+        apparent_encoding = "utf-8"
+
+        def __init__(self, body):
+            self.body = body.encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _traceback):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size):
+            yield self.body
+
+    calls = []
+
+    def fake_get(url, **_kwargs):
+        calls.append(url)
+        return FakeResponse(
+            "\n".join(
+                [
+                    "User-agent: ReMindBot",
+                    "Disallow: /private",
+                    "Allow: /private/public",
+                    "",
+                    "User-agent: *",
+                    "Disallow: /",
+                ]
+            )
+        )
+
+    monkeypatch.setattr(web_search.requests, "get", fake_get)
+
+    try:
+        assert not web_search.robots_txt_allows("https://example.com/private/story")
+        assert web_search.robots_txt_allows("https://example.com/private/public/story")
+        assert web_search.robots_txt_allows("https://example.com/news")
+        assert calls == ["https://example.com/robots.txt"]
+    finally:
+        web_search._robots_policy_for_origin.cache_clear()
+
+
+def test_robots_txt_allows_when_robots_unavailable(monkeypatch):
+    web_search._robots_policy_for_origin.cache_clear()
+
+    def fake_get(*_args, **_kwargs):
+        raise web_search.requests.RequestException("robots timeout")
+
+    monkeypatch.setattr(web_search.requests, "get", fake_get)
+
+    try:
+        assert web_search.robots_txt_allows("https://example.com/news")
+    finally:
+        web_search._robots_policy_for_origin.cache_clear()
+
+
+def test_fetch_full_page_skips_robots_disallowed_url(monkeypatch):
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url: False)
+
+    def fail_get(*_args, **_kwargs):
+        raise AssertionError("disallowed pages must not be fetched")
+
+    monkeypatch.setattr(web_search.requests, "get", fail_get)
+
+    result = web_search.fetch_full_page("https://93.184.216.34/private")
+
+    assert result["ok"] is False
+    assert result["error"] == "robots_txt_disallowed"
+    assert result["text"] == ""
+
+
+def test_run_web_search_skips_robots_disallowed_sources(monkeypatch):
+    monkeypatch.setattr(web_search, "is_public_http_url", lambda _url, **_kwargs: True)
+    monkeypatch.setattr(
+        web_search,
+        "web_search_free",
+        lambda query, max_results: [
+            {
+                "title": "Blocked source",
+                "url": "https://blocked.example/private",
+                "snippet": "Blocked snippet",
+            },
+            {
+                "title": "Allowed source",
+                "url": "https://allowed.example/news",
+                "snippet": "Allowed snippet",
+            },
+        ],
+    )
+    monkeypatch.setattr(
+        web_search,
+        "robots_txt_allows",
+        lambda url: "blocked.example" not in url,
+    )
+    fetched_urls = []
+
+    def fake_fetch_full_page(url):
+        fetched_urls.append(url)
+        return {
+            "ok": True,
+            "final_url": url,
+            "status_code": 200,
+            "content_type": "text/html",
+            "text": "Allowed full page text",
+            "favicon_url": "https://allowed.example/favicon.ico",
+            "error": None,
+        }
+
+    monkeypatch.setattr(web_search, "fetch_full_page", fake_fetch_full_page)
+
+    result = web_search.run_web_search("latest news", max_results=2)
+
+    assert fetched_urls == ["https://allowed.example/news"]
+    assert len(result["sources"]) == 1
+    assert result["sources"][0]["title"] == "Allowed source"
+    assert "blocked.example" not in result["context"]
+    assert "Blocked snippet" not in result["context"]
+
+
 def test_run_web_search_builds_sources_and_model_context(monkeypatch):
+    monkeypatch.setattr(web_search, "is_public_http_url", lambda _url, **_kwargs: True)
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url: True)
     monkeypatch.setattr(
         web_search,
         "web_search_free",

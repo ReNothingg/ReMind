@@ -4,7 +4,9 @@ import json
 import ipaddress
 import re
 import socket
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any
 from urllib.parse import parse_qs, quote_plus, unquote, urljoin, urlparse
 
@@ -30,6 +32,29 @@ SEARCH_HEADERS = {
 
 BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0"}
 BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal")
+ROBOTS_USER_AGENT = "ReMindBot"
+ROBOTS_MAX_BYTES = 512 * 1024
+
+
+@dataclass(frozen=True)
+class RobotsRule:
+    path: str
+    allow: bool
+
+
+@dataclass(frozen=True)
+class RobotsPolicy:
+    rules: tuple[RobotsRule, ...] = ()
+
+    def can_fetch(self, url: str) -> bool:
+        target = robots_match_target(url)
+        matches = [rule for rule in self.rules if robots_path_matches(rule.path, target)]
+        if not matches:
+            return True
+
+        best_length = max(len(rule.path.rstrip("$")) for rule in matches)
+        best_matches = [rule for rule in matches if len(rule.path.rstrip("$")) == best_length]
+        return any(rule.allow for rule in best_matches)
 
 
 def is_truthy(value: Any) -> bool:
@@ -335,6 +360,160 @@ def is_public_http_url(url: str, *, resolve_hostname: bool = False) -> bool:
     )
 
 
+def robots_match_target(url: str) -> str:
+    parsed = urlparse(url or "")
+    path = parsed.path or "/"
+    if parsed.params:
+        path = f"{path};{parsed.params}"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+    return path
+
+
+def robots_path_matches(pattern: str, target: str) -> bool:
+    if not pattern:
+        return False
+
+    anchored = pattern.endswith("$")
+    pattern_body = pattern[:-1] if anchored else pattern
+    regex = re.escape(pattern_body).replace(r"\*", ".*")
+    if anchored:
+        regex = f"^{regex}$"
+    else:
+        regex = f"^{regex}"
+    return re.match(regex, target) is not None
+
+
+def _robots_agent_score(agent: str, user_agent: str) -> int | None:
+    normalized_agent = str(agent or "").strip().lower()
+    normalized_user_agent = str(user_agent or "").strip().lower()
+    if not normalized_agent:
+        return None
+    if normalized_agent == "*":
+        return 0
+    if normalized_agent in normalized_user_agent:
+        return len(normalized_agent)
+    return None
+
+
+def _parse_robots_txt(robots_text: str, user_agent: str = ROBOTS_USER_AGENT) -> RobotsPolicy:
+    groups: list[tuple[list[str], list[RobotsRule]]] = []
+    current_agents: list[str] = []
+    current_rules: list[RobotsRule] = []
+    seen_rule = False
+
+    def finish_group() -> None:
+        if current_agents:
+            groups.append((current_agents.copy(), current_rules.copy()))
+
+    for raw_line in str(robots_text or "").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            finish_group()
+            current_agents = []
+            current_rules = []
+            seen_rule = False
+            continue
+
+        if ":" not in line:
+            continue
+
+        field, value = line.split(":", 1)
+        field = field.strip().lower()
+        value = value.strip()
+
+        if field == "user-agent":
+            if current_agents and seen_rule:
+                finish_group()
+                current_agents = []
+                current_rules = []
+                seen_rule = False
+            if value:
+                current_agents.append(value.lower())
+            continue
+
+        if field not in {"allow", "disallow"} or not current_agents:
+            continue
+
+        seen_rule = True
+        if not value:
+            continue
+        current_rules.append(RobotsRule(path=value, allow=field == "allow"))
+
+    finish_group()
+
+    best_score: int | None = None
+    selected_rules: list[RobotsRule] = []
+    for agents, rules in groups:
+        matching_scores = [
+            score
+            for agent in agents
+            for score in [_robots_agent_score(agent, user_agent)]
+            if score is not None
+        ]
+        group_score = max(matching_scores, default=None)
+        if group_score is None:
+            continue
+        if best_score is None or group_score > best_score:
+            best_score = group_score
+            selected_rules = list(rules)
+        elif group_score == best_score:
+            selected_rules.extend(rules)
+
+    return RobotsPolicy(rules=tuple(selected_rules))
+
+
+def _origin_from_url(url: str) -> str:
+    parsed = urlparse(url or "")
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+@lru_cache(maxsize=256)
+def _robots_policy_for_origin(origin: str, user_agent: str = ROBOTS_USER_AGENT) -> RobotsPolicy:
+    if not origin:
+        return RobotsPolicy()
+
+    robots_url = urljoin(f"{origin.rstrip('/')}/", "/robots.txt")
+    try:
+        with requests.get(
+            robots_url,
+            headers=SEARCH_HEADERS,
+            timeout=WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
+            allow_redirects=False,
+            stream=True,
+        ) as response:
+            if response.status_code >= 400:
+                return RobotsPolicy()
+            response.raise_for_status()
+
+            chunks: list[bytes] = []
+            size = 0
+            for chunk in response.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                size += len(chunk)
+                if size >= ROBOTS_MAX_BYTES:
+                    break
+
+            raw_body = b"".join(chunks)
+            encoding = response.encoding or response.apparent_encoding or "utf-8"
+            return _parse_robots_txt(raw_body.decode(encoding, errors="replace"), user_agent)
+    except Exception:
+        return RobotsPolicy()
+
+
+def robots_txt_allows(url: str, *, resolve_hostname: bool = False) -> bool:
+    if not is_public_http_url(url, resolve_hostname=resolve_hostname):
+        return False
+    origin = _origin_from_url(url)
+    if not origin:
+        return False
+    return _robots_policy_for_origin(origin, ROBOTS_USER_AGENT).can_fetch(url)
+
+
 def normalize_search_url(url: str) -> str:
     normalized = str(url or "").strip()
     if not normalized:
@@ -428,6 +607,16 @@ def fetch_full_page(url: str) -> dict[str, Any]:
             "text": "",
             "favicon_url": None,
             "error": "blocked_or_invalid_url",
+        }
+    if not robots_txt_allows(url):
+        return {
+            "ok": False,
+            "final_url": url,
+            "status_code": None,
+            "content_type": None,
+            "text": "",
+            "favicon_url": None,
+            "error": "robots_txt_disallowed",
         }
 
     try:
@@ -557,7 +746,7 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
             "context": "",
         }
 
-    raw_results = web_search_free(normalized_query, max_results=max_results)
+    raw_results = web_search_free(normalized_query, max_results=min(10, max_results * 2))
     seen_urls: set[str] = set()
     sources: list[dict[str, Any]] = []
 
@@ -566,13 +755,18 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
         if not url or url in seen_urls:
             continue
         seen_urls.add(url)
+        if not is_public_http_url(url, resolve_hostname=True) or not robots_txt_allows(url):
+            continue
 
         page = fetch_full_page(url)
         final_url = normalize_search_url(page.get("final_url") or url) or url
         title = str(raw.get("title") or get_site_name(final_url)).strip()
         snippet = compact_text(raw.get("snippet") or "", 360)
         page_text = compact_text(page.get("text") or "", WEB_SEARCH_PAGE_TEXT_CHARS)
-        favicon_url = page.get("favicon_url") or f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}/favicon.ico"
+        favicon_url = (
+            page.get("favicon_url")
+            or f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}/favicon.ico"
+        )
 
         sources.append(
             {
@@ -591,6 +785,8 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
                 "error": page.get("error"),
             }
         )
+        if len(sources) >= max_results:
+            break
 
     result = {
         "query": normalized_query,
