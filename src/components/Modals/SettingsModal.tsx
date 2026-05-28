@@ -656,7 +656,13 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                 title={t('settings.personalization.title')}
                                 description={t('settings.personalization.description')}
                             >
-                                <SettingField label={t('settings.personalization.instructionsLabel')}>
+                                <SettingToggle
+                                    title={t('settings.personalization.automaticWebSearch.title')}
+                                    description={t('settings.personalization.automaticWebSearch.description')}
+                                    checked={!!settings.automaticWebSearch}
+                                    onClick={() => updateSetting('automaticWebSearch', !settings.automaticWebSearch)}
+                                />
+                                <SettingField label={t('settings.personalization.instructionsLabel')} withDivider>
                                     <textarea
                                         className={cn(settingsInputClass, 'min-h-32 resize-y')}
                                         rows={5}

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BadgeCheck, BrainCircuit, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -13,9 +13,14 @@ import { notifyThinkingDone } from './utils/notifications';
 import { ALLOW_GUEST_CHATS_SAVE } from './utils/constants';
 import GlobalHeader from './features/chat/components/GlobalHeader';
 import { getFallbackModelId, isModelAvailable } from './features/chat/modelCatalog';
-import { useSessionList } from './features/sessions/hooks/useSessionList';
+import { useSessionList, type SessionSummary } from './features/sessions/hooks/useSessionList';
 
 type AuthModalState = false | 'login' | 'register';
+
+type ChatSessionActivity = {
+    status?: 'generating' | 'complete' | 'error';
+    updatedAt?: number;
+};
 
 type WindowWithLayoutModals = Window & {
     openHtmlPreviewModal?: (urlOrHtml: string, isHtml?: boolean) => void;
@@ -96,6 +101,9 @@ const MainLayout = () => {
         switchVariant,
         sessionAccess,
         isReadOnly,
+        sessionActivity,
+        optimisticSessions,
+        markSessionActivitySeen,
         enableSharing,
         disableSharing,
     } = useChat();
@@ -109,6 +117,17 @@ const MainLayout = () => {
     const selectedModel = isAuthLoading || isModelAvailable(currentModel, user)
         ? currentModel
         : getFallbackModelId(user);
+    const visibleSessions = useMemo<SessionSummary[]>(() => {
+        const byId = new Map<string, SessionSummary>(sessions.map((session) => [session.session_id, session]));
+        Object.values(optimisticSessions as Record<string, SessionSummary>).forEach((session) => {
+            if (session?.session_id && !byId.has(session.session_id)) {
+                byId.set(session.session_id, session);
+            }
+        });
+        return Array.from(byId.values()).sort(
+            (a, b) => (Number(b.last_updated) || 0) - (Number(a.last_updated) || 0)
+        );
+    }, [optimisticSessions, sessions]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -176,13 +195,16 @@ const MainLayout = () => {
     }, []);
 
     const wasLoadingRef = useRef(false);
+    const loadingSessionIdRef = useRef<string | null>(null);
     const notifyOnDoneRef = useRef(false);
 
     useEffect(() => {
         const wasLoading = wasLoadingRef.current;
+        const previousLoadingSessionId = loadingSessionIdRef.current;
         wasLoadingRef.current = isLoading;
+        loadingSessionIdRef.current = isLoading ? currentSessionId : null;
 
-        if (wasLoading && !isLoading) {
+        if (wasLoading && !isLoading && previousLoadingSessionId && previousLoadingSessionId === currentSessionId) {
             if (settings.notifyOnThinkingDone && notifyOnDoneRef.current) {
                 notifyThinkingDone();
                 notifyOnDoneRef.current = false;
@@ -192,6 +214,28 @@ const MainLayout = () => {
             }
         }
     }, [currentSessionId, isLoading, refreshSessions, settings.notifyOnThinkingDone]);
+
+    const sessionActivityRefreshRef = useRef('');
+
+    useEffect(() => {
+        const completedKey = Object.entries(sessionActivity)
+            .filter(([, activity]) => {
+                const typedActivity = activity as ChatSessionActivity;
+                return typedActivity?.status && typedActivity.status !== 'generating';
+            })
+            .map(([sessionId, activity]) => {
+                const typedActivity = activity as ChatSessionActivity;
+                return `${sessionId}:${typedActivity.status}:${typedActivity.updatedAt}`;
+            })
+            .join('|');
+
+        if (!completedKey || completedKey === sessionActivityRefreshRef.current) {
+            return;
+        }
+
+        sessionActivityRefreshRef.current = completedKey;
+        setTimeout(() => refreshSessions(), 0);
+    }, [refreshSessions, sessionActivity]);
 
     const refreshPinnedMinds = useCallback(async () => {
         if (!isAuthenticated) {
@@ -455,9 +499,11 @@ const MainLayout = () => {
     const handleSelectSession = useCallback(
         (id: string) => {
             if (id === currentSessionId && window.location.pathname.startsWith('/c/')) {
+                markSessionActivitySeen(id);
                 setMobileRailOpen(false);
                 return;
             }
+            markSessionActivitySeen(id);
             setActiveMind(null);
             void loadSession(id, { historyMode: 'push' }).then((data) => {
                 if (data) {
@@ -466,10 +512,11 @@ const MainLayout = () => {
             });
             setMobileRailOpen(false);
         },
-        [currentSessionId, loadSession]
+        [currentSessionId, loadSession, markSessionActivitySeen]
     );
 
     const handleNewChat = useCallback(() => {
+        notifyOnDoneRef.current = false;
         setActiveMind(null);
         clearChat({ historyMode: 'push' });
         setRoutePath('/');
@@ -548,7 +595,8 @@ const MainLayout = () => {
                     <AppRail
                         isExpanded={isRailExpanded}
                         onToggle={handleRailToggle}
-                        sessions={sessions}
+                        sessions={visibleSessions}
+                        sessionActivity={sessionActivity}
                         currentSessionId={currentSessionId}
                         onSelectSession={handleSelectSession}
                         onNewChat={handleNewChat}

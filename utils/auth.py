@@ -137,6 +137,7 @@ class UserSettings(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     theme = db.Column(db.String(20), default="dark")
     language = db.Column(db.String(10), default="ru")
+    automatic_web_search = db.Column(db.Boolean, default=False, nullable=False)
     settings_data = db.Column(db.Text, default="{}")  # JSON for additional settings
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -154,6 +155,7 @@ class UserSettings(db.Model):
             "user_id": self.user_id,
             "theme": self.theme,
             "language": self.language,
+            "automatic_web_search": bool(self.automatic_web_search),
             "settings_data": self.get_settings(),
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -1305,12 +1307,14 @@ def register_auth_routes(app):
                 settings.theme = data["theme"]
             if "language" in data:
                 settings.language = data["language"]
+            if "automatic_web_search" in data:
+                settings.automatic_web_search = bool(data["automatic_web_search"])
             if "settings_data" in data:
                 settings.settings_data = json.dumps(data["settings_data"], ensure_ascii=False)
             elif data:
                 current_settings = settings.get_settings()
                 for key, value in data.items():
-                    if key not in ["theme", "language"]:
+                    if key not in ["theme", "language", "automatic_web_search"]:
                         current_settings[key] = value
                 settings.settings_data = json.dumps(current_settings, ensure_ascii=False)
 
@@ -1671,6 +1675,19 @@ def setup_auth(app):
                     for _column_name, ddl in missing_user_admin_columns:
                         connection.execute(text(ddl))
                 app.logger.info("Added missing user admin/moderation columns")
+        if "user_settings" in inspector.get_table_names():
+            settings_columns = {
+                column["name"] for column in inspector.get_columns("user_settings")
+            }
+            if "automatic_web_search" not in settings_columns:
+                with db.engine.begin() as connection:
+                    connection.execute(
+                        text(
+                            "ALTER TABLE user_settings "
+                            "ADD COLUMN automatic_web_search BOOLEAN DEFAULT FALSE NOT NULL"
+                        )
+                    )
+                app.logger.info("Added missing user_settings.automatic_web_search column")
         if "mind" in inspector.get_table_names():
             mind_columns = {column["name"] for column in inspector.get_columns("mind")}
             mind_admin_columns = {

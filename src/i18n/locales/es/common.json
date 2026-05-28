@@ -94,7 +94,10 @@
     "sendCtrlEnter": "Enviar (Cmd+Enter / Ctrl+Enter)",
     "stop": "Detener",
     "joinDialog": "Iniciar un diálogo",
-    "quote": "Citar"
+    "quote": "Citar",
+    "webSearchLabel": "Buscar",
+    "webSearchOn": "La b?squeda web est? activada",
+    "webSearchOff": "Activar b?squeda web"
   },
   "files": {
     "removeFile": "Quitar archivo"
@@ -266,7 +269,11 @@
       "nicknameLabel": "Apodo",
       "professionLabel": "Profesión",
       "moreLabel": "Información adicional",
-      "morePlaceholder": "Cualquier información adicional sobre ti..."
+      "morePlaceholder": "Cualquier información adicional sobre ti...",
+      "automaticWebSearch": {
+        "title": "B?squeda web autom?tica",
+        "description": "Permite que ReMind decida cu?ndo necesita fuentes actuales de internet. El bot?n manual se oculta mientras est? activado."
+      }
     },
     "interfaceLanguage": {
       "title": "Idioma de la interfaz",
@@ -467,5 +474,24 @@
       "createAction": "Crear mind"
     },
     "activeLabel": "Mind activo"
+  },
+  "webSearch": {
+    "sourcesLabel": "Fuentes",
+    "sourcesAria": "Fuentes de b?squeda web",
+    "sourceFallback": "Fuente",
+    "fragmentSources": "Fuentes del fragmento",
+    "status": {
+      "pending": "Conectando la b?squeda...",
+      "started": "Buscando en la web...",
+      "fetching": "Abriendo y leyendo fuentes...",
+      "done": "Fuentes encontradas.",
+      "noResults": "No se encontraron fuentes adecuadas.",
+      "failed": "La b?squeda fall?; respondo sin fuentes.",
+      "generating": "Preparando respuesta...",
+      "deciding": "Decidiendo si se necesita búsqueda...",
+      "skipped": "No hace falta buscar; respondo sin ello.",
+      "querying": "Preparando la consulta de búsqueda..."
+    },
+    "queryLabel": "Consulta"
   }
 }

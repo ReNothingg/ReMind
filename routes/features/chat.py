@@ -27,8 +27,19 @@ from services.chat_history import (
 )
 from services.files import handle_file_upload
 from services.model_access import can_user_access_model, get_model_stage
+from services.web_search import (
+    auto_web_search_requested,
+    build_web_search_augmented_message,
+    classify_auto_web_search_intent,
+    decide_auto_web_search,
+    explicit_web_search_requested,
+    public_sources,
+    rewrite_web_search_query,
+    run_web_search,
+    web_search_requested,
+)
 from services.voice import synthesize_text_segments
-from utils.auth import UserChatHistory
+from utils.auth import UserChatHistory, UserSettings
 from utils.input_validation import InputValidator, ValidationError
 from utils.rate_limiting import RateLimiter, rate_limit
 from utils.responses import logger, make_ok
@@ -230,6 +241,165 @@ def _build_model_message_parts(reply_text: str, images: Any) -> list[dict]:
     return parts
 
 
+def _extract_web_sources(user_data: dict[str, Any]) -> list[dict[str, Any]]:
+    return public_sources(user_data.get("web_search"))
+
+
+def _stream_event(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def _build_model_message_for_history(reply_text: str, images: Any, sources: Any) -> dict:
+    message = {"role": "model", "parts": _build_model_message_parts(reply_text, images)}
+    if isinstance(sources, list) and sources:
+        message["sources"] = sources
+    return message
+
+
+def _run_and_attach_web_search(
+    user_data: dict[str, Any], original_message: str
+) -> list[dict[str, Any]]:
+    if not web_search_requested(user_data.get("webSearch")) or not original_message.strip():
+        return []
+
+    rewrite = _rewrite_search_query(original_message)
+    return _execute_and_attach_web_search(
+        user_data,
+        original_message,
+        search_query=rewrite["query"],
+        decision={"search": True, **rewrite},
+    )
+
+
+def _execute_and_attach_web_search(
+    user_data: dict[str, Any],
+    original_message: str,
+    search_query: str | None = None,
+    decision: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    query = str(search_query or original_message or "").strip()
+    search_payload = run_web_search(query)
+    user_data["web_search"] = search_payload
+    if decision:
+        user_data["web_search_decision"] = decision
+    user_data["message"] = build_web_search_augmented_message(original_message, search_payload)
+    return public_sources(search_payload)
+
+
+def _db_auto_web_search_enabled(db_user_id: int | None) -> bool:
+    if db_user_id is None:
+        return False
+    try:
+        settings = UserSettings.query.filter_by(user_id=db_user_id).first()
+        return bool(settings and settings.automatic_web_search)
+    except Exception as exc:
+        logger.warning("Failed to load automatic web-search setting: %s", exc, exc_info=True)
+        return False
+
+
+def _auto_web_search_enabled(user_data: dict[str, Any], db_user_id: int | None) -> bool:
+    return auto_web_search_requested(user_data.get("autoWebSearch")) or _db_auto_web_search_enabled(
+        db_user_id
+    )
+
+
+def _manual_web_search_requested(user_data: dict[str, Any], original_message: str) -> bool:
+    return web_search_requested(user_data.get("webSearch")) or explicit_web_search_requested(
+        original_message
+    )
+
+
+def _rewrite_search_query(original_message: str) -> dict[str, Any]:
+    rewrite = rewrite_web_search_query(original_message)
+    query = str(rewrite.get("query") or original_message or "").strip()
+    return {
+        "query": query or str(original_message or "").strip(),
+        "reason": str(rewrite.get("reason") or "").strip(),
+        "source": str(rewrite.get("source") or "fallback").strip() or "fallback",
+    }
+
+
+def _resolve_web_search_plan(
+    user_data: dict[str, Any],
+    original_message: str,
+    db_user_id: int | None,
+    *,
+    auto_enabled: bool | None = None,
+    auto_strategy: str | None = None,
+) -> dict[str, Any]:
+    message = str(original_message or "").strip()
+    plan: dict[str, Any] = {"mode": None, "query": message, "decision": None}
+    if not message:
+        return plan
+
+    if _manual_web_search_requested(user_data, message):
+        rewrite = _rewrite_search_query(message)
+        return {
+            **plan,
+            "mode": "manual",
+            "query": rewrite["query"],
+            "rewrite": rewrite,
+        }
+
+    if auto_enabled is None:
+        auto_enabled = _auto_web_search_enabled(user_data, db_user_id)
+    if not auto_enabled:
+        return plan
+
+    if auto_strategy is None:
+        auto_strategy = classify_auto_web_search_intent(message)
+    if auto_strategy == "skip":
+        plan["decision"] = {
+            "search": False,
+            "query": message,
+            "reason": "fast static query",
+            "source": "rule",
+        }
+        return plan
+    if auto_strategy == "search":
+        rewrite = _rewrite_search_query(message)
+        return {
+            **plan,
+            "mode": "auto",
+            "query": rewrite["query"],
+            "rewrite": rewrite,
+            "decision": {
+                "search": True,
+                "query": rewrite["query"],
+                "reason": "fast search intent",
+                "source": "rule",
+            },
+        }
+
+    decision = decide_auto_web_search(message)
+    plan["decision"] = decision
+    if decision.get("search"):
+        plan["mode"] = "auto"
+        if decision.get("source") == "model":
+            plan["query"] = str(decision.get("query") or message).strip() or message
+        else:
+            rewrite = _rewrite_search_query(message)
+            plan["query"] = rewrite["query"]
+            plan["rewrite"] = rewrite
+    return plan
+
+
+def _attach_web_search_context(
+    user_data: dict[str, Any], original_message: str, db_user_id: int | None
+) -> None:
+    try:
+        plan = _resolve_web_search_plan(user_data, original_message, db_user_id)
+        if plan.get("mode"):
+            _execute_and_attach_web_search(
+                user_data,
+                original_message,
+                search_query=plan.get("query"),
+                decision=plan.get("decision"),
+            )
+    except Exception as exc:
+        logger.warning("Web search failed: %s", exc, exc_info=True)
+
+
 def _resolve_history(
     user_data: dict[str, Any], resolved_session_id: str, db_user_id: int | None
 ) -> list:
@@ -266,6 +436,7 @@ def _stream_chat_response(
     db_user_id: int | None,
     user_data: dict,
     resolved_session_id: str,
+    original_user_message: str,
     user_message_for_history: dict,
     allow_guest_file_persistence: bool,
     mind_context: dict[str, Any] | None,
@@ -275,12 +446,131 @@ def _stream_chat_response(
     def stream_generator():
         with captured_app.app_context():
             full_response = ""
-            final_data = {}
+            final_data: dict[str, Any] = {}
             try:
+                message_for_search = str(original_user_message or "")
+                manual_search = _manual_web_search_requested(user_data, message_for_search)
+                auto_search_enabled = (
+                    bool(message_for_search.strip())
+                    and not manual_search
+                    and _auto_web_search_enabled(user_data, db_user_id)
+                )
+                auto_search_strategy = (
+                    classify_auto_web_search_intent(message_for_search)
+                    if auto_search_enabled
+                    else None
+                )
+                if manual_search and message_for_search.strip():
+                    yield _stream_event(
+                        {
+                            "status": "web_search_querying",
+                            "message": "Preparing search query...",
+                            "mode": "manual",
+                        }
+                    )
+                elif auto_search_enabled and auto_search_strategy == "search":
+                    yield _stream_event(
+                        {
+                            "status": "web_search_querying",
+                            "message": "Preparing search query...",
+                            "mode": "auto",
+                        }
+                    )
+                elif auto_search_enabled and auto_search_strategy == "model":
+                    yield _stream_event(
+                        {
+                            "status": "web_search_deciding",
+                            "message": "Deciding whether web search is needed...",
+                            "mode": "auto",
+                        }
+                    )
+
+                web_search_plan = _resolve_web_search_plan(
+                    user_data,
+                    message_for_search,
+                    db_user_id,
+                    auto_enabled=auto_search_enabled,
+                    auto_strategy=auto_search_strategy,
+                )
+                web_search_mode = web_search_plan.get("mode")
+                search_query = str(web_search_plan.get("query") or message_for_search)
+                if web_search_mode:
+                    yield _stream_event(
+                        {
+                            "status": "web_search_started",
+                            "message": "Ищу источники в интернете...",
+                            "query": search_query,
+                            "mode": web_search_mode,
+                            "decision": web_search_plan.get("decision"),
+                            "rewrite": web_search_plan.get("rewrite"),
+                        }
+                    )
+                    yield _stream_event(
+                        {
+                            "status": "web_search_fetching",
+                            "query": search_query,
+                            "message": "Открываю и читаю найденные страницы...",
+                        }
+                    )
+                    try:
+                        web_sources = _execute_and_attach_web_search(
+                            user_data,
+                            message_for_search,
+                            search_query=search_query,
+                            decision=web_search_plan.get("decision"),
+                        )
+                    except Exception as exc:
+                        logger.warning("Web search failed: %s", exc, exc_info=True)
+                        web_sources = []
+                        yield _stream_event(
+                            {
+                                "status": "web_search_failed",
+                                "query": search_query,
+                                "message": "Поиск не удался, отвечаю без источников.",
+                            }
+                        )
+                    else:
+                        if web_sources:
+                            final_data["sources"] = web_sources
+                            yield _stream_event(
+                                {
+                                    "status": "web_search_done",
+                                    "query": search_query,
+                                    "message": "Источники найдены.",
+                                    "sources": web_sources,
+                                }
+                            )
+                        else:
+                            yield _stream_event(
+                                {
+                                    "status": "web_search_no_results",
+                                    "query": search_query,
+                                    "message": "Подходящие источники не найдены.",
+                                }
+                            )
+                else:
+                    if auto_search_enabled and auto_search_strategy == "model":
+                        yield _stream_event(
+                            {
+                                "status": "web_search_skipped",
+                                "message": "Web search is not needed for this answer.",
+                                "mode": "auto",
+                                "decision": web_search_plan.get("decision"),
+                            }
+                        )
+                    web_sources = _extract_web_sources(user_data)
+                    if web_sources:
+                        final_data["sources"] = web_sources
+                        yield _stream_event({"sources": web_sources})
+
+                yield _stream_event(
+                    {"status": "generating_text", "message": "Готовлю ответ..."}
+                )
+
                 for chunk in model_func(db_user_id, user_data):
                     if isinstance(chunk, dict):
                         if "widget_update" in chunk:
-                            yield f"data: {json.dumps({'widget_update': chunk['widget_update']})}\n\n"
+                            yield _stream_event({"widget_update": chunk["widget_update"]})
                             final_data.update(
                                 {k: v for k, v in chunk.items() if k != "widget_update"}
                             )
@@ -289,14 +579,14 @@ def _stream_chat_response(
                         if "reply_part" in chunk:
                             chunk_str = str(chunk.get("reply_part") or "")
                             full_response += chunk_str
-                            yield f"data: {json.dumps({'reply_part': chunk_str})}\n\n"
+                            yield _stream_event({"reply_part": chunk_str})
                             final_data.update({k: v for k, v in chunk.items() if k != "reply_part"})
                             continue
 
                         if any(
                             key in chunk for key in ("status", "images", "thinkingTime", "sources")
                         ):
-                            yield f"data: {json.dumps(chunk)}\n\n"
+                            yield _stream_event(chunk)
                             final_data.update(chunk)
                             continue
 
@@ -305,7 +595,7 @@ def _stream_chat_response(
 
                     chunk_str = str(chunk)
                     full_response += chunk_str
-                    yield f"data: {json.dumps({'reply_part': chunk_str})}\n\n"
+                    yield _stream_event({"reply_part": chunk_str})
 
                 final_data["reply"] = full_response
                 final_data["sessionId"] = resolved_session_id
@@ -313,18 +603,19 @@ def _stream_chat_response(
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
                     )
-                yield f"data: {json.dumps(final_data)}\n\n"
+                yield _stream_event(final_data)
 
             except RuntimeError as exc:
                 logger.error("Stream runtime error for '%s': %s", model_name, exc, exc_info=True)
-                yield f"data: {json.dumps({'error': 'stream_failed'})}\n\n"
+                yield _stream_event({"error": "stream_failed"})
 
             finally:
                 reply_text = str(final_data.get("reply") or full_response or "")
-                model_parts = _build_model_message_parts(reply_text, final_data.get("images"))
                 new_messages_batch = [
                     user_message_for_history,
-                    {"role": "model", "parts": model_parts},
+                    _build_model_message_for_history(
+                        reply_text, final_data.get("images"), final_data.get("sources")
+                    ),
                 ]
                 try:
                     append_messages_to_history(
@@ -420,21 +711,29 @@ def register_chat_routes(api_bp):
                 db_user_id=db_user_id,
                 user_data=user_data,
                 resolved_session_id=resolved_session_id,
+                original_user_message=str(original_user_message or ""),
                 user_message_for_history=user_message_for_history,
                 allow_guest_file_persistence=allow_guest_file_persistence,
                 mind_context=mind_context,
             )
 
+        _attach_web_search_context(user_data, str(original_user_message or ""), db_user_id)
         model_output = model_func(db_user_id, user_data)
+        web_sources = _extract_web_sources(user_data)
         if isinstance(model_output, dict):
-            model_parts = _build_model_message_parts(
+            if web_sources and "sources" not in model_output:
+                model_output["sources"] = web_sources
+            model_message_for_history = _build_model_message_for_history(
                 str(model_output.get("reply") or ""),
                 model_output.get("images"),
+                model_output.get("sources"),
             )
         else:
-            model_parts = _build_model_message_parts(str(model_output), None)
+            model_message_for_history = _build_model_message_for_history(
+                str(model_output), None, web_sources
+            )
 
-        new_messages_batch = [user_message_for_history, {"role": "model", "parts": model_parts}]
+        new_messages_batch = [user_message_for_history, model_message_for_history]
         append_messages_to_history(
             resolved_session_id,
             new_messages_batch,
@@ -452,6 +751,8 @@ def register_chat_routes(api_bp):
             response_data = {"ok": True, **model_output}
         else:
             response_data = {"ok": True, "reply": str(model_output)}
+            if web_sources:
+                response_data["sources"] = web_sources
 
         if allow_guest_file_persistence:
             response_data["session_token"] = _generate_guest_session_token(

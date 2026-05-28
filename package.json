@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:frontend": "vite",
-    "dev:backend": "python3 main.py",
+    "dev:backend": "python main.py",
     "docker:dev": "docker compose -f docker-compose.dev.yml up",
     "docker:dev:build": "docker compose -f docker-compose.dev.yml up --build",
     "docker:dev:down": "docker compose -f docker-compose.dev.yml down",

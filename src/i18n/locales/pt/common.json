@@ -94,7 +94,10 @@
     "sendCtrlEnter": "Enviar (Cmd+Enter / Ctrl+Enter)",
     "stop": "Parar",
     "joinDialog": "Iniciar um diálogo",
-    "quote": "Citar"
+    "quote": "Citar",
+    "webSearchLabel": "Pesquisar",
+    "webSearchOn": "A pesquisa web est? ativa",
+    "webSearchOff": "Ativar pesquisa web"
   },
   "files": {
     "removeFile": "Remover ficheiro"
@@ -266,7 +269,11 @@
       "nicknameLabel": "Alcunha",
       "professionLabel": "Profissão",
       "moreLabel": "Informação adicional",
-      "morePlaceholder": "Qualquer informação adicional sobre si..."
+      "morePlaceholder": "Qualquer informação adicional sobre si...",
+      "automaticWebSearch": {
+        "title": "Pesquisa web autom?tica",
+        "description": "Permita que o ReMind decida quando precisa de fontes atuais da internet. O bot?o manual fica oculto enquanto isso estiver ativo."
+      }
     },
     "interfaceLanguage": {
       "title": "Idioma da interface",
@@ -467,5 +474,24 @@
       "createAction": "Criar mind"
     },
     "activeLabel": "Mind ativo"
+  },
+  "webSearch": {
+    "sourcesLabel": "Fontes",
+    "sourcesAria": "Fontes da pesquisa web",
+    "sourceFallback": "Fonte",
+    "fragmentSources": "Fontes do trecho",
+    "status": {
+      "pending": "Conectando a pesquisa...",
+      "started": "Pesquisando na web...",
+      "fetching": "Abrindo e lendo fontes...",
+      "done": "Fontes encontradas.",
+      "noResults": "Nenhuma fonte adequada encontrada.",
+      "failed": "A pesquisa falhou, respondendo sem fontes.",
+      "generating": "Preparando resposta...",
+      "deciding": "Decidindo se a pesquisa é necessária...",
+      "skipped": "A pesquisa não é necessária, respondendo sem ela.",
+      "querying": "Preparando a consulta de pesquisa..."
+    },
+    "queryLabel": "Consulta"
   }
 }

@@ -54,6 +54,7 @@ const DEFAULT_SETTINGS = {
     keyboardSupport: true,
     highContrast: false,
     interface_language: detectInterfaceLanguage(),
+    automaticWebSearch: false,
     personalization_instructions: '',
     personalization_nickname: '',
     personalization_profession: '',
@@ -75,7 +76,8 @@ const ACCENT_PALETTES = {
 
 const DB_FIELD_MAP = {
     theme: 'theme',
-    interface_language: 'language'
+    interface_language: 'language',
+    automaticWebSearch: 'automatic_web_search'
 };
 const BASE_KEYS = new Set(Object.keys(DB_FIELD_MAP));
 
@@ -133,6 +135,9 @@ export const SettingsProvider = ({ children }) => {
                 const newSettings = { ...DEFAULT_SETTINGS };
                 if (dbSettings.theme) newSettings.theme = dbSettings.theme;
                 if (dbSettings.language) newSettings.interface_language = dbSettings.language;
+                if (dbSettings.automatic_web_search !== undefined) {
+                    newSettings.automaticWebSearch = !!dbSettings.automatic_web_search;
+                }
                 if (dbSettings.settings_data) {
                     Object.keys(DEFAULT_SETTINGS).forEach(key => {
                         if (!BASE_KEYS.has(key) && dbSettings.settings_data[key] !== undefined) {

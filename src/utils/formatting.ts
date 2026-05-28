@@ -404,7 +404,7 @@ export const formatText = (text) => {
     renderedHtml = renderedHtml.replace(/<\/table>/g, '</table></div></div>');
     return DOMPurify.sanitize(renderedHtml, {
         ...DOMPURIFY_SHARED_OPTIONS,
-        ADD_TAGS: ['svg', 'path', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'button', 'img', 'input', 'canvas'],
+        ADD_TAGS: ['svg', 'path', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'mark', 'c', 'button', 'img', 'input', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
             'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
@@ -412,7 +412,7 @@ export const formatText = (text) => {
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
             'data-think-open', 'data-think-close', 'data-think-content',
-            'data-tool', 'aria-live', 'aria-label', 'role', 'stroke-width'
+            'data-tool', 'data-source-ids', 's', 'tabindex', 'aria-live', 'aria-label', 'role', 'stroke-width'
         ]
     });
 };
@@ -490,6 +490,12 @@ export const formatUserText = (text) => {
 };
 
 export const highlightCode = (container?: ParentNode) => {
+    const root = container || document;
+    root.querySelectorAll('pre.line-numbers > .line-numbers-rows').forEach((rows) => rows.remove());
+    root.querySelectorAll('code[class*="language-"]').forEach((code) => {
+        code.removeAttribute('data-highlighted');
+    });
+
     if (container) {
         Prism.highlightAllUnder(container);
         return;

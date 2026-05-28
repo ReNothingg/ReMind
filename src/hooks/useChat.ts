@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiService } from '../services/api';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
+import { useSettings } from '../context/SettingsContext';
 
 const DEFAULT_SESSION_ACCESS = {
     isPublic: false,
@@ -22,6 +24,7 @@ type SyncSessionOptions = {
     previousSessionId?: string | null;
     historyMode?: HistoryMode;
     persistToGuestHistory?: boolean;
+    activate?: boolean;
 };
 
 type LoadSessionOptions = {
@@ -35,10 +38,65 @@ type ClearChatOptions = {
 
 type SendMessageOptions = {
     webSearch?: boolean;
+    autoWebSearch?: boolean;
     censorship?: boolean;
     mindId?: string | null;
     [key: string]: unknown;
 };
+
+type SessionActivityStatus = 'generating' | 'complete' | 'error';
+
+type SessionActivity = {
+    status: SessionActivityStatus;
+    updatedAt: number;
+    message?: string;
+};
+
+const WEB_SEARCH_STATUS_MESSAGE_KEYS = {
+    web_search_pending: 'webSearch.status.pending',
+    web_search_querying: 'webSearch.status.querying',
+    web_search_deciding: 'webSearch.status.deciding',
+    web_search_started: 'webSearch.status.started',
+    web_search_fetching: 'webSearch.status.fetching',
+    web_search_skipped: 'webSearch.status.skipped',
+    web_search_done: 'webSearch.status.done',
+    web_search_no_results: 'webSearch.status.noResults',
+    web_search_failed: 'webSearch.status.failed',
+    generating_text: 'webSearch.status.generating'
+};
+
+const WEB_SEARCH_STATUS_FALLBACKS = {
+    web_search_pending: 'Connecting search...',
+    web_search_querying: 'Preparing search query...',
+    web_search_deciding: 'Deciding whether search is needed...',
+    web_search_started: 'Searching the web...',
+    web_search_fetching: 'Opening and reading sources...',
+    web_search_skipped: 'Search is not needed, answering without it.',
+    web_search_done: 'Sources found.',
+    web_search_no_results: 'No suitable sources found.',
+    web_search_failed: 'Search failed, answering without sources.',
+    generating_text: 'Preparing answer...'
+};
+
+function isWebSearchStreamStatus(status) {
+    return typeof status === 'string' && (
+        status.startsWith('web_search_') ||
+        status === 'generating_text'
+    );
+}
+
+function getWebSearchStatus(data, t) {
+    const status = typeof data?.status === 'string' ? data.status : 'web_search_pending';
+    const key = WEB_SEARCH_STATUS_MESSAGE_KEYS[status];
+    const fallback = WEB_SEARCH_STATUS_FALLBACKS[status] || WEB_SEARCH_STATUS_FALLBACKS.web_search_pending;
+    return {
+        status,
+        message: key
+            ? t(key, { defaultValue: fallback })
+            : (typeof data?.message === 'string' && data.message.trim() ? data.message.trim() : fallback),
+        query: typeof data?.query === 'string' ? data.query : undefined
+    };
+}
 
 function createDefaultSessionAccess() {
     return { ...DEFAULT_SESSION_ACCESS };
@@ -92,23 +150,31 @@ function normalizeHistoryMessage(msg) {
         content: text.trim(),
         images,
         files,
+        sources: Array.isArray(msg.sources) ? msg.sources : [],
         timestamp: msg.timestamp,
         parts
     };
 }
 
 export const useChat = () => {
+    const { t } = useTranslation();
+    const { settings } = useSettings();
     const [history, setHistory] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
     const [sessionAccess, setSessionAccess] = useState(createDefaultSessionAccess);
     const [isReadOnly, setIsReadOnly] = useState(false);
-    const abortControllerRef = useRef(null);
+    const [sessionActivity, setSessionActivity] = useState<Record<string, SessionActivity>>({});
+    const [optimisticSessions, setOptimisticSessions] = useState({});
+    const sessionActivityRef = useRef<Record<string, SessionActivity>>({});
+    const sessionHistoryCacheRef = useRef(new Map());
+    const sessionAbortControllersRef = useRef(new Map());
+    const sessionRequestIdsRef = useRef(new Map());
+    const nextChatRequestIdRef = useRef(0);
     const messageVariantsRef = useRef(new Map());
     const slugIndexCacheRef = useRef({});
     const sessionLoadRequestIdRef = useRef(0);
-    const activeChatRequestIdRef = useRef(0);
     const currentSessionIdRef = useRef(null);
     const currentSessionSlugRef = useRef(null);
     const activeMindIdRef = useRef(null);
@@ -118,6 +184,113 @@ export const useChat = () => {
         currentSessionSlugRef.current = slug;
         setCurrentSessionId(sessionId);
         setCurrentSessionSlug(slug);
+    }, []);
+
+    const setSessionActivityState = useCallback((sessionId, status: SessionActivityStatus | null, message = '') => {
+        if (!sessionId) return;
+
+        setSessionActivity((previous) => {
+            const next = { ...previous };
+            if (status) {
+                next[sessionId] = {
+                    status,
+                    updatedAt: Date.now(),
+                    ...(message ? { message } : {})
+                };
+            } else {
+                delete next[sessionId];
+            }
+            sessionActivityRef.current = next;
+            return next;
+        });
+
+        if (currentSessionIdRef.current === sessionId) {
+            setIsLoading(status === 'generating');
+        }
+    }, []);
+
+    const markSessionActivitySeen = useCallback((sessionId) => {
+        if (!sessionId) return;
+        const currentActivity = sessionActivityRef.current[sessionId];
+        if (!currentActivity || currentActivity.status === 'generating') {
+            return;
+        }
+        setSessionActivity((previous) => {
+            const next = { ...previous };
+            delete next[sessionId];
+            sessionActivityRef.current = next;
+            return next;
+        });
+    }, []);
+
+    const isSessionRequestCurrent = useCallback((sessionId, requestId) => (
+        sessionRequestIdsRef.current.get(sessionId) === requestId
+    ), []);
+
+    const updateSessionHistory = useCallback((sessionId, updater) => {
+        if (!sessionId) return [];
+        const previousHistory = sessionHistoryCacheRef.current.get(sessionId) || [];
+        const nextHistory = typeof updater === 'function'
+            ? updater(previousHistory)
+            : updater;
+
+        sessionHistoryCacheRef.current.set(sessionId, nextHistory);
+        if (currentSessionIdRef.current === sessionId) {
+            setHistory(nextHistory);
+        }
+        return nextHistory;
+    }, []);
+
+    const beginSessionRequest = useCallback((sessionId) => {
+        const previousController = sessionAbortControllersRef.current.get(sessionId);
+        if (previousController) {
+            previousController.abort();
+        }
+
+        const requestId = nextChatRequestIdRef.current + 1;
+        nextChatRequestIdRef.current = requestId;
+        const controller = new AbortController();
+
+        sessionAbortControllersRef.current.set(sessionId, controller);
+        sessionRequestIdsRef.current.set(sessionId, requestId);
+        setSessionActivityState(sessionId, 'generating');
+
+        return { requestId, controller };
+    }, [setSessionActivityState]);
+
+    const completeSessionRequest = useCallback((sessionId, requestId, status: SessionActivityStatus | null = 'complete', message = '') => {
+        if (!isSessionRequestCurrent(sessionId, requestId)) {
+            return false;
+        }
+
+        sessionAbortControllersRef.current.delete(sessionId);
+        sessionRequestIdsRef.current.delete(sessionId);
+
+        if (!status || currentSessionIdRef.current === sessionId) {
+            setSessionActivityState(sessionId, null);
+        } else {
+            setSessionActivityState(sessionId, status, message);
+        }
+
+        return true;
+    }, [isSessionRequestCurrent, setSessionActivityState]);
+
+    const upsertOptimisticSession = useCallback((sessionId, text, files = []) => {
+        if (!sessionId) return;
+        const filePreview = files.length > 0
+            ? files.map((file) => file?.name).filter(Boolean).join(', ')
+            : '';
+        const preview = (String(text || '').trim() || filePreview || 'New chat').slice(0, 80);
+
+        setOptimisticSessions((previous) => ({
+            ...previous,
+            [sessionId]: {
+                session_id: sessionId,
+                title: previous[sessionId]?.title || preview,
+                last_message: preview,
+                last_updated: Date.now() / 1000
+            }
+        }));
     }, []);
 
     const syncBrowserPath = useCallback((path, historyMode = 'replace') => {
@@ -237,6 +410,12 @@ export const useChat = () => {
         loadSlugIndex();
     }, [loadSlugIndex]);
 
+    useEffect(() => {
+        if (currentSessionId) {
+            sessionHistoryCacheRef.current.set(currentSessionId, history);
+        }
+    }, [currentSessionId, history]);
+
     const resetConversationState = useCallback(() => {
         setHistory([]);
         updateSessionIdentity(null, null);
@@ -246,28 +425,17 @@ export const useChat = () => {
         messageVariantsRef.current.clear();
     }, [updateSessionIdentity]);
 
-    const abortActiveChatRequest = useCallback((invalidate = false) => {
-        if (invalidate) {
-            activeChatRequestIdRef.current += 1;
-        }
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
-        }
-    }, []);
-
     const syncSessionIdentity = useCallback((sessionId, slug, options: SyncSessionOptions = {}) => {
         if (!sessionId) return;
 
         const {
             previousSessionId = null,
             historyMode = 'replace',
-            persistToGuestHistory = true
+            persistToGuestHistory = true,
+            activate = true
         } = options;
 
-        updateSessionIdentity(sessionId, slug);
         registerSessionSlug(sessionId, slug);
-        syncPersistedCurrentSession(sessionId, slug);
 
         if (persistToGuestHistory) {
             addGuestSession(sessionId);
@@ -277,7 +445,11 @@ export const useChat = () => {
             }
         }
 
-        syncBrowserPath(`/c/${encodeURIComponent(slug)}`, historyMode);
+        if (activate) {
+            updateSessionIdentity(sessionId, slug);
+            syncPersistedCurrentSession(sessionId, slug);
+            syncBrowserPath(`/c/${encodeURIComponent(slug)}`, historyMode);
+        }
     }, [
         addGuestSession,
         registerSessionSlug,
@@ -290,27 +462,39 @@ export const useChat = () => {
 
     useEffect(() => () => {
         sessionLoadRequestIdRef.current += 1;
-        abortActiveChatRequest(true);
-    }, [abortActiveChatRequest]);
+        sessionAbortControllersRef.current.forEach((controller) => controller.abort());
+        sessionAbortControllersRef.current.clear();
+        sessionRequestIdsRef.current.clear();
+    }, []);
 
     const loadSession = useCallback(async (sessionIdOrSlug, options: LoadSessionOptions = {}) => {
         const { historyMode = 'replace', clearHistory = true } = options;
         const loadRequestId = sessionLoadRequestIdRef.current + 1;
         sessionLoadRequestIdRef.current = loadRequestId;
         activeMindIdRef.current = null;
-
-        abortActiveChatRequest(true);
-        setIsLoading(true);
+        const requestedSessionId = slugToSessionId(sessionIdOrSlug);
+        const cachedHistory = sessionHistoryCacheRef.current.get(requestedSessionId);
+        const cachedActivity = sessionActivityRef.current[requestedSessionId];
 
         if (clearHistory) {
-            setHistory([]);
+            setHistory(Array.isArray(cachedHistory) ? cachedHistory : []);
             setSessionAccess(createDefaultSessionAccess());
             setIsReadOnly(false);
             messageVariantsRef.current.clear();
         }
+        setIsLoading(cachedActivity?.status === 'generating');
+
+        if (Array.isArray(cachedHistory) && cachedActivity?.status === 'generating') {
+            const slug = sessionIdToSlug(requestedSessionId);
+            syncSessionIdentity(requestedSessionId, slug, { historyMode });
+            return {
+                session_id: requestedSessionId,
+                history: cachedHistory,
+                mind: null
+            };
+        }
 
         try {
-            const requestedSessionId = slugToSessionId(sessionIdOrSlug);
             const data = await apiService.getSessionHistory(requestedSessionId);
 
             if (sessionLoadRequestIdRef.current !== loadRequestId) {
@@ -330,16 +514,19 @@ export const useChat = () => {
                 };
 
                 setHistory(normalized);
+                sessionHistoryCacheRef.current.set(resolvedSessionId, normalized);
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
                 activeMindIdRef.current = data.mind?.public_id || null;
                 syncSessionIdentity(resolvedSessionId, slug, { historyMode });
+                setIsLoading(sessionActivityRef.current[resolvedSessionId]?.status === 'generating');
                 return data;
             }
 
             resetConversationState();
             syncPersistedCurrentSession(null, null);
             syncBrowserPath('/', 'replace');
+            setIsLoading(false);
             return null;
         } catch (e) {
             if (sessionLoadRequestIdRef.current !== loadRequestId) {
@@ -350,14 +537,10 @@ export const useChat = () => {
             resetConversationState();
             syncPersistedCurrentSession(null, null);
             syncBrowserPath('/', 'replace');
+            setIsLoading(false);
             return null;
-        } finally {
-            if (sessionLoadRequestIdRef.current === loadRequestId) {
-                setIsLoading(false);
-            }
         }
     }, [
-        abortActiveChatRequest,
         resetConversationState,
         sessionIdToSlug,
         slugToSessionId,
@@ -369,12 +552,11 @@ export const useChat = () => {
     const clearChat = useCallback((options: ClearChatOptions = {}) => {
         const { historyMode = 'push' } = options;
         sessionLoadRequestIdRef.current += 1;
-        abortActiveChatRequest(true);
         resetConversationState();
         syncPersistedCurrentSession(null, null);
         setIsLoading(false);
         syncBrowserPath('/', historyMode);
-    }, [abortActiveChatRequest, resetConversationState, syncBrowserPath, syncPersistedCurrentSession]);
+    }, [resetConversationState, syncBrowserPath, syncPersistedCurrentSession]);
 
     const setActiveSessionMindId = useCallback((mindId = null) => {
         activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
@@ -485,7 +667,14 @@ export const useChat = () => {
         return historyArray;
     }, [history]);
     const sendMessage = useCallback(async (text, files = [], model = 'gemini', options: SendMessageOptions = {}) => {
-        const { webSearch = false, censorship = false, mindId = undefined, ...metadata } = options;
+        const {
+            webSearch = false,
+            autoWebSearch: requestedAutoWebSearch,
+            censorship = false,
+            mindId = undefined,
+            ...metadata
+        } = options;
+        const autoWebSearch = requestedAutoWebSearch ?? !!settings?.automaticWebSearch;
         if ((!text || !text.trim()) && files.length === 0) return;
         if (isReadOnly) {
             console.warn('Attempt to send message in read-only chat is blocked.');
@@ -493,15 +682,6 @@ export const useChat = () => {
         }
 
         sessionLoadRequestIdRef.current += 1;
-
-        const chatRequestId = activeChatRequestIdRef.current + 1;
-        activeChatRequestIdRef.current = chatRequestId;
-
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        abortControllerRef.current = new AbortController();
-        setIsLoading(true);
         let sessionId = currentSessionIdRef.current;
         const path = window.location.pathname;
         const isNewChat = path === '/' || !path.startsWith('/c/');
@@ -520,6 +700,9 @@ export const useChat = () => {
                 syncBrowserPath(`/c/${encodeURIComponent(slug)}`, 'push');
             }
         }
+        sessionHistoryCacheRef.current.set(sessionId, history);
+        const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
+        upsertOptimisticSession(sessionId, text, files);
         const userMsg = {
             id: `user-${Date.now()}`,
             role: 'user',
@@ -533,10 +716,14 @@ export const useChat = () => {
             role: 'model',
             content: '',
             isLoading: true,
+            sources: [],
+            webSearchStatus: webSearch
+                ? getWebSearchStatus({ status: 'web_search_querying' }, t)
+                    : null,
             timestamp: Date.now() / 1000
         };
 
-        setHistory(prev => [...prev, userMsg, aiMsg]);
+        updateSessionHistory(sessionId, prev => [...prev, userMsg, aiMsg]);
 
         const formData = new FormData();
         formData.append('message', text);
@@ -544,6 +731,7 @@ export const useChat = () => {
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
         formData.append('webSearch', String(webSearch));
+        formData.append('autoWebSearch', String(autoWebSearch));
         formData.append('censorship', String(censorship));
         if (mindId !== undefined) {
             activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
@@ -606,11 +794,11 @@ export const useChat = () => {
         let firstChunk = true;
 
         try {
-            await apiService.chat(formData, abortControllerRef.current.signal, {
+            await apiService.chat(formData, controller.signal, {
                 onPart: (data) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId || !data) return;
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data) return;
                     if (data.status === 'generating_image') {
-                        setHistory(prev => prev.map(msg => {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
                                 return { ...msg, isGeneratingImage: true, imagePrompt: data.prompt };
                             }
@@ -620,19 +808,43 @@ export const useChat = () => {
                         return;
                     }
 
+                    if (isWebSearchStreamStatus(data.status)) {
+                        const nextStatus = getWebSearchStatus(data, t);
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
+                            if (msg.id !== aiMsgId) {
+                                return msg;
+                            }
+                            if (data.status === 'generating_text' && !msg.webSearchStatus) {
+                                return msg;
+                            }
+                            return {
+                                ...msg,
+                                isGeneratingImage: false,
+                                isLoading: true,
+                                webSearchStatus: {
+                                    ...nextStatus,
+                                    query: nextStatus.query || msg.webSearchStatus?.query
+                                },
+                                sources: Array.isArray(data.sources) ? data.sources : msg.sources
+                            };
+                        }));
+                        firstChunk = false;
+                        return;
+                    }
+
                     if (data.reply_part || data.images) {
-                        setHistory(prev => prev.map(msg => {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
-                                return { ...msg, isGeneratingImage: false };
+                                return { ...msg, isGeneratingImage: false, webSearchStatus: null };
                             }
                             return msg;
                         }));
                     }
 
                     if (firstChunk) {
-                        setHistory(prev => prev.map(msg => {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
-                                return { ...msg, isGeneratingImage: false };
+                                return { ...msg, isGeneratingImage: false, webSearchStatus: null };
                             }
                             return msg;
                         }));
@@ -640,7 +852,7 @@ export const useChat = () => {
                     }
 
                     if (data.images) {
-                        setHistory(prev => prev.map(msg => {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
                                 return { ...msg, images: data.images, isLoading: true };
                             }
@@ -648,21 +860,30 @@ export const useChat = () => {
                         }));
                     }
 
+                    if (data.sources) {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
+                            if (msg.id === aiMsgId) {
+                                return { ...msg, sources: data.sources, isLoading: true };
+                            }
+                            return msg;
+                        }));
+                    }
+
                     if (data.reply_part) {
                         fullReply += data.reply_part;
-                        setHistory(prev => prev.map(msg => {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
                             if (msg.id === aiMsgId) {
-                                return { ...msg, content: fullReply, isLoading: true };
+                                return { ...msg, content: fullReply, isLoading: true, webSearchStatus: null };
                             }
                             return msg;
                         }));
                     }
                 },
                 onWidgetUpdate: (widgetData) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId || !widgetData?.tag) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !widgetData?.tag) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
@@ -676,7 +897,7 @@ export const useChat = () => {
                     }));
                 },
                 onComplete: (finalData) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
                     if (finalData?.aborted) {
@@ -690,7 +911,8 @@ export const useChat = () => {
 
                     syncSessionIdentity(resolvedSessionId, resolvedSlug, {
                         previousSessionId: sessionId,
-                        historyMode: 'replace'
+                        historyMode: 'replace',
+                        activate: currentSessionIdRef.current === sessionId
                     });
 
                     if (finalData?.session_token) {
@@ -698,7 +920,7 @@ export const useChat = () => {
                     }
 
                     const finalContent = finalData.reply || fullReply;
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             const firstVariant = {
                                 content: finalContent,
@@ -710,6 +932,7 @@ export const useChat = () => {
                                 ...msg,
                                 isLoading: false,
                                 isGeneratingImage: false,
+                                webSearchStatus: null,
                                 content: finalContent,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
@@ -720,57 +943,64 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
-                    abortControllerRef.current = null;
-                    setIsLoading(false);
+                    completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
                 },
                 onError: (err) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
                     console.error('Chat error', err);
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
                                 isLoading: false,
                                 isGeneratingImage: false,
+                                webSearchStatus: null,
                                 isError: true,
                                 content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
                             };
                         }
                         return msg;
                     }));
-                    abortControllerRef.current = null;
-                    setIsLoading(false);
+                    completeSessionRequest(sessionId, chatRequestId, 'error', err?.message || 'Generation failed');
                 }
             });
         } catch (e) {
-            if (activeChatRequestIdRef.current !== chatRequestId) {
+            if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                 return;
             }
             if (e.name !== 'AbortError') {
-                abortControllerRef.current = null;
-                setIsLoading(false);
+                completeSessionRequest(sessionId, chatRequestId, 'error', e?.message || 'Generation failed');
             }
         }
     }, [
         addGuestSession,
+        beginSessionRequest,
         buildHistoryForAPI,
+        completeSessionRequest,
         history,
+        isSessionRequestCurrent,
         isReadOnly,
         registerSessionSlug,
         sessionIdToSlug,
+        settings?.automaticWebSearch,
         storeGuestSessionToken,
         syncBrowserPath,
         syncPersistedCurrentSession,
         syncSessionIdentity,
+        t,
+        updateSessionHistory,
+        upsertOptimisticSession,
         updateSessionIdentity
     ]);
 
     const stopGeneration = useCallback(() => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            setIsLoading(false);
+        const sessionId = currentSessionIdRef.current;
+        if (!sessionId) return;
+        const controller = sessionAbortControllersRef.current.get(sessionId);
+        if (controller) {
+            controller.abort();
         }
     }, []);
     const regenerateMessage = useCallback(async (aiMessageId, model = 'gemini') => {
@@ -784,29 +1014,27 @@ export const useChat = () => {
 
         const userMessage = history[userIndex];
         const historyBefore = buildHistoryForAPI(userIndex);
+        const sessionId = currentSessionIdRef.current || generateSessionId();
 
         sessionLoadRequestIdRef.current += 1;
+        sessionHistoryCacheRef.current.set(sessionId, history);
+        const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
+        upsertOptimisticSession(sessionId, userMessage.content, []);
 
-        const chatRequestId = activeChatRequestIdRef.current + 1;
-        activeChatRequestIdRef.current = chatRequestId;
-
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
-
-        setIsLoading(true);
-        setHistory(prev => prev.map(msg => {
+        updateSessionHistory(sessionId, prev => prev.map(msg => {
             if (msg.id === aiMessageId) {
                 return { ...msg, isLoading: true, isError: false };
             }
             return msg;
         }));
-        setHistory(prev => prev.slice(0, aiIndex + 1));
+        updateSessionHistory(sessionId, prev => prev.slice(0, aiIndex + 1));
 
         const formData = new FormData();
         formData.append('message', userMessage.content);
         formData.append('model', model);
-        formData.append('session_id', currentSessionIdRef.current || generateSessionId());
+        formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
+        formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
         if (activeMindIdRef.current) {
             formData.append('mind_id', activeMindIdRef.current);
         }
@@ -814,13 +1042,13 @@ export const useChat = () => {
         let fullReply = '';
 
         try {
-            await apiService.chat(formData, abortControllerRef.current.signal, {
+            await apiService.chat(formData, controller.signal, {
                 onPart: (data) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId || !data?.reply_part) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data?.reply_part) {
                         return;
                     }
                     fullReply += data.reply_part;
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             return { ...msg, content: fullReply, isLoading: true };
                         }
@@ -828,10 +1056,10 @@ export const useChat = () => {
                     }));
                 },
                 onWidgetUpdate: (widgetData) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId || !widgetData?.tag) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !widgetData?.tag) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             return {
                                 ...msg,
@@ -845,10 +1073,10 @@ export const useChat = () => {
                     }));
                 },
                 onComplete: (finalData) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             const newVariant = {
                                 content: finalData.reply || fullReply,
@@ -873,14 +1101,13 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
-                    abortControllerRef.current = null;
-                    setIsLoading(false);
+                    completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
                 },
                 onError: (err) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             return {
                                 ...msg,
@@ -891,20 +1118,28 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
-                    abortControllerRef.current = null;
-                    setIsLoading(false);
+                    completeSessionRequest(sessionId, chatRequestId, 'error', err?.message || 'Generation failed');
                 }
             });
         } catch (e) {
-            if (activeChatRequestIdRef.current !== chatRequestId) {
+            if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                 return;
             }
             if (e.name !== 'AbortError') {
-                abortControllerRef.current = null;
-                setIsLoading(false);
+                completeSessionRequest(sessionId, chatRequestId, 'error', e?.message || 'Generation failed');
             }
         }
-    }, [history, isLoading, buildHistoryForAPI]);
+    }, [
+        beginSessionRequest,
+        buildHistoryForAPI,
+        completeSessionRequest,
+        history,
+        isLoading,
+        isSessionRequestCurrent,
+        settings?.automaticWebSearch,
+        updateSessionHistory,
+        upsertOptimisticSession
+    ]);
     const switchVariant = useCallback((aiMessageId, direction) => {
         setHistory(prev => {
             const aiIndex = prev.findIndex(msg => msg.id === aiMessageId);
@@ -940,23 +1175,20 @@ export const useChat = () => {
 
         const userIndex = history.findIndex(msg => msg.id === userMessageId);
         if (userIndex === -1 || history[userIndex].role !== 'user') return;
+        const sessionId = currentSessionIdRef.current || generateSessionId();
 
         sessionLoadRequestIdRef.current += 1;
+        sessionHistoryCacheRef.current.set(sessionId, history);
+        const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
+        upsertOptimisticSession(sessionId, newText, []);
 
-        const chatRequestId = activeChatRequestIdRef.current + 1;
-        activeChatRequestIdRef.current = chatRequestId;
-
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
-
-        setIsLoading(true);
-        setHistory(prev => prev.map(msg => {
+        updateSessionHistory(sessionId, prev => prev.map(msg => {
             if (msg.id === userMessageId) {
                 return { ...msg, content: newText };
             }
             return msg;
         }));
-        setHistory(prev => {
+        updateSessionHistory(sessionId, prev => {
             const newHistory = [];
             for (let i = 0; i < prev.length; i++) {
                 if (i <= userIndex) {
@@ -974,14 +1206,15 @@ export const useChat = () => {
             timestamp: Date.now() / 1000
         };
 
-        setHistory(prev => [...prev, aiMsg]);
+        updateSessionHistory(sessionId, prev => [...prev, aiMsg]);
 
         const historyBefore = buildHistoryForAPI(userIndex);
         const formData = new FormData();
         formData.append('message', newText);
         formData.append('model', model);
-        formData.append('session_id', currentSessionIdRef.current || generateSessionId());
+        formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
+        formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
         if (activeMindIdRef.current) {
             formData.append('mind_id', activeMindIdRef.current);
         }
@@ -989,13 +1222,13 @@ export const useChat = () => {
         let fullReply = '';
 
         try {
-            await apiService.chat(formData, abortControllerRef.current.signal, {
+            await apiService.chat(formData, controller.signal, {
                 onPart: (data) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId || !data?.reply_part) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data?.reply_part) {
                         return;
                     }
                     fullReply += data.reply_part;
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return { ...msg, content: fullReply, isLoading: true };
                         }
@@ -1003,10 +1236,10 @@ export const useChat = () => {
                     }));
                 },
                 onWidgetUpdate: (widgetData) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId || !widgetData?.tag) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !widgetData?.tag) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
@@ -1020,10 +1253,10 @@ export const useChat = () => {
                     }));
                 },
                 onComplete: (finalData) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
@@ -1035,14 +1268,13 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
-                    abortControllerRef.current = null;
-                    setIsLoading(false);
+                    completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
                 },
                 onError: (err) => {
-                    if (activeChatRequestIdRef.current !== chatRequestId) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    setHistory(prev => prev.map(msg => {
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
@@ -1053,20 +1285,29 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
-                    abortControllerRef.current = null;
-                    setIsLoading(false);
+                    completeSessionRequest(sessionId, chatRequestId, 'error', err?.message || 'Generation failed');
                 }
             });
         } catch (e) {
-            if (activeChatRequestIdRef.current !== chatRequestId) {
+            if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                 return;
             }
             if (e.name !== 'AbortError') {
-                abortControllerRef.current = null;
-                setIsLoading(false);
+                completeSessionRequest(sessionId, chatRequestId, 'error', e?.message || 'Generation failed');
             }
         }
-    }, [history, isLoading, buildHistoryForAPI, isReadOnly]);
+    }, [
+        beginSessionRequest,
+        buildHistoryForAPI,
+        completeSessionRequest,
+        history,
+        isLoading,
+        isReadOnly,
+        isSessionRequestCurrent,
+        settings?.automaticWebSearch,
+        updateSessionHistory,
+        upsertOptimisticSession
+    ]);
 
     const enableSharing = useCallback(async () => {
         const sessionId = currentSessionIdRef.current;
@@ -1121,8 +1362,11 @@ export const useChat = () => {
         currentSessionSlug,
         sessionAccess,
         isReadOnly,
+        sessionActivity,
+        optimisticSessions,
         loadSession,
         clearChat,
+        markSessionActivitySeen,
         setActiveSessionMindId,
         sendMessage,
         stopGeneration,
@@ -1131,7 +1375,6 @@ export const useChat = () => {
         switchVariant,
         enableSharing,
         disableSharing,
-        buildHistoryForAPI,
-        messageVariants: messageVariantsRef.current
+        buildHistoryForAPI
     };
 };

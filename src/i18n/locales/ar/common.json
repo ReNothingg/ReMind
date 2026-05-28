@@ -94,7 +94,10 @@
     "sendCtrlEnter": "إرسال (Cmd+Enter / Ctrl+Enter)",
     "stop": "إيقاف",
     "joinDialog": "ابدأ حوارًا",
-    "quote": "اقتباس"
+    "quote": "اقتباس",
+    "webSearchLabel": "بحث",
+    "webSearchOn": "البحث في الويب مفعّل",
+    "webSearchOff": "تفعيل البحث في الويب"
   },
   "files": {
     "removeFile": "إزالة الملف"
@@ -266,7 +269,11 @@
       "nicknameLabel": "اللقب",
       "professionLabel": "المهنة",
       "moreLabel": "معلومات إضافية",
-      "morePlaceholder": "أي معلومات إضافية عنك..."
+      "morePlaceholder": "أي معلومات إضافية عنك...",
+      "automaticWebSearch": {
+        "title": "البحث التلقائي في الويب",
+        "description": "دع ReMind يقرر متى يحتاج إلى مصادر حديثة من الإنترنت. يتم إخفاء زر البحث اليدوي عند تفعيل هذا الخيار."
+      }
     },
     "interfaceLanguage": {
       "title": "لغة الواجهة",
@@ -467,5 +474,24 @@
       "createAction": "إنشاء mind"
     },
     "activeLabel": "mind نشط"
+  },
+  "webSearch": {
+    "sourcesLabel": "المصادر",
+    "sourcesAria": "مصادر البحث في الويب",
+    "sourceFallback": "مصدر",
+    "fragmentSources": "مصادر المقطع",
+    "status": {
+      "pending": "جارٍ الاتصال بالبحث...",
+      "started": "جارٍ البحث في الويب...",
+      "fetching": "جارٍ فتح المصادر وقراءتها...",
+      "done": "تم العثور على المصادر.",
+      "noResults": "لم يتم العثور على مصادر مناسبة.",
+      "failed": "فشل البحث، سأجيب دون مصادر.",
+      "generating": "جارٍ تحضير الإجابة...",
+      "deciding": "جارٍ تحديد ما إذا كان البحث مطلوبًا...",
+      "skipped": "البحث غير مطلوب، سأجيب بدونه.",
+      "querying": "جارٍ تحضير استعلام البحث..."
+    },
+    "queryLabel": "الاستعلام"
   }
 }

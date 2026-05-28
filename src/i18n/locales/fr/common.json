@@ -94,7 +94,10 @@
     "sendCtrlEnter": "Envoyer (Cmd+Enter / Ctrl+Enter)",
     "stop": "Arrêter",
     "joinDialog": "Démarrer un dialogue",
-    "quote": "Citer"
+    "quote": "Citer",
+    "webSearchLabel": "Recherche",
+    "webSearchOn": "La recherche web est activ?e",
+    "webSearchOff": "Activer la recherche web"
   },
   "files": {
     "removeFile": "Retirer le fichier"
@@ -266,7 +269,11 @@
       "nicknameLabel": "Surnom",
       "professionLabel": "Profession",
       "moreLabel": "Informations supplémentaires",
-      "morePlaceholder": "Toute information supplémentaire sur vous..."
+      "morePlaceholder": "Toute information supplémentaire sur vous...",
+      "automaticWebSearch": {
+        "title": "Recherche web automatique",
+        "description": "Laissez ReMind d?cider quand des sources internet r?centes sont n?cessaires. Le bouton manuel est masqu? quand cette option est active."
+      }
     },
     "interfaceLanguage": {
       "title": "Langue de l'interface",
@@ -467,5 +474,24 @@
       "createAction": "Créer le mind"
     },
     "activeLabel": "Mind actif"
+  },
+  "webSearch": {
+    "sourcesLabel": "Sources",
+    "sourcesAria": "Sources de recherche web",
+    "sourceFallback": "Source",
+    "fragmentSources": "Sources du fragment",
+    "status": {
+      "pending": "Connexion ? la recherche...",
+      "started": "Recherche sur le web...",
+      "fetching": "Ouverture et lecture des sources...",
+      "done": "Sources trouv?es.",
+      "noResults": "Aucune source pertinente trouv?e.",
+      "failed": "La recherche a ?chou?, r?ponse sans sources.",
+      "generating": "Pr?paration de la r?ponse...",
+      "deciding": "Décision sur la nécessité d’une recherche...",
+      "skipped": "La recherche n’est pas nécessaire, réponse sans elle.",
+      "querying": "Préparation de la requête de recherche..."
+    },
+    "queryLabel": "Requête"
   }
 }

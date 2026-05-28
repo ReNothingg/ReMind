@@ -134,7 +134,7 @@
   .censorship-button img,
   .web-search-toggle img,
   .theme-toggle-btn img,
-  .web-sources-header img {
+  .web-sources-trigger img {
     filter: var(--icon-filter-secondary);
     opacity: var(--icon-opacity-secondary);
     transition:
@@ -624,6 +624,35 @@
   .ui-rail-public-chip {
     @apply inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted;
     border-color: var(--color-border-subtle);
+  }
+
+  .ui-rail-status-indicator {
+    @apply relative inline-flex size-2.5 shrink-0 items-center justify-center rounded-full;
+  }
+
+  .ui-rail-status-indicator::before {
+    content: '';
+    @apply block rounded-full;
+  }
+
+  .ui-rail-status-generating::before {
+    @apply size-2.5 rounded-full border-2 border-transparent;
+    border-top-color: var(--color-accent);
+    border-right-color: rgba(var(--color-accent-raw), 0.38);
+    animation: rail-status-spin 0.8s linear infinite;
+  }
+
+  .ui-rail-status-complete::before {
+    @apply size-2 rounded-full;
+    background: var(--color-success);
+    box-shadow: 0 0 0 3px rgba(var(--color-success-raw), 0.13), 0 0 10px rgba(var(--color-success-raw), 0.65);
+    animation: rail-status-glow 1.6s ease-in-out infinite;
+  }
+
+  .ui-rail-status-error::before {
+    @apply size-2 rounded-full;
+    background: var(--color-error);
+    box-shadow: 0 0 0 3px rgba(var(--color-error-raw), 0.12), 0 0 9px rgba(var(--color-error-raw), 0.45);
   }
 
   .ui-rail-item-details {
@@ -1428,6 +1457,25 @@
     .ui-guest-modal-actions > * {
       padding: 12px 16px;
       font-size: 14px;
+    }
+  }
+
+  @keyframes rail-status-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes rail-status-glow {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.72;
+      transform: scale(0.82);
     }
   }
 

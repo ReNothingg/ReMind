@@ -22,6 +22,7 @@ const InputArea = ({
     const [quotes, setQuotes] = useState([]);
     const [fileModal, setFileModal] = useState({ isOpen: false, file: null, content: null });
     const [expanded, setExpanded] = useState(false);
+    const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
     const textareaRef = useRef(null);
     const quoteButtonRef = useRef(null);
@@ -31,6 +32,13 @@ const InputArea = ({
     const { t } = useTranslation();
 
     const fileUploadsEnabled = isAuthenticated && !isReadOnly;
+    const automaticWebSearch = !!settings.automaticWebSearch;
+
+    useEffect(() => {
+        if (automaticWebSearch && webSearchEnabled) {
+            setWebSearchEnabled(false);
+        }
+    }, [automaticWebSearch, webSearchEnabled]);
 
     useEffect(() => {
         if (!initialPrompt) {
@@ -122,7 +130,8 @@ const InputArea = ({
         }
 
         onSendMessage(fullText, effectiveFiles, {
-            webSearch: false,
+            webSearch: !automaticWebSearch && webSearchEnabled,
+            autoWebSearch: automaticWebSearch,
             censorship: false,
         });
 
@@ -380,6 +389,25 @@ const InputArea = ({
                                 if (!isReadOnly && onOpenAuth) onOpenAuth();
                             }}
                         ></label>
+                    )}
+
+                    {!automaticWebSearch && (
+                        <button
+                            type="button"
+                            className={cn('web-search-toggle', webSearchEnabled && 'active')}
+                            title={webSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
+                            aria-label={webSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
+                            aria-pressed={webSearchEnabled}
+                            disabled={isReadOnly}
+                            onClick={() => {
+                                if (!isReadOnly) {
+                                    setWebSearchEnabled((enabled) => !enabled);
+                                }
+                            }}
+                        >
+                            <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
+                            <span>{t('composer.webSearchLabel')}</span>
+                        </button>
                     )}
 
                     {hasQuotes && (

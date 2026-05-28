@@ -547,3 +547,9 @@
 .censorship-button.active:hover {
   background: var(--toggle-btn-active-hover-bg);
 }
+
+.web-search-toggle:disabled,
+.censorship-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

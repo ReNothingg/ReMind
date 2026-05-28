@@ -94,7 +94,10 @@
     "sendCtrlEnter": "发送 (Cmd+Enter / Ctrl+Enter)",
     "stop": "停止",
     "joinDialog": "开始对话",
-    "quote": "引用"
+    "quote": "引用",
+    "webSearchLabel": "搜索",
+    "webSearchOn": "网页搜索已开启",
+    "webSearchOff": "开启网页搜索"
   },
   "files": {
     "removeFile": "移除文件"
@@ -266,7 +269,11 @@
       "nicknameLabel": "昵称",
       "professionLabel": "职业",
       "moreLabel": "更多信息",
-      "morePlaceholder": "关于你的任何其他信息..."
+      "morePlaceholder": "关于你的任何其他信息...",
+      "automaticWebSearch": {
+        "title": "自动网页搜索",
+        "description": "让 ReMind 判断何时需要最新的互联网来源。开启后，手动搜索按钮会隐藏。"
+      }
     },
     "interfaceLanguage": {
       "title": "界面语言",
@@ -467,5 +474,24 @@
       "createAction": "创建 mind"
     },
     "activeLabel": "Mind 已启用"
+  },
+  "webSearch": {
+    "sourcesLabel": "来源",
+    "sourcesAria": "网页搜索来源",
+    "sourceFallback": "来源",
+    "fragmentSources": "片段来源",
+    "status": {
+      "pending": "正在连接搜索...",
+      "started": "正在搜索网页...",
+      "fetching": "正在打开并阅读来源...",
+      "done": "已找到来源。",
+      "noResults": "未找到合适的来源。",
+      "failed": "搜索失败，将不使用来源回答。",
+      "generating": "正在准备回答...",
+      "deciding": "正在判断是否需要搜索...",
+      "skipped": "不需要搜索，将直接回答。",
+      "querying": "正在准备搜索查询..."
+    },
+    "queryLabel": "查询"
   }
 }

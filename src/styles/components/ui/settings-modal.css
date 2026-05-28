@@ -257,12 +257,6 @@
   z-index: 90;
 }
 
-.user-settings-modal .setting-control-group:hover,
-.user-settings-modal .setting-field:hover,
-.user-settings-modal .setting-toggle:hover {
-  background: var(--color-bg-surface-alt);
-}
-
 .user-settings-modal .setting-control-group {
   display: flex;
   align-items: center;

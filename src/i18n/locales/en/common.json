@@ -95,7 +95,10 @@
     "sendCtrlEnter": "Send (Cmd+Enter / Ctrl+Enter)",
     "stop": "Stop",
     "joinDialog": "Start a dialog",
-    "quote": "Quote"
+    "quote": "Quote",
+    "webSearchLabel": "Search",
+    "webSearchOn": "Web search is on",
+    "webSearchOff": "Turn on web search"
   },
   "files": {
     "removeFile": "Remove file",
@@ -274,7 +277,11 @@
       "nicknameLabel": "Nickname",
       "professionLabel": "Profession",
       "moreLabel": "Additional info",
-      "morePlaceholder": "Any additional info about you..."
+      "morePlaceholder": "Any additional info about you...",
+      "automaticWebSearch": {
+        "title": "Automatic web search",
+        "description": "Let ReMind decide when current internet sources are needed. The manual search button is hidden while this is on."
+      }
     },
     "interfaceLanguage": {
       "title": "Interface language",
@@ -518,5 +525,24 @@
       "createAction": "Create mind"
     },
     "activeLabel": "Mind active"
+  },
+  "webSearch": {
+    "sourcesLabel": "Sources",
+    "sourcesAria": "Web search sources",
+    "sourceFallback": "Source",
+    "fragmentSources": "Fragment sources",
+    "status": {
+      "pending": "Connecting search...",
+      "started": "Searching the web...",
+      "fetching": "Opening and reading sources...",
+      "done": "Sources found.",
+      "noResults": "No suitable sources found.",
+      "failed": "Search failed, answering without sources.",
+      "generating": "Preparing answer...",
+      "deciding": "Deciding whether search is needed...",
+      "skipped": "Search is not needed, answering without it.",
+      "querying": "Preparing search query..."
+    },
+    "queryLabel": "Query"
   }
 }

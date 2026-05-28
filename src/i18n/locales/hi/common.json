@@ -94,7 +94,10 @@
     "sendCtrlEnter": "भेजें (Cmd+Enter / Ctrl+Enter)",
     "stop": "रोकें",
     "joinDialog": "संवाद शुरू करें",
-    "quote": "उद्धरण"
+    "quote": "उद्धरण",
+    "webSearchLabel": "खोज",
+    "webSearchOn": "वेब खोज चालू है",
+    "webSearchOff": "वेब खोज चालू करें"
   },
   "files": {
     "removeFile": "फ़ाइल हटाएं"
@@ -266,7 +269,11 @@
       "nicknameLabel": "उपनाम",
       "professionLabel": "पेशा",
       "moreLabel": "अतिरिक्त जानकारी",
-      "morePlaceholder": "आपके बारे में कोई अतिरिक्त जानकारी..."
+      "morePlaceholder": "आपके बारे में कोई अतिरिक्त जानकारी...",
+      "automaticWebSearch": {
+        "title": "स्वचालित वेब खोज",
+        "description": "ReMind को तय करने दें कि कब ताज़ा इंटरनेट स्रोतों की ज़रूरत है। यह चालू होने पर मैनुअल खोज बटन छिप जाता है।"
+      }
     },
     "interfaceLanguage": {
       "title": "इंटरफेस भाषा",
@@ -467,5 +474,24 @@
       "createAction": "mind बनाएं"
     },
     "activeLabel": "mind सक्रिय"
+  },
+  "webSearch": {
+    "sourcesLabel": "स्रोत",
+    "sourcesAria": "वेब खोज स्रोत",
+    "sourceFallback": "स्रोत",
+    "fragmentSources": "अंश के स्रोत",
+    "status": {
+      "pending": "खोज जोड़ी जा रही है...",
+      "started": "वेब पर खोज रहा हूँ...",
+      "fetching": "स्रोत खोलकर पढ़ रहा हूँ...",
+      "done": "स्रोत मिल गए।",
+      "noResults": "उपयुक्त स्रोत नहीं मिले।",
+      "failed": "खोज विफल रही, बिना स्रोतों के उत्तर दे रहा हूँ।",
+      "generating": "उत्तर तैयार कर रहा हूँ...",
+      "deciding": "तय कर रहा हूँ कि खोज ज़रूरी है या नहीं...",
+      "skipped": "खोज की ज़रूरत नहीं है, बिना खोज के उत्तर दे रहा हूँ।",
+      "querying": "खोज क्वेरी तैयार कर रहा हूँ..."
+    },
+    "queryLabel": "क्वेरी"
   }
 }

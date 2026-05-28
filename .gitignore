@@ -126,3 +126,5 @@ tmp/
 temp/
 *.tmp
 *.bak
+
+search_results/

@@ -144,6 +144,7 @@ const AppRail = ({
     onSettingsClick,
     onToggle,
     pinnedMinds = [],
+    sessionActivity = {},
     sessions,
 }) => {
     const { t } = useTranslation();
@@ -362,6 +363,17 @@ const AppRail = ({
         return scored.map(item => item.session);
     }, [effectiveQuery, sortedSessions, t]);
 
+    const getSessionActivityLabel = (activity) => {
+        if (!activity?.status) return '';
+        if (activity.status === 'generating') {
+            return t('rail.statusGenerating', { defaultValue: 'Generating answer' });
+        }
+        if (activity.status === 'error') {
+            return t('rail.statusError', { defaultValue: 'Generation failed' });
+        }
+        return t('rail.statusComplete', { defaultValue: 'Answer is ready' });
+    };
+
     return (
         <nav
             className={cn(
@@ -490,6 +502,8 @@ const AppRail = ({
                 <ul id="chatHistoryList" className="rail-chat-list ui-rail-list ui-scrollbar-thin">
                     {filteredSessions.map(session => {
                         const isFavorite = favorites.includes(session.session_id);
+                        const activity = sessionActivity[session.session_id];
+                        const activityLabel = getSessionActivityLabel(activity);
                         const preview = (session.last_message && session.last_message.trim()) ? session.last_message.trim() : '';
                         const title = (session.title && session.title.trim()) || preview || (session.session_id || '').slice(0, 16) || t('rail.untitled');
                         const showPreview = !!settings.showChatPreview && !!preview && preview !== title;
@@ -541,6 +555,16 @@ const AppRail = ({
                                                 </svg>
                                                 {t('rail.public')}
                                             </span>
+                                        )}
+                                        {activity?.status && (
+                                            <span
+                                                className={cn(
+                                                    'ui-rail-status-indicator',
+                                                    `ui-rail-status-${activity.status}`
+                                                )}
+                                                title={activityLabel}
+                                                aria-label={activityLabel}
+                                            />
                                         )}
                                     </div>
                                     {showPreview && editingSessionId !== session.session_id && (

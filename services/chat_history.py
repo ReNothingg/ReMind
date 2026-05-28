@@ -205,12 +205,16 @@ def normalize_message(msg: Any) -> dict:
         parts = msg.get("parts") or (
             [{"text": msg.get("text")}] if msg.get("text") else [{"text": ""}]
         )
-        return {
+        normalized = {
             "id": msg.get("id") or _new_message_id(),
             "role": role,
             "parts": parts,
             "timestamp": msg.get("timestamp") or int(time.time()),
         }
+        sources = msg.get("sources")
+        if isinstance(sources, list) and sources:
+            normalized["sources"] = sources
+        return normalized
     except Exception:
         return {
             "id": _new_message_id(),

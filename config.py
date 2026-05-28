@@ -230,6 +230,31 @@ ALLOW_GUEST_CHATS_SAVE: bool = os.getenv("ALLOW_GUEST_CHATS_SAVE", "False").lowe
     "yes",
 )
 
+WEB_SEARCH_ENABLED: bool = os.getenv("WEB_SEARCH_ENABLED", "True").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+WEB_SEARCH_MAX_RESULTS = 10
+
+try:
+    WEB_SEARCH_FETCH_TIMEOUT_SECONDS: float = float(
+        os.getenv("WEB_SEARCH_FETCH_TIMEOUT_SECONDS", "12")
+    )
+except ValueError:
+    WEB_SEARCH_FETCH_TIMEOUT_SECONDS = 12.0
+try:
+    WEB_SEARCH_MAX_RESPONSE_BYTES: int = int(
+        os.getenv("WEB_SEARCH_MAX_RESPONSE_BYTES", str(512 * 1024))
+    )
+except ValueError:
+    WEB_SEARCH_MAX_RESPONSE_BYTES = 512 * 1024
+try:
+    WEB_SEARCH_PAGE_TEXT_CHARS: int = int(os.getenv("WEB_SEARCH_PAGE_TEXT_CHARS", "2200"))
+except ValueError:
+    WEB_SEARCH_PAGE_TEXT_CHARS = 2200
+
 ENABLE_STRICT_HTTPS = os.getenv(
     "ENABLE_STRICT_HTTPS", "true" if IS_PRODUCTION else "false"
 ).lower() in ("1", "true", "yes")

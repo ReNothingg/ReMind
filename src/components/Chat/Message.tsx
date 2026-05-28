@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
 import { apiService } from '../../services/api';
@@ -108,10 +108,335 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
     );
 };
 
+const sourceFallbackIcon = '/icons/ui/web.svg';
+
+const normalizeWebSource = (source, index, sourceFallbackLabel = 'Source') => {
+    const fallbackTitle = `${sourceFallbackLabel} ${index + 1}`;
+    if (typeof source === 'string') {
+        const isUrl = /^https?:\/\//i.test(source);
+        let siteName = fallbackTitle;
+        if (isUrl) {
+            try {
+                siteName = new URL(source).hostname.replace(/^www\./, '');
+            } catch {
+                siteName = fallbackTitle;
+            }
+        }
+        return {
+            rank: index + 1,
+            title: siteName,
+            url: isUrl ? source : '',
+            displayUrl: isUrl ? siteName : source,
+            siteName,
+            snippet: '',
+            faviconUrl: sourceFallbackIcon
+        };
+    }
+
+    if (!source || typeof source !== 'object') {
+        return null;
+    }
+
+    const url = String(source.url || source.final_url || source.finalUrl || '').trim();
+    let siteName = String(source.site_name || source.siteName || '').trim();
+    if (!siteName && url) {
+        try {
+            siteName = new URL(url).hostname.replace(/^www\./, '');
+        } catch {
+            siteName = '';
+        }
+    }
+
+    const title = String(source.title || siteName || fallbackTitle).trim();
+    return {
+        rank: source.rank || index + 1,
+        title,
+        url,
+        displayUrl: String(source.display_url || source.displayUrl || siteName || url).trim(),
+        siteName: siteName || title,
+        snippet: String(source.snippet || '').trim(),
+        faviconUrl: String(source.favicon_url || source.faviconUrl || '').trim() || sourceFallbackIcon
+    };
+};
+
+const normalizeWebSources = (sources, sourceFallbackLabel = 'Source') => (Array.isArray(sources) ? sources : [])
+    .map((source, index) => normalizeWebSource(source, index, sourceFallbackLabel))
+    .filter(Boolean)
+    .filter((source) => source.url || source.title);
+
+const linkifySourceCitations = (text, sources) => {
+    if (!text || !Array.isArray(sources) || sources.length === 0) {
+        return text || '';
+    }
+
+    const sourceByRank = new Map();
+    sources.forEach((source, index) => {
+        sourceByRank.set(Number(source.rank || index + 1), source);
+    });
+
+    const replaceCitation = (segment) => segment.replace(/(^|[\n.!?])([^.!?\n]*?\S)\s*\[(\d+(?:\s*,\s*\d+)*)\](?!\s*[:(])/g, (match, prefix, claimText, ranksText) => {
+        const ranks = ranksText
+            .split(',')
+            .map((rank) => Number(rank.trim()))
+            .filter((rank) => Number.isFinite(rank) && sourceByRank.has(rank));
+
+        if (ranks.length === 0) {
+            return match;
+        }
+
+        return `${prefix}<c s="${ranks.join(',')}">${claimText}</c>`;
+    });
+
+    return String(text)
+        .split(/(```[\s\S]*?```|`[^`\n]+`)/g)
+        .map((segment, index) => (index % 2 === 0 ? replaceCitation(segment) : segment))
+        .join('');
+};
+
+const normalizeComparableSourceUrl = (url) => {
+    const rawUrl = String(url || '').trim();
+    if (!rawUrl) {
+        return '';
+    }
+
+    try {
+        const parsed = new URL(rawUrl, window.location.origin);
+        parsed.hash = '';
+        return parsed.toString().replace(/\/$/, '');
+    } catch {
+        return rawUrl.replace(/#.*$/, '').replace(/\/$/, '');
+    }
+};
+
+const appendTextNode = (documentRef, parent, tagName, className, text) => {
+    const value = String(text || '').trim();
+    if (!value) {
+        return null;
+    }
+
+    const element = documentRef.createElement(tagName);
+    if (className) {
+        element.className = className;
+    }
+    element.textContent = value;
+    parent.appendChild(element);
+    return element;
+};
+
+const parseSourceIds = (value) => String(value || '')
+    .split(',')
+    .map((rank) => Number(rank.trim()))
+    .filter(Number.isFinite);
+
+const buildSourceCitationPopover = (documentRef, sources, fragmentSourcesLabel = 'Fragment sources') => {
+    const popover = documentRef.createElement('span');
+    popover.className = 'source-citation-popover';
+    popover.setAttribute('aria-hidden', 'true');
+
+    const sourceList = Array.isArray(sources) ? sources.filter(Boolean) : [];
+    if (sourceList.length === 0) {
+        return popover;
+    }
+
+    if (sourceList.length === 1) {
+        const [source] = sourceList;
+        const header = documentRef.createElement('span');
+        header.className = 'source-citation-popover-header';
+        const icon = documentRef.createElement('img');
+        icon.className = 'source-citation-popover-icon';
+        icon.src = source.faviconUrl || sourceFallbackIcon;
+        icon.alt = '';
+        icon.loading = 'lazy';
+        header.appendChild(icon);
+        appendTextNode(documentRef, header, 'strong', '', source.title || source.siteName);
+        popover.appendChild(header);
+        appendTextNode(documentRef, popover, 'span', 'source-citation-popover-snippet', source.snippet);
+        appendTextNode(documentRef, popover, 'small', '', source.displayUrl || source.url);
+        return popover;
+    }
+
+    appendTextNode(documentRef, popover, 'strong', 'source-citation-popover-title', fragmentSourcesLabel);
+    sourceList.forEach((source) => {
+        const row = documentRef.createElement('span');
+        row.className = 'source-citation-popover-row';
+        const icon = documentRef.createElement('img');
+        icon.className = 'source-citation-popover-icon';
+        icon.src = source.faviconUrl || sourceFallbackIcon;
+        icon.alt = '';
+        icon.loading = 'lazy';
+        row.appendChild(icon);
+        appendTextNode(documentRef, row, 'span', '', source.siteName || source.title || source.displayUrl);
+        popover.appendChild(row);
+    });
+    return popover;
+};
+
+const decorateSourceCitations = (html, sources, labels: { fragmentSources?: string } = {}) => {
+    if (!html || typeof document === 'undefined' || !Array.isArray(sources) || sources.length === 0) {
+        return html || '';
+    }
+
+    const sourcesByUrl = new Map();
+    const sourcesByRank = new Map();
+    sources.forEach((source) => {
+        const normalizedUrl = normalizeComparableSourceUrl(source.url);
+        if (normalizedUrl) {
+            sourcesByUrl.set(normalizedUrl, source);
+        }
+        sourcesByRank.set(Number(source.rank), source);
+    });
+
+    if (sourcesByUrl.size === 0 && sourcesByRank.size === 0) {
+        return html;
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = html;
+
+    template.content.querySelectorAll('c[s], mark[data-source-ids]').forEach((mark) => {
+        const markSources = parseSourceIds(mark.getAttribute('s') || mark.getAttribute('data-source-ids'))
+            .map((rank) => sourcesByRank.get(rank))
+            .filter(Boolean);
+        if (markSources.length === 0) {
+            return;
+        }
+
+        mark.classList.add('source-citation-mark');
+        mark.setAttribute('tabindex', '0');
+        mark.appendChild(buildSourceCitationPopover(
+            document,
+            markSources,
+            labels.fragmentSources || 'Fragment sources'
+        ));
+    });
+
+    template.content.querySelectorAll('a[href]').forEach((link) => {
+        if (link.closest('.source-citation-mark')) {
+            return;
+        }
+
+        const source = sourcesByUrl.get(normalizeComparableSourceUrl(link.getAttribute('href')));
+        if (!source) {
+            return;
+        }
+
+        link.classList.add('source-citation-link');
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        link.appendChild(buildSourceCitationPopover(
+            document,
+            [source],
+            labels.fragmentSources || 'Fragment sources'
+        ));
+    });
+
+    return template.innerHTML;
+};
+
+const WebSourcesPanel = ({ sources, t }) => {
+    const normalizedSources = useMemo(
+        () => normalizeWebSources(sources, t('webSearch.sourceFallback', { defaultValue: 'Source' })),
+        [sources, t]
+    );
+
+    if (normalizedSources.length === 0) {
+        return null;
+    }
+
+    const renderPillContent = (source) => (
+        <>
+            <span className="source-pill-icon-wrap" aria-hidden="true">
+                <img
+                    className="source-favicon"
+                    src={source.faviconUrl}
+                    alt=""
+                    loading="lazy"
+                    onError={(event) => {
+                        if (event.currentTarget.dataset.fallbackApplied !== 'true') {
+                            event.currentTarget.dataset.fallbackApplied = 'true';
+                            event.currentTarget.src = sourceFallbackIcon;
+                        }
+                    }}
+                />
+            </span>
+            <span className="source-pill-name">{source.siteName}</span>
+            <span className="source-tooltip" role="tooltip">
+                <strong>{source.title}</strong>
+                {source.snippet && <span>{source.snippet}</span>}
+                {source.displayUrl && <small>{source.displayUrl}</small>}
+            </span>
+        </>
+    );
+
+    return (
+        <div className="web-sources-container" aria-label={t('webSearch.sourcesAria')}>
+            <div className="web-sources-trigger" tabIndex={0} role="group">
+                <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
+                <span>{t('webSearch.sourcesLabel')}</span>
+                <span className="web-sources-count">{normalizedSources.length}</span>
+            </div>
+            <div className="web-sources-pills">
+                {normalizedSources.map((source, index) => (
+                    source.url ? (
+                        <a
+                            key={`${source.url}-${index}`}
+                            className="source-pill"
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={source.title}
+                        >
+                            {renderPillContent(source)}
+                        </a>
+                    ) : (
+                        <span key={`${source.title}-${index}`} className="source-pill">
+                            {renderPillContent(source)}
+                        </span>
+                    )
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const WebSearchProgress = ({ status, t }) => {
+    if (!status) {
+        return null;
+    }
+
+    const label = String(status.message || t('webSearch.status.started')).trim();
+    const query = typeof status.query === 'string' ? status.query.trim() : '';
+
+    return (
+        <div className="web-search-progress" role="status" aria-live="polite">
+            <span className="web-search-progress-icon" aria-hidden="true">
+                <span />
+            </span>
+            <span className="web-search-progress-body">
+                <span className="web-search-progress-line">
+                    <span className="web-search-progress-text">{label}</span>
+                    <span className="web-search-progress-dots" aria-hidden="true">
+                        <span />
+                        <span />
+                        <span />
+                    </span>
+                </span>
+                {query && (
+                    <span className="web-search-progress-query" title={query}>
+                        <span>{t('webSearch.queryLabel', { defaultValue: 'Query' })}</span>
+                        <b>{query}</b>
+                    </span>
+                )}
+            </span>
+        </div>
+    );
+};
+
 const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
-    const { role, content, images, files, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts } = message;
+    const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus } = message;
     const isUser = role === 'user';
     const { settings } = useSettings();
+    const { t } = useTranslation();
     const [isEditingUserMessage, setIsEditingUserMessage] = useState(false);
     const [editedContent, setEditedContent] = useState(content);
     const currentVariant = variants && variants.length > 0 && currentVariantIndex !== undefined
@@ -146,6 +471,16 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
 
     const displayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
     const displayFiles = filesFromParts;
+    const displaySources = currentVariant ? (currentVariant.sources || []) : (sources || []);
+    const sourceFallbackLabel = t('webSearch.sourceFallback', { defaultValue: 'Source' });
+    const displaySourceItems = useMemo(
+        () => normalizeWebSources(displaySources, sourceFallbackLabel),
+        [displaySources, sourceFallbackLabel]
+    );
+    const displayContentWithSourceLinks = useMemo(
+        () => linkifySourceCitations(displayContent || '', displaySourceItems),
+        [displayContent, displaySourceItems]
+    );
     const hasMultipleVariants = variants && variants.length > 1;
     const contentRef = useRef(null);
     const waveformCanvasRef = useRef(null);
@@ -394,9 +729,20 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         if (isUser) {
             return markdownEnabledForMessage ? formatUserText(content || '') : formatPlainText(content || '');
         }
-        return markdownEnabledForMessage ? formatText(displayContent || '') : formatPlainText(displayContent || '');
-    }, [displayContent, isUser, content, markdownEnabledForMessage]);
-    useEffect(() => {
+        if (!markdownEnabledForMessage) {
+            return formatPlainText(displayContent || '');
+        }
+
+        return decorateSourceCitations(
+            formatText(displayContentWithSourceLinks),
+            displaySourceItems,
+            {
+                fragmentSources: t('webSearch.fragmentSources')
+            }
+        );
+    }, [displayContent, displayContentWithSourceLinks, displaySourceItems, isUser, content, markdownEnabledForMessage, t]);
+
+    useLayoutEffect(() => {
         if (!markdownEnabledForMessage || !contentRef.current) return;
 
         const currentRef = contentRef.current;
@@ -435,9 +781,16 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
             });
         };
 
-        const frame = window.requestAnimationFrame(() => {
-            applySyntaxHighlighting();
-        });
+        applySyntaxHighlighting();
+        const frame = window.requestAnimationFrame(applySyntaxHighlighting);
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+        };
+    }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
+
+    useEffect(() => {
+        if (!markdownEnabledForMessage || !contentRef.current) return;
 
         const renderVisuals = async () => {
             if (Utils.renderSvgPreviews) {
@@ -469,10 +822,6 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         };
 
         renderVisuals();
-
-        return () => {
-            window.cancelAnimationFrame(frame);
-        };
     }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
     useEffect(() => {
         if (!audio.isVisible || !waveformCanvasRef.current || !audio.waveformPoints) return;
@@ -817,6 +1166,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     </div>
                 )}
 
+                {!isUser && isLoading && webSearchStatus && (
+                    <WebSearchProgress status={webSearchStatus} t={t} />
+                )}
+
                 <div
                     ref={contentRef}
                     className="message-text ui-message-text"
@@ -843,7 +1196,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     return null;
                 })}
 
-                {isLoading && !displayContent && !isGeneratingImage && (
+                {isLoading && !displayContent && !isGeneratingImage && !webSearchStatus && (
                     <div className="live-thinking-animation ui-message-loader">
                         <div className="thinking-loader-wrapper">
                             <img src="/icons/load.svg" alt="Loading" className="thinking-loader-icon" />
@@ -881,6 +1234,11 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                         >
                             <img src="/icons/media/next.svg" alt=">" />
                         </button>
+                    </div>
+                )}
+                {!isUser && isLoading && displaySourceItems.length > 0 && (
+                    <div className="actions-bar ui-message-actions">
+                        <WebSourcesPanel sources={displaySourceItems} t={t} />
                     </div>
                 )}
                 {!isUser && !isLoading && (
@@ -931,6 +1289,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                         >
                             <img src="/icons/ui/translate.svg" alt="Translate" />
                         </MessageActionButton>
+                        <WebSourcesPanel sources={displaySourceItems} t={t} />
                     </div>
                 )}
                 {!isUser && showTranslation && (

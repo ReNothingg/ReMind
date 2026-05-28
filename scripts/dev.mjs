@@ -1,17 +1,36 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+function npmScriptCommand(scriptName) {
+  const npmExecPath = process.env.npm_execpath
+
+  if (npmExecPath && npmExecPath.endsWith('.js')) {
+    return {
+      command: process.execPath,
+      args: [npmExecPath, 'run', scriptName],
+    }
+  }
+
+  if (process.platform === 'win32') {
+    return {
+      command: process.env.ComSpec || 'cmd.exe',
+      args: ['/d', '/s', '/c', `npm run ${scriptName}`],
+    }
+  }
+
+  return {
+    command: 'npm',
+    args: ['run', scriptName],
+  }
+}
 
 const processes = [
   {
     name: 'backend',
-    command: npmCommand,
-    args: ['run', 'dev:backend'],
+    ...npmScriptCommand('dev:backend'),
   },
   {
     name: 'frontend',
-    command: npmCommand,
-    args: ['run', 'dev:frontend'],
+    ...npmScriptCommand('dev:frontend'),
   },
 ]
 
@@ -40,14 +59,16 @@ function stopAll(signal = 'SIGTERM') {
       continue
     }
 
-    if (process.platform !== 'win32') {
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+        stdio: 'ignore',
+      })
+    } else {
       try {
         process.kill(-child.pid, signal)
       } catch {
         child.kill(signal)
       }
-    } else {
-      child.kill(signal)
     }
   }
 }
