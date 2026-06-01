@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -43,6 +44,9 @@ def test_api_auth_config_reports_when_turnstile_is_required(client, monkeypatch)
     payload = response.get_json()
     assert payload["turnstile_site_key"] == "site-key"
     assert payload["turnstile_required"] is True
+    assert payload["google_mobile_login_url"] == "/login/google?client=ios"
+    assert payload["mobile_oauth_redirect_uri"] == "remind://auth/google"
+    assert payload["mobile_oauth_callback_scheme"] == "remind"
 
     monkeypatch.setattr(config, "LOCALHOST_MODE", True)
 
@@ -182,6 +186,81 @@ def test_login_google_uses_host_only_cookies_on_local_host(client, monkeypatch):
     )
     assert "Domain=" not in session_cookie
     assert "Domain=" not in fallback_cookie
+
+
+def test_mobile_google_oauth_callback_completes_api_session(app, client, monkeypatch):
+    class FakeUserInfoResponse:
+        def json(self):
+            return {
+                "sub": "google-user-1",
+                "email": "ios-google@example.com",
+                "name": "iOS Google User",
+            }
+
+    class FakeGoogleClient:
+        def create_authorization_url(self, redirect_uri):
+            self.redirect_uri = redirect_uri
+            return {
+                "url": "https://accounts.google.com/o/oauth2/v2/auth?state=test-state",
+                "state": "test-state",
+            }
+
+        def save_authorize_data(self, **kwargs):
+            self.saved = kwargs
+
+        def authorize_access_token(self):
+            return {"access_token": "test-access-token"}
+
+        def get(self, url, token=None):
+            self.userinfo_url = url
+            self.userinfo_token = token
+            return FakeUserInfoResponse()
+
+    monkeypatch.setattr(auth_module.oauth, "google", FakeGoogleClient(), raising=False)
+
+    start_response = client.get(
+        "/login/google?client=ios",
+        base_url="http://127.0.0.1:5000",
+        headers={"User-Agent": "Mozilla/5.0 (pytest)"},
+    )
+    assert start_response.status_code == 302
+    assert start_response.headers["Location"].startswith("https://accounts.google.com/")
+
+    callback_response = client.get(
+        "/login/google/callback?state=test-state&code=test-code",
+        base_url="http://127.0.0.1:5000",
+        headers={"User-Agent": "Mozilla/5.0 (pytest)"},
+    )
+    assert callback_response.status_code == 302
+
+    callback_url = callback_response.headers["Location"]
+    parsed_callback = urlparse(callback_url)
+    assert parsed_callback.scheme == "remind"
+    assert parsed_callback.netloc == "auth"
+    assert parsed_callback.path == "/google"
+    mobile_token = parse_qs(parsed_callback.query)["token"][0]
+
+    mobile_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+            "Mobile/15E148 Safari/604.1 ReMindIOS/1.0"
+        )
+    }
+    with app.test_client() as mobile_client:
+        complete_response = mobile_client.post(
+            "/api/auth/mobile/google/complete",
+            json={"token": mobile_token},
+            headers=mobile_headers,
+        )
+        assert complete_response.status_code == 200
+        payload = complete_response.get_json()
+        assert payload["user"]["email"] == "ios-google@example.com"
+        assert payload["user"]["oauth_provider"] == "google"
+
+        check_response = mobile_client.get("/api/auth/check", headers=mobile_headers)
+        assert check_response.status_code == 200
+        assert check_response.get_json()["authenticated"] is True
 
 
 def test_normalize_redirect_target_keeps_redirects_relative():

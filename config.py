@@ -151,6 +151,11 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+IOS_OAUTH_REDIRECT_URI = (
+    os.getenv("IOS_OAUTH_REDIRECT_URI", "remind://auth/google").strip()
+    or "remind://auth/google"
+)
+IOS_OAUTH_CALLBACK_SCHEME = urlparse(IOS_OAUTH_REDIRECT_URI).scheme or "remind"
 
 
 BACKEND_URL = os.getenv("BACKEND_URL", None)

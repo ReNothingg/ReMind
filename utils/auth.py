@@ -4,7 +4,7 @@ import secrets
 import unicodedata
 from datetime import datetime, timedelta
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
@@ -25,6 +25,7 @@ db: Any = SQLAlchemy()
 oauth = OAuth()
 OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
+MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 180
 ROOT_ADMIN_USER_ID = 1
 
 
@@ -514,6 +515,55 @@ def _decode_oauth_fallback_state(
     return data if isinstance(data, dict) else None
 
 
+def _mobile_google_oauth_serializer(secret_key: str) -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(secret_key, salt="google-mobile-oauth")
+
+
+def _encode_mobile_google_oauth_token(secret_key: str, user_id: int) -> str:
+    serializer = _mobile_google_oauth_serializer(secret_key)
+    return serializer.dumps(
+        {
+            "aud": "remind-ios-google",
+            "user_id": user_id,
+            "nonce": secrets.token_urlsafe(16),
+        }
+    )
+
+
+def _decode_mobile_google_oauth_token(
+    secret_key: str,
+    raw_value: str,
+    max_age: int = MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS,
+):
+    if not raw_value or not secret_key:
+        return None
+    serializer = _mobile_google_oauth_serializer(secret_key)
+    try:
+        data = serializer.loads(raw_value, max_age=max_age)
+    except BadData:
+        return None
+    if not isinstance(data, dict) or data.get("aud") != "remind-ios-google":
+        return None
+    return data
+
+
+def _is_allowed_mobile_oauth_redirect_uri(raw_value: str, configured_uri: str) -> bool:
+    candidate = (raw_value or "").strip()
+    configured = (configured_uri or "").strip()
+    if not candidate or candidate != configured:
+        return False
+
+    parsed = urlparse(candidate)
+    return bool(parsed.scheme and parsed.netloc == "auth" and parsed.path.rstrip("/") == "/google")
+
+
+def _append_url_query(raw_url: str, params: dict[str, str]) -> str:
+    parsed = urlparse(raw_url)
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    query.extend((key, value) for key, value in params.items() if value is not None)
+    return urlunparse(parsed._replace(query=urlencode(query)))
+
+
 def _resolve_oauth_redirect_base(
     request_host_url: str,
     backend_url: str | None,
@@ -821,14 +871,37 @@ def register_auth_routes(app):
 
     @app.route("/login/google")
     def login_google():
-        from config import ALLOWED_HOSTS, BACKEND_URL, SECRET_KEY, SESSION_COOKIE_DOMAIN
-
-        redirect_to_candidate = (
-            request.args.get("redirect_to") or request.headers.get("Referer") or ""
+        from config import (
+            ALLOWED_HOSTS,
+            BACKEND_URL,
+            IOS_OAUTH_REDIRECT_URI,
+            SECRET_KEY,
+            SESSION_COOKIE_DOMAIN,
         )
-        safe_redirect_path = _normalize_redirect_target(redirect_to_candidate, ALLOWED_HOSTS)
-        if safe_redirect_path:
-            session["oauth_redirect_to"] = safe_redirect_path
+
+        mobile_redirect_uri = ""
+        mobile_requested = request.args.get("client") == "ios" or bool(
+            request.args.get("mobile_redirect_uri")
+        )
+        if mobile_requested:
+            mobile_redirect_uri = request.args.get("mobile_redirect_uri") or IOS_OAUTH_REDIRECT_URI
+            if not _is_allowed_mobile_oauth_redirect_uri(
+                mobile_redirect_uri, IOS_OAUTH_REDIRECT_URI
+            ):
+                return make_error(
+                    "Invalid mobile OAuth redirect URI",
+                    status=400,
+                    code="invalid_mobile_oauth_redirect",
+                )
+            session["oauth_mobile_redirect_uri"] = mobile_redirect_uri
+            safe_redirect_path = ""
+        else:
+            redirect_to_candidate = (
+                request.args.get("redirect_to") or request.headers.get("Referer") or ""
+            )
+            safe_redirect_path = _normalize_redirect_target(redirect_to_candidate, ALLOWED_HOSTS)
+            if safe_redirect_path:
+                session["oauth_redirect_to"] = safe_redirect_path
 
         redirect_base = _resolve_oauth_redirect_base(
             request_host_url=request.host_url,
@@ -880,6 +953,7 @@ def register_auth_routes(app):
 
     @app.route("/login/google/callback")
     def authorize_google():
+        mobile_redirect_uri = None
         try:
             app.logger.debug(f"authorize_google request args: {request.args}")
             app.logger.debug(f"authorize_google request url: {request.url}")
@@ -889,6 +963,7 @@ def register_auth_routes(app):
             from config import ALLOWED_HOSTS
 
             redirect_to = session.pop("oauth_redirect_to", None)
+            mobile_redirect_uri = session.pop("oauth_mobile_redirect_uri", None)
             try:
                 app.logger.info("Attempting to exchange code for access token...")
                 token = oauth.google.authorize_access_token()
@@ -985,6 +1060,28 @@ def register_auth_routes(app):
                     )
                 db.session.commit()
                 flash("Ваш аккаунт связан с Google", "success")
+
+            if mobile_redirect_uri:
+                from config import IOS_OAUTH_REDIRECT_URI, SECRET_KEY, SESSION_COOKIE_DOMAIN
+
+                if not _is_allowed_mobile_oauth_redirect_uri(
+                    mobile_redirect_uri, IOS_OAUTH_REDIRECT_URI
+                ):
+                    app.logger.warning("Blocked Google mobile OAuth callback redirect")
+                    return redirect(url_for("login"))
+
+                mobile_token = _encode_mobile_google_oauth_token(SECRET_KEY, user.id)
+                response = redirect(
+                    _append_url_query(mobile_redirect_uri, {"token": mobile_token})
+                )
+                cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
+                response.delete_cookie(
+                    OAUTH_FALLBACK_STATE_COOKIE,
+                    domain=cookie_domain,
+                    path=url_for("authorize_google"),
+                )
+                return response
+
             from utils.session_security import regenerate_session
 
             session.clear()
@@ -1010,6 +1107,20 @@ def register_auth_routes(app):
         except Exception as e:
             app.logger.exception(f"OAuth error in authorize_google(): {e}")
             flash("Ошибка при входе через Google", "danger")
+            if mobile_redirect_uri:
+                response = redirect(
+                    _append_url_query(mobile_redirect_uri, {"error": "oauth_failed"})
+                )
+                from config import SESSION_COOKIE_DOMAIN
+
+                cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
+                response.delete_cookie(
+                    OAUTH_FALLBACK_STATE_COOKIE,
+                    domain=cookie_domain,
+                    path=url_for("authorize_google"),
+                )
+                return response
+
             response = redirect(url_for("login"))
             from config import SESSION_COOKIE_DOMAIN
 
@@ -1033,7 +1144,13 @@ def register_auth_routes(app):
     @app.route("/api/auth/config", methods=["GET"])
     def api_auth_config():
 
-        from config import GOOGLE_CLIENT_ID, LOCALHOST_MODE, TURNSTILE_SITE_KEY
+        from config import (
+            GOOGLE_CLIENT_ID,
+            IOS_OAUTH_CALLBACK_SCHEME,
+            IOS_OAUTH_REDIRECT_URI,
+            LOCALHOST_MODE,
+            TURNSTILE_SITE_KEY,
+        )
 
         return (
             jsonify(
@@ -1042,10 +1159,48 @@ def register_auth_routes(app):
                     "turnstile_required": bool(TURNSTILE_SITE_KEY) and not LOCALHOST_MODE,
                     "gauth_available": bool(GOOGLE_CLIENT_ID),
                     "google_login_url": url_for("login_google"),
+                    "google_mobile_login_url": url_for("login_google", client="ios"),
+                    "mobile_oauth_redirect_uri": IOS_OAUTH_REDIRECT_URI,
+                    "mobile_oauth_callback_scheme": IOS_OAUTH_CALLBACK_SCHEME,
                 }
             ),
             200,
         )
+
+    @app.route("/api/auth/mobile/google/complete", methods=["POST"])
+    @rate_limit(login_limiter, "Too many login attempts")
+    def api_mobile_google_complete():
+        try:
+            from config import SECRET_KEY
+            from utils.session_security import regenerate_session
+
+            data = request.get_json(silent=True) or {}
+            payload = _decode_mobile_google_oauth_token(SECRET_KEY, data.get("token", ""))
+            if not payload:
+                return jsonify({"error": "Неверный или истекший Google token"}), 401
+
+            raw_user_id = payload.get("user_id")
+            try:
+                user_id = int(raw_user_id)
+            except (TypeError, ValueError):
+                return jsonify({"error": "Неверный Google token"}), 401
+
+            user = db.session.get(User, user_id)
+            if not user:
+                return jsonify({"error": "Пользователь не найден"}), 404
+            if is_account_disabled(user):
+                return jsonify({"error": format_account_restriction_message(user)}), 403
+
+            session.clear()
+            session["user_id"] = user.id
+            session["username"] = InputValidator.sanitize_output(user.username)
+            regenerate_session()
+            session.permanent = True
+
+            return jsonify({"message": "Успешный вход через Google", "user": user.to_dict()}), 200
+        except Exception as e:
+            app.logger.exception(f"Mobile Google OAuth complete error: {e}")
+            return jsonify({"error": "Ошибка при входе через Google"}), 500
 
     @app.route("/api/auth/register", methods=["POST"])
     @rate_limit(login_limiter, "Too many registration attempts")
