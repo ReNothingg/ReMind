@@ -56,6 +56,16 @@ def test_api_auth_config_reports_when_turnstile_is_required(client, monkeypatch)
     assert localhost_response.get_json()["turnstile_required"] is False
 
 
+def test_api_models_exposes_only_released_models(client):
+    response = client.get("/api/models")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    model_ids = [model["id"] for model in payload["models"]]
+    assert model_ids == ["gemini"]
+    assert payload["models"][0]["stage"] == "release"
+
+
 def test_html_security_headers_allow_turnstile_iframe(client):
     response = client.get("/")
 

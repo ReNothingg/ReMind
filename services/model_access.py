@@ -20,6 +20,29 @@ MODEL_STAGES: dict[str, ModelStage] = {
     "mindart": ModelStage.DEV,
 }
 
+MODEL_METADATA: dict[str, dict[str, str]] = {
+    "gemini": {
+        "title": "Gemini",
+        "subtitle": "Основная модель ReMind",
+    },
+    "demo_image": {
+        "title": "Image",
+        "subtitle": "Внутренняя модель для проверки изображений",
+    },
+    "echo": {
+        "title": "Echo",
+        "subtitle": "Внутренняя тестовая модель",
+    },
+    "echo_stream": {
+        "title": "Echo Stream",
+        "subtitle": "Внутренняя потоковая тестовая модель",
+    },
+    "mindart": {
+        "title": "MindArt",
+        "subtitle": "Экспериментальная генерация изображений",
+    },
+}
+
 BETA_PERCENT = 50
 
 
@@ -55,3 +78,20 @@ def can_user_access_model(model_name: str | None, user_id: int | None) -> bool:
         return _stable_bucket(normalize_model_name(model_name), user.id) < BETA_PERCENT
 
     return False
+
+
+def list_released_models() -> list[dict[str, str]]:
+    models = []
+    for model_id, stage in MODEL_STAGES.items():
+        if stage != ModelStage.RELEASE:
+            continue
+        metadata = MODEL_METADATA.get(model_id, {})
+        models.append(
+            {
+                "id": model_id,
+                "title": metadata.get("title") or model_id,
+                "subtitle": metadata.get("subtitle") or "Релизная модель",
+                "stage": stage.value,
+            }
+        )
+    return models

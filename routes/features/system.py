@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from config import BASE_PATH
 from routes.api_errors import ApiError, api_error_boundary
+from services.model_access import list_released_models
 from utils.auth import db
 from utils.observability import export_prometheus_metrics
 from utils.responses import logger, make_error
@@ -81,6 +82,10 @@ def _resolve_app_css_url() -> str | None:
 
 
 def register_system_routes(api_bp):
+    @api_bp.route("/api/models", methods=["GET"])
+    def api_models():
+        return jsonify({"models": list_released_models()}), 200
+
     @api_bp.route("/voice/")
     @api_bp.route("/voice/index.html")
     def voice_index():
