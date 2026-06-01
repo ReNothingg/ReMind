@@ -41,7 +41,7 @@
     "prismjs": "^1.30.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-i18next": "^16.5.0"
+    "react-i18next": "^17.0.8"
   },
   "overrides": {
     "lodash": "4.18.1",
