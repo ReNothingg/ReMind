@@ -933,6 +933,8 @@ def register_auth_routes(app):
                     "state": state,
                     "redirect_uri": redirect_uri,
                 }
+                if mobile_redirect_uri:
+                    fallback_payload["mobile_redirect_uri"] = mobile_redirect_uri
                 fallback_cookie = _encode_oauth_fallback_state(SECRET_KEY, fallback_payload)
                 request_host = urlparse(request.host_url).hostname
                 secure_cookie = not _is_loopback_hostname(request_host)
@@ -980,6 +982,9 @@ def register_auth_routes(app):
                 request_code = request.args.get("code", "")
                 fallback_state_value = str((fallback_state or {}).get("state", ""))
                 fallback_redirect_uri = str((fallback_state or {}).get("redirect_uri", ""))
+                fallback_mobile_redirect_uri = str(
+                    (fallback_state or {}).get("mobile_redirect_uri", "")
+                )
                 if (
                     fallback_state
                     and request_state
@@ -990,6 +995,8 @@ def register_auth_routes(app):
                     app.logger.warning(
                         "Fallback state validation succeeded. Exchanging token without session state."
                     )
+                    if not mobile_redirect_uri and fallback_mobile_redirect_uri:
+                        mobile_redirect_uri = fallback_mobile_redirect_uri
                     token = oauth.google.fetch_access_token(
                         code=request_code,
                         redirect_uri=fallback_redirect_uri or request.base_url,
