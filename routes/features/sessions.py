@@ -294,6 +294,29 @@ def register_session_routes(api_bp):
             }
         )
 
+    @api_bp.route("/sessions/<session_id>/rename", methods=["POST"])
+    @api_error_boundary("session_rename_failed")
+    def rename_session(session_id):
+        db_user_id = require_authenticated_user_id()
+        resolved_session_id, _share_entry = resolve_session_identifier(session_id)
+        chat = UserChatHistory.query.filter_by(
+            user_id=db_user_id, session_id=resolved_session_id
+        ).first()
+        if not chat:
+            raise ApiError("Chat not found", status=404, code="not_found")
+
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
+
+        title = str(data.get("title") or "").strip()[:200]
+        if not title:
+            raise ApiError("Title is required", status=400, code="invalid_title")
+
+        chat.title = title
+        db.session.commit()
+        return make_ok({"session_id": resolved_session_id, "title": title})
+
     @api_bp.route("/sessions/<session_id>", methods=["DELETE"])
     @api_error_boundary("session_delete_failed")
     def delete_session(session_id):

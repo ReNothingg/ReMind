@@ -192,6 +192,27 @@ def test_session_routes_cover_create_history_guest_listing_share_and_delete(
     assert private_history.status_code == 200
     assert private_history.get_json()["is_owner"] is True
 
+    renamed = client.post(
+        "/sessions/history_session_case/rename",
+        json={"title": "Renamed Session"},
+        headers={"X-CSRF-Token": csrf_value},
+    )
+    assert renamed.status_code == 200
+    assert renamed.get_json()["title"] == "Renamed Session"
+    with app.app_context():
+        renamed_chat = UserChatHistory.query.filter_by(
+            user_id=user_id, session_id="history_session_case"
+        ).first()
+        assert renamed_chat.title == "Renamed Session"
+
+    empty_rename = client.post(
+        "/sessions/history_session_case/rename",
+        json={"title": "  "},
+        headers={"X-CSRF-Token": csrf_value},
+    )
+    assert empty_rename.status_code == 400
+    assert empty_rename.get_json()["error"]["code"] == "invalid_title"
+
     public_history = client.get("/sessions/public_history_id/history")
     assert public_history.status_code == 200
     assert public_history.get_json()["is_public"] is True
