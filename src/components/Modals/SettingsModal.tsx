@@ -2,12 +2,21 @@ import { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Accessibility,
+    ArrowUpRight,
+    Bot,
+    FileText,
+    Globe2,
+    Info,
     LayoutPanelLeft,
     LogOut,
+    MessageCircle,
+    Music2,
     Palette,
+    Send,
     Save,
     ShieldAlert,
     SlidersHorizontal,
+    Youtube,
     UserRound,
     X,
 } from 'lucide-react';
@@ -28,7 +37,7 @@ import {
     validateUsername,
 } from '../../utils/accountValidation';
 
-type SettingsTabId = 'account' | 'appearance' | 'personalization' | 'interface' | 'accessibility';
+type SettingsTabId = 'account' | 'appearance' | 'personalization' | 'interface' | 'accessibility' | 'about';
 
 type SettingsTabButtonProps = {
     active: boolean;
@@ -82,6 +91,20 @@ type ProfileMessage = {
     type: 'success' | 'error';
     text: string;
 } | null;
+
+const ABOUT_LINKS = {
+    website: 'https://synvexai.com/',
+    policies: 'https://synvexai.com/',
+    socials: [
+        { key: 'synvexTelegram', href: 'https://t.me/SynvexAI', icon: Send },
+        { key: 'youtube', href: 'https://www.youtube.com/@ReMindAi', icon: Youtube },
+        { key: 'x', href: 'https://x.com/ReMindNET', icon: X },
+        { key: 'telegramChannel', href: 'https://t.me/ReMindAI', icon: MessageCircle },
+        { key: 'telegramBot', href: 'https://t.me/ReMindAIRobot', icon: Bot },
+        { key: 'tiktok', href: 'https://www.tiktok.com/@remindai', icon: Music2 },
+        { key: 'reddit', href: 'https://www.reddit.com/user/Weekly_Beginning6696/', icon: MessageCircle }
+    ]
+} as const;
 
 const SettingsTabButton = ({ active, icon, label, onClick }: SettingsTabButtonProps) => (
     <button
@@ -364,6 +387,11 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             id: 'accessibility',
             label: t('settings.tabs.accessibility'),
             icon: <Accessibility size={18} strokeWidth={1.9} />
+        },
+        {
+            id: 'about',
+            label: t('settings.tabs.about'),
+            icon: <Info size={18} strokeWidth={1.9} />
         }
     ];
 
@@ -873,6 +901,75 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     onClick={() => updateSetting('codeWrap', !settings.codeWrap)}
                                 />
                             </SettingGroup>
+                        </SettingsPane>
+                    )}
+
+                    {activeTab === 'about' && (
+                        <SettingsPane dataPane="about" className="settings-pane-standard settings-about-pane">
+                            <div className="settings-about-action-grid" aria-label={t('settings.about.quickLinksLabel')}>
+                                <a
+                                    className="settings-about-action-card"
+                                    href={ABOUT_LINKS.website}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <span className="settings-about-action-icon" aria-hidden="true">
+                                        <Globe2 size={20} strokeWidth={1.9} />
+                                    </span>
+                                    <span className="settings-about-action-copy">
+                                        <span>{t('settings.about.website.title')}</span>
+                                        <small>{t('settings.about.website.description')}</small>
+                                    </span>
+                                    <ArrowUpRight size={17} strokeWidth={2} aria-hidden="true" />
+                                </a>
+
+                                <a
+                                    className="settings-about-action-card"
+                                    href={ABOUT_LINKS.policies}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <span className="settings-about-action-icon" aria-hidden="true">
+                                        <FileText size={20} strokeWidth={1.9} />
+                                    </span>
+                                    <span className="settings-about-action-copy">
+                                        <span>{t('settings.about.policies.title')}</span>
+                                        <small>{t('settings.about.policies.description')}</small>
+                                    </span>
+                                    <ArrowUpRight size={17} strokeWidth={2} aria-hidden="true" />
+                                </a>
+                            </div>
+
+                            <section className="settings-about-section">
+                                <div className="settings-about-section-head">
+                                    <h4>{t('settings.about.socials.title')}</h4>
+                                    <p>{t('settings.about.socials.description')}</p>
+                                </div>
+                                <div className="settings-social-grid">
+                                    {ABOUT_LINKS.socials.map((link) => {
+                                        const SocialIcon = link.icon;
+
+                                        return (
+                                            <a
+                                                key={link.key}
+                                                className="settings-social-card"
+                                                href={link.href}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                <span className="settings-social-icon" aria-hidden="true">
+                                                    <SocialIcon size={19} strokeWidth={1.9} />
+                                                </span>
+                                                <span className="settings-social-copy">
+                                                    <span>{t(`settings.about.socials.links.${link.key}`)}</span>
+                                                    <small>{link.href.replace(/^https?:\/\//, '')}</small>
+                                                </span>
+                                                <ArrowUpRight size={15} strokeWidth={2} aria-hidden="true" />
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            </section>
                         </SettingsPane>
                     )}
                 </div>

@@ -162,7 +162,8 @@
       "appearance": "外观",
       "personalization": "个性化",
       "interface": "界面",
-      "accessibility": "无障碍"
+      "accessibility": "无障碍",
+      "about": "关于我们"
     },
     "languages": {
       "en": "English",
@@ -335,6 +336,32 @@
       "codeWrap": {
         "title": "代码换行",
         "description": "自动换行长代码行。"
+      }
+    },
+    "about": {
+      "quickLinksLabel": "快速链接",
+      "website": {
+        "title": "SynvexAI 网站",
+        "description": "新闻、项目、研究和团队信息。",
+        "link": "打开 SynvexAI 网站"
+      },
+      "socials": {
+        "title": "ReMind 社交媒体",
+        "description": "ReMind 和 SynvexAI 官方渠道。",
+        "links": {
+          "synvexTelegram": "SynvexAI 的 Telegram",
+          "youtube": "ReMind 的 YouTube",
+          "x": "ReMind 的 X",
+          "telegramChannel": "ReMind 的 Telegram",
+          "telegramBot": "ReMind AI Robot",
+          "tiktok": "ReMind 的 TikTok",
+          "reddit": "ReMind 的 Reddit"
+        }
+      },
+      "policies": {
+        "title": "政策",
+        "description": "规则、隐私政策和其他文档可在 SynvexAI 网站查看。",
+        "link": "打开政策"
       }
     }
   },

@@ -162,7 +162,8 @@
       "appearance": "Apparence",
       "personalization": "Personnalisation",
       "interface": "Interface",
-      "accessibility": "Accessibilité"
+      "accessibility": "Accessibilité",
+      "about": "À propos"
     },
     "languages": {
       "en": "English",
@@ -335,6 +336,32 @@
       "codeWrap": {
         "title": "Retour à la ligne du code",
         "description": "Retour automatique des longues lignes de code."
+      }
+    },
+    "about": {
+      "quickLinksLabel": "Liens rapides",
+      "website": {
+        "title": "Site SynvexAI",
+        "description": "Actualités, projets, recherche et informations sur l’équipe.",
+        "link": "Ouvrir le site SynvexAI"
+      },
+      "socials": {
+        "title": "ReMind sur les réseaux sociaux",
+        "description": "Canaux officiels de ReMind et SynvexAI.",
+        "links": {
+          "synvexTelegram": "SynvexAI sur Telegram",
+          "youtube": "ReMind sur YouTube",
+          "x": "ReMind sur X",
+          "telegramChannel": "ReMind sur Telegram",
+          "telegramBot": "ReMind AI Robot",
+          "tiktok": "ReMind sur TikTok",
+          "reddit": "ReMind sur Reddit"
+        }
+      },
+      "policies": {
+        "title": "Politiques",
+        "description": "Les règles, la politique de confidentialité et les autres documents sont disponibles sur le site SynvexAI.",
+        "link": "Ouvrir les politiques"
       }
     }
   },

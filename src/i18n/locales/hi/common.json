@@ -162,7 +162,8 @@
       "appearance": "रूप-रंग",
       "personalization": "व्यक्तिकरण",
       "interface": "इंटरफेस",
-      "accessibility": "सुलभता"
+      "accessibility": "सुलभता",
+      "about": "हमारे बारे में"
     },
     "languages": {
       "en": "English",
@@ -335,6 +336,32 @@
       "codeWrap": {
         "title": "कोड लाइनों को मोड़ें",
         "description": "लंबी कोड लाइनों को स्वतः मोड़ें।"
+      }
+    },
+    "about": {
+      "quickLinksLabel": "त्वरित लिंक",
+      "website": {
+        "title": "SynvexAI वेबसाइट",
+        "description": "समाचार, परियोजनाएँ, शोध और टीम की जानकारी।",
+        "link": "SynvexAI वेबसाइट खोलें"
+      },
+      "socials": {
+        "title": "सोशल मीडिया पर ReMind",
+        "description": "ReMind और SynvexAI के आधिकारिक चैनल।",
+        "links": {
+          "synvexTelegram": "Telegram पर SynvexAI",
+          "youtube": "YouTube पर ReMind",
+          "x": "X पर ReMind",
+          "telegramChannel": "Telegram पर ReMind",
+          "telegramBot": "ReMind AI Robot",
+          "tiktok": "TikTok पर ReMind",
+          "reddit": "Reddit पर ReMind"
+        }
+      },
+      "policies": {
+        "title": "नीतियाँ",
+        "description": "नियम, गोपनीयता नीति और अन्य दस्तावेज़ SynvexAI वेबसाइट पर उपलब्ध हैं।",
+        "link": "नीतियाँ खोलें"
       }
     }
   },

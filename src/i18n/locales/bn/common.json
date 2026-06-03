@@ -162,7 +162,8 @@
       "appearance": "চেহারা",
       "personalization": "ব্যক্তিগতকরণ",
       "interface": "ইন্টারফেস",
-      "accessibility": "অ্যাক্সেসিবিলিটি"
+      "accessibility": "অ্যাক্সেসিবিলিটি",
+      "about": "আমাদের সম্পর্কে"
     },
     "languages": {
       "en": "English",
@@ -335,6 +336,32 @@
       "codeWrap": {
         "title": "কোড লাইনে মোড়ানো",
         "description": "দীর্ঘ কোড লাইন স্বয়ংক্রিয়ভাবে মোড়ান।"
+      }
+    },
+    "about": {
+      "quickLinksLabel": "দ্রুত লিংক",
+      "website": {
+        "title": "SynvexAI ওয়েবসাইট",
+        "description": "খবর, প্রকল্প, গবেষণা এবং দলের তথ্য।",
+        "link": "SynvexAI ওয়েবসাইট খুলুন"
+      },
+      "socials": {
+        "title": "সামাজিক মাধ্যমে ReMind",
+        "description": "ReMind এবং SynvexAI-এর অফিসিয়াল চ্যানেল।",
+        "links": {
+          "synvexTelegram": "Telegram-এ SynvexAI",
+          "youtube": "YouTube-এ ReMind",
+          "x": "X-এ ReMind",
+          "telegramChannel": "Telegram-এ ReMind",
+          "telegramBot": "ReMind AI Robot",
+          "tiktok": "TikTok-এ ReMind",
+          "reddit": "Reddit-এ ReMind"
+        }
+      },
+      "policies": {
+        "title": "নীতিমালা",
+        "description": "নিয়ম, গোপনীয়তা নীতি এবং অন্যান্য নথি SynvexAI ওয়েবসাইটে উপলভ্য।",
+        "link": "নীতিমালা খুলুন"
       }
     }
   },

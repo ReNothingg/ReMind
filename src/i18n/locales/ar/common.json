@@ -162,7 +162,8 @@
       "appearance": "المظهر",
       "personalization": "التخصيص",
       "interface": "الواجهة",
-      "accessibility": "إمكانية الوصول"
+      "accessibility": "إمكانية الوصول",
+      "about": "من نحن"
     },
     "languages": {
       "en": "English",
@@ -335,6 +336,32 @@
       "codeWrap": {
         "title": "التفاف أسطر الشيفرة",
         "description": "التفاف أسطر الشيفرة الطويلة تلقائيًا."
+      }
+    },
+    "about": {
+      "quickLinksLabel": "روابط سريعة",
+      "website": {
+        "title": "موقع SynvexAI",
+        "description": "أخبار ومشاريع وأبحاث ومعلومات عن الفريق.",
+        "link": "فتح موقع SynvexAI"
+      },
+      "socials": {
+        "title": "ReMind على وسائل التواصل الاجتماعي",
+        "description": "القنوات الرسمية لـ ReMind و SynvexAI.",
+        "links": {
+          "synvexTelegram": "SynvexAI على Telegram",
+          "youtube": "ReMind على YouTube",
+          "x": "ReMind على X",
+          "telegramChannel": "ReMind على Telegram",
+          "telegramBot": "ReMind AI Robot",
+          "tiktok": "ReMind على TikTok",
+          "reddit": "ReMind على Reddit"
+        }
+      },
+      "policies": {
+        "title": "السياسات",
+        "description": "تتوفر القواعد وسياسة الخصوصية والمستندات الأخرى على موقع SynvexAI.",
+        "link": "فتح السياسات"
       }
     }
   },
