@@ -235,6 +235,16 @@ ALLOW_GUEST_CHATS_SAVE: bool = os.getenv("ALLOW_GUEST_CHATS_SAVE", "False").lowe
     "yes",
 )
 
+try:
+    TEMPORARY_CHAT_RETENTION_DAYS: int = int(os.getenv("TEMPORARY_CHAT_RETENTION_DAYS", "30"))
+except ValueError:
+    TEMPORARY_CHAT_RETENTION_DAYS = 30
+
+try:
+    SECURITY_LOG_RETENTION_DAYS: int = int(os.getenv("SECURITY_LOG_RETENTION_DAYS", "30"))
+except ValueError:
+    SECURITY_LOG_RETENTION_DAYS = 30
+
 WEB_SEARCH_ENABLED: bool = os.getenv("WEB_SEARCH_ENABLED", "True").lower() in (
     "1",
     "true",

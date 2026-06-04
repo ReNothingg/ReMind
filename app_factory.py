@@ -37,6 +37,7 @@ from utils.csrf_protection import add_csrf_token_to_response, setup_csrf_protect
 from utils.logger_config import setup_logging
 from utils.observability import finish_request_context, start_request_context
 from utils.privacy import anonymize_ip
+from utils.retention import prune_guest_chat_files
 from utils.responses import logger, make_error
 from utils.security_headers import apply_security_headers
 from utils.session_security import (
@@ -114,6 +115,13 @@ def create_app():
 
     for folder in [UPLOAD_FOLDER, CHATS_FOLDER, CREATE_IMAGE_FOLDER]:
         folder.mkdir(parents=True, exist_ok=True)
+
+    try:
+        retention_result = prune_guest_chat_files(chats_folder=CHATS_FOLDER)
+        if retention_result.get("deleted"):
+            logger.info("Privacy retention pruned guest chat files: %s", retention_result)
+    except Exception as exc:
+        logger.warning("Privacy retention pruning skipped: %s", exc, exc_info=True)
 
     user_agent_validator = UserAgentValidator(
         allowed_patterns=ALLOWED_USER_AGENT_PATTERNS,

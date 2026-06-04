@@ -779,6 +779,15 @@
     @apply w-full text-center;
   }
 
+  .ui-landing-temporary-note {
+    @apply -mt-2 inline-flex max-w-full items-center justify-center gap-2 text-center text-sm text-muted;
+  }
+
+  .ui-landing-temporary-note svg {
+    @apply shrink-0;
+    color: var(--color-accent);
+  }
+
   .ui-landing-greeting {
     margin: 0;
     color: var(--color-text-primary);
@@ -1166,6 +1175,16 @@
 
   .ui-toolbar-actions {
     @apply ml-auto flex items-center gap-2;
+  }
+
+  .ui-toolbar-temporary-button {
+    @apply border-border-strong bg-surface-alt text-foreground;
+  }
+
+  .ui-toolbar-temporary-button[aria-pressed='true'] {
+    border-color: rgba(var(--color-accent-raw), 0.45);
+    background: rgba(var(--color-accent-raw), 0.14);
+    color: var(--color-text-primary);
   }
 
   .ui-toolbar-anchor {

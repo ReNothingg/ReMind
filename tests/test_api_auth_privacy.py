@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -7,9 +8,10 @@ import pytest
 
 import routes.features.chat as chat_routes
 import services.chat_history as chat_history
+import utils.retention as retention
 import utils.auth as auth_module
 from config import SESSION_COOKIE_NAME
-from utils.auth import ChatShare, User, UserChatHistory, db
+from utils.auth import ChatShare, User, UserChatHistory, UserSettings, db
 from utils.rate_limiting import rate_limit_store
 from utils.session_security import resolve_cookie_domain
 
@@ -415,6 +417,47 @@ def test_chat_authenticated_uses_requested_session_id(client, app, create_confir
         rate_limit_store.clear()
 
 
+def test_temporary_chat_returns_reply_without_persisting_history(
+    client, app, create_confirmed_user, login, monkeypatch
+):
+    rate_limit_store.clear()
+    monkeypatch.setattr(
+        chat_routes,
+        "get_model_function",
+        lambda _name: lambda _user_id, payload: {"reply": payload.get("message", "")},
+    )
+    user_id, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+
+    csrf_value = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "private request",
+            "model": "gemini",
+            "session_id": "temp_privacy_case",
+            "temporary_chat": True,
+        },
+        headers={"X-CSRF-Token": csrf_value},
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["reply"] == "private request"
+    assert payload["sessionId"] == "temp_privacy_case"
+    assert "session_token" not in payload
+
+    with app.app_context():
+        persisted = UserChatHistory.query.filter_by(
+            user_id=user_id,
+            session_id="temp_privacy_case",
+        ).first()
+        assert persisted is None
+    rate_limit_store.clear()
+
+
 def test_chat_demo_image_stream_returns_image_and_persists_history(
     client, app, create_confirmed_user, login, monkeypatch, tmp_path
 ):
@@ -528,14 +571,45 @@ def test_list_sessions_paginated_with_public_share(client, app, create_confirmed
 
 def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user, login):
     user_id, email, password = create_confirmed_user()
+    upload_dir = Path(app.config["UPLOAD_FOLDER"])
+    image_dir = Path(app.config["CREATE_IMAGE_FOLDER"])
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    image_dir.mkdir(parents=True, exist_ok=True)
+    uploaded_file = upload_dir / "privacy-upload.txt"
+    generated_image = image_dir / "privacy-image.png"
+    uploaded_file.write_text("private upload", encoding="utf-8")
+    generated_image.write_bytes(b"private image")
 
     with app.app_context():
+        settings = UserSettings.query.filter_by(user_id=user_id).first()
+        settings.settings_data = json.dumps(
+            {
+                "service_improvement_opt_in": True,
+                "personalization_nickname": "Privacy Tester",
+            },
+            ensure_ascii=False,
+        )
         db.session.add(
             UserChatHistory(
                 user_id=user_id,
                 session_id="privacy_session",
                 title="Privacy Session",
-                messages_data="[]",
+                messages_data=json.dumps(
+                    [
+                        {
+                            "role": "user",
+                            "parts": [
+                                {
+                                    "file": {
+                                        "url_path": "/uploads/privacy-upload.txt",
+                                        "original_name": "privacy-upload.txt",
+                                    }
+                                },
+                                {"image": {"url_path": "/images/privacy-image.png"}},
+                            ],
+                        }
+                    ]
+                ),
             )
         )
         db.session.add(
@@ -560,6 +634,8 @@ def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user,
     assert exported["user_id"] == user_id
     assert len(exported["chats"]) == 1
     assert len(exported["shares"]) == 1
+    assert exported["privacy_controls"]["service_improvement_opt_in"] is True
+    assert exported["privacy_controls"]["personalization_enabled"] is True
 
     delete_without_csrf = client.post("/api/privacy/delete", json={"delete_account": False})
     assert delete_without_csrf.status_code == 403
@@ -576,6 +652,10 @@ def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user,
     assert deleted_payload["user_id"] == user_id
     assert deleted_payload["items_deleted"]["chats"] == 1
     assert deleted_payload["items_deleted"]["chat_shares"] == 1
+    assert deleted_payload["items_deleted"]["uploaded_files"] == 1
+    assert deleted_payload["items_deleted"]["generated_images"] == 1
+    assert not uploaded_file.exists()
+    assert not generated_image.exists()
 
     with app.app_context():
         user_exists = db.session.get(User, user_id)
@@ -584,6 +664,51 @@ def test_privacy_export_and_delete_with_csrf(client, app, create_confirmed_user,
         assert user_exists is not None
         assert chats_count == 0
         assert shares_count == 0
+
+
+def test_service_improvement_opt_in_defaults_false_and_persists(
+    client, create_confirmed_user, login
+):
+    _user_id, email, password = create_confirmed_user()
+    assert login(email, password).status_code == 200
+
+    get_response = client.get("/api/auth/settings")
+    assert get_response.status_code == 200
+    assert get_response.get_json()["settings_data"].get("service_improvement_opt_in") is None
+
+    csrf_value = client.get("/health").headers.get("X-CSRF-Token")
+    assert csrf_value
+
+    update_response = client.put(
+        "/api/auth/settings",
+        json={"settings_data": {"service_improvement_opt_in": True}},
+        headers={"X-CSRF-Token": csrf_value},
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.get_json()["settings"]["settings_data"]["service_improvement_opt_in"] is True
+
+
+def test_retention_prunes_guest_chat_files_older_than_policy(tmp_path):
+    old_chat = tmp_path / "guest_old.json"
+    fresh_chat = tmp_path / "guest_fresh.json"
+    regular_chat = tmp_path / "user_regular.json"
+    old_chat.write_text("{}", encoding="utf-8")
+    fresh_chat.write_text("{}", encoding="utf-8")
+    regular_chat.write_text("{}", encoding="utf-8")
+
+    old_mtime = datetime.utcnow().timestamp() - 31 * 24 * 60 * 60
+    fresh_mtime = datetime.utcnow().timestamp()
+    os.utime(old_chat, (old_mtime, old_mtime))
+    os.utime(fresh_chat, (fresh_mtime, fresh_mtime))
+    os.utime(regular_chat, (old_mtime, old_mtime))
+
+    result = retention.prune_guest_chat_files(chats_folder=tmp_path, retention_days=30)
+
+    assert result == {"scanned": 2, "deleted": 1}
+    assert not old_chat.exists()
+    assert fresh_chat.exists()
+    assert regular_chat.exists()
 
 
 def test_privacy_delete_account_removes_user_and_clears_session(

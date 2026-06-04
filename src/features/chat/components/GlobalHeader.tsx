@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LockKeyhole } from 'lucide-react';
 import type { ShareInfo } from '../../share/components/ShareModal';
 import GuestButtons from './GuestButtons';
 import { cn } from '../../../utils/cn';
@@ -20,6 +21,8 @@ interface GlobalHeaderProps {
     isReadOnly: boolean;
     onOpenShareModal?: () => void;
     onNewChat: () => void;
+    onTemporaryChat: () => void;
+    isTemporaryChat?: boolean;
     showChatControls?: boolean;
 }
 
@@ -173,6 +176,8 @@ export default function GlobalHeader({
     isReadOnly,
     onOpenShareModal,
     onNewChat,
+    onTemporaryChat,
+    isTemporaryChat = false,
     showChatControls = true,
 }: GlobalHeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -312,6 +317,18 @@ export default function GlobalHeader({
                         <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 5v14M5 12h14"></path>
                         </svg>
+                    </HeaderIconButton>
+                )}
+
+                {showChatControls && (
+                    <HeaderIconButton
+                        className="ui-toolbar-temporary-button"
+                        onClick={onTemporaryChat}
+                        title={t('rail.temporaryChat')}
+                        aria-label={t('rail.temporaryChat')}
+                        aria-pressed={isTemporaryChat}
+                    >
+                        <LockKeyhole className="size-5" aria-hidden="true" />
                     </HeaderIconButton>
                 )}
             </div>

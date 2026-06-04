@@ -73,6 +73,11 @@ type DeleteAccountResponse = {
     error?: string;
 };
 
+type ExportDataResponse = {
+    data?: Record<string, unknown>;
+    error?: string;
+};
+
 type SuccessResult<T extends string, TValue> =
     | { success: true } & Record<T, TValue>
     | { success: false; error?: string; field?: AccountFieldName };
@@ -255,6 +260,23 @@ export const authService = {
                 success: false,
                 error: extractApiErrorMessage(error, 'Failed to delete account'),
             };
+        }
+    },
+
+    async exportUserData(): Promise<SuccessResult<'data', Record<string, unknown>>> {
+        try {
+            const data = await requestAuthJson<ExportDataResponse>('/api/privacy/export', {
+                method: 'GET',
+            });
+
+            if (data.data) {
+                return { success: true, data: data.data };
+            }
+
+            return buildFailureResult(data.error);
+        } catch (error) {
+            logFailure('Export user data', error);
+            return buildFailureResult(extractOptionalErrorMessage(error, 'Failed to export data'));
         }
     },
 

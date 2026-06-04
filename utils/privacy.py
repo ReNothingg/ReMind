@@ -1,8 +1,13 @@
 import hashlib
 import os
+from pathlib import Path
 from datetime import datetime
 
+from flask import current_app, has_app_context
+
 from config import CHATS_FOLDER, CREATE_IMAGE_FOLDER, UPLOAD_FOLDER
+
+SERVICE_IMPROVEMENT_SETTING_KEY = "service_improvement_opt_in"
 
 
 def anonymize_ip(ip_address):
@@ -46,6 +51,58 @@ def get_user_data_locations(user_id):
     }
 
 
+def _configured_folder(config_key: str, fallback: Path) -> Path:
+    if has_app_context():
+        configured = current_app.config.get(config_key)
+        if configured:
+            return Path(configured)
+    return fallback
+
+
+def _iter_message_url_paths(messages):
+    for message in messages or []:
+        if not isinstance(message, dict):
+            continue
+        for part in message.get("parts") or []:
+            if not isinstance(part, dict):
+                continue
+            for key in ("file", "image"):
+                value = part.get(key)
+                if isinstance(value, dict) and isinstance(value.get("url_path"), str):
+                    yield value["url_path"]
+            if isinstance(part.get("url_path"), str):
+                yield part["url_path"]
+
+
+def _delete_referenced_files(chats):
+    folders = {
+        "/uploads/": _configured_folder("UPLOAD_FOLDER", UPLOAD_FOLDER),
+        "/images/": _configured_folder("CREATE_IMAGE_FOLDER", CREATE_IMAGE_FOLDER),
+    }
+    deleted = {"uploads": 0, "generated_images": 0}
+
+    for chat in chats:
+        for url_path in _iter_message_url_paths(chat.get_messages()):
+            for prefix, folder in folders.items():
+                if not url_path.startswith(prefix):
+                    continue
+                filename = Path(url_path).name
+                if not filename:
+                    continue
+                target = folder / filename
+                try:
+                    if target.is_file():
+                        target.unlink()
+                        if prefix == "/uploads/":
+                            deleted["uploads"] += 1
+                        else:
+                            deleted["generated_images"] += 1
+                except OSError:
+                    pass
+
+    return deleted
+
+
 def export_user_data(user_id):
     from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
 
@@ -66,6 +123,22 @@ def export_user_data(user_id):
     settings = UserSettings.query.filter_by(user_id=user_id).first()
     if settings:
         export_data["settings"] = settings.to_dict()
+        settings_data = settings.get_settings()
+    else:
+        settings_data = {}
+
+    export_data["privacy_controls"] = {
+        "service_improvement_opt_in": bool(settings_data.get(SERVICE_IMPROVEMENT_SETTING_KEY, False)),
+        "personalization_enabled": any(
+            bool(settings_data.get(key))
+            for key in (
+                "personalization_instructions",
+                "personalization_nickname",
+                "personalization_profession",
+                "personalization_more",
+            )
+        ),
+    }
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
     export_data["chats"] = [chat.to_dict() for chat in chats]
     shares = ChatShare.query.filter_by(user_id=user_id).all()
@@ -99,6 +172,7 @@ def delete_user_data(user_id, delete_account=False):
         results["items_deleted"]["chat_shares"] = shares_deleted
         chats = UserChatHistory.query.filter_by(user_id=user_id).all()
         chat_session_ids = [chat.session_id for chat in chats]
+        referenced_files_deleted = _delete_referenced_files(chats)
         chats_deleted = UserChatHistory.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["chats"] = chats_deleted
         files_deleted = 0
@@ -112,6 +186,8 @@ def delete_user_data(user_id, delete_account=False):
             except Exception:
                 pass
         results["items_deleted"]["chat_files"] = files_deleted
+        results["items_deleted"]["uploaded_files"] = referenced_files_deleted["uploads"]
+        results["items_deleted"]["generated_images"] = referenced_files_deleted["generated_images"]
         owned_mind_ids = [mind.id for mind in Mind.query.filter_by(user_id=user_id).all()]
         pins_deleted = MindPin.query.filter_by(user_id=user_id).delete()
         if owned_mind_ids:

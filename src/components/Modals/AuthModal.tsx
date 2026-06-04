@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
@@ -12,6 +13,41 @@ import {
     validateAccountName,
     validateUsername,
 } from '../../utils/accountValidation';
+
+const PASSWORD_STRENGTH_COLORS = [
+    'var(--color-text-tertiary)',
+    'var(--color-error)',
+    'var(--color-warning)',
+    'var(--color-accent)',
+    'var(--color-success)',
+];
+
+const getPasswordStrength = (value: string) => {
+    if (!value) {
+        return { score: 0, level: 'empty' };
+    }
+
+    let score = 0;
+    const hasLower = /[a-z]/.test(value);
+    const hasUpper = /[A-Z]/.test(value);
+    const hasNumber = /\d/.test(value);
+    const hasSymbol = /[^A-Za-z0-9]/.test(value);
+    const uniqueCharacters = new Set(value).size;
+
+    if (value.length >= 8) score += 1;
+    if (value.length >= 12) score += 1;
+    if (hasLower && hasUpper) score += 1;
+    if (hasNumber) score += 1;
+    if (hasSymbol) score += 1;
+    if (value.length >= 8 && uniqueCharacters < 5) score -= 1;
+
+    score = Math.max(1, Math.min(score, 4));
+
+    if (score >= 4) return { score, level: 'strong' };
+    if (score === 3) return { score, level: 'good' };
+    if (score === 2) return { score, level: 'fair' };
+    return { score, level: 'weak' };
+};
 
 const AuthModal = ({ onClose, initialView = 'login' }) => {
     const { t } = useTranslation();
@@ -31,13 +67,23 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
 
     const fieldLabelClass = 'ui-field-label';
-    const fieldInputClass = 'ui-input min-h-11 rounded-xl bg-interactive px-4 py-3 text-[0.95rem]';
-    const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-11 w-full justify-center rounded-xl px-4 py-3 text-[0.95rem] font-semibold';
-    const secondaryAuthButtonClass = 'btn btn-google flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4 py-3 text-[0.95rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
+    const fieldInputClass = 'ui-input min-h-10 rounded-xl bg-interactive px-4 py-2.5 text-[0.94rem]';
+    const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-10 w-full justify-center rounded-xl px-4 py-2.5 text-[0.94rem] font-semibold';
+    const secondaryAuthButtonClass = 'btn btn-google flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4 py-2.5 text-[0.94rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
     const shouldUseTurnstile = Boolean(authConfig?.turnstile_site_key) && authConfig?.turnstile_required !== false;
+    const passwordStrength = getPasswordStrength(password);
+    const passwordStrengthColor = PASSWORD_STRENGTH_COLORS[passwordStrength.score];
+    const passwordToggleLabel = showPassword
+        ? t('authModal.actions.hidePassword')
+        : t('authModal.actions.showPassword');
+    const confirmPasswordToggleLabel = showConfirmPassword
+        ? t('authModal.actions.hidePassword')
+        : t('authModal.actions.showPassword');
 
     const getTurnstileResponse = (idRef) => {
         try {
@@ -325,12 +371,14 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         setName('');
         setUsername('');
         setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
     };
 
     return (
         <ModalShell
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-            contentClassName="auth-modal-content mx-auto w-full max-w-[420px] rounded-t-[20px] border-border bg-surface px-6 pb-8 pt-6 text-foreground shadow-[var(--shadow-xl)] sm:rounded-2xl sm:px-8 sm:pb-8 sm:pt-8"
+            contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-[20px] border-border bg-surface px-5 pb-6 pt-5 text-foreground shadow-[var(--shadow-xl)] sm:rounded-2xl sm:px-6 sm:pb-6 sm:pt-6"
             onBackdropClick={onClose}
         >
             <button
@@ -343,8 +391,8 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             </button>
 
             {isLoginView ? (
-                <div className="auth-form space-y-5 pr-6 sm:pr-8">
-                    <div className="space-y-1">
+                <div className="auth-form space-y-4">
+                    <div className="space-y-1 pr-12">
                         <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
                             {t('authModal.loginTitle')}
                         </h2>
@@ -364,14 +412,26 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="loginPassword">{t('authModal.fields.password')}</label>
-                            <input
-                                className={fieldInputClass}
-                                type="password"
-                                id="loginPassword"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
+                            <div className="password-field">
+                                <input
+                                    className={`${fieldInputClass} auth-password-input`}
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="loginPassword"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                                <button
+                                    className="password-toggle"
+                                    type="button"
+                                    onClick={() => setShowPassword((current) => !current)}
+                                    aria-label={passwordToggleLabel}
+                                    aria-pressed={showPassword}
+                                    title={passwordToggleLabel}
+                                >
+                                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                </button>
+                            </div>
                         </div>
 
                         {shouldUseTurnstile && (
@@ -404,14 +464,14 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                     </p>
                 </div>
             ) : (
-                <div className="auth-form space-y-5 pr-6 sm:pr-8">
-                    <div className="space-y-1">
+                <div className="auth-form auth-register-panel space-y-4">
+                    <div className="space-y-1 pr-12">
                         <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
                             {t('authModal.registerTitle')}
                         </h2>
                     </div>
 
-                    <form className="space-y-4" onSubmit={handleRegister}>
+                    <form className="auth-register-form" onSubmit={handleRegister}>
                         <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="regName">{t('authModal.fields.name')}</label>
                             <input
@@ -448,7 +508,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                 <p className="text-sm font-medium text-danger">{fieldErrors.username}</p>
                             )}
                         </div>
-                        <div className="form-group flex flex-col gap-1.5">
+                        <div className="form-group auth-field-full flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="regEmail">{t('authModal.fields.email')}</label>
                             <input
                                 className={fieldInputClass}
@@ -462,27 +522,75 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="regPassword">{t('authModal.fields.password')}</label>
-                            <input
-                                className={fieldInputClass}
-                                type="password"
-                                id="regPassword"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                minLength={8}
-                                maxLength={100}
-                                required
-                            />
+                            <div className="password-field">
+                                <input
+                                    className={`${fieldInputClass} auth-password-input`}
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="regPassword"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    minLength={8}
+                                    maxLength={100}
+                                    required
+                                />
+                                <button
+                                    className="password-toggle"
+                                    type="button"
+                                    onClick={() => setShowPassword((current) => !current)}
+                                    aria-label={passwordToggleLabel}
+                                    aria-pressed={showPassword}
+                                    title={passwordToggleLabel}
+                                >
+                                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                </button>
+                            </div>
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="regConfirm">{t('authModal.fields.confirmPassword')}</label>
-                            <input
-                                className={fieldInputClass}
-                                type="password"
-                                id="regConfirm"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                maxLength={100}
-                                required
+                            <div className="password-field">
+                                <input
+                                    className={`${fieldInputClass} auth-password-input`}
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    id="regConfirm"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    maxLength={100}
+                                    required
+                                />
+                                <button
+                                    className="password-toggle"
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword((current) => !current)}
+                                    aria-label={confirmPasswordToggleLabel}
+                                    aria-pressed={showConfirmPassword}
+                                    title={confirmPasswordToggleLabel}
+                                >
+                                    {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div
+                            className={cn(
+                                'password-strength auth-field-full',
+                                `is-score-${passwordStrength.score}`
+                            )}
+                            aria-live="polite"
+                        >
+                            <div className="password-strength__header">
+                                <span>{t('authModal.passwordStrength.label')}</span>
+                                <strong>{t(`authModal.passwordStrength.levels.${passwordStrength.level}`)}</strong>
+                            </div>
+                            <meter
+                                className="password-strength__meter"
+                                min={0}
+                                max={4}
+                                low={2}
+                                high={3}
+                                optimum={4}
+                                value={passwordStrength.score}
+                                aria-label={t('authModal.passwordStrength.label')}
+                                style={{ accentColor: passwordStrengthColor }}
                             />
                         </div>
 
@@ -490,16 +598,16 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             <div
                                 id="registerTurnstileContainer"
                                 ref={registerContainerRef}
-                                className="recaptcha-container overflow-x-auto"
+                                className="recaptcha-container auth-field-full overflow-x-auto"
                             />
                         )}
 
-                        <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+                        <button type="submit" className={`${primaryButtonClass} auth-field-full`} disabled={isLoading}>
                             {isLoading ? t('authModal.actions.registerLoading') : t('auth.register')}
                         </button>
 
                         {googleAvailable && (
-                            <div className="pt-1">
+                            <div className="auth-field-full pt-1">
                                 <a className={secondaryAuthButtonClass} href={googleHref}>
                                     <i className="fab fa-google text-[18px] text-[#ea4335]" />
                                     <span>{t('authModal.actions.registerWithGoogle')}</span>

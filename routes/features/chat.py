@@ -40,6 +40,7 @@ from services.web_search import (
 )
 from services.voice import synthesize_text_segments
 from utils.auth import UserChatHistory, UserSettings
+from utils.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
 from utils.input_validation import InputValidator, ValidationError
 from utils.rate_limiting import RateLimiter, rate_limit
 from utils.responses import logger, make_ok
@@ -106,6 +107,14 @@ def _has_files_payload(value) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     return True
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
 
 
 def process_request_data() -> tuple[str, dict[str, Any], str]:
@@ -289,6 +298,22 @@ def _execute_and_attach_web_search(
 def _db_auto_web_search_enabled(db_user_id: int | None) -> bool:
     if db_user_id is None:
         return False
+
+
+def _load_privacy_controls(db_user_id: int | None) -> dict[str, bool]:
+    if db_user_id is None:
+        return {"service_improvement_opt_in": False}
+    try:
+        settings = UserSettings.query.filter_by(user_id=db_user_id).first()
+        settings_data = settings.get_settings() if settings else {}
+        return {
+            "service_improvement_opt_in": bool(
+                settings_data.get(SERVICE_IMPROVEMENT_SETTING_KEY, False)
+            )
+        }
+    except Exception as exc:
+        logger.warning("Failed to load privacy controls: %s", exc, exc_info=True)
+        return {"service_improvement_opt_in": False}
     try:
         settings = UserSettings.query.filter_by(user_id=db_user_id).first()
         return bool(settings and settings.automatic_web_search)
@@ -439,6 +464,7 @@ def _stream_chat_response(
     original_user_message: str,
     user_message_for_history: dict,
     allow_guest_file_persistence: bool,
+    temporary_chat: bool,
     mind_context: dict[str, Any] | None,
 ):
     captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
@@ -599,7 +625,7 @@ def _stream_chat_response(
 
                 final_data["reply"] = full_response
                 final_data["sessionId"] = resolved_session_id
-                if allow_guest_file_persistence:
+                if allow_guest_file_persistence and not temporary_chat:
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
                     )
@@ -617,6 +643,8 @@ def _stream_chat_response(
                         reply_text, final_data.get("images"), final_data.get("sources")
                     ),
                 ]
+                if temporary_chat:
+                    return
                 try:
                     append_messages_to_history(
                         resolved_session_id,
@@ -689,7 +717,10 @@ def register_chat_routes(api_bp):
             resolved_session_id, db_user_id
         )
         original_user_message = user_data.get("message", "")
+        temporary_chat = _coerce_bool(user_data.get("temporary_chat"))
         user_data["history"] = history
+        user_data["privacy"] = _load_privacy_controls(db_user_id)
+        user_data["temporary_chat"] = temporary_chat
 
         user_message_parts = _build_user_message_parts(
             original_user_message, user_data.get("files", [])
@@ -714,6 +745,7 @@ def register_chat_routes(api_bp):
                 original_user_message=str(original_user_message or ""),
                 user_message_for_history=user_message_for_history,
                 allow_guest_file_persistence=allow_guest_file_persistence,
+                temporary_chat=temporary_chat,
                 mind_context=mind_context,
             )
 
@@ -734,14 +766,15 @@ def register_chat_routes(api_bp):
             )
 
         new_messages_batch = [user_message_for_history, model_message_for_history]
-        append_messages_to_history(
-            resolved_session_id,
-            new_messages_batch,
-            model_name,
-            db_user_id,
-            allow_guest_file_persistence=allow_guest_file_persistence,
-            mind_id=mind_context.get("id") if mind_context else None,
-        )
+        if not temporary_chat:
+            append_messages_to_history(
+                resolved_session_id,
+                new_messages_batch,
+                model_name,
+                db_user_id,
+                allow_guest_file_persistence=allow_guest_file_persistence,
+                mind_id=mind_context.get("id") if mind_context else None,
+            )
 
         direct_image_response = _maybe_return_direct_image(model_output)
         if direct_image_response is not None:
@@ -754,7 +787,7 @@ def register_chat_routes(api_bp):
             if web_sources:
                 response_data["sources"] = web_sources
 
-        if allow_guest_file_persistence:
+        if allow_guest_file_persistence and not temporary_chat:
             response_data["session_token"] = _generate_guest_session_token(
                 resolved_session_id, int(time.time())
             )

@@ -31,7 +31,9 @@
       "loginLoading": "সাইন ইন করা হচ্ছে...",
       "loginWithGoogle": "Google দিয়ে সাইন ইন করুন",
       "registerLoading": "অ্যাকাউন্ট তৈরি করা হচ্ছে...",
-      "registerWithGoogle": "Google দিয়ে সাইন আপ করুন"
+      "registerWithGoogle": "Google দিয়ে সাইন আপ করুন",
+      "showPassword": "পাসওয়ার্ড দেখান",
+      "hidePassword": "পাসওয়ার্ড লুকান"
     },
     "switch": {
       "noAccount": "আপনার কি অ্যাকাউন্ট নেই?",
@@ -48,6 +50,16 @@
       "passwordTooLong": "পাসওয়ার্ড 100 অক্ষরের বেশি হতে পারবে না",
       "turnstileRequired": "আপনি যে রোবট নন তা নিশ্চিত করে আবার চেষ্টা করুন।",
       "requestError": "নেটওয়ার্ক অথবা সার্ভার ত্রুটি"
+    },
+    "passwordStrength": {
+      "label": "পাসওয়ার্ডের শক্তি",
+      "levels": {
+        "empty": "মূল্যায়ন হয়নি",
+        "weak": "দুর্বল",
+        "fair": "মাঝারি",
+        "good": "ভাল",
+        "strong": "শক্তিশালী"
+      }
     }
   },
   "common": {
@@ -152,7 +164,8 @@
     "settings": "সেটিংস",
     "share": "শেয়ার করুন",
     "rename": "নাম পরিবর্তন",
-    "delete": "মুছুন"
+    "delete": "মুছুন",
+    "temporaryChat": "Temporary chat"
   },
   "settings": {
     "title": "সেটিংস",
@@ -163,7 +176,8 @@
       "personalization": "ব্যক্তিগতকরণ",
       "interface": "ইন্টারফেস",
       "accessibility": "অ্যাক্সেসিবিলিটি",
-      "about": "আমাদের সম্পর্কে"
+      "about": "আমাদের সম্পর্কে",
+      "privacy": "Privacy"
     },
     "languages": {
       "en": "English",
@@ -363,6 +377,23 @@
         "description": "নিয়ম, গোপনীয়তা নীতি এবং অন্যান্য নথি SynvexAI ওয়েবসাইটে উপলভ্য।",
         "link": "নীতিমালা খুলুন"
       }
+    },
+    "privacy": {
+      "title": "Privacy and data",
+      "description": "Control data use according to the SynvexAI privacy policy.",
+      "serviceImprovement": {
+        "title": "Use my content to improve SynvexAI",
+        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+      },
+      "exportAction": "Export my data",
+      "exportLoading": "Preparing export...",
+      "exportSuccess": "Data export is ready",
+      "exportError": "Failed to export data",
+      "signInForExport": "Sign in to export data",
+      "policyLink": {
+        "title": "Privacy policy",
+        "description": "Open the current SynvexAI policy."
+      }
     }
   },
   "translationPanel": {
@@ -520,5 +551,10 @@
       "querying": "অনুসন্ধান কোয়েরি প্রস্তুত করা হচ্ছে..."
     },
     "queryLabel": "কোয়েরি"
+  },
+  "temporaryChat": {
+    "title": "Temporary chat",
+    "badge": "Not saved to history",
+    "description": "This chat stays out of the main history and is not saved after the session."
   }
 }

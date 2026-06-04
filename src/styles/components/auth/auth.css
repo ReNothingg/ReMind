@@ -258,24 +258,28 @@ html[data-theme='light'] .auth-modal-close:hover {
   color: var(--color-text-primary);
 }
 
+.auth-modal .auth-form {
+  margin-bottom: 0;
+}
+
 .auth-modal .auth-form h2 {
-  margin: 0 0 1.25rem;
-  font-size: 1.45rem;
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .auth-modal .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .auth-modal .form-group label {
-  font-size: 0.85rem;
+  font-size: 0.76rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--color-text-tertiary);
   font-weight: 600;
 }
@@ -290,8 +294,8 @@ html[data-theme='light'] .auth-modal .form-group label {
   border: 1px solid var(--color-border-medium);
   background: var(--color-bg-interactive);
   color: inherit;
-  padding: 0.9rem 1rem;
-  font-size: 0.95rem;
+  padding: 0.72rem 0.9rem;
+  font-size: 0.94rem;
   transition:
     border-color var(--transition-fast),
     background-color var(--transition-fast);
@@ -313,7 +317,7 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
 }
 
 .auth-modal .auth-switch-link {
-  margin-top: 1.25rem;
+  margin-top: 0.95rem;
   text-align: center;
   font-size: 0.9rem;
   color: var(--color-text-secondary);
@@ -372,13 +376,13 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
 }
 
 .auth-modal .password-field input {
-  padding-right: 44px;
+  padding-right: 2.8rem;
 }
 
 .auth-modal .password-toggle {
   position: absolute;
   top: 50%;
-  right: 0.5rem;
+  right: 0.42rem;
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
@@ -389,20 +393,122 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
-.auth-modal .password-toggle::before {
-  content: '';
-  width: 18px;
-  height: 18px;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23fff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 5 12 5c4.638 0 8.573 2.507 9.963 6.678.07.207.07.431 0 .638C20.577 16.49 16.64 19 12 19c-4.638 0-8.573-2.507-9.963-6.678z'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'/%3E%3C/svg%3E")
-    no-repeat center / contain;
-  background: currentColor;
+.auth-modal .password-toggle:hover,
+.auth-modal .password-toggle:focus-visible {
+  background: var(--color-bg-interactive-hover, rgba(255, 255, 255, 0.1));
+  color: var(--color-text-primary);
+  outline: none;
 }
 
-.auth-modal .password-toggle.is-active::before {
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23fff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.5a10.523 10.523 0 01-4.293 5.774M6.228 6.228l11.544 11.544M6.228 6.228L4.5 4.5m13.272 13.272L19.5 19.5'/%3E%3C/svg%3E")
-    no-repeat center / contain;
+.auth-modal .auth-register-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 0.9rem;
+}
+
+.auth-modal .auth-field-full {
+  grid-column: 1 / -1;
+}
+
+.auth-modal .password-strength {
+  --strength-color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: -0.12rem;
+}
+
+.auth-modal .password-strength__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--color-text-tertiary);
+  font-size: 0.77rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auth-modal .password-strength__header strong {
+  color: var(--strength-color);
+  font-size: 0.78rem;
+}
+
+.auth-modal .password-strength__meter {
+  width: 100%;
+  height: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.auth-modal .password-strength__meter::-webkit-meter-bar {
+  height: 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  background: var(--color-bg-interactive);
+}
+
+.auth-modal .password-strength__meter::-webkit-meter-optimum-value,
+.auth-modal .password-strength__meter::-webkit-meter-suboptimum-value,
+.auth-modal .password-strength__meter::-webkit-meter-even-less-good-value {
+  border-radius: 999px;
+  transition: width var(--transition-fast);
+}
+
+.auth-modal .password-strength.is-score-0 .password-strength__meter::-webkit-meter-optimum-value,
+.auth-modal .password-strength.is-score-0 .password-strength__meter::-webkit-meter-suboptimum-value,
+.auth-modal .password-strength.is-score-0 .password-strength__meter::-webkit-meter-even-less-good-value {
+  background: var(--color-text-tertiary);
+}
+
+.auth-modal .password-strength.is-score-1 .password-strength__meter::-webkit-meter-optimum-value,
+.auth-modal .password-strength.is-score-1 .password-strength__meter::-webkit-meter-suboptimum-value,
+.auth-modal .password-strength.is-score-1 .password-strength__meter::-webkit-meter-even-less-good-value {
+  background: var(--color-error);
+}
+
+.auth-modal .password-strength.is-score-2 .password-strength__meter::-webkit-meter-optimum-value,
+.auth-modal .password-strength.is-score-2 .password-strength__meter::-webkit-meter-suboptimum-value,
+.auth-modal .password-strength.is-score-2 .password-strength__meter::-webkit-meter-even-less-good-value {
+  background: var(--color-warning);
+}
+
+.auth-modal .password-strength.is-score-3 .password-strength__meter::-webkit-meter-optimum-value,
+.auth-modal .password-strength.is-score-3 .password-strength__meter::-webkit-meter-suboptimum-value,
+.auth-modal .password-strength.is-score-3 .password-strength__meter::-webkit-meter-even-less-good-value {
+  background: var(--color-accent);
+}
+
+.auth-modal .password-strength.is-score-4 .password-strength__meter::-webkit-meter-optimum-value,
+.auth-modal .password-strength.is-score-4 .password-strength__meter::-webkit-meter-suboptimum-value,
+.auth-modal .password-strength.is-score-4 .password-strength__meter::-webkit-meter-even-less-good-value {
+  background: var(--color-success);
+}
+
+.auth-modal .password-strength.is-score-0 {
+  --strength-color: var(--color-text-tertiary);
+}
+
+.auth-modal .password-strength.is-score-1 {
+  --strength-color: var(--color-error);
+}
+
+.auth-modal .password-strength.is-score-2 {
+  --strength-color: var(--color-warning);
+}
+
+.auth-modal .password-strength.is-score-3 {
+  --strength-color: var(--color-accent);
+}
+
+.auth-modal .password-strength.is-score-4 {
+  --strength-color: var(--color-success);
 }
 
 @media (max-width: 640px) {
@@ -416,7 +522,12 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
     border-radius: 20px 20px 0 0;
     max-height: 85vh;
     overflow-y: auto;
-    padding: 2rem 1.5rem 2.5rem;
+    padding: 1.5rem 1.25rem 1.75rem;
+  }
+
+  .auth-modal .auth-register-form {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 }
 

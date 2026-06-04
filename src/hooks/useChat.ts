@@ -34,6 +34,7 @@ type LoadSessionOptions = {
 
 type ClearChatOptions = {
     historyMode?: HistoryMode;
+    temporary?: boolean;
 };
 
 type SendMessageOptions = {
@@ -41,6 +42,7 @@ type SendMessageOptions = {
     autoWebSearch?: boolean;
     censorship?: boolean;
     mindId?: string | null;
+    temporaryChat?: boolean;
     [key: string]: unknown;
 };
 
@@ -106,6 +108,10 @@ function generateSessionId() {
     return crypto.randomUUID();
 }
 
+function generateTemporarySessionId() {
+    return `temp_${crypto.randomUUID()}`;
+}
+
 function slugify(text) {
     return (text || '').toString()
         .normalize('NFKD')
@@ -165,6 +171,7 @@ export const useChat = () => {
     const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
     const [sessionAccess, setSessionAccess] = useState(createDefaultSessionAccess);
     const [isReadOnly, setIsReadOnly] = useState(false);
+    const [isTemporaryChat, setIsTemporaryChat] = useState(false);
     const [sessionActivity, setSessionActivity] = useState<Record<string, SessionActivity>>({});
     const [optimisticSessions, setOptimisticSessions] = useState({});
     const sessionActivityRef = useRef<Record<string, SessionActivity>>({});
@@ -178,6 +185,12 @@ export const useChat = () => {
     const currentSessionIdRef = useRef(null);
     const currentSessionSlugRef = useRef(null);
     const activeMindIdRef = useRef(null);
+    const temporaryChatRef = useRef(false);
+
+    const setTemporaryChatMode = useCallback((enabled) => {
+        temporaryChatRef.current = !!enabled;
+        setIsTemporaryChat(!!enabled);
+    }, []);
 
     const updateSessionIdentity = useCallback((sessionId, slug) => {
         currentSessionIdRef.current = sessionId;
@@ -517,6 +530,7 @@ export const useChat = () => {
                 sessionHistoryCacheRef.current.set(resolvedSessionId, normalized);
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
+                setTemporaryChatMode(false);
                 activeMindIdRef.current = data.mind?.public_id || null;
                 syncSessionIdentity(resolvedSessionId, slug, { historyMode });
                 setIsLoading(sessionActivityRef.current[resolvedSessionId]?.status === 'generating');
@@ -543,6 +557,7 @@ export const useChat = () => {
     }, [
         resetConversationState,
         sessionIdToSlug,
+        setTemporaryChatMode,
         slugToSessionId,
         syncBrowserPath,
         syncPersistedCurrentSession,
@@ -550,13 +565,18 @@ export const useChat = () => {
     ]);
 
     const clearChat = useCallback((options: ClearChatOptions = {}) => {
-        const { historyMode = 'push' } = options;
+        const { historyMode = 'push', temporary = false } = options;
         sessionLoadRequestIdRef.current += 1;
         resetConversationState();
+        setTemporaryChatMode(temporary);
         syncPersistedCurrentSession(null, null);
         setIsLoading(false);
         syncBrowserPath('/', historyMode);
-    }, [resetConversationState, syncBrowserPath, syncPersistedCurrentSession]);
+    }, [resetConversationState, setTemporaryChatMode, syncBrowserPath, syncPersistedCurrentSession]);
+
+    const startTemporaryChat = useCallback((options: ClearChatOptions = {}) => {
+        clearChat({ ...options, temporary: true });
+    }, [clearChat]);
 
     const setActiveSessionMindId = useCallback((mindId = null) => {
         activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
@@ -672,9 +692,11 @@ export const useChat = () => {
             autoWebSearch: requestedAutoWebSearch,
             censorship = false,
             mindId = undefined,
+            temporaryChat: requestedTemporaryChat,
             ...metadata
         } = options;
         const autoWebSearch = requestedAutoWebSearch ?? !!settings?.automaticWebSearch;
+        const temporaryChat = requestedTemporaryChat ?? temporaryChatRef.current;
         if ((!text || !text.trim()) && files.length === 0) return;
         if (isReadOnly) {
             console.warn('Attempt to send message in read-only chat is blocked.');
@@ -687,22 +709,28 @@ export const useChat = () => {
         const isNewChat = path === '/' || !path.startsWith('/c/');
 
         if (!sessionId || isNewChat) {
-            sessionId = generateSessionId();
+            sessionId = temporaryChat ? generateTemporarySessionId() : generateSessionId();
             const slug = sessionIdToSlug(sessionId);
             updateSessionIdentity(sessionId, slug);
             setSessionAccess(createDefaultSessionAccess());
             setIsReadOnly(false);
-            registerSessionSlug(sessionId, slug);
-            syncPersistedCurrentSession(sessionId, slug);
-            addGuestSession(sessionId);
+            setTemporaryChatMode(temporaryChat);
 
-            if (isNewChat) {
+            if (!temporaryChat) {
+                registerSessionSlug(sessionId, slug);
+                syncPersistedCurrentSession(sessionId, slug);
+                addGuestSession(sessionId);
+            }
+
+            if (isNewChat && !temporaryChat) {
                 syncBrowserPath(`/c/${encodeURIComponent(slug)}`, 'push');
             }
         }
         sessionHistoryCacheRef.current.set(sessionId, history);
         const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
-        upsertOptimisticSession(sessionId, text, files);
+        if (!temporaryChat) {
+            upsertOptimisticSession(sessionId, text, files);
+        }
         const userMsg = {
             id: `user-${Date.now()}`,
             role: 'user',
@@ -733,6 +761,7 @@ export const useChat = () => {
         formData.append('webSearch', String(webSearch));
         formData.append('autoWebSearch', String(autoWebSearch));
         formData.append('censorship', String(censorship));
+        formData.append('temporary_chat', String(temporaryChat));
         if (mindId !== undefined) {
             activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
                 ? mindId.trim()
@@ -909,13 +938,15 @@ export const useChat = () => {
                         || (resolvedSessionId === currentSessionIdRef.current ? currentSessionSlugRef.current : null)
                         || sessionIdToSlug(resolvedSessionId);
 
-                    syncSessionIdentity(resolvedSessionId, resolvedSlug, {
-                        previousSessionId: sessionId,
-                        historyMode: 'replace',
-                        activate: currentSessionIdRef.current === sessionId
-                    });
+                    if (!temporaryChat) {
+                        syncSessionIdentity(resolvedSessionId, resolvedSlug, {
+                            previousSessionId: sessionId,
+                            historyMode: 'replace',
+                            activate: currentSessionIdRef.current === sessionId
+                        });
+                    }
 
-                    if (finalData?.session_token) {
+                    if (!temporaryChat && finalData?.session_token) {
                         storeGuestSessionToken(resolvedSessionId, finalData.session_token);
                     }
 
@@ -985,6 +1016,7 @@ export const useChat = () => {
         registerSessionSlug,
         sessionIdToSlug,
         settings?.automaticWebSearch,
+        setTemporaryChatMode,
         storeGuestSessionToken,
         syncBrowserPath,
         syncPersistedCurrentSession,
@@ -1015,11 +1047,14 @@ export const useChat = () => {
         const userMessage = history[userIndex];
         const historyBefore = buildHistoryForAPI(userIndex);
         const sessionId = currentSessionIdRef.current || generateSessionId();
+        const temporaryChat = temporaryChatRef.current;
 
         sessionLoadRequestIdRef.current += 1;
         sessionHistoryCacheRef.current.set(sessionId, history);
         const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
-        upsertOptimisticSession(sessionId, userMessage.content, []);
+        if (!temporaryChat) {
+            upsertOptimisticSession(sessionId, userMessage.content, []);
+        }
 
         updateSessionHistory(sessionId, prev => prev.map(msg => {
             if (msg.id === aiMessageId) {
@@ -1035,6 +1070,7 @@ export const useChat = () => {
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
+        formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
             formData.append('mind_id', activeMindIdRef.current);
         }
@@ -1176,11 +1212,14 @@ export const useChat = () => {
         const userIndex = history.findIndex(msg => msg.id === userMessageId);
         if (userIndex === -1 || history[userIndex].role !== 'user') return;
         const sessionId = currentSessionIdRef.current || generateSessionId();
+        const temporaryChat = temporaryChatRef.current;
 
         sessionLoadRequestIdRef.current += 1;
         sessionHistoryCacheRef.current.set(sessionId, history);
         const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
-        upsertOptimisticSession(sessionId, newText, []);
+        if (!temporaryChat) {
+            upsertOptimisticSession(sessionId, newText, []);
+        }
 
         updateSessionHistory(sessionId, prev => prev.map(msg => {
             if (msg.id === userMessageId) {
@@ -1215,6 +1254,7 @@ export const useChat = () => {
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
+        formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
             formData.append('mind_id', activeMindIdRef.current);
         }
@@ -1311,6 +1351,7 @@ export const useChat = () => {
 
     const enableSharing = useCallback(async () => {
         const sessionId = currentSessionIdRef.current;
+        if (temporaryChatRef.current) return null;
         if (!sessionId) return null;
         const data = await apiService.toggleShare(sessionId, true);
         const resolvedSessionId = data?.session_id || sessionId;
@@ -1334,6 +1375,7 @@ export const useChat = () => {
 
     const disableSharing = useCallback(async () => {
         const sessionId = currentSessionIdRef.current;
+        if (temporaryChatRef.current) return null;
         if (!sessionId) return null;
         const data = await apiService.toggleShare(sessionId, false);
         const resolvedSessionId = data?.session_id || sessionId;
@@ -1362,10 +1404,12 @@ export const useChat = () => {
         currentSessionSlug,
         sessionAccess,
         isReadOnly,
+        isTemporaryChat,
         sessionActivity,
         optimisticSessions,
         loadSession,
         clearChat,
+        startTemporaryChat,
         markSessionActivitySeen,
         setActiveSessionMindId,
         sendMessage,

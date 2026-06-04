@@ -31,7 +31,9 @@
       "loginLoading": "جارٍ تسجيل الدخول...",
       "loginWithGoogle": "سجّل الدخول باستخدام Google",
       "registerLoading": "جارٍ إنشاء الحساب...",
-      "registerWithGoogle": "سجّل باستخدام Google"
+      "registerWithGoogle": "سجّل باستخدام Google",
+      "showPassword": "إظهار كلمة المرور",
+      "hidePassword": "إخفاء كلمة المرور"
     },
     "switch": {
       "noAccount": "ليس لديك حساب؟",
@@ -48,6 +50,16 @@
       "passwordTooLong": "يجب ألا تتجاوز كلمة المرور 100 حرف",
       "turnstileRequired": "أكّد أنك لست روبوتًا ثم حاول مرة أخرى.",
       "requestError": "خطأ في الشبكة أو الخادم"
+    },
+    "passwordStrength": {
+      "label": "قوة كلمة المرور",
+      "levels": {
+        "empty": "غير مقيّمة",
+        "weak": "ضعيفة",
+        "fair": "متوسطة",
+        "good": "جيدة",
+        "strong": "قوية"
+      }
     }
   },
   "common": {
@@ -152,7 +164,8 @@
     "settings": "الإعدادات",
     "share": "مشاركة",
     "rename": "إعادة تسمية",
-    "delete": "حذف"
+    "delete": "حذف",
+    "temporaryChat": "Temporary chat"
   },
   "settings": {
     "title": "الإعدادات",
@@ -163,7 +176,8 @@
       "personalization": "التخصيص",
       "interface": "الواجهة",
       "accessibility": "إمكانية الوصول",
-      "about": "من نحن"
+      "about": "من نحن",
+      "privacy": "Privacy"
     },
     "languages": {
       "en": "English",
@@ -363,6 +377,23 @@
         "description": "تتوفر القواعد وسياسة الخصوصية والمستندات الأخرى على موقع SynvexAI.",
         "link": "فتح السياسات"
       }
+    },
+    "privacy": {
+      "title": "Privacy and data",
+      "description": "Control data use according to the SynvexAI privacy policy.",
+      "serviceImprovement": {
+        "title": "Use my content to improve SynvexAI",
+        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+      },
+      "exportAction": "Export my data",
+      "exportLoading": "Preparing export...",
+      "exportSuccess": "Data export is ready",
+      "exportError": "Failed to export data",
+      "signInForExport": "Sign in to export data",
+      "policyLink": {
+        "title": "Privacy policy",
+        "description": "Open the current SynvexAI policy."
+      }
     }
   },
   "translationPanel": {
@@ -520,5 +551,10 @@
       "querying": "جارٍ تحضير استعلام البحث..."
     },
     "queryLabel": "الاستعلام"
+  },
+  "temporaryChat": {
+    "title": "Temporary chat",
+    "badge": "Not saved to history",
+    "description": "This chat stays out of the main history and is not saved after the session."
   }
 }

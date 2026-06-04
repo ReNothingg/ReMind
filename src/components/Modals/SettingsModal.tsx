@@ -4,6 +4,7 @@ import {
     Accessibility,
     ArrowUpRight,
     Bot,
+    Download,
     FileText,
     Globe2,
     Info,
@@ -15,6 +16,7 @@ import {
     Send,
     Save,
     ShieldAlert,
+    ShieldCheck,
     SlidersHorizontal,
     Youtube,
     UserRound,
@@ -22,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/auth';
 import { useURLRouter } from '../../hooks/useURLRouter';
 import CustomSelect from '../UI/CustomSelect';
 import ModalShell from '../UI/ModalShell';
@@ -37,7 +40,7 @@ import {
     validateUsername,
 } from '../../utils/accountValidation';
 
-type SettingsTabId = 'account' | 'appearance' | 'personalization' | 'interface' | 'accessibility' | 'about';
+type SettingsTabId = 'account' | 'appearance' | 'personalization' | 'privacy' | 'interface' | 'accessibility' | 'about';
 
 type SettingsTabButtonProps = {
     active: boolean;
@@ -94,7 +97,7 @@ type ProfileMessage = {
 
 const ABOUT_LINKS = {
     website: 'https://synvexai.com/',
-    policies: 'https://synvexai.com/',
+    policies: 'https://synvexai.com/policies/privacy-policy/',
     socials: [
         { key: 'synvexTelegram', href: 'https://t.me/SynvexAI', icon: Send },
         { key: 'youtube', href: 'https://www.youtube.com/@ReMindAi', icon: Youtube },
@@ -218,6 +221,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const [username, setUsername] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [isExportingData, setIsExportingData] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
     const [profileMessage, setProfileMessage] = useState<ProfileMessage>(null);
@@ -352,6 +356,35 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         }
     };
 
+    const handleExportData = async () => {
+        if (!isAuthenticated) return;
+
+        setIsExportingData(true);
+        setProfileMessage(null);
+
+        try {
+            const res = await authService.exportUserData();
+            if (res.success === false) {
+                setProfileMessage({ type: 'error', text: res.error || t('settings.privacy.exportError') });
+                return;
+            }
+
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `synvexai-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast(t('settings.privacy.exportSuccess'), { type: 'success' });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : t('settings.privacy.exportError');
+            setProfileMessage({ type: 'error', text: message });
+        } finally {
+            setIsExportingData(false);
+        }
+    };
+
     const parsedFontSizePx = Number.parseInt(String(settings.fontSize || ''), 10);
     const currentFontSizePx = Number.isFinite(parsedFontSizePx)
         ? Math.min(FONT_SIZE_MAX_PX, Math.max(FONT_SIZE_MIN_PX, parsedFontSizePx))
@@ -378,6 +411,11 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             icon: <Palette size={18} strokeWidth={1.9} />
         },
         ...optionalPersonalizationTabs,
+        {
+            id: 'privacy',
+            label: t('settings.tabs.privacy'),
+            icon: <ShieldCheck size={18} strokeWidth={1.9} />
+        },
         {
             id: 'interface',
             label: t('settings.tabs.interface'),
@@ -724,6 +762,74 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         placeholder={t('settings.personalization.morePlaceholder')}
                                     />
                                 </SettingField>
+                            </SettingGroup>
+                        </SettingsPane>
+                    )}
+
+                    {activeTab === 'privacy' && (
+                        <SettingsPane dataPane="privacy" className="settings-pane-standard">
+                            {profileMessage && (
+                                <p
+                                    className={cn(
+                                        'account-message is-visible',
+                                        profileMessage.type === 'success' ? 'success' : 'error'
+                                    )}
+                                >
+                                    {profileMessage.text}
+                                </p>
+                            )}
+                            <SettingGroup
+                                title={t('settings.privacy.title')}
+                                description={t('settings.privacy.description')}
+                            >
+                                <SettingToggle
+                                    title={t('settings.privacy.serviceImprovement.title')}
+                                    description={t('settings.privacy.serviceImprovement.description')}
+                                    checked={!!settings.service_improvement_opt_in}
+                                    onClick={() => updateSetting('service_improvement_opt_in', !settings.service_improvement_opt_in)}
+                                />
+                                {isAuthenticated ? (
+                                    <SettingControlGroup withDivider>
+                                        <button
+                                            type="button"
+                                            className="ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                            onClick={handleExportData}
+                                            disabled={isExportingData}
+                                        >
+                                            <Download size={16} strokeWidth={1.9} />
+                                            {isExportingData
+                                                ? t('settings.privacy.exportLoading')
+                                                : t('settings.privacy.exportAction')}
+                                        </button>
+                                    </SettingControlGroup>
+                                ) : (
+                                    <SettingControlGroup withDivider>
+                                        <button
+                                            type="button"
+                                            className="ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                            onClick={() => { onClose(); onOpenAuth(); }}
+                                        >
+                                            {t('settings.privacy.signInForExport')}
+                                        </button>
+                                    </SettingControlGroup>
+                                )}
+                                <SettingControlGroup withDivider>
+                                    <a
+                                        className="settings-about-action-card"
+                                        href={ABOUT_LINKS.policies}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <span className="settings-about-action-icon" aria-hidden="true">
+                                            <FileText size={20} strokeWidth={1.9} />
+                                        </span>
+                                        <span className="settings-about-action-copy">
+                                            <span>{t('settings.privacy.policyLink.title')}</span>
+                                            <small>{t('settings.privacy.policyLink.description')}</small>
+                                        </span>
+                                        <ArrowUpRight size={17} strokeWidth={2} aria-hidden="true" />
+                                    </a>
+                                </SettingControlGroup>
                             </SettingGroup>
                         </SettingsPane>
                     )}

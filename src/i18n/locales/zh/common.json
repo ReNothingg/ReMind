@@ -31,7 +31,9 @@
       "loginLoading": "登录中...",
       "loginWithGoogle": "使用 Google 登录",
       "registerLoading": "注册中...",
-      "registerWithGoogle": "使用 Google 注册"
+      "registerWithGoogle": "使用 Google 注册",
+      "showPassword": "显示密码",
+      "hidePassword": "隐藏密码"
     },
     "switch": {
       "noAccount": "还没有账户？",
@@ -48,6 +50,16 @@
       "passwordTooLong": "密码不能超过 100 个字符",
       "turnstileRequired": "请确认你不是机器人，然后重试。",
       "requestError": "网络或服务器错误"
+    },
+    "passwordStrength": {
+      "label": "密码强度",
+      "levels": {
+        "empty": "未评估",
+        "weak": "弱",
+        "fair": "一般",
+        "good": "良好",
+        "strong": "强"
+      }
     }
   },
   "common": {
@@ -152,7 +164,8 @@
     "settings": "设置",
     "share": "分享",
     "rename": "重命名",
-    "delete": "删除"
+    "delete": "删除",
+    "temporaryChat": "Temporary chat"
   },
   "settings": {
     "title": "设置",
@@ -163,7 +176,8 @@
       "personalization": "个性化",
       "interface": "界面",
       "accessibility": "无障碍",
-      "about": "关于我们"
+      "about": "关于我们",
+      "privacy": "Privacy"
     },
     "languages": {
       "en": "English",
@@ -363,6 +377,23 @@
         "description": "规则、隐私政策和其他文档可在 SynvexAI 网站查看。",
         "link": "打开政策"
       }
+    },
+    "privacy": {
+      "title": "Privacy and data",
+      "description": "Control data use according to the SynvexAI privacy policy.",
+      "serviceImprovement": {
+        "title": "Use my content to improve SynvexAI",
+        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+      },
+      "exportAction": "Export my data",
+      "exportLoading": "Preparing export...",
+      "exportSuccess": "Data export is ready",
+      "exportError": "Failed to export data",
+      "signInForExport": "Sign in to export data",
+      "policyLink": {
+        "title": "Privacy policy",
+        "description": "Open the current SynvexAI policy."
+      }
     }
   },
   "translationPanel": {
@@ -520,5 +551,10 @@
       "querying": "正在准备搜索查询..."
     },
     "queryLabel": "查询"
+  },
+  "temporaryChat": {
+    "title": "Temporary chat",
+    "badge": "Not saved to history",
+    "description": "This chat stays out of the main history and is not saved after the session."
   }
 }

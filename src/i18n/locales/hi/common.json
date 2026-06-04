@@ -31,7 +31,9 @@
       "loginLoading": "साइन इन हो रहा है...",
       "loginWithGoogle": "Google से साइन इन करें",
       "registerLoading": "खाता बनाया जा रहा है...",
-      "registerWithGoogle": "Google से साइन अप करें"
+      "registerWithGoogle": "Google से साइन अप करें",
+      "showPassword": "पासवर्ड दिखाएं",
+      "hidePassword": "पासवर्ड छिपाएं"
     },
     "switch": {
       "noAccount": "क्या आपका खाता नहीं है?",
@@ -48,6 +50,16 @@
       "passwordTooLong": "पासवर्ड 100 वर्णों से अधिक नहीं होना चाहिए",
       "turnstileRequired": "पुष्टि करें कि आप रोबोट नहीं हैं और फिर कोशिश करें।",
       "requestError": "नेटवर्क या सर्वर त्रुटि"
+    },
+    "passwordStrength": {
+      "label": "पासवर्ड मजबूती",
+      "levels": {
+        "empty": "रेट नहीं किया गया",
+        "weak": "कमज़ोर",
+        "fair": "मध्यम",
+        "good": "अच्छा",
+        "strong": "मज़बूत"
+      }
     }
   },
   "common": {
@@ -152,7 +164,8 @@
     "settings": "सेटिंग्स",
     "share": "साझा करें",
     "rename": "नाम बदलें",
-    "delete": "हटाएं"
+    "delete": "हटाएं",
+    "temporaryChat": "Temporary chat"
   },
   "settings": {
     "title": "सेटिंग्स",
@@ -163,7 +176,8 @@
       "personalization": "व्यक्तिकरण",
       "interface": "इंटरफेस",
       "accessibility": "सुलभता",
-      "about": "हमारे बारे में"
+      "about": "हमारे बारे में",
+      "privacy": "Privacy"
     },
     "languages": {
       "en": "English",
@@ -363,6 +377,23 @@
         "description": "नियम, गोपनीयता नीति और अन्य दस्तावेज़ SynvexAI वेबसाइट पर उपलब्ध हैं।",
         "link": "नीतियाँ खोलें"
       }
+    },
+    "privacy": {
+      "title": "Privacy and data",
+      "description": "Control data use according to the SynvexAI privacy policy.",
+      "serviceImprovement": {
+        "title": "Use my content to improve SynvexAI",
+        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+      },
+      "exportAction": "Export my data",
+      "exportLoading": "Preparing export...",
+      "exportSuccess": "Data export is ready",
+      "exportError": "Failed to export data",
+      "signInForExport": "Sign in to export data",
+      "policyLink": {
+        "title": "Privacy policy",
+        "description": "Open the current SynvexAI policy."
+      }
     }
   },
   "translationPanel": {
@@ -520,5 +551,10 @@
       "querying": "खोज क्वेरी तैयार कर रहा हूँ..."
     },
     "queryLabel": "क्वेरी"
+  },
+  "temporaryChat": {
+    "title": "Temporary chat",
+    "badge": "Not saved to history",
+    "description": "This chat stays out of the main history and is not saved after the session."
   }
 }

@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS = {
     highContrast: false,
     interface_language: detectInterfaceLanguage(),
     automaticWebSearch: false,
+    service_improvement_opt_in: false,
     personalization_instructions: '',
     personalization_nickname: '',
     personalization_profession: '',

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, BrainCircuit, X } from 'lucide-react';
+import { BadgeCheck, BrainCircuit, LockKeyhole, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -101,9 +101,11 @@ const MainLayout = () => {
         switchVariant,
         sessionAccess,
         isReadOnly,
+        isTemporaryChat,
         sessionActivity,
         optimisticSessions,
         markSessionActivitySeen,
+        startTemporaryChat,
         enableSharing,
         disableSharing,
     } = useChat();
@@ -209,11 +211,11 @@ const MainLayout = () => {
                 notifyThinkingDone();
                 notifyOnDoneRef.current = false;
             }
-            if (currentSessionId) {
+            if (currentSessionId && !isTemporaryChat) {
                 setTimeout(() => refreshSessions(), 0);
             }
         }
-    }, [currentSessionId, isLoading, refreshSessions, settings.notifyOnThinkingDone]);
+    }, [currentSessionId, isLoading, isTemporaryChat, refreshSessions, settings.notifyOnThinkingDone]);
 
     const sessionActivityRefreshRef = useRef('');
 
@@ -332,7 +334,7 @@ const MainLayout = () => {
     const handleSendMessage = useCallback(
         (text: string, files: File[], options = {}) => {
             const path = window.location.pathname;
-            if (path === '/' || !path.startsWith('/c/')) {
+            if (!isTemporaryChat && (path === '/' || !path.startsWith('/c/'))) {
                 clearChat({ historyMode: 'none' });
             }
 
@@ -342,7 +344,7 @@ const MainLayout = () => {
                 mindId: activeMind?.public_id || null,
             });
         },
-        [activeMind, clearChat, sendMessage, selectedModel]
+        [activeMind, clearChat, isTemporaryChat, sendMessage, selectedModel]
     );
 
     useEffect(() => {
@@ -389,10 +391,10 @@ const MainLayout = () => {
     }, [refreshSessions]);
 
     useEffect(() => {
-        if (currentSessionId) {
+        if (currentSessionId && !isTemporaryChat) {
             setTimeout(() => refreshSessions(), 0);
         }
-    }, [currentSessionId, refreshSessions]);
+    }, [currentSessionId, isTemporaryChat, refreshSessions]);
 
     useEffect(() => {
         const handleHashRouteChange = () => {
@@ -523,6 +525,15 @@ const MainLayout = () => {
         setMobileRailOpen(false);
     }, [clearChat]);
 
+    const handleTemporaryChat = useCallback(() => {
+        notifyOnDoneRef.current = false;
+        setActiveMind(null);
+        setShareModalOpen(false);
+        startTemporaryChat({ historyMode: 'push' });
+        setRoutePath('/');
+        setMobileRailOpen(false);
+    }, [startTemporaryChat]);
+
     const handleMindsClick = useCallback(() => {
         clearChat({ historyMode: 'none' });
         navigateTo('/minds');
@@ -628,11 +639,13 @@ const MainLayout = () => {
                     onModelChange={setCurrentModel}
                     onOpenAuth={() => setAuthOpen('login')}
                     onShowRegister={() => setAuthOpen('register')}
-                    shareInfo={sessionAccess}
-                    currentSessionId={currentSessionId}
+                    shareInfo={isTemporaryChat ? null : sessionAccess}
+                    currentSessionId={isTemporaryChat ? null : currentSessionId}
                     isReadOnly={isReadOnly}
                     onOpenShareModal={() => setShareModalOpen(true)}
                     onNewChat={handleNewChat}
+                    onTemporaryChat={handleTemporaryChat}
+                    isTemporaryChat={isTemporaryChat}
                     showChatControls={isChatSurface}
                 />
 
@@ -667,6 +680,12 @@ const MainLayout = () => {
                 ) : history.length === 0 ? (
                     <div className="ui-empty-conversation-shell">
                         <LandingHero isReadOnly={isReadOnly}>
+                            {isTemporaryChat && (
+                                <p className="ui-landing-temporary-note">
+                                    <LockKeyhole size={15} aria-hidden="true" />
+                                    <span>{t('temporaryChat.description')}</span>
+                                </p>
+                            )}
                             {activeMind && (
                                 <div className="ui-landing-mind-panel">
                                     <div className="ui-landing-mind-header">
@@ -725,6 +744,20 @@ const MainLayout = () => {
                 ) : (
                     <Suspense fallback={null}>
                         <>
+                            {isTemporaryChat && (
+                                <div className="ui-chat-mind-banner" role="status">
+                                    <div className="ui-chat-mind-banner-main">
+                                        <div className="ui-chat-mind-banner-icon" aria-hidden="true">
+                                            <LockKeyhole size={19} />
+                                        </div>
+                                        <div className="ui-chat-mind-banner-copy">
+                                            <span>{t('temporaryChat.badge')}</span>
+                                            <strong>{t('temporaryChat.title')}</strong>
+                                            <p>{t('temporaryChat.description')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {activeMind && (
                                 <div className="ui-chat-mind-banner" role="status">
                                     <div className="ui-chat-mind-banner-main">
