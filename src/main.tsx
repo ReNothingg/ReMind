@@ -5,6 +5,23 @@ import { initI18n } from './i18n/index';
 import 'katex/dist/katex.min.css';
 import './styles/tailwind.css';
 
+const updateViewportVars = () => {
+    const root = document.documentElement;
+    const visualViewport = window.visualViewport;
+    const viewportHeight = visualViewport?.height ?? window.innerHeight;
+    const viewportOffsetTop = visualViewport?.offsetTop ?? 0;
+    const bottomInset = Math.max(0, window.innerHeight - viewportHeight - viewportOffsetTop);
+
+    root.style.setProperty('--app-visual-viewport-height', `${viewportHeight}px`);
+    root.style.setProperty('--app-visual-viewport-bottom-inset', `${bottomInset}px`);
+};
+
+updateViewportVars();
+window.addEventListener('resize', updateViewportVars, { passive: true });
+window.addEventListener('orientationchange', updateViewportVars, { passive: true });
+window.visualViewport?.addEventListener('resize', updateViewportVars, { passive: true });
+window.visualViewport?.addEventListener('scroll', updateViewportVars, { passive: true });
+
 if (!sessionStorage.getItem('userID')) {
     sessionStorage.setItem('userID', `uid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
 }

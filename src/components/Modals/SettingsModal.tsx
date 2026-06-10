@@ -1,18 +1,22 @@
-import { useState, useEffect, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Accessibility,
     ArrowUpRight,
     Bot,
+    CheckCircle2,
     Download,
     FileText,
+    Github,
     Globe2,
     Info,
     LayoutPanelLeft,
     LogOut,
+    Loader2,
     MessageCircle,
     Music2,
     Palette,
+    PlugZap,
     Send,
     Save,
     ShieldAlert,
@@ -25,6 +29,7 @@ import {
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
+import { apiService, type GitHubStatus } from '../../services/api';
 import { useURLRouter } from '../../hooks/useURLRouter';
 import CustomSelect from '../UI/CustomSelect';
 import ModalShell from '../UI/ModalShell';
@@ -222,6 +227,9 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [isExportingData, setIsExportingData] = useState(false);
+    const [githubStatus, setGithubStatus] = useState<GitHubStatus | null>(null);
+    const [isLoadingGitHubStatus, setIsLoadingGitHubStatus] = useState(false);
+    const [githubStatusError, setGithubStatusError] = useState('');
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
     const [profileMessage, setProfileMessage] = useState<ProfileMessage>(null);
@@ -261,6 +269,33 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             setActiveTab('appearance');
         }
     }, [activeTab, isAuthenticated]);
+
+    const loadGitHubStatus = useCallback(async () => {
+        if (!isAuthenticated) {
+            setGithubStatus(null);
+            setGithubStatusError('');
+            return;
+        }
+
+        setIsLoadingGitHubStatus(true);
+        setGithubStatusError('');
+        try {
+            const status = await apiService.getGitHubStatus();
+            setGithubStatus(status);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : t('settings.account.connectedApps.github.error');
+            setGithubStatusError(message);
+            setGithubStatus(null);
+        } finally {
+            setIsLoadingGitHubStatus(false);
+        }
+    }, [isAuthenticated, t]);
+
+    useEffect(() => {
+        if (activeTab === 'account' && isAuthenticated) {
+            void loadGitHubStatus();
+        }
+    }, [activeTab, isAuthenticated, loadGitHubStatus]);
 
     const handleTabChange = (tab: SettingsTabId) => {
         setActiveTab(tab);
@@ -437,6 +472,86 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const accountDisplayName =
         normalizedAccountName || user?.username || user?.email || t('settings.account.status.guest');
     const accountInitial = String(accountDisplayName || '?').trim().charAt(0).toUpperCase() || '?';
+    const githubInstallations = githubStatus?.installations || [];
+    const isGitHubConfigured = githubStatus?.configured ?? !githubStatusError;
+    const isGitHubConnected = githubInstallations.length > 0;
+    const githubConnectionError = githubStatusError || githubStatus?.connection_error || '';
+    const githubRepositoryCount = githubStatus?.repositories?.length || 0;
+    const githubStatusLabel = isLoadingGitHubStatus
+        ? t('settings.account.connectedApps.github.status.checking')
+        : !isGitHubConfigured
+            ? t('settings.account.connectedApps.github.status.configMissing')
+            : isGitHubConnected
+                ? t('settings.account.connectedApps.github.status.connected')
+                : t('settings.account.connectedApps.github.status.disconnected');
+    const githubStatusClass = isLoadingGitHubStatus
+        ? 'is-loading'
+        : !isGitHubConfigured || githubConnectionError
+            ? 'is-error'
+            : isGitHubConnected
+                ? 'is-connected'
+                : 'is-disconnected';
+
+    const handleGitHubConnect = () => {
+        const connectUrl = githubStatus?.urls?.connect || '/auth/github/login?after=install';
+        window.location.assign(connectUrl);
+    };
+
+    const renderConnectedAppsCard = () => (
+        <section className="account-card account-connected-apps-card">
+            <div className="account-card-head">
+                <h5 className="account-card-title">
+                    {t('settings.account.connectedApps.title')}
+                </h5>
+                <p className="account-card-copy">
+                    {t('settings.account.connectedApps.description')}
+                </p>
+            </div>
+
+            <div className="account-connected-app-row">
+                <span className="account-connected-app-icon" aria-hidden="true">
+                    <Github size={21} strokeWidth={1.9} />
+                </span>
+                <div className="account-connected-app-copy">
+                    <strong>{t('settings.account.connectedApps.github.name')}</strong>
+                    <p>{t('settings.account.connectedApps.github.description')}</p>
+                    {isGitHubConnected && (
+                        <span className="account-connected-app-meta">
+                            {t('settings.account.connectedApps.github.repoCount', {
+                                count: githubRepositoryCount
+                            })}
+                        </span>
+                    )}
+                    {githubConnectionError && (
+                        <span className="account-connected-app-error">
+                            {githubConnectionError}
+                        </span>
+                    )}
+                </div>
+                <div className="account-connected-app-controls">
+                    <span className={cn('account-connected-app-status', githubStatusClass)}>
+                        {isLoadingGitHubStatus ? (
+                            <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+                        ) : isGitHubConnected ? (
+                            <CheckCircle2 size={14} strokeWidth={2} />
+                        ) : null}
+                        {githubStatusLabel}
+                    </span>
+                    <button
+                        type="button"
+                        className="account-connected-app-action ui-button-secondary min-h-10 rounded-lg px-3 py-2"
+                        onClick={handleGitHubConnect}
+                        disabled={isLoadingGitHubStatus || !isGitHubConfigured}
+                    >
+                        <PlugZap size={15} strokeWidth={1.9} />
+                        {isGitHubConnected
+                            ? t('settings.account.connectedApps.github.manage')
+                            : t('settings.account.connectedApps.github.connect')}
+                    </button>
+                </div>
+            </div>
+        </section>
+    );
 
     const renderAccountTab = () => (
         <SettingsPane dataPane="account" className="account-pane">
@@ -500,120 +615,120 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                     </section>
 
                     <div className="account-layout account-layout-auth">
-                        <div className="account-column account-column-main">
-                            <form className="account-card account-form-card" onSubmit={handleSaveProfile}>
-                                <div className="account-card-head">
-                                    <h5 className="account-card-title">{t('settings.account.saveChanges')}</h5>
-                                    <p className="account-card-copy">{t('settings.account.description')}</p>
-                                </div>
+                        <form className="account-card account-form-card" onSubmit={handleSaveProfile}>
+                            <div className="account-card-head">
+                                <h5 className="account-card-title">{t('settings.account.saveChanges')}</h5>
+                                <p className="account-card-copy">{t('settings.account.description')}</p>
+                            </div>
 
-                                <div className="account-form-grid">
-                                    <SettingField
-                                        label={t('settings.account.fields.name')}
-                                        hint={t('settings.account.nameHint')}
-                                        className="account-field"
-                                    >
-                                        <input
-                                            className={settingsInputClass}
-                                            type="text"
-                                            id="accountNameInput"
-                                            value={name}
-                                            onChange={(e) => {
-                                                setName(e.target.value);
-                                                setFieldErrors((prev) => ({ ...prev, name: undefined }));
-                                            }}
-                                            maxLength={100}
-                                        />
-                                        {fieldErrors.name && (
-                                            <span className="text-xs leading-5 text-danger">{fieldErrors.name}</span>
-                                        )}
-                                    </SettingField>
-
-                                    <SettingField
-                                        label={t('settings.account.fields.username')}
-                                        hint={t('settings.account.usernameHint')}
-                                        className="account-field"
-                                    >
-                                        <input
-                                            className={settingsInputClass}
-                                            type="text"
-                                            id="accountUsernameInput"
-                                            value={username}
-                                            onChange={(e) => {
-                                                setUsername(e.target.value);
-                                                setFieldErrors((prev) => ({ ...prev, username: undefined }));
-                                            }}
-                                            maxLength={50}
-                                            required
-                                        />
-                                        {fieldErrors.username && (
-                                            <span className="text-xs leading-5 text-danger">{fieldErrors.username}</span>
-                                        )}
-                                    </SettingField>
-
-                                    <SettingField
-                                        label={t('settings.account.fields.email')}
-                                        hint={t('settings.account.emailReadonlyHint')}
-                                        className="account-field account-field-full"
-                                    >
-                                        <input
-                                            className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
-                                            type="email"
-                                            id="accountEmailInput"
-                                            value={user?.email || ''}
-                                            disabled
-                                        />
-                                    </SettingField>
-                                </div>
-
-                                <div className="account-actions">
-                                    <button
-                                        type="submit"
-                                        className="btn-primary account-save-btn ui-button-primary min-h-11 rounded-xl px-5 py-3"
-                                        disabled={isSavingProfile}
-                                    >
-                                        <Save size={16} strokeWidth={1.9} />
-                                        {isSavingProfile ? t('settings.account.saving') : t('settings.account.saveChanges')}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div className="account-column account-column-side">
-                            <section className="account-card account-danger-card">
-                                <div className="account-card-head">
-                                    <h5 className="account-card-title account-danger-title">
-                                        <ShieldAlert size={17} strokeWidth={1.9} />
-                                        {t('settings.account.delete.title')}
-                                    </h5>
-                                    <p className="account-card-copy">{t('settings.account.delete.description')}</p>
-                                </div>
+                            <div className="account-form-grid">
                                 <SettingField
-                                    label={t('settings.account.delete.confirmLabel')}
-                                            className="account-field"
-                                        >
+                                    label={t('settings.account.fields.name')}
+                                    hint={t('settings.account.nameHint')}
+                                    className="account-field"
+                                >
                                     <input
                                         className={settingsInputClass}
                                         type="text"
-                                        id="accountDeleteConfirmationInput"
-                                        value={deleteConfirmation}
-                                        onChange={(e) => setDeleteConfirmation(e.target.value)}
-                                        placeholder={t('settings.account.delete.confirmPlaceholder')}
+                                        id="accountNameInput"
+                                        value={name}
+                                        onChange={(e) => {
+                                            setName(e.target.value);
+                                            setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                                        }}
+                                        maxLength={100}
+                                    />
+                                    {fieldErrors.name && (
+                                        <span className="text-xs leading-5 text-danger">{fieldErrors.name}</span>
+                                    )}
+                                </SettingField>
+
+                                <SettingField
+                                    label={t('settings.account.fields.username')}
+                                    hint={t('settings.account.usernameHint')}
+                                    className="account-field"
+                                >
+                                    <input
+                                        className={settingsInputClass}
+                                        type="text"
+                                        id="accountUsernameInput"
+                                        value={username}
+                                        onChange={(e) => {
+                                            setUsername(e.target.value);
+                                            setFieldErrors((prev) => ({ ...prev, username: undefined }));
+                                        }}
+                                        maxLength={50}
+                                        required
+                                    />
+                                    {fieldErrors.username && (
+                                        <span className="text-xs leading-5 text-danger">{fieldErrors.username}</span>
+                                    )}
+                                </SettingField>
+
+                                <SettingField
+                                    label={t('settings.account.fields.email')}
+                                    hint={t('settings.account.emailReadonlyHint')}
+                                    className="account-field account-field-full"
+                                >
+                                    <input
+                                        className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
+                                        type="email"
+                                        id="accountEmailInput"
+                                        value={user?.email || ''}
+                                        disabled
                                     />
                                 </SettingField>
+                            </div>
+
+                            <div className="account-actions">
                                 <button
-                                    type="button"
-                                    className="account-delete-btn ui-button-secondary min-h-11 rounded-xl px-4 py-3"
-                                    onClick={handleDeleteAccount}
-                                    disabled={isDeletingAccount}
+                                    type="submit"
+                                    className="btn-primary account-save-btn ui-button-primary min-h-11 rounded-xl px-5 py-3"
+                                    disabled={isSavingProfile}
                                 >
-                                    {isDeletingAccount
-                                        ? t('settings.account.delete.actionLoading')
-                                        : t('settings.account.delete.action')}
+                                    <Save size={16} strokeWidth={1.9} />
+                                    {isSavingProfile ? t('settings.account.saving') : t('settings.account.saveChanges')}
                                 </button>
-                            </section>
-                        </div>
+                            </div>
+                        </form>
+
+                        {renderConnectedAppsCard()}
                     </div>
+
+                    <section className="account-card account-danger-card">
+                        <div className="account-card-head account-danger-head">
+                            <h5 className="account-card-title account-danger-title">
+                                <ShieldAlert size={17} strokeWidth={1.9} />
+                                {t('settings.account.delete.title')}
+                            </h5>
+                            <p className="account-card-copy">{t('settings.account.delete.description')}</p>
+                        </div>
+                        <div className="account-danger-controls">
+                            <SettingField
+                                label={t('settings.account.delete.confirmLabel')}
+                                className="account-field"
+                            >
+                                <input
+                                    className={settingsInputClass}
+                                    type="text"
+                                    id="accountDeleteConfirmationInput"
+                                    value={deleteConfirmation}
+                                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                                    placeholder={t('settings.account.delete.confirmPlaceholder')}
+                                />
+                            </SettingField>
+                            <button
+                                type="button"
+                                className="account-delete-btn ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                onClick={handleDeleteAccount}
+                                disabled={isDeletingAccount}
+                            >
+                                {isDeletingAccount
+                                    ? t('settings.account.delete.actionLoading')
+                                    : t('settings.account.delete.action')}
+                            </button>
+                        </div>
+                    </section>
                     </>
                 )}
             </div>

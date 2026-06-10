@@ -6,6 +6,12 @@ import { fileURLToPath, URL } from 'node:url'
 const backendTarget = process.env.VITE_BACKEND_URL || process.env.BACKEND_URL || 'http://127.0.0.1:5000'
 const srcDir = fileURLToPath(new URL('./src', import.meta.url))
 const nodeBuiltinBrowserStub = fileURLToPath(new URL('./src/utils/nodeBuiltinBrowserStub.ts', import.meta.url))
+const backendProxy = {
+  target: backendTarget,
+  changeOrigin: true,
+  secure: false,
+  xfwd: true,
+}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -31,55 +37,36 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      '/auth': backendProxy,
       '/api': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/chat': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/health': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/uploads': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/images': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/sessions': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/login': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/synthesize': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/translate': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
       '/canvas-action': {
-        target: backendTarget,
-        changeOrigin: true,
-        secure: false,
+        ...backendProxy,
       },
     }
   }

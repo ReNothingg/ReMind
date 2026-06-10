@@ -283,6 +283,116 @@ class MindPin(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class GitHubInstallation(db.Model):
+    __tablename__ = "github_installation"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "installation_id",
+            name="uq_github_installation_user_installation",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    installation_id = db.Column(db.BigInteger, nullable=False, index=True)
+    account_login = db.Column(db.String(120), nullable=False)
+    account_html_url = db.Column(db.String(500), nullable=True)
+    account_avatar_url = db.Column(db.String(500), nullable=True)
+    target_type = db.Column(db.String(40), nullable=True)
+    repository_selection = db.Column(db.String(40), nullable=True)
+    permissions_data = db.Column(db.Text, default="{}", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def get_permissions(self):
+        try:
+            parsed = json.loads(self.permissions_data) if self.permissions_data else {}
+            return parsed if isinstance(parsed, dict) else {}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+
+    def set_permissions(self, permissions):
+        self.permissions_data = json.dumps(permissions or {}, ensure_ascii=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "installation_id": self.installation_id,
+            "account_login": self.account_login,
+            "account_html_url": self.account_html_url,
+            "account_avatar_url": self.account_avatar_url,
+            "target_type": self.target_type,
+            "repository_selection": self.repository_selection,
+            "permissions": self.get_permissions(),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class GitHubAgentTask(db.Model):
+    __tablename__ = "github_agent_task"
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(128), nullable=False, unique=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    installation_id = db.Column(db.BigInteger, nullable=False, index=True)
+    repo_full_name = db.Column(db.String(260), nullable=False, index=True)
+    base_branch = db.Column(db.String(260), nullable=False)
+    branch_name = db.Column(db.String(260), nullable=True)
+    task = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(40), default="planned", nullable=False, index=True)
+    plan_data = db.Column(db.Text, default="{}", nullable=False)
+    edits_data = db.Column(db.Text, default="{}", nullable=False)
+    diff = db.Column(db.Text, nullable=True)
+    pull_request_number = db.Column(db.Integer, nullable=True)
+    pull_request_url = db.Column(db.String(500), nullable=True)
+    error = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def get_plan(self):
+        try:
+            parsed = json.loads(self.plan_data) if self.plan_data else {}
+            return parsed if isinstance(parsed, dict) else {}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+
+    def set_plan(self, plan):
+        self.plan_data = json.dumps(plan or {}, ensure_ascii=False)
+
+    def get_edits(self):
+        try:
+            parsed = json.loads(self.edits_data) if self.edits_data else {}
+            return parsed if isinstance(parsed, dict) else {}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+
+    def set_edits(self, edits):
+        self.edits_data = json.dumps(edits or {}, ensure_ascii=False)
+
+    def to_dict(self, include_details=True):
+        payload = {
+            "id": self.public_id,
+            "installation_id": self.installation_id,
+            "repo_full_name": self.repo_full_name,
+            "base_branch": self.base_branch,
+            "branch_name": self.branch_name,
+            "task": self.task,
+            "status": self.status,
+            "pull_request_number": self.pull_request_number,
+            "pull_request_url": self.pull_request_url,
+            "error": self.error,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_details:
+            payload["plan"] = self.get_plan()
+            payload["edits"] = self.get_edits()
+            payload["diff"] = self.diff
+        return payload
+
+
 LEGACY_DEFAULT_MIND_PUBLIC_IDS = (
     "mind_study_coach",
     "mind_code_reviewer",

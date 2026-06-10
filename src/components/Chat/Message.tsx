@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronDown, Copy, Download, ExternalLink } from 'lucide-react';
 import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { fileService } from '../../services/fileService';
@@ -432,6 +433,302 @@ const WebSearchProgress = ({ status, t }) => {
     );
 };
 
+const MAX_RENDERED_DIFF_LINES = 420;
+
+const getGitHubToolPayload = (message, currentVariant) => (
+    currentVariant?.githubTool ||
+    currentVariant?.github_tool ||
+    message.githubTool ||
+    message.github_tool ||
+    null
+);
+
+const getGitHubDiffPayload = (githubTool) => {
+    const task = githubTool?.task;
+    const diff = typeof task?.diff === 'string' ? task.diff.trim() : '';
+    if (!task || !diff || !task.pull_request_url) {
+        return null;
+    }
+    return { task, diff };
+};
+
+const stripGitHubDiffFence = (text) => String(text || '')
+    .replace(/\n*(?:Изменения|Changes):\s*```diff[\s\S]*?```\s*$/i, '')
+    .trim();
+
+const normalizeDiffStatus = (value) => {
+    const status = String(value || 'modified').toLowerCase();
+    if (['added', 'deleted', 'renamed', 'modified'].includes(status)) {
+        return status;
+    }
+    return 'modified';
+};
+
+const parseGitHubDiff = (diff) => {
+    const blocks = String(diff || '')
+        .split(/(?=^diff --git )/m)
+        .map((block) => block.trimEnd())
+        .filter(Boolean);
+
+    return blocks.map((block, fileIndex) => {
+        const lines = block.split('\n');
+        let path = `file-${fileIndex + 1}`;
+        let status = 'modified';
+        let additions = 0;
+        let deletions = 0;
+        const rows = [];
+
+        lines.forEach((line) => {
+            const diffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
+            if (diffMatch) {
+                path = diffMatch[2];
+                return;
+            }
+
+            const statusMatch = line.match(/^#\s+([a-z]+):\s+(.+)$/i);
+            if (statusMatch) {
+                status = normalizeDiffStatus(statusMatch[1]);
+                path = statusMatch[2].trim() || path;
+                return;
+            }
+
+            if (
+                line.startsWith('index ') ||
+                line.startsWith('--- ') ||
+                line.startsWith('+++ ')
+            ) {
+                return;
+            }
+
+            if (line.startsWith('@@')) {
+                rows.push({ kind: 'hunk', marker: '@@', text: line });
+                return;
+            }
+
+            if (line.startsWith('+')) {
+                additions += 1;
+                rows.push({ kind: 'add', marker: '+', text: line.slice(1) });
+                return;
+            }
+
+            if (line.startsWith('-')) {
+                deletions += 1;
+                rows.push({ kind: 'delete', marker: '-', text: line.slice(1) });
+                return;
+            }
+
+            rows.push({
+                kind: 'context',
+                marker: '',
+                text: line.startsWith(' ') ? line.slice(1) : line
+            });
+        });
+
+        return {
+            additions,
+            deletions,
+            id: `${path}-${fileIndex}`,
+            path,
+            rows,
+            status: normalizeDiffStatus(status)
+        };
+    });
+};
+
+const buildDiffDownloadName = (task) => {
+    const repo = String(task?.repo_full_name || 'github-diff')
+        .replace(/[^a-z0-9_.-]+/gi, '-')
+        .replace(/^-+|-+$/g, '');
+    const prNumber = task?.pull_request_number ? `pr-${task.pull_request_number}` : 'changes';
+    return `${repo || 'github-diff'}-${prNumber}.diff`;
+};
+
+const GitHubDiffCard = ({ payload, t }) => {
+    const [copyState, setCopyState] = useState('idle');
+    const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
+    const files = useMemo(() => parseGitHubDiff(payload.diff), [payload.diff]);
+    const totals = useMemo(() => files.reduce((acc, file) => ({
+        additions: acc.additions + file.additions,
+        deletions: acc.deletions + file.deletions,
+        lines: acc.lines + file.rows.filter((row) => row.kind !== 'hunk').length
+    }), { additions: 0, deletions: 0, lines: 0 }), [files]);
+
+    useEffect(() => {
+        setCollapsedFiles((current) => {
+            const fileIds = new Set(files.map((file) => file.id));
+            const next = new Set([...current].filter((fileId) => fileIds.has(fileId)));
+            return next.size === current.size ? current : next;
+        });
+    }, [files]);
+
+    if (!payload || files.length === 0) {
+        return null;
+    }
+
+    const task = payload.task;
+    const copyLabel = copyState === 'done'
+        ? t('chat.githubDiff.copied')
+        : t('chat.githubDiff.copy');
+
+    const handleCopyDiff = async () => {
+        try {
+            await navigator.clipboard.writeText(payload.diff);
+            setCopyState('done');
+            window.setTimeout(() => setCopyState('idle'), 1600);
+        } catch {
+            setCopyState('idle');
+        }
+    };
+
+    const handleDownloadDiff = () => {
+        const blob = new Blob([payload.diff], { type: 'text/x-diff;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = buildDiffDownloadName(task);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleToggleFile = (fileId) => {
+        setCollapsedFiles((current) => {
+            const next = new Set(current);
+            if (next.has(fileId)) {
+                next.delete(fileId);
+            } else {
+                next.add(fileId);
+            }
+            return next;
+        });
+    };
+
+    let renderedRows = 0;
+
+    return (
+        <section className="github-diff-card" aria-label={t('chat.githubDiff.title')}>
+            <div className="github-diff-header">
+                <div className="github-diff-title-block">
+                    <div className="github-diff-title-copy">
+                        <strong>{t('chat.githubDiff.title')}</strong>
+                        <span>{task.repo_full_name}</span>
+                    </div>
+                </div>
+                <div className="github-diff-actions">
+                    <a
+                        className="github-diff-pr-link"
+                        href={task.pull_request_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={t('chat.githubDiff.openPullRequest')}
+                    >
+                        <span>
+                            {task.pull_request_number
+                                ? `PR #${task.pull_request_number}`
+                                : t('chat.githubDiff.openPullRequest')}
+                        </span>
+                        <ExternalLink size={14} strokeWidth={2} />
+                    </a>
+                    <button
+                        type="button"
+                        className="github-diff-icon-button"
+                        onClick={handleCopyDiff}
+                        title={copyLabel}
+                        aria-label={copyLabel}
+                    >
+                        <Copy size={15} strokeWidth={2} />
+                    </button>
+                    <button
+                        type="button"
+                        className="github-diff-icon-button"
+                        onClick={handleDownloadDiff}
+                        title={t('chat.githubDiff.download')}
+                        aria-label={t('chat.githubDiff.download')}
+                    >
+                        <Download size={15} strokeWidth={2} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="github-diff-meta">
+                <span>{t('chat.githubDiff.branch')}: <b>{task.branch_name}</b></span>
+                <span>{t('chat.githubDiff.filesChanged', { count: files.length })}</span>
+                <span className="github-diff-stat is-add">
+                    {t('chat.githubDiff.additions', { count: totals.additions })}
+                </span>
+                <span className="github-diff-stat is-delete">
+                    {t('chat.githubDiff.deletions', { count: totals.deletions })}
+                </span>
+            </div>
+
+            <div className="github-diff-files">
+                {files.map((file) => {
+                    const remainingBudget = MAX_RENDERED_DIFF_LINES - renderedRows;
+                    const displayRows = file.rows.filter((row) => row.kind !== 'hunk');
+                    const visibleRows = remainingBudget > 0 ? displayRows.slice(0, remainingBudget) : [];
+                    const isCollapsed = collapsedFiles.has(file.id);
+                    const toggleLabel = isCollapsed
+                        ? t('chat.githubDiff.expandFile')
+                        : t('chat.githubDiff.collapseFile');
+                    const fileBodyId = `github-diff-file-${String(file.id).replace(/[^a-z0-9_-]+/gi, '-')}`;
+                    if (!isCollapsed) {
+                        renderedRows += visibleRows.length;
+                    }
+
+                    return (
+                        <article className={cn('github-diff-file', isCollapsed && 'is-collapsed')} key={file.id}>
+                            <header className="github-diff-file-header">
+                                <button
+                                    type="button"
+                                    className="github-diff-file-toggle"
+                                    onClick={() => handleToggleFile(file.id)}
+                                    aria-expanded={!isCollapsed}
+                                    aria-controls={fileBodyId}
+                                    aria-label={toggleLabel}
+                                    title={toggleLabel}
+                                >
+                                    <ChevronDown
+                                        className={cn('github-diff-file-chevron', isCollapsed && 'is-collapsed')}
+                                        size={15}
+                                        strokeWidth={2}
+                                        aria-hidden="true"
+                                    />
+                                    <span className="github-diff-file-name">
+                                        <span>{file.path}</span>
+                                    </span>
+                                </button>
+                                <span className={`github-diff-status is-${file.status}`}>
+                                    {t(`chat.githubDiff.status.${file.status}`)}
+                                </span>
+                            </header>
+                            {!isCollapsed && (
+                                <div className="github-diff-file-body ui-scrollbar-thin" id={fileBodyId}>
+                                    {visibleRows.map((row, index) => (
+                                        <div className={`github-diff-row is-${row.kind}`} key={`${file.id}-${index}`}>
+                                            <span className="github-diff-marker" aria-hidden="true" />
+                                            <code className="github-diff-code">{row.text || ' '}</code>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </article>
+                    );
+                })}
+            </div>
+
+            {totals.lines > MAX_RENDERED_DIFF_LINES && (
+                <div className="github-diff-truncated">
+                    {t('chat.githubDiff.truncated', {
+                        shown: MAX_RENDERED_DIFF_LINES,
+                        total: totals.lines
+                    })}
+                </div>
+            )}
+        </section>
+    );
+};
+
 const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus } = message;
     const isUser = role === 'user';
@@ -442,6 +739,8 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const currentVariant = variants && variants.length > 0 && currentVariantIndex !== undefined
         ? variants[currentVariantIndex]
         : null;
+    const githubTool = getGitHubToolPayload(message, currentVariant);
+    const githubDiffPayload = useMemo(() => getGitHubDiffPayload(githubTool), [githubTool]);
     const filesFromParts = useMemo(() => {
         if (files && files.length > 0) return files;
         if (!parts || !Array.isArray(parts)) return [];
@@ -466,6 +765,9 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         displayContent = displayContent.replace(/\{[^{}]*"original_name"[^{}]*\}/g, '');
         displayContent = displayContent.replace(/---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi, '');
         displayContent = displayContent.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
+        if (githubDiffPayload) {
+            displayContent = stripGitHubDiffFence(displayContent);
+        }
         displayContent = displayContent.trim();
     }
 
@@ -1175,6 +1477,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     className="message-text ui-message-text"
                     dangerouslySetInnerHTML={{ __html: htmlContent }}
                 />
+
+                {githubDiffPayload && (
+                    <GitHubDiffCard payload={githubDiffPayload} t={t} />
+                )}
 
                 {widgets.map(widget => {
                     if (widget.type === 'quiz') {

@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, quote_plus, unquote, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from ai_engine.tool_prompts import load_tool_prompt_section
 from config import (
     GEMINI_API_KEY,
     GEMINI_MODEL_NAME,
@@ -34,6 +35,13 @@ BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0"}
 BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal")
 ROBOTS_USER_AGENT = "ReMindBot"
 ROBOTS_MAX_BYTES = 512 * 1024
+
+
+def _render_web_tool_prompt_section(section: str, **replacements: str) -> str:
+    prompt = load_tool_prompt_section("web.md", section)
+    for key, value in replacements.items():
+        prompt = prompt.replace("{{" + key + "}}", value)
+    return prompt
 
 
 @dataclass(frozen=True)
@@ -241,16 +249,12 @@ def decide_auto_web_search(query: str) -> dict[str, Any]:
         return fallback
 
     try:
-        prompt = (
-            "You are ReMind's web-search router. Decide whether the assistant must use "
-            "live web search before answering the user's latest message.\n"
-            'Return ONLY compact JSON: {"search": true|false, "query": "...", "reason": "..."}.\n'
-            "Use search=true for current/recent facts, news, prices, laws, schedules, releases, "
-            "specific webpages, or when the user explicitly asks to search/browse/use the internet.\n"
-            "Use search=false for timeless explanations, writing, coding, math, summaries of provided text, "
-            "or casual conversation. If the user asks not to search, use false.\n"
-            f"User message JSON: {json.dumps(cleaned, ensure_ascii=False)}"
+        prompt = _render_web_tool_prompt_section(
+            "Search Router Prompt",
+            USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
+        if not prompt:
+            return fallback
         data = _extract_json_object(_call_search_decision_model(prompt))
         model_search = _coerce_model_bool(data.get("search"))
         if model_search is None:
@@ -280,19 +284,13 @@ def rewrite_web_search_query(query: str) -> dict[str, Any]:
         return fallback
 
     try:
-        prompt = (
-            "You are ReMind's web-search query writer. Convert the user's message into "
-            "the best concise query for a general web search engine.\n"
-            'Return ONLY compact JSON: {"query": "...", "reason": "..."}.\n'
-            "Rules:\n"
-            "- Do not answer the user.\n"
-            "- Remove assistant instructions such as 'use search', 'find online', or 'answer me'.\n"
-            "- Preserve important entities, names, locations, dates, versions, and constraints.\n"
-            "- If the request is time-sensitive, include words like latest/current/news and relevant dates.\n"
-            "- Keep the query short enough for a search box; no markdown, no citations, no URLs unless the user asks for a specific URL.\n"
-            f"Current UTC date: {datetime.now(timezone.utc).date().isoformat()}\n"
-            f"User message JSON: {json.dumps(cleaned, ensure_ascii=False)}"
+        prompt = _render_web_tool_prompt_section(
+            "Search Query Writer Prompt",
+            CURRENT_UTC_DATE=datetime.now(timezone.utc).date().isoformat(),
+            USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
+        if not prompt:
+            return fallback
         data = _extract_json_object(_call_search_decision_model(prompt))
         rewritten = safe_query(data.get("query") or "")
         if not rewritten:

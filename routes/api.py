@@ -2,6 +2,7 @@ from flask import Blueprint
 
 from routes.features.admin import register_admin_routes
 from routes.features.chat import register_chat_routes
+from routes.features.github import register_github_routes
 from routes.features.minds import register_mind_routes
 from routes.features.privacy import register_privacy_routes
 from routes.features.sessions import register_session_routes
@@ -12,6 +13,7 @@ api_bp = Blueprint("api", __name__)
 
 register_admin_routes(api_bp)
 register_chat_routes(api_bp)
+register_github_routes(api_bp)
 register_mind_routes(api_bp)
 register_session_routes(api_bp)
 register_share_routes(api_bp)

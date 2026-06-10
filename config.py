@@ -184,6 +184,22 @@ if not SECRET_KEY:
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME")
+GITHUB_APP_ID = os.getenv("GITHUB_APP_ID", "").strip()
+GITHUB_APP_CLIENT_ID = os.getenv("GITHUB_APP_CLIENT_ID", "").strip()
+GITHUB_APP_CLIENT_SECRET = os.getenv("GITHUB_APP_CLIENT_SECRET", "").strip()
+GITHUB_APP_SLUG = os.getenv("GITHUB_APP_SLUG", "").strip()
+GITHUB_APP_PRIVATE_KEY = os.getenv("GITHUB_APP_PRIVATE_KEY", "").strip()
+GITHUB_APP_PRIVATE_KEY_PATH = os.getenv("GITHUB_APP_PRIVATE_KEY_PATH", "").strip()
+GITHUB_PUBLIC_BASE_URL = os.getenv("GITHUB_PUBLIC_BASE_URL", "").strip().rstrip("/")
+GITHUB_BRANCH_PREFIX = os.getenv("GITHUB_BRANCH_PREFIX", "remind").strip() or "remind"
+try:
+    GITHUB_AGENT_MAX_FILE_CHARS = int(os.getenv("GITHUB_AGENT_MAX_FILE_CHARS", "80000"))
+except ValueError:
+    GITHUB_AGENT_MAX_FILE_CHARS = 80000
+try:
+    GITHUB_AGENT_MAX_PLAN_FILES = int(os.getenv("GITHUB_AGENT_MAX_PLAN_FILES", "8"))
+except ValueError:
+    GITHUB_AGENT_MAX_PLAN_FILES = 8
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_BOT_DEFAULT_MODEL = os.getenv("TELEGRAM_BOT_DEFAULT_MODEL", "gemini").strip() or "gemini"
 
@@ -212,6 +228,7 @@ ALLOWED_USER_AGENT_PATTERNS = [
     r"Mozilla/5\.0.*Edg/",
     r"Mozilla/5\.0.*OPR/",
     r"AppleWebKit/.*Safari",
+    r"^com\.apple\.WebKit\.Networking/",
 ]
 
 VALIDATE_USER_AGENT: bool = os.getenv("VALIDATE_USER_AGENT", "True").lower() in (

@@ -11,12 +11,20 @@ const ChatContainer = ({ history, isLoading, onRegenerate, onEdit, onSwitchVaria
     useEffect(() => {
         const update = () => {
             const doc = document.documentElement;
-            const distanceFromBottom = doc.scrollHeight - (window.scrollY + window.innerHeight);
+            const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+            const viewportOffsetTop = window.visualViewport?.offsetTop ?? 0;
+            const distanceFromBottom = doc.scrollHeight - (window.scrollY + viewportOffsetTop + viewportHeight);
             shouldAutoScrollRef.current = distanceFromBottom < 200;
         };
         update();
         window.addEventListener('scroll', update, { passive: true });
-        return () => window.removeEventListener('scroll', update);
+        window.visualViewport?.addEventListener('resize', update, { passive: true });
+        window.visualViewport?.addEventListener('scroll', update, { passive: true });
+        return () => {
+            window.removeEventListener('scroll', update);
+            window.visualViewport?.removeEventListener('resize', update);
+            window.visualViewport?.removeEventListener('scroll', update);
+        };
     }, []);
     useEffect(() => {
         if (!settings.autoscroll) return;

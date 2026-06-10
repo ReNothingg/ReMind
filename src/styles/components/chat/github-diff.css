@@ -1,0 +1,332 @@
+.github-diff-card {
+  --github-diff-add-raw: 34, 197, 94;
+  --github-diff-delete-raw: 239, 68, 68;
+  --github-diff-add: rgb(var(--github-diff-add-raw));
+  --github-diff-delete: rgb(var(--github-diff-delete-raw));
+
+  width: min(100%, 880px);
+  max-width: 100%;
+  margin: 14px 0 2px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.github-diff-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: rgba(var(--color-white-raw), 0.025);
+}
+
+.github-diff-title-block {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.github-diff-title-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.github-diff-title-copy strong {
+  color: var(--color-text-primary);
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.18;
+}
+
+.github-diff-title-copy span {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-family-code);
+  font-size: 0.72rem;
+  line-height: 1.24;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-diff-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.github-diff-pr-link,
+.github-diff-icon-button {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-interactive);
+  color: var(--color-text-secondary);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.github-diff-pr-link {
+  gap: 6px;
+  padding: 0 9px;
+  font-size: 0.74rem;
+  font-weight: 680;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.github-diff-icon-button {
+  width: 30px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.github-diff-pr-link:hover,
+.github-diff-icon-button:hover {
+  border-color: rgba(var(--color-accent-raw), 0.34);
+  background: rgba(var(--color-accent-raw), 0.11);
+  color: var(--color-text-primary);
+  transform: translateY(-1px);
+}
+
+.github-diff-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.github-diff-meta span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 7px;
+  background: rgba(var(--color-black-raw), 0.08);
+}
+
+.github-diff-meta b {
+  color: var(--color-text-primary);
+  font-family: var(--font-family-code);
+  font-weight: 650;
+}
+
+.github-diff-stat.is-add {
+  border-color: rgba(var(--github-diff-add-raw), 0.34);
+  color: var(--github-diff-add);
+}
+
+.github-diff-stat.is-delete {
+  border-color: rgba(var(--github-diff-delete-raw), 0.34);
+  color: var(--github-diff-delete);
+}
+
+.github-diff-files {
+  display: grid;
+}
+
+.github-diff-file + .github-diff-file {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.github-diff-file-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(var(--color-black-raw), 0.1);
+}
+
+.github-diff-file-toggle {
+  display: inline-flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.github-diff-file-toggle:hover .github-diff-file-name {
+  color: var(--color-text-primary);
+}
+
+.github-diff-file-chevron {
+  flex: 0 0 auto;
+  margin-right: 7px;
+  color: var(--color-text-tertiary);
+  transition:
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.github-diff-file-toggle:hover .github-diff-file-chevron {
+  color: var(--color-text-secondary);
+}
+
+.github-diff-file-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.github-diff-file-name {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-code);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.github-diff-file-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-diff-status {
+  display: inline-flex;
+  min-height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  color: var(--color-text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.github-diff-status.is-added {
+  border-color: rgba(var(--github-diff-add-raw), 0.34);
+  color: var(--github-diff-add);
+}
+
+.github-diff-status.is-deleted {
+  border-color: rgba(var(--github-diff-delete-raw), 0.34);
+  color: var(--github-diff-delete);
+}
+
+.github-diff-status.is-renamed {
+  border-color: rgba(var(--color-warning-raw), 0.28);
+  color: var(--color-text-warning);
+}
+
+.github-diff-file-body {
+  max-height: 420px;
+  overflow: auto;
+  background: rgba(var(--color-black-raw), 0.16);
+  font-family: var(--font-family-code);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.github-diff-row {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  min-width: max-content;
+}
+
+.github-diff-row.is-add {
+  background: rgba(var(--github-diff-add-raw), 0.17);
+}
+
+.github-diff-row.is-delete {
+  background: rgba(var(--github-diff-delete-raw), 0.15);
+}
+
+.github-diff-row.is-hunk {
+  background: rgba(var(--color-accent-raw), 0.1);
+  color: var(--color-accent);
+}
+
+.github-diff-marker {
+  display: block;
+  user-select: none;
+  background: transparent;
+}
+
+.github-diff-row.is-add .github-diff-marker {
+  background: rgba(var(--github-diff-add-raw), 0.95);
+}
+
+.github-diff-row.is-delete .github-diff-marker {
+  background: rgba(var(--github-diff-delete-raw), 0.92);
+}
+
+.github-diff-row.is-hunk .github-diff-marker {
+  background: rgba(var(--color-accent-raw), 0.58);
+}
+
+.github-diff-row.is-add .github-diff-code {
+  color: var(--github-diff-add) !important;
+}
+
+.github-diff-row.is-delete .github-diff-code {
+  color: var(--github-diff-delete) !important;
+}
+
+.github-diff-row code.github-diff-code {
+  display: block;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 10px;
+  background: transparent !important;
+  color: var(--color-text-secondary);
+  white-space: pre;
+}
+
+.github-diff-truncated {
+  border-top: 1px solid var(--color-border-subtle);
+  padding: 9px 14px;
+  color: var(--color-text-tertiary);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+html[data-theme='light'] .github-diff-card {
+  background: var(--color-bg-surface);
+}
+
+@media (max-width: 640px) {
+  .github-diff-header,
+  .github-diff-file-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .github-diff-actions {
+    width: 100%;
+  }
+
+  .github-diff-pr-link {
+    flex: 1 1 auto;
+  }
+
+  .github-diff-icon-button {
+    flex: 0 0 30px;
+  }
+}

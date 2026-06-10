@@ -26,7 +26,7 @@ body {
   background: var(--color-bg-main);
   color: var(--color-text-primary);
   font-family: var(--font-family-main);
-  min-height: 100vh;
+  min-height: var(--app-viewport-height);
   padding: calc(var(--spacing-unit) * 4);
   display: flex;
   flex-direction: column;
@@ -219,6 +219,7 @@ main {
   align-self: stretch !important;
   width: 100% !important;
   max-width: 100% !important;
+  min-height: var(--app-viewport-height);
   box-sizing: border-box;
 
   padding-left: var(--app-rail-offset);

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT_PATH = Path(__file__).with_name("prompt.md")
 _gemini_configured = False
+_UNSUPPORTED_LOCATION_ERROR_FRAGMENT = "user location is not supported"
 
 
 def _ensure_gemini_configured() -> None:
@@ -145,6 +146,32 @@ def _prepare_new_message(user_message_data: Dict[str, Any]) -> List[Union[str, I
     return content_parts
 
 
+def _google_api_error_message(exc: google_exceptions.GoogleAPICallError) -> str:
+    return str(getattr(exc, "message", None) or exc)
+
+
+def _is_unsupported_location_error(exc: google_exceptions.GoogleAPICallError) -> bool:
+    error_message = _google_api_error_message(exc).lower()
+    return (
+        isinstance(exc, google_exceptions.FailedPrecondition)
+        and _UNSUPPORTED_LOCATION_ERROR_FRAGMENT in error_message
+    )
+
+
+def _format_google_api_error(exc: google_exceptions.GoogleAPICallError) -> str:
+    if _is_unsupported_location_error(exc):
+        return (
+            "<error>Сервис недоступен</error>"
+            "Языковая модель сейчас недоступна из текущего региона. "
+            "Обратитесь к администратору или попробуйте позже."
+        )
+
+    return (
+        "<error>Ошибка API</error>"
+        f"Произошла ошибка при обращении к API Google: {_google_api_error_message(exc)}"
+    )
+
+
 def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[str, None, None]:
     try:
         _ensure_gemini_configured()
@@ -192,10 +219,7 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
 
         except google_exceptions.GoogleAPICallError as exc:
             logger.error("Ошибка вызова API для '%s': %s", user_id, exc, exc_info=True)
-            yield (
-                "<error>Ошибка API</error>"
-                f"Произошла ошибка при обращении к API Google: {exc.message}"
-            )
+            yield _format_google_api_error(exc)
             return
         except Exception as exc:
             logger.error(

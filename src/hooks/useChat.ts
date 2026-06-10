@@ -157,6 +157,7 @@ function normalizeHistoryMessage(msg) {
         images,
         files,
         sources: Array.isArray(msg.sources) ? msg.sources : [],
+        githubTool: msg.github_tool || msg.githubTool || null,
         timestamp: msg.timestamp,
         parts
     };
@@ -678,10 +679,15 @@ export const useChat = () => {
             }
 
             if (parts.length > 0) {
-                historyArray.push({
+                const historyMessage: Record<string, unknown> = {
                     role: isUser ? 'user' : 'model',
                     parts: parts
-                });
+                };
+                const githubTool = msg.githubTool || msg.github_tool;
+                if (!isUser && githubTool && typeof githubTool === 'object') {
+                    historyMessage.github_tool = githubTool;
+                }
+                historyArray.push(historyMessage);
             }
         }
         return historyArray;
@@ -951,12 +957,14 @@ export const useChat = () => {
                     }
 
                     const finalContent = finalData.reply || fullReply;
+                    const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             const firstVariant = {
                                 content: finalContent,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
+                                githubTool: finalGitHubTool,
                                 thinkingTime: finalData.thinkingTime
                             };
                             return {
@@ -967,6 +975,7 @@ export const useChat = () => {
                                 content: finalContent,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
+                                githubTool: finalGitHubTool,
                                 thinkingTime: finalData.thinkingTime,
                                 variants: [firstVariant],
                                 currentVariantIndex: 0
@@ -1112,12 +1121,14 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             const newVariant = {
                                 content: finalData.reply || fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
+                                githubTool: finalGitHubTool,
                                 thinkingTime: finalData.thinkingTime
                             };
                             const existingVariants = msg.variants || [];
@@ -1130,6 +1141,7 @@ export const useChat = () => {
                                 content: newVariant.content,
                                 images: newVariant.images,
                                 sources: newVariant.sources,
+                                githubTool: finalGitHubTool,
                                 thinkingTime: newVariant.thinkingTime,
                                 variants: newVariants,
                                 currentVariantIndex: newCurrentIndex
@@ -1198,6 +1210,7 @@ export const useChat = () => {
                         content: newVariant.content,
                         images: newVariant.images || [],
                         sources: newVariant.sources || [],
+                        githubTool: newVariant.githubTool || null,
                         thinkingTime: newVariant.thinkingTime,
                         currentVariantIndex: newIndex
                     };
@@ -1296,6 +1309,7 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -1303,7 +1317,8 @@ export const useChat = () => {
                                 isLoading: false,
                                 content: finalData.reply || fullReply,
                                 images: finalData.images || [],
-                                sources: finalData.sources || []
+                                sources: finalData.sources || [],
+                                githubTool: finalGitHubTool
                             };
                         }
                         return msg;

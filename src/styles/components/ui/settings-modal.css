@@ -787,13 +787,13 @@
 
 .user-settings-modal .account-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.85fr);
   gap: 14px;
   align-items: start;
 }
 
 .user-settings-modal .account-layout-auth {
-  align-items: stretch;
+  grid-template-columns: 1fr;
+  align-items: start;
 }
 
 .user-settings-modal .account-layout-guest {
@@ -821,6 +821,12 @@
   flex-direction: column;
   gap: 5px;
   margin-bottom: 14px;
+}
+
+.user-settings-modal .account-form-card,
+.user-settings-modal .account-connected-apps-card,
+.user-settings-modal .account-danger-card {
+  min-width: 0;
 }
 
 .user-settings-modal .account-card-title {
@@ -919,9 +925,118 @@
   width: 100%;
 }
 
+.user-settings-modal .account-connected-apps-card {
+  background: var(--color-bg-surface);
+}
+
+.user-settings-modal .account-connected-app-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.user-settings-modal .account-connected-app-icon {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--color-accent-raw), 0.22);
+  border-radius: var(--radius-md);
+  background: rgba(var(--color-accent-raw), 0.1);
+  color: var(--color-text-primary);
+}
+
+.user-settings-modal .account-connected-app-copy {
+  min-width: 0;
+}
+
+.user-settings-modal .account-connected-app-copy strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+.user-settings-modal .account-connected-app-copy p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.user-settings-modal .account-connected-app-meta,
+.user-settings-modal .account-connected-app-error {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.user-settings-modal .account-connected-app-meta {
+  color: var(--color-text-tertiary);
+}
+
+.user-settings-modal .account-connected-app-error {
+  color: var(--color-text-error);
+}
+
+.user-settings-modal .account-connected-app-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.user-settings-modal .account-connected-app-status {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  padding: 0 11px;
+  color: var(--color-text-secondary);
+  font-size: 0.77rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.user-settings-modal .account-connected-app-status.is-connected {
+  border-color: rgba(var(--color-success-raw), 0.28);
+  background: rgba(var(--color-success-raw), 0.1);
+  color: var(--color-text-success);
+}
+
+.user-settings-modal .account-connected-app-status.is-error {
+  border-color: rgba(var(--color-error-raw), 0.26);
+  background: rgba(var(--color-error-raw), 0.08);
+  color: var(--color-text-error);
+}
+
+.user-settings-modal .account-connected-app-action {
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .user-settings-modal .account-danger-card {
   border-color: rgba(var(--color-error-raw), 0.24);
   background: var(--color-bg-surface);
+}
+
+.user-settings-modal .account-danger-head {
+  max-width: 72ch;
+}
+
+.user-settings-modal .account-danger-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
 }
 
 .user-settings-modal .account-danger-title {
@@ -933,10 +1048,11 @@
 
 .user-settings-modal .account-delete-btn {
   width: auto;
-  margin-top: 12px;
+  margin-top: 0;
   border-color: rgba(var(--color-error-raw), 0.28);
   background: rgba(var(--color-error-raw), 0.08);
   color: var(--color-text-error) !important;
+  white-space: nowrap;
 }
 
 .user-settings-modal .account-delete-btn:hover:not(:disabled) {
@@ -1001,12 +1117,8 @@ html[data-theme='light'] .user-settings-modal .account-profile-summary {
     grid-template-columns: 1fr;
   }
 
-  .user-settings-modal .account-column-side {
-    order: 2;
-  }
-
-  .user-settings-modal .account-column-main {
-    order: 1;
+  .user-settings-modal .account-connected-app-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 }
 
@@ -1174,6 +1286,28 @@ html[data-theme='light'] .user-settings-modal .account-profile-summary {
   }
 
   .user-settings-modal .account-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-settings-modal .account-connected-app-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .user-settings-modal .account-connected-app-controls {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    padding-top: 2px;
+  }
+
+  .user-settings-modal .account-connected-app-status,
+  .user-settings-modal .account-connected-app-action {
+    max-width: 100%;
+  }
+
+  .user-settings-modal .account-danger-controls {
     grid-template-columns: 1fr;
   }
 

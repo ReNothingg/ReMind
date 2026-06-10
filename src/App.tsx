@@ -60,6 +60,9 @@ function normalizeAppPath(path: string): string {
     if (path.startsWith('/editor/')) {
         return `/minds/editor/${path.slice('/editor/'.length)}`;
     }
+    if (path === '/github' || path.startsWith('/github/')) {
+        return '/';
+    }
     return path;
 }
 
@@ -380,6 +383,10 @@ const MainLayout = () => {
             shouldUpdateURL = true;
         }
 
+        if (params.has('github') || params.has('github_error')) {
+            shouldUpdateURL = true;
+        }
+
         if (shouldUpdateURL && params.toString()) {
             const cleanURL = `${window.location.pathname}${window.location.hash}`;
             window.history.replaceState(null, '', cleanURL);
@@ -596,6 +603,7 @@ const MainLayout = () => {
     const isEditorRoute = routePath === '/minds/editor' || routePath.startsWith('/minds/editor/');
     const isAdminRoute = routePath === '/admin' || routePath.startsWith('/admin/');
     const isChatSurface = !isMindsRoute && !isEditorRoute && !isAdminRoute;
+    const showTemporaryChatButton = routePath === '/' && history.length === 0 && !isTemporaryChat;
 
     return (
         <>
@@ -647,6 +655,7 @@ const MainLayout = () => {
                     onTemporaryChat={handleTemporaryChat}
                     isTemporaryChat={isTemporaryChat}
                     showChatControls={isChatSurface}
+                    showTemporaryChatButton={showTemporaryChatButton}
                 />
 
                 {isAdminRoute ? (

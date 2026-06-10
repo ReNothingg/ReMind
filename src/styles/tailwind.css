@@ -21,6 +21,7 @@
 @import "./components/ui/user-settings.css" layer(components);
 @import "./components/chat/formatter.css" layer(components);
 @import "./components/chat/code-block.css" layer(components);
+@import "./components/chat/github-diff.css" layer(components);
 @import "./components/chat/quote.css" layer(components);
 @import "./components/chat/think-block.css" layer(components);
 @import "./components/chat/thinking-process.css" layer(components);
@@ -37,6 +38,7 @@
 @import "./components/ui/spinwheel.css" layer(components);
 @import "./features/minds.css" layer(components);
 @import "./features/admin.css" layer(components);
+@import "./features/github.css" layer(components);
 
 @source "../../index.html";
 @source "../**/*.{js,jsx,ts,tsx}";
@@ -92,16 +94,19 @@
 
   body {
     @apply min-h-screen bg-page text-foreground font-sans antialiased;
+    min-height: var(--app-viewport-height);
     font-optical-sizing: auto;
     font-variant-numeric: tabular-nums slashed-zero;
   }
 
   #root {
     @apply min-h-screen w-full;
+    min-height: var(--app-viewport-height);
   }
 
   main {
     @apply mx-auto w-full max-w-full;
+    min-height: var(--app-viewport-height);
   }
 }
 
@@ -434,6 +439,7 @@
 
   .ui-chat-stack {
     @apply mx-auto flex min-h-screen w-[var(--app-content-width-dynamic)] min-w-[var(--content-width-min)] max-w-[var(--app-content-max-width-dynamic)] flex-col px-0 pt-0 pb-[200px] text-[0.88rem] text-foreground;
+    min-height: var(--app-viewport-height);
   }
 
   .ui-notice-banner {
@@ -448,10 +454,12 @@
 
   .ui-app-main-shell {
     @apply relative min-h-screen w-full;
+    min-height: var(--app-viewport-height);
   }
 
   .ui-empty-conversation-shell {
     @apply min-h-screen w-full;
+    min-height: var(--app-viewport-height);
   }
 
   .ui-rail-shell {
@@ -943,6 +951,10 @@
 
   .ui-main-input-shell {
     @apply fixed bottom-[calc(4*var(--spacing-unit))] z-[100] flex w-[var(--app-content-width-dynamic)] max-w-[var(--app-content-max-width-dynamic)] flex-col items-stretch gap-1 bg-transparent p-0 transition duration-200;
+    bottom: calc(
+      16px +
+      var(--app-visual-viewport-bottom-inset)
+    );
     left: calc(50% + (var(--app-rail-offset) / 2));
     transform: translateX(-50%);
   }
@@ -1495,6 +1507,63 @@
     50% {
       opacity: 0.72;
       transform: scale(0.82);
+    }
+  }
+
+  @media screen and (max-width: 1024px) {
+    html,
+    body,
+    #root {
+      min-height: var(--app-viewport-height) !important;
+    }
+
+    html,
+    body {
+      align-items: stretch !important;
+      padding: 0 !important;
+    }
+
+    .ui-app-main-shell {
+      min-height: var(--app-viewport-height) !important;
+      padding-top: calc(var(--app-mobile-header-height) + env(safe-area-inset-top)) !important;
+      padding-bottom: calc(var(--app-composer-reserved-height) + env(safe-area-inset-bottom)) !important;
+    }
+
+    .ui-chat-stack {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      min-height: calc(
+        var(--app-viewport-height) - var(--app-mobile-header-height) - env(safe-area-inset-top)
+      ) !important;
+      margin: 0 !important;
+      padding:
+        10px
+        calc(var(--app-mobile-edge-gutter) + env(safe-area-inset-right))
+        calc(
+          var(--app-composer-reserved-height) +
+          var(--app-visual-viewport-bottom-inset) +
+          env(safe-area-inset-bottom)
+        )
+        calc(var(--app-mobile-edge-gutter) + env(safe-area-inset-left)) !important;
+      scroll-padding-bottom: calc(
+        var(--app-composer-reserved-height) +
+        var(--app-visual-viewport-bottom-inset) +
+        env(safe-area-inset-bottom)
+      ) !important;
+    }
+
+    .ui-main-input-shell:not(.landing) {
+      right: calc(16px + env(safe-area-inset-right)) !important;
+      left: calc(16px + env(safe-area-inset-left)) !important;
+      width: auto !important;
+      max-width: none !important;
+      transform: none !important;
+      bottom: calc(
+        var(--app-composer-bottom-gap) +
+        env(safe-area-inset-bottom) +
+        var(--app-visual-viewport-bottom-inset)
+      ) !important;
     }
   }
 

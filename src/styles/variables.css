@@ -87,6 +87,13 @@
   --input-area-height-base: 48px;
   --input-inner-padding: 4px;
   --input-border-radius: 24px;
+  --app-visual-viewport-height: 100dvh;
+  --app-visual-viewport-bottom-inset: 0px;
+  --app-viewport-height: var(--app-visual-viewport-height);
+  --app-mobile-header-height: 60px;
+  --app-mobile-edge-gutter: 12px;
+  --app-composer-bottom-gap: 12px;
+  --app-composer-reserved-height: 150px;
 
   --inline-code-bg: rgba(255, 255, 255, 0.06);
   --inline-code-border: rgba(255, 255, 255, 0.08);

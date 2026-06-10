@@ -24,6 +24,7 @@ interface GlobalHeaderProps {
     onTemporaryChat: () => void;
     isTemporaryChat?: boolean;
     showChatControls?: boolean;
+    showTemporaryChatButton?: boolean;
 }
 
 interface ModelOption {
@@ -179,6 +180,7 @@ export default function GlobalHeader({
     onTemporaryChat,
     isTemporaryChat = false,
     showChatControls = true,
+    showTemporaryChatButton = true,
 }: GlobalHeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const modelDropdownId = useId();
@@ -320,7 +322,7 @@ export default function GlobalHeader({
                     </HeaderIconButton>
                 )}
 
-                {showChatControls && (
+                {showChatControls && showTemporaryChatButton && (
                     <HeaderIconButton
                         className="ui-toolbar-temporary-button"
                         onClick={onTemporaryChat}

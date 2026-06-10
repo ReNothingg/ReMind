@@ -41,6 +41,7 @@
     · <a href="#docker">Docker</a>
     · <a href="#architecture">Архитектура</a>
     · <a href="#quality">Качество</a>
+    · <a href="#license">Лицензия</a>
   </p>
 
   <img src="public/images/banners/main-banner.png" alt="ReMind interface preview" width="100%" />
@@ -52,7 +53,7 @@
 
 ## ✨ Обзор
 
-**ReMind** это full-stack AI-приложение на React/Vite и Flask, собранное как реальная продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Telegram bot, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
+**ReMind** это AI-приложение на React/Vite и Flask, собранное как продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Telegram bot, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
 
 Проект находится в статусе `beta`: основные пользовательские сценарии уже доступны, а UX и внутренняя архитектура продолжают развиваться.
 
@@ -351,4 +352,18 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 
 ## 📄 Лицензия
 
-ReMind распространяется под лицензией **GNU AGPLv3**. Подробности в [LICENSE](LICENSE).
+ReMind распространяется под лицензией **GNU AGPL-3.0-only**. Подробности в [LICENSE](LICENSE).
+
+Коммерческое использование разрешено только при соблюдении условий AGPL-3.0-only. В частности, если вы модифицируете ReMind и предоставляете к нему доступ по сети, пользователи такого сервиса должны получить доступ к Corresponding Source вашей версии на условиях AGPL.
+
+Если вы хотите использовать ReMind или его части в proprietary-продукте, closed-source сервисе, hosted commercial platform, или без AGPL source-disclosure obligations, нужна отдельная коммерческая лицензия от ReNothingg.
+
+Contact: [Telegram: @daich](https://t.me/daich)
+
+### Trademark and Branding
+
+Название **ReMind**, логотип ReMind, визуальная идентичность, домены, официальные аккаунты и иное официальное оформление проекта не лицензируются по AGPL-3.0-only.
+
+Вы не можете использовать название ReMind, логотип, брендинг или официальную идентичность для продвижения измененных версий, форков, коммерческих сервисов или производных продуктов без явного письменного разрешения ReNothingg.
+
+Дополнительные уведомления: [NOTICE.md](NOTICE.md).

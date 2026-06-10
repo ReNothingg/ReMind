@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from flask import request
 
+from ai_engine.tool_prompts import load_tool_prompt_section
 from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
@@ -193,6 +194,41 @@ def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
     return out
 
 
+def user_has_github_connection(user_id: Optional[int]) -> bool:
+    if not user_id:
+        return False
+    try:
+        from services.github_app import github_app_configured
+        from utils.auth import GitHubInstallation
+
+        if not github_app_configured():
+            return False
+        return (
+            GitHubInstallation.query.filter_by(user_id=int(user_id)).first()
+            is not None
+        )
+    except Exception as e:
+        logger.exception(f"Failed to resolve GitHub tool connection for {user_id}: {e}")
+        return False
+
+
+def render_github_tool_prompt(user_id: Optional[int]) -> str:
+    if not user_has_github_connection(user_id):
+        return ""
+
+    tool_prompt = _load_template_file(os.path.join("tools", "github.md"))
+    if not tool_prompt:
+        return ""
+    return "CONNECTED TOOL: GITHUB\n" + tool_prompt.strip()
+
+
+def render_web_tool_prompt() -> str:
+    tool_prompt = load_tool_prompt_section("web.md", "Assistant System Prompt")
+    if not tool_prompt:
+        return ""
+    return "TOOL: WEB SEARCH\n" + tool_prompt.strip()
+
+
 def _format_dimensions(dim: Optional[dict]) -> str:
     if not dim:
         return ""
@@ -209,6 +245,8 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
+    web_tool_prompt = render_web_tool_prompt()
+    github_tool_prompt = render_github_tool_prompt(user_id)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     if base and user_md:
         prompt = base + "\n\n" + "PERSONALIZATION FOR USER:\n" + user_md
@@ -216,6 +254,10 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         prompt = user_md
     else:
         prompt = base
+
+    tool_prompts = [tool for tool in [web_tool_prompt, github_tool_prompt] if tool]
+    if tool_prompts:
+        prompt = prompt + "\n\n" + "\n\n".join(tool_prompts)
 
     if mind_prompt:
         return prompt + "\n\n" + mind_prompt

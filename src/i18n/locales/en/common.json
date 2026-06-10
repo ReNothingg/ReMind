@@ -89,7 +89,27 @@
     ]
   },
   "chat": {
-    "readOnly": "Chat is read-only"
+    "readOnly": "Chat is read-only",
+    "githubDiff": {
+      "title": "Pull request changes",
+      "branch": "Branch",
+      "filesChanged": "{{count}} files changed",
+      "additions": "{{count}} additions",
+      "deletions": "{{count}} deletions",
+      "copy": "Copy diff",
+      "copied": "Copied",
+      "download": "Download diff",
+      "expandFile": "Expand file",
+      "collapseFile": "Collapse file",
+      "openPullRequest": "Open pull request",
+      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "status": {
+        "added": "Added",
+        "deleted": "Deleted",
+        "modified": "Modified",
+        "renamed": "Renamed"
+      }
+    }
   },
   "composer": {
     "attachFiles": "Attach files",
@@ -173,7 +193,10 @@
     "share": "Share",
     "rename": "Rename",
     "delete": "Delete",
-    "temporaryChat": "Temporary chat"
+    "temporaryChat": "Temporary chat",
+    "minds": "Minds",
+    "admin": "Admin",
+    "github": "GitHub"
   },
   "settings": {
     "title": "Settings",
@@ -248,6 +271,24 @@
         "actionLoading": "Deleting account...",
         "success": "Account deleted",
         "error": "Failed to delete account"
+      },
+      "connectedApps": {
+        "title": "Connected apps",
+        "description": "Manage external services ReMind can use inside chat.",
+        "github": {
+          "name": "GitHub",
+          "description": "Let ReMind plan code changes and open pull requests from chat.",
+          "connect": "Connect GitHub",
+          "manage": "Manage",
+          "error": "Failed to load GitHub status",
+          "repoCount": "Available repositories: {{count}}",
+          "status": {
+            "checking": "Checking",
+            "connected": "Connected",
+            "disconnected": "Not connected",
+            "configMissing": "Config missing"
+          }
+        }
       }
     },
     "appearance": {
@@ -607,5 +648,131 @@
     "title": "Temporary chat",
     "badge": "Not saved to history",
     "description": "This chat stays out of the main history and is not saved after the session."
+  },
+  "github": {
+    "title": "GitHub",
+    "subtitle": "ReMind GitHub App",
+    "refresh": "Refresh",
+    "connect": "Connect GitHub",
+    "manageConnection": "Manage GitHub",
+    "configMissing": "GitHub App config is incomplete: {{fields}}",
+    "authRequiredTitle": "Sign in to use GitHub",
+    "connection": {
+      "title": "Connection",
+      "appFallback": "GitHub App",
+      "ready": "Ready",
+      "waiting": "Waiting",
+      "selectedRepos": "Selected repositories",
+      "allRepos": "All repositories",
+      "empty": "No GitHub installation connected."
+    },
+    "repositories": {
+      "title": "Repositories",
+      "count": "{{count}} available",
+      "searchPlaceholder": "Search repositories",
+      "searchAria": "Search GitHub repositories",
+      "empty": "No repositories available.",
+      "noResults": "No repositories found.",
+      "private": "Private",
+      "public": "Public",
+      "writeAccess": "Write access"
+    },
+    "agent": {
+      "title": "Agent task",
+      "noRepo": "No repository selected",
+      "branchLabel": "Base branch",
+      "branchPlaceholder": "main",
+      "taskLabel": "Task",
+      "taskPlaceholder": "Describe the code change",
+      "planning": "Building plan...",
+      "createPlan": "Build plan",
+      "running": "Creating PR...",
+      "confirmRun": "Confirm and create PR"
+    },
+    "taskStatus": {
+      "idle": "Idle",
+      "planning": "Planning",
+      "planned": "Plan ready",
+      "running": "Running",
+      "pullRequestOpened": "PR opened",
+      "error": "Error",
+      "completedNoChanges": "No changes"
+    },
+    "errors": {
+      "loadStatus": "Could not load GitHub status.",
+      "plan": "Could not build GitHub plan.",
+      "run": "Could not create GitHub pull request.",
+      "editorInvalidJson": "The AI editor did not return valid JSON edits. Check the activity log below."
+    },
+    "plan": {
+      "title": "Plan",
+      "summaryFallback": "Plan is ready.",
+      "mapStats": "{{files}} files · {{directories}} folders",
+      "mapReady": "Repo map ready",
+      "steps": "Steps",
+      "files": "Files",
+      "fileActions": {
+        "inspect": "Inspect",
+        "edit": "Edit",
+        "create": "Create",
+        "delete": "Delete"
+      },
+      "fallbacks": {
+        "summary": "Prepare a focused code change in a pull request.",
+        "inspectTitle": "Inspect repository map",
+        "inspectDetails": "Use the selected files as the first editing context.",
+        "editTitle": "Generate code edits",
+        "editDetails": "Apply a small, reviewable change on a new branch.",
+        "prTitle": "Open pull request",
+        "prDetails": "Show the generated diff and create a PR against the base branch.",
+        "plannerFallbackRisk": "The planner model could not run, so files were selected heuristically."
+      }
+    },
+    "result": {
+      "title": "Diff and pull request",
+      "openPr": "Open PR",
+      "noChangesTitle": "No pull request created",
+      "noChangesFallback": "The agent did not propose safe file edits for this task.",
+      "findings": "Findings",
+      "tests": "Checks"
+    },
+    "activity": {
+      "title": "Agent activity",
+      "subtitle": "Visible trace of repository reading, AI calls, edits, branch, and PR steps.",
+      "morePaths": "+{{count}} more",
+      "codes": {
+        "unknown": "Agent step",
+        "planningLive": "Building plan",
+        "runningLive": "Running approved plan",
+        "repoMapLoaded": "Loaded repository map",
+        "candidateFilesSelected": "Selected candidate files",
+        "plannedFilesLoaded": "Loaded planned files",
+        "fileContextLoaded": "Read file context",
+        "plannerStarted": "Started planner model",
+        "plannerSucceeded": "Planner returned a plan",
+        "plannerFallback": "Used heuristic plan",
+        "runStarted": "Started PR run",
+        "editorStarted": "Started editor model",
+        "editsPrepared": "Prepared file edits",
+        "commitCreated": "Created branch commit",
+        "diffLoaded": "Loaded generated diff",
+        "pullRequestOpened": "Opened pull request",
+        "geminiMissingKey": "Gemini API key is missing",
+        "geminiRequestFailed": "Gemini request failed",
+        "geminiInvalidJson": "Gemini returned invalid JSON",
+        "geminiJsonParsed": "Gemini JSON parsed",
+        "editorFailed": "Editor output was rejected",
+        "noChanges": "No safe file edits"
+      },
+      "details": {
+        "repoMapLoaded": "{{files}} files · {{directories}} folders",
+        "filesCount": "{{count}} files",
+        "geminiJsonParsed": "{{chars}} response characters",
+        "geminiInvalidJson": "{{chars}} response characters; preview below",
+        "commitCreated": "Branch: {{branch}}",
+        "diffLoaded": "{{files}} changed files",
+        "pullRequestOpened": "Pull request #{{number}}"
+      }
+    }
   }
 }

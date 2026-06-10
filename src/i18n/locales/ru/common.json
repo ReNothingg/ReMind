@@ -89,7 +89,27 @@
     ]
   },
   "chat": {
-    "readOnly": "Чат только для чтения"
+    "readOnly": "Чат только для чтения",
+    "githubDiff": {
+      "title": "Изменения в Pull Request",
+      "branch": "Ветка",
+      "filesChanged": "{{count}} файлов изменено",
+      "additions": "{{count}} добавлено",
+      "deletions": "{{count}} удалено",
+      "copy": "Скопировать diff",
+      "copied": "Скопировано",
+      "download": "Скачать diff",
+      "expandFile": "Развернуть файл",
+      "collapseFile": "Свернуть файл",
+      "openPullRequest": "Открыть pull request",
+      "truncated": "Показано {{shown}} из {{total}} строк diff",
+      "status": {
+        "added": "Добавлен",
+        "deleted": "Удален",
+        "modified": "Изменен",
+        "renamed": "Переименован"
+      }
+    }
   },
   "composer": {
     "attachFiles": "Прикрепить файлы",
@@ -173,7 +193,10 @@
     "share": "Поделиться",
     "rename": "Переименовать",
     "delete": "Удалить",
-    "temporaryChat": "Временный чат"
+    "temporaryChat": "Временный чат",
+    "minds": "Minds",
+    "admin": "Админ",
+    "github": "GitHub"
   },
   "settings": {
     "title": "Настройки",
@@ -248,6 +271,24 @@
         "actionLoading": "Удаление аккаунта...",
         "success": "Аккаунт удалён",
         "error": "Не удалось удалить аккаунт"
+      },
+      "connectedApps": {
+        "title": "Подключенные приложения",
+        "description": "Управляйте внешними сервисами, которые ReMind может использовать прямо в чате.",
+        "github": {
+          "name": "GitHub",
+          "description": "Позволяет ReMind планировать изменения в коде и открывать Pull Request из чата.",
+          "connect": "Подключить GitHub",
+          "manage": "Управлять",
+          "error": "Не удалось загрузить статус GitHub",
+          "repoCount": "Доступно репозиториев: {{count}}",
+          "status": {
+            "checking": "Проверка",
+            "connected": "Подключен",
+            "disconnected": "Не подключен",
+            "configMissing": "Нет конфигурации"
+          }
+        }
       }
     },
     "appearance": {
@@ -606,5 +647,131 @@
     "title": "Временный чат",
     "badge": "Не сохраняется в истории",
     "description": "Этот чат не попадает в основную историю и не сохраняется после сессии."
+  },
+  "github": {
+    "title": "GitHub",
+    "subtitle": "ReMind GitHub App",
+    "refresh": "Обновить",
+    "connect": "Подключить GitHub",
+    "manageConnection": "Управлять GitHub",
+    "configMissing": "GitHub App настроен не полностью: {{fields}}",
+    "authRequiredTitle": "Войдите, чтобы использовать GitHub",
+    "connection": {
+      "title": "Подключение",
+      "appFallback": "GitHub App",
+      "ready": "Готово",
+      "waiting": "Ожидание",
+      "selectedRepos": "Выбранные репозитории",
+      "allRepos": "Все репозитории",
+      "empty": "Нет подключенной установки GitHub."
+    },
+    "repositories": {
+      "title": "Репозитории",
+      "count": "Доступно: {{count}}",
+      "searchPlaceholder": "Поиск репозиториев",
+      "searchAria": "Поиск репозиториев GitHub",
+      "empty": "Нет доступных репозиториев.",
+      "noResults": "Репозитории не найдены.",
+      "private": "Приватный",
+      "public": "Публичный",
+      "writeAccess": "Доступ на запись"
+    },
+    "agent": {
+      "title": "Задача агента",
+      "noRepo": "Репозиторий не выбран",
+      "branchLabel": "Базовая ветка",
+      "branchPlaceholder": "main",
+      "taskLabel": "Задача",
+      "taskPlaceholder": "Опишите изменение в коде",
+      "planning": "Готовлю план...",
+      "createPlan": "Составить план",
+      "running": "Создаю PR...",
+      "confirmRun": "Подтвердить и создать PR"
+    },
+    "taskStatus": {
+      "idle": "Ожидание",
+      "planning": "Планирование",
+      "planned": "План готов",
+      "running": "Выполнение",
+      "pullRequestOpened": "PR открыт",
+      "error": "Ошибка",
+      "completedNoChanges": "Без изменений"
+    },
+    "errors": {
+      "loadStatus": "Не удалось загрузить статус GitHub.",
+      "plan": "Не удалось подготовить план GitHub.",
+      "run": "Не удалось создать GitHub Pull Request.",
+      "editorInvalidJson": "Editor-модель не вернула валидный JSON с правками. Ниже есть журнал действий."
+    },
+    "plan": {
+      "title": "План",
+      "summaryFallback": "План готов.",
+      "mapStats": "{{files}} файлов · {{directories}} папок",
+      "mapReady": "Repo map готов",
+      "steps": "Шаги",
+      "files": "Файлы",
+      "fileActions": {
+        "inspect": "Проверить",
+        "edit": "Изменить",
+        "create": "Создать",
+        "delete": "Удалить"
+      },
+      "fallbacks": {
+        "summary": "Подготовить точечное изменение кода через Pull Request.",
+        "inspectTitle": "Проверить карту репозитория",
+        "inspectDetails": "Использовать выбранные файлы как первый контекст для правок.",
+        "editTitle": "Сгенерировать правки кода",
+        "editDetails": "Сделать небольшое изменение в отдельной ветке.",
+        "prTitle": "Открыть Pull Request",
+        "prDetails": "Показать diff и создать PR в базовую ветку.",
+        "plannerFallbackRisk": "Planner-модель не запустилась, поэтому файлы выбраны эвристически."
+      }
+    },
+    "result": {
+      "title": "Diff и Pull Request",
+      "openPr": "Открыть PR",
+      "noChangesTitle": "Pull Request не создан",
+      "noChangesFallback": "Агент не предложил безопасных правок файлов для этой задачи.",
+      "findings": "Наблюдения",
+      "tests": "Проверки"
+    },
+    "activity": {
+      "title": "Ход работы агента",
+      "subtitle": "Видно чтение репозитория, вызовы ИИ, правки, ветку и PR.",
+      "morePaths": "+{{count}} еще",
+      "codes": {
+        "unknown": "Шаг агента",
+        "planningLive": "Составляю план",
+        "runningLive": "Выполняю подтвержденный план",
+        "repoMapLoaded": "Загрузил карту репозитория",
+        "candidateFilesSelected": "Выбрал возможные файлы",
+        "plannedFilesLoaded": "Загрузил файлы из плана",
+        "fileContextLoaded": "Прочитал контекст файлов",
+        "plannerStarted": "Запустил planner-модель",
+        "plannerSucceeded": "Planner вернул план",
+        "plannerFallback": "Использован эвристический план",
+        "runStarted": "Начал создание PR",
+        "editorStarted": "Запустил editor-модель",
+        "editsPrepared": "Подготовил правки файлов",
+        "commitCreated": "Создал commit в ветке",
+        "diffLoaded": "Загрузил diff",
+        "pullRequestOpened": "Открыл Pull Request",
+        "geminiMissingKey": "Нет Gemini API key",
+        "geminiRequestFailed": "Запрос к Gemini не удался",
+        "geminiInvalidJson": "Gemini вернул невалидный JSON",
+        "geminiJsonParsed": "JSON от Gemini распарсен",
+        "editorFailed": "Ответ editor отклонен",
+        "noChanges": "Нет безопасных правок"
+      },
+      "details": {
+        "repoMapLoaded": "{{files}} файлов · {{directories}} папок",
+        "filesCount": "{{count}} файлов",
+        "geminiJsonParsed": "{{chars}} символов в ответе",
+        "geminiInvalidJson": "{{chars}} символов в ответе; preview ниже",
+        "commitCreated": "Ветка: {{branch}}",
+        "diffLoaded": "{{files}} измененных файлов",
+        "pullRequestOpened": "Pull Request #{{number}}"
+      }
+    }
   }
 }

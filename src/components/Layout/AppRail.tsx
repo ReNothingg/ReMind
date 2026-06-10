@@ -423,10 +423,10 @@ const AppRail = ({
                     className="rail-icon-btn"
                     expanded={isExpanded}
                     id="railMinds"
-                    label="Minds"
+                    label={t('rail.minds')}
                     onClick={onMindsClick}
-                    title="Minds"
-                    aria-label="Minds"
+                    title={t('rail.minds')}
+                    aria-label={t('rail.minds')}
                 >
                     <MindRailIcon />
                 </RailActionButton>
@@ -436,10 +436,10 @@ const AppRail = ({
                         className="rail-icon-btn"
                         expanded={isExpanded}
                         id="railAdmin"
-                        label="Admin"
+                        label={t('rail.admin')}
                         onClick={onAdminClick}
-                        title="Admin"
-                        aria-label="Admin"
+                        title={t('rail.admin')}
+                        aria-label={t('rail.admin')}
                     >
                         <ShieldCheck size={20} />
                     </RailActionButton>

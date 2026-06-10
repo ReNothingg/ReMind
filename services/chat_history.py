@@ -214,6 +214,9 @@ def normalize_message(msg: Any) -> dict:
         sources = msg.get("sources")
         if isinstance(sources, list) and sources:
             normalized["sources"] = sources
+        github_tool = msg.get("github_tool")
+        if isinstance(github_tool, dict) and github_tool:
+            normalized["github_tool"] = github_tool
         return normalized
     except Exception:
         return {

@@ -111,6 +111,7 @@ lerna-debug.log*
 *.swo
 *.sw?
 *~
+*.agents
 
 # ==========================
 # OS junk

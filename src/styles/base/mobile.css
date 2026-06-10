@@ -20,12 +20,14 @@
     padding-left: 0 !important;
     width: 100% !important;
     max-width: 100vw !important;
-    padding-top: 60px;
+    min-height: var(--app-viewport-height) !important;
+    padding-top: calc(var(--app-mobile-header-height) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--app-composer-reserved-height) + env(safe-area-inset-bottom));
   }
 
   #appRail {
     width: 300px !important;
-    height: 100dvh !important;
+    height: var(--app-viewport-height) !important;
     position: fixed !important;
     top: 0;
     left: 0;
@@ -105,13 +107,12 @@
     left: 0 !important;
     right: 0 !important;
     width: 100%;
-    height: 60px;
-    padding: 0 12px;
-    background: rgba(15, 15, 17, 0.95);
-    background: var(--color-bg-main);
-    border-bottom: 1px solid var(--color-border-subtle);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    height: calc(var(--app-mobile-header-height) + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 12px 0;
+    background: transparent;
+    border-bottom: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     z-index: 100;
     display: flex;
     align-items: center;
@@ -215,8 +216,24 @@
   .chat-container {
     width: 100% !important;
     min-width: 0 !important;
-    padding: 10px 12px 160px 12px;
+    min-height: calc(
+      var(--app-viewport-height) - var(--app-mobile-header-height) - env(safe-area-inset-top)
+    ) !important;
+    padding:
+      10px
+      calc(12px + env(safe-area-inset-right))
+      calc(
+        var(--app-composer-reserved-height) +
+        var(--app-visual-viewport-bottom-inset) +
+        env(safe-area-inset-bottom)
+      )
+      calc(12px + env(safe-area-inset-left));
     margin: 0 !important;
+    scroll-padding-bottom: calc(
+      var(--app-composer-reserved-height) +
+      var(--app-visual-viewport-bottom-inset) +
+      env(safe-area-inset-bottom)
+    );
   }
 
   .welcome-message {
@@ -323,7 +340,11 @@
     right: calc(16px + env(safe-area-inset-right)) !important;
     width: auto !important;
     transform: none !important;
-    bottom: calc(12px + env(safe-area-inset-bottom));
+    bottom: calc(
+      var(--app-composer-bottom-gap) +
+      env(safe-area-inset-bottom) +
+      var(--app-visual-viewport-bottom-inset)
+    );
     padding: 0;
     border-radius: 0;
     background: transparent;

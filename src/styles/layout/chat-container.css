@@ -1,6 +1,6 @@
 .chat-container {
   display: flex;
-  min-height: 100vh;
+  min-height: var(--app-viewport-height);
   height: auto;
   padding: 0rem 0rem 6.25rem;
   border: 0rem solid rgba(255, 255, 255, 0.05);
@@ -21,6 +21,14 @@
 
   margin-left: auto !important;
   margin-right: auto !important;
+}
+
+.chat-container > .clear-both {
+  scroll-margin-bottom: calc(
+    var(--app-composer-reserved-height) +
+    var(--app-visual-viewport-bottom-inset) +
+    env(safe-area-inset-bottom)
+  );
 }
 
 .message {
