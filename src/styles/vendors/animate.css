@@ -263,7 +263,7 @@
   animation: shimmer-flow 2s infinite linear;
 }
 
-button:active,
+button:active:not(.password-toggle),
 .action-btn:active,
 .rail-btn:active,
 .file-card:active {

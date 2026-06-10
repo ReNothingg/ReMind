@@ -184,11 +184,7 @@
     @apply w-full rounded-lg border border-border-strong bg-surface-alt px-3 py-2 text-sm text-foreground outline-none transition duration-200 ease-out placeholder:text-subtle focus:border-accent-brand;
     box-shadow: 0 0 0 0 transparent;
   }
-
-  .ui-input:focus {
-    box-shadow: 0 0 0 3px rgba(var(--color-accent-raw), 0.22);
-  }
-
+  
   .ui-field-label {
     @apply text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted;
   }

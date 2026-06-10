@@ -373,16 +373,23 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
 
 .auth-modal .password-field {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .auth-modal .password-field input {
+  display: block;
+  width: 100%;
   padding-right: 2.8rem;
 }
 
 .auth-modal .password-toggle {
   position: absolute;
-  top: 50%;
+  top: 0;
+  bottom: 0;
   right: 0.42rem;
+  margin-block: auto;
+  transform: none;
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
@@ -398,8 +405,16 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
     color var(--transition-fast);
 }
 
+.auth-modal .password-toggle .password-toggle__icon {
+  display: block;
+  flex-shrink: 0;
+  line-height: 0;
+  transform: translateY(-1px);
+}
+
 .auth-modal .password-toggle:hover,
-.auth-modal .password-toggle:focus-visible {
+.auth-modal .password-toggle:focus-visible,
+.auth-modal .password-toggle:active {
   background: var(--color-bg-interactive-hover, rgba(255, 255, 255, 0.1));
   color: var(--color-text-primary);
   outline: none;
@@ -843,7 +858,10 @@ html[data-theme='light'] .btn-google:hover {
   cursor: pointer;
   position: absolute;
   right: 1rem;
-  top: 50%;
+  top: 0;
+  bottom: 0;
+  margin-block: auto;
+  transform: none;
   font-size: 0.9rem;
   padding: 0;
 }

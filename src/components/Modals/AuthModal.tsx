@@ -429,7 +429,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                     aria-pressed={showPassword}
                                     title={passwordToggleLabel}
                                 >
-                                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                    {showPassword ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" /> : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
                                 </button>
                             </div>
                         </div>
@@ -541,7 +541,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                     aria-pressed={showPassword}
                                     title={passwordToggleLabel}
                                 >
-                                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                    {showPassword ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" /> : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
                                 </button>
                             </div>
                         </div>
@@ -565,7 +565,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                     aria-pressed={showConfirmPassword}
                                     title={confirmPasswordToggleLabel}
                                 >
-                                    {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                    {showConfirmPassword ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" /> : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
                                 </button>
                             </div>
                         </div>

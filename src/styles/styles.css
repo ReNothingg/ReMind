@@ -1836,7 +1836,7 @@ button:hover,
   transform: translateY(-1px);
 }
 
-button:active,
+button:active:not(.password-toggle),
 .action-btn:active,
 .rail-btn:active {
   transform: translateY(0);
