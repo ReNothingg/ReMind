@@ -88,6 +88,34 @@ TEXT_FILENAMES = {
     "README.md",
 }
 
+DOCUMENTATION_FALLBACK_EXTENSIONS = {".md", ".markdown", ".rst", ".txt"}
+DOCUMENTATION_FALLBACK_FILENAMES = {
+    "README",
+    "README.md",
+    "CHANGELOG",
+    "CHANGELOG.md",
+    "CONTRIBUTING",
+    "CONTRIBUTING.md",
+}
+DOCUMENTATION_TASK_TERMS = (
+    "readme",
+    "troubleshooting",
+    "local development",
+    "documentation",
+    "docs",
+    "guide",
+    "usage",
+    "install",
+    "setup",
+    "документац",
+    "ридми",
+    "реадми",
+    "инструкц",
+    "установ",
+    "запуск",
+    "локальн",
+)
+
 
 @dataclass(slots=True)
 class GitHubAPIError(Exception):
@@ -636,6 +664,14 @@ class GitHubClient:
         basehead = f"{quote(base, safe='')}...{quote(head, safe='')}"
         return self.request("GET", f"/repos/{owner}/{repo}/compare/{basehead}")
 
+    def list_pull_request_files(self, owner: str, repo: str, number: int) -> list[dict[str, Any]]:
+        payload = self.request(
+            "GET",
+            f"/repos/{owner}/{repo}/pulls/{int(number)}/files",
+            params={"per_page": 100},
+        )
+        return payload if isinstance(payload, list) else []
+
 
 class InstallationTokenProvider:
     def __init__(self) -> None:
@@ -835,6 +871,32 @@ def call_gemini_json_with_trace(prompt: str) -> tuple[dict[str, Any] | None, dic
 def call_gemini_json(prompt: str) -> dict[str, Any] | None:
     parsed, _trace = call_gemini_json_with_trace(prompt)
     return parsed
+
+
+def call_gemini_text_with_trace(prompt: str) -> tuple[str | None, dict[str, Any]]:
+    if not GEMINI_API_KEY:
+        return None, _activity("geminiMissingKey", "warning")
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-2.5-flash")
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.2,
+            },
+        )
+        text = getattr(response, "text", "") or ""
+    except Exception as exc:
+        return None, _activity(
+            "geminiTextRequestFailed",
+            "error",
+            {"message": str(exc)[:500]},
+        )
+    if not text.strip():
+        return None, _activity("geminiTextEmpty", "error")
+    return text, _activity("geminiTextGenerated", "done", {"response_chars": len(text)})
 
 
 def _is_russian_text(value: str) -> bool:
@@ -1091,6 +1153,183 @@ def build_edit_prompt(
     )
 
 
+def build_edit_repair_prompt(original_prompt: str, invalid_trace: dict[str, Any]) -> str:
+    return json.dumps(
+        {
+            "instruction": (
+                "The previous editor response was rejected because it was not valid JSON. "
+                "Return only one valid JSON object matching the original schema. "
+                "Do not include markdown fences, comments, explanations outside JSON, or trailing commas. "
+                "If you cannot safely produce file edits, return an empty edits array with "
+                "no_changes_reason and findings in the user's language."
+            ),
+            "original_editor_request": _json_from_text(original_prompt) or original_prompt,
+            "invalid_response_preview": (invalid_trace.get("details") or {}).get("response_preview"),
+            "schema": {
+                "summary": "string",
+                "edits": [
+                    {
+                        "path": "string",
+                        "action": "create|update|delete",
+                        "content": "string required for create/update",
+                        "reason": "string",
+                    }
+                ],
+                "findings": ["string"],
+                "no_changes_reason": "string when no safe edit should be made",
+                "tests": ["string"],
+            },
+        },
+        ensure_ascii=False,
+    )
+
+
+def _is_documentation_path(path: str) -> bool:
+    name = Path(path).name
+    return name in DOCUMENTATION_FALLBACK_FILENAMES or Path(path).suffix.lower() in DOCUMENTATION_FALLBACK_EXTENSIONS
+
+
+def _task_allows_single_file_text_fallback(task: str, plan: dict[str, Any]) -> bool:
+    text_parts = [str(task or "")]
+    for key in ("summary", "pr_title", "pr_body", "commit_message"):
+        if plan.get(key):
+            text_parts.append(str(plan.get(key) or ""))
+    for item in plan.get("files", []) if isinstance(plan.get("files"), list) else []:
+        if isinstance(item, dict):
+            text_parts.append(str(item.get("path") or ""))
+            text_parts.append(str(item.get("reason") or ""))
+    normalized = " ".join(text_parts).lower()
+    return any(term in normalized for term in DOCUMENTATION_TASK_TERMS)
+
+
+def _select_single_file_text_context(
+    task: str,
+    plan: dict[str, Any],
+    file_contexts: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not _task_allows_single_file_text_fallback(task, plan):
+        return None
+
+    planned_paths = [
+        _normalize_path(str(item.get("path") or ""))
+        for item in plan.get("files", [])
+        if isinstance(item, dict) and str(item.get("path") or "").strip()
+    ]
+    path_rank = {path: index for index, path in enumerate(planned_paths)}
+    candidates = []
+    for item in file_contexts:
+        if not isinstance(item, dict):
+            continue
+        path = _normalize_path(str(item.get("path") or ""))
+        content = item.get("content")
+        if not isinstance(content, str) or not item.get("exists", True):
+            continue
+        if not _is_documentation_path(path):
+            continue
+        candidates.append((path_rank.get(path, 999), 0 if Path(path).name.lower().startswith("readme") else 1, item))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda candidate: (candidate[0], candidate[1], str(candidate[2].get("path") or "")))
+    return candidates[0][2]
+
+
+def build_single_file_text_edit_prompt(
+    task: str,
+    repo_full_name: str,
+    base_branch: str,
+    plan: dict[str, Any],
+    file_context: dict[str, Any],
+) -> str:
+    path = _normalize_path(str(file_context.get("path") or ""))
+    response_language = _response_language_name(task)
+    return json.dumps(
+        {
+            "instruction": (
+                "You are the fallback text editor for ReMind GitHub agent. "
+                "The JSON editor failed, but this is a safe single documentation-file edit. "
+                "Return the complete replacement content for exactly one file. "
+                "Do not return JSON. Do not include markdown fences around the whole response. "
+                "Preserve existing useful content and formatting. Make the smallest change "
+                "that satisfies the approved user request. "
+                f"Write any newly added prose in {response_language}."
+            ),
+            "output_format": (
+                f"BEGIN_REMIND_FILE:{path}\n"
+                "complete replacement file content here\n"
+                "END_REMIND_FILE"
+            ),
+            "repository": {"full_name": repo_full_name, "base_branch": base_branch},
+            "task": task,
+            "approved_plan": plan,
+            "file": {
+                "path": path,
+                "content": str(file_context.get("content") or ""),
+            },
+        },
+        ensure_ascii=False,
+    )
+
+
+def _parse_single_file_text_edit(raw_text: str, path: str, original_content: str) -> str | None:
+    marker = re.escape(f"BEGIN_REMIND_FILE:{path}")
+    match = re.search(
+        rf"{marker}[ \t]*\r?\n(?P<content>.*?)\r?\n?END_REMIND_FILE",
+        raw_text or "",
+        flags=re.DOTALL,
+    )
+    if not match:
+        return None
+    content = match.group("content")
+    if not content.strip() or content == original_content:
+        return None
+    if original_content.endswith("\n") and not content.endswith("\n"):
+        content += "\n"
+    return content
+
+
+def build_single_file_text_edit_payload(
+    task: str,
+    repo_full_name: str,
+    base_branch: str,
+    plan: dict[str, Any],
+    file_contexts: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    activity: list[dict[str, Any]] = []
+    file_context = _select_single_file_text_context(task, plan, file_contexts)
+    if not file_context:
+        activity.append(_activity("textEditorFallbackSkipped", "warning", {"reason": "no_single_documentation_file"}))
+        return None, activity
+
+    path = _normalize_path(str(file_context.get("path") or ""))
+    original_content = str(file_context.get("content") or "")
+    activity.append(_activity("textEditorFallbackStarted", "done", {"path": path}))
+    raw_text, trace = call_gemini_text_with_trace(
+        build_single_file_text_edit_prompt(task, repo_full_name, base_branch, plan, file_context)
+    )
+    activity.append(trace)
+    content = _parse_single_file_text_edit(raw_text or "", path, original_content)
+    if content is None:
+        activity.append(_activity("textEditorFallbackRejected", "warning", {"path": path}))
+        return None, activity
+
+    activity.append(_activity("textEditorFallbackSucceeded", "done", {"path": path}))
+    return {
+        "summary": "Документация обновлена." if _is_russian_text(task) else "Documentation updated.",
+        "edits": [
+            {
+                "path": path,
+                "action": "update",
+                "content": content,
+                "reason": "Обновить документацию по запросу пользователя." if _is_russian_text(task) else "Update documentation for the user request.",
+            }
+        ],
+        "findings": [],
+        "no_changes_reason": "",
+        "tests": ["Не запускались: изменена только документация."] if _is_russian_text(task) else ["Not run: documentation-only change."],
+    }, activity
+
+
 def normalize_edits(raw_edits: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(raw_edits, dict):
         raise ValueError("AI editor did not return JSON edits.")
@@ -1310,15 +1549,28 @@ def _looks_like_applied_change_claim(value: str) -> bool:
     )
 
 
-def compare_to_patch(compare_payload: dict[str, Any]) -> str:
+def files_to_patch(files_payload: list[dict[str, Any]]) -> str:
     patches: list[str] = []
-    for file_payload in compare_payload.get("files", []):
+    for file_payload in files_payload:
         filename = file_payload.get("filename") or ""
         status = file_payload.get("status") or "modified"
         patch = file_payload.get("patch")
         header = f"diff --git a/{filename} b/{filename}\n# {status}: {filename}"
         patches.append(f"{header}\n{patch}" if patch else header)
     return "\n\n".join(patches)
+
+
+def compare_to_patch(compare_payload: dict[str, Any]) -> str:
+    return files_to_patch(compare_payload.get("files", []))
+
+
+def diff_has_visible_changes(diff: str) -> bool:
+    for line in str(diff or "").splitlines():
+        if line.startswith(("+++", "---")):
+            continue
+        if line.startswith(("+", "-")):
+            return True
+    return False
 
 
 class GitHubAgentService:
@@ -1504,10 +1756,38 @@ class GitHubAgentService:
             )
         )
         activity.append(_activity("editorStarted", "done"))
-        raw_edits, editor_trace = call_gemini_json_with_trace(
-            build_edit_prompt(task, repo_full_name, repo_map["base_branch"], plan, repo_map, file_contexts)
-        )
+        edit_prompt = build_edit_prompt(task, repo_full_name, repo_map["base_branch"], plan, repo_map, file_contexts)
+        raw_edits, editor_trace = call_gemini_json_with_trace(edit_prompt)
         activity.append(editor_trace)
+        if raw_edits is None and editor_trace.get("code") == "geminiInvalidJson":
+            activity.append(_activity("editorJsonRepairStarted", "done"))
+            raw_edits, repair_trace = call_gemini_json_with_trace(
+                build_edit_repair_prompt(edit_prompt, editor_trace)
+            )
+            activity.append(repair_trace)
+        if raw_edits is None and editor_trace.get("code") == "geminiInvalidJson":
+            text_payload, text_activity = build_single_file_text_edit_payload(
+                task,
+                repo_full_name,
+                repo_map["base_branch"],
+                plan,
+                file_contexts,
+            )
+            activity.extend(text_activity)
+            if text_payload is not None:
+                raw_edits = text_payload
+        if raw_edits is None:
+            raw_edits = {
+                "summary": "",
+                "tests": [],
+                "edits": [],
+                "findings": [],
+                "no_changes_reason": (
+                    "AI editor did not return valid JSON edits after retry."
+                    if editor_trace.get("code") == "geminiInvalidJson"
+                    else "AI editor could not prepare safe file edits."
+                ),
+            }
         try:
             edit_payload = normalize_edits(raw_edits)
         except ValueError as exc:
@@ -1605,6 +1885,30 @@ class GitHubAgentService:
                 {"number": pull_request["number"], "url": pull_request["html_url"]},
             )
         )
+        if not diff_has_visible_changes(diff):
+            pull_request_files = self.client.list_pull_request_files(owner, repo, int(pull_request["number"]))
+            pull_request_diff = files_to_patch(pull_request_files)
+            if diff_has_visible_changes(pull_request_diff):
+                diff = pull_request_diff
+                activity.append(
+                    _activity(
+                        "diffLoadedFromPullRequest",
+                        "done",
+                        {"files": len(pull_request_files), "diff_chars": len(diff)},
+                    )
+                )
+            else:
+                activity.append(
+                    _activity(
+                        "diffMissingPatch",
+                        "warning",
+                        {
+                            "compare_files": len(compare_payload.get("files", [])),
+                            "pull_request_files": len(pull_request_files),
+                            "diff_chars": len(pull_request_diff),
+                        },
+                    )
+                )
         return {
             "branch_name": branch_name,
             "commit_sha": commit_sha,

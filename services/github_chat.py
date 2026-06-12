@@ -1318,6 +1318,10 @@ def _human_no_changes_reason(reason: str, language: str) -> str:
         if language == "ru":
             return "AI-редактор вернул ответ не в формате JSON-правок."
         return "The AI editor did not return JSON edits."
+    if "did not return valid json edits after retry" in normalized:
+        if language == "ru":
+            return "AI-редактор дважды не вернул валидный JSON с правками, поэтому PR не создавался."
+        return "The AI editor did not return valid JSON edits after retry, so no PR was created."
     if language == "ru" and not _is_russian_text(clean_reason):
         return f"Техническая причина: {clean_reason}"
     return clean_reason

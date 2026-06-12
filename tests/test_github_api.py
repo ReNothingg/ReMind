@@ -291,6 +291,331 @@ def test_github_agent_run_without_edits_completes_without_pr(
     assert completed_task["edits"]["findings"] == ["The agent found no deterministic edit."]
 
 
+def test_github_agent_run_falls_back_to_pull_request_files_for_diff(monkeypatch):
+    import services.github_app as github_app
+    from services.github_app import GitHubAgentService
+
+    class CompareWithoutPatchClient:
+        def compare(self, owner, repo, base, head):
+            return {"files": [{"filename": "src/app.py", "status": "modified"}]}
+
+        def create_pull_request(self, owner, repo, title, head, base, body):
+            return {
+                "number": 2,
+                "html_url": "https://github.com/ReNothingg/ReSave/pull/2",
+                "title": title,
+            }
+
+        def list_pull_request_files(self, owner, repo, number):
+            return [
+                {
+                    "filename": "src/app.py",
+                    "status": "modified",
+                    "patch": "@@ -1 +1 @@\n-old\n+new",
+                }
+            ]
+
+    service = object.__new__(GitHubAgentService)
+    service.installation_id = 123
+    service.client = CompareWithoutPatchClient()
+    monkeypatch.setattr(
+        service,
+        "load_repo_map",
+        lambda repo_full_name, base_branch: {
+            "base_branch": base_branch,
+            "stats": {"files": 1, "directories": 0, "nodes": 1},
+            "truncated": False,
+            "flat": [{"path": "src/app.py", "type": "file"}],
+        },
+    )
+    monkeypatch.setattr(service, "_commit_edits", lambda **_kwargs: ("remind/bug-hunt", "1a6bb2f"))
+    monkeypatch.setattr(
+        github_app,
+        "read_file_contexts",
+        lambda *_args, **_kwargs: [{"path": "src/app.py", "content": "old\n", "exists": True}],
+    )
+    monkeypatch.setattr(
+        github_app,
+        "call_gemini_json_with_trace",
+        lambda _prompt: (
+            {
+                "summary": "Fixed app bug",
+                "edits": [
+                    {
+                        "path": "src/app.py",
+                        "action": "update",
+                        "content": "new\n",
+                        "reason": "Fix deterministic issue",
+                    }
+                ],
+                "tests": [],
+            },
+            {"code": "geminiJsonParsed", "status": "done"},
+        ),
+    )
+
+    result = service.run(
+        repo_full_name="ReNothingg/ReSave",
+        base_branch="main",
+        task="Найди и исправь баги",
+        plan={
+            "files": [{"path": "src/app.py"}],
+            "branch_suffix": "bug-hunt",
+            "commit_message": "fix: bug hunt",
+            "pr_title": "Bug hunt",
+            "pr_body": "Body",
+        },
+    )
+
+    assert result["pull_request"]["url"].endswith("/pull/2")
+    assert result["diff"].startswith("diff --git a/src/app.py b/src/app.py")
+    assert "-old" in result["diff"]
+    assert "+new" in result["diff"]
+    assert any(
+        item.get("code") == "diffLoadedFromPullRequest"
+        for item in result["edits"]["activity"]
+    )
+
+
+def test_github_agent_retries_invalid_editor_json(monkeypatch):
+    import services.github_app as github_app
+    from services.github_app import GitHubAgentService
+
+    class SimpleClient:
+        def compare(self, owner, repo, base, head):
+            return {
+                "files": [
+                    {
+                        "filename": "README.md",
+                        "status": "modified",
+                        "patch": "@@ -1 +1 @@\n-old readme\n+new readme",
+                    }
+                ]
+            }
+
+        def create_pull_request(self, owner, repo, title, head, base, body):
+            return {"number": 3, "html_url": "https://github.com/ReNothingg/ReSave/pull/3", "title": title}
+
+        def list_pull_request_files(self, owner, repo, number):
+            return []
+
+    service = object.__new__(GitHubAgentService)
+    service.installation_id = 123
+    service.client = SimpleClient()
+    monkeypatch.setattr(
+        service,
+        "load_repo_map",
+        lambda repo_full_name, base_branch: {
+            "base_branch": base_branch,
+            "stats": {"files": 1, "directories": 0, "nodes": 1},
+            "truncated": False,
+            "flat": [{"path": "README.md", "type": "file"}],
+        },
+    )
+    monkeypatch.setattr(service, "_commit_edits", lambda **_kwargs: ("remind/readme", "abc123"))
+    monkeypatch.setattr(
+        github_app,
+        "read_file_contexts",
+        lambda *_args, **_kwargs: [{"path": "README.md", "content": "old readme\n", "exists": True}],
+    )
+    calls = []
+
+    def fake_editor(prompt):
+        calls.append(prompt)
+        if len(calls) == 1:
+            return None, {
+                "code": "geminiInvalidJson",
+                "status": "error",
+                "details": {"response_preview": "not json", "response_chars": 8},
+            }
+        return (
+            {
+                "summary": "Улучшен README.",
+                "edits": [
+                    {
+                        "path": "README.md",
+                        "action": "update",
+                        "content": "new readme\n",
+                        "reason": "Уточнить README.",
+                    }
+                ],
+                "tests": [],
+            },
+            {"code": "geminiJsonParsed", "status": "done"},
+        )
+
+    monkeypatch.setattr(github_app, "call_gemini_json_with_trace", fake_editor)
+
+    result = service.run(
+        repo_full_name="ReNothingg/ReSave",
+        base_branch="main",
+        task="Улучши README",
+        plan={
+            "files": [{"path": "README.md"}],
+            "branch_suffix": "readme",
+            "commit_message": "docs: improve readme",
+            "pr_title": "Improve README",
+            "pr_body": "Body",
+        },
+    )
+
+    assert len(calls) == 2
+    assert "previous editor response was rejected" in calls[1]
+    assert result["pull_request"]["url"].endswith("/pull/3")
+    assert result["diff"].startswith("diff --git a/README.md b/README.md")
+    assert any(item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"])
+
+
+def test_github_agent_invalid_editor_json_after_retry_completes_without_pr(monkeypatch):
+    import services.github_app as github_app
+    from services.github_app import GitHubAgentService
+
+    service = object.__new__(GitHubAgentService)
+    service.installation_id = 123
+    service.client = object()
+    monkeypatch.setattr(
+        service,
+        "load_repo_map",
+        lambda repo_full_name, base_branch: {
+            "base_branch": base_branch,
+            "stats": {"files": 1, "directories": 0, "nodes": 1},
+            "truncated": False,
+            "flat": [{"path": "README.md", "type": "file"}],
+        },
+    )
+    monkeypatch.setattr(
+        github_app,
+        "read_file_contexts",
+        lambda *_args, **_kwargs: [{"path": "README.md", "content": "old readme\n", "exists": True}],
+    )
+    monkeypatch.setattr(
+        github_app,
+        "call_gemini_json_with_trace",
+        lambda _prompt: (
+            None,
+            {
+                "code": "geminiInvalidJson",
+                "status": "error",
+                "details": {"response_preview": "still not json", "response_chars": 14},
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        github_app,
+        "call_gemini_text_with_trace",
+        lambda _prompt: (None, {"code": "geminiTextEmpty", "status": "error"}),
+    )
+
+    result = service.run(
+        repo_full_name="ReNothingg/ReSave",
+        base_branch="main",
+        task="Исправь баг в src/app.py",
+        plan={
+            "files": [{"path": "src/app.py"}],
+            "branch_suffix": "bugfix",
+            "commit_message": "fix: app bug",
+            "pr_title": "Fix app bug",
+            "pr_body": "Body",
+        },
+    )
+
+    assert result["no_changes"] is True
+    assert result["diff"] == ""
+    assert result["edits"]["edits"] == []
+    assert result["edits"]["no_changes_reason"] == "AI editor did not return valid JSON edits after retry."
+    assert any(item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"])
+
+
+def test_github_agent_uses_text_editor_fallback_for_readme_after_invalid_json(monkeypatch):
+    import services.github_app as github_app
+    from services.github_app import GitHubAgentService
+
+    class SimpleClient:
+        def compare(self, owner, repo, base, head):
+            return {
+                "files": [
+                    {
+                        "filename": "README.md",
+                        "status": "modified",
+                        "patch": "@@ -1,2 +1,7 @@\n # Project\n+\n+## Local development\n+\n+Run `pip install -r requirements.txt`.\n",
+                    }
+                ]
+            }
+
+        def create_pull_request(self, owner, repo, title, head, base, body):
+            return {"number": 4, "html_url": "https://github.com/ReNothingg/devex-pr-agent/pull/4", "title": title}
+
+        def list_pull_request_files(self, owner, repo, number):
+            return []
+
+    service = object.__new__(GitHubAgentService)
+    service.installation_id = 123
+    service.client = SimpleClient()
+    monkeypatch.setattr(
+        service,
+        "load_repo_map",
+        lambda repo_full_name, base_branch: {
+            "base_branch": base_branch,
+            "stats": {"files": 1, "directories": 0, "nodes": 1},
+            "truncated": False,
+            "flat": [{"path": "README.md", "type": "file"}],
+        },
+    )
+    monkeypatch.setattr(service, "_commit_edits", lambda **_kwargs: ("remind/readme", "abc123"))
+    monkeypatch.setattr(
+        github_app,
+        "read_file_contexts",
+        lambda *_args, **_kwargs: [{"path": "README.md", "content": "# Project\n", "exists": True}],
+    )
+    monkeypatch.setattr(
+        github_app,
+        "call_gemini_json_with_trace",
+        lambda _prompt: (
+            None,
+            {
+                "code": "geminiInvalidJson",
+                "status": "error",
+                "details": {"response_preview": "not json", "response_chars": 8},
+            },
+        ),
+    )
+    text_prompts = []
+
+    def fake_text_editor(prompt):
+        text_prompts.append(prompt)
+        return (
+            "BEGIN_REMIND_FILE:README.md\n"
+            "# Project\n\n"
+            "## Local development\n\n"
+            "Run `python3 -m venv .venv`, install dependencies with "
+            "`pip install -r requirements.txt`, then start the app with `python main.py`.\n"
+            "END_REMIND_FILE",
+            {"code": "geminiTextGenerated", "status": "done"},
+        )
+
+    monkeypatch.setattr(github_app, "call_gemini_text_with_trace", fake_text_editor)
+
+    result = service.run(
+        repo_full_name="ReNothingg/devex-pr-agent",
+        base_branch="main",
+        task="улучши README: добавь короткий раздел Local development с командами установки и запуска",
+        plan={
+            "files": [{"path": "README.md"}],
+            "branch_suffix": "readme-local-development",
+            "commit_message": "docs: add local development section",
+            "pr_title": "Add local development docs",
+            "pr_body": "Body",
+        },
+    )
+
+    assert len(text_prompts) == 1
+    assert result["pull_request"]["url"].endswith("/pull/4")
+    assert result["edits"]["edits"][0]["path"] == "README.md"
+    assert "Local development" in result["edits"]["edits"][0]["content"]
+    assert any(item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"])
+    assert any(item.get("code") == "textEditorFallbackSucceeded" for item in result["edits"]["activity"])
+
+
 def test_github_chat_request_without_repo_asks_for_repository(
     app, client, create_confirmed_user, login, monkeypatch
 ):
