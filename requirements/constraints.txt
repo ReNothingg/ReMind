@@ -8,8 +8,8 @@ flask-session==0.8.0
 flask-sqlalchemy==3.1.1
 sqlalchemy==2.0.37
 alembic==1.14.1
-authlib==1.6.11
-pyjwt==2.12.0
+authlib==1.6.12
+pyjwt==2.13.0
 cryptography==46.0.7
 flask-limiter==3.10.1
 email-validator==2.2.0
@@ -24,6 +24,7 @@ python-dotenv==1.2.2
 Pillow==12.2.0
 redis==5.2.1
 aiogram==3.28.2
+aiohttp==3.13.4
 psycopg2-binary==2.9.11
 celery==5.4.0
 gevent==24.11.1
@@ -31,10 +32,10 @@ python-magic==0.4.27
 prometheus-client==0.22.1
 
 # Dev/test/tooling pins
-black==24.10.0
+black==26.3.1
 ruff==0.9.9
 mypy==1.15.0
-pytest==8.3.4
+pytest==9.0.3
 pytest-cov==6.0.0
 pip-audit==2.8.0
 bandit==1.8.2

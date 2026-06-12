@@ -39,7 +39,7 @@ from services.web_search import (
     run_web_search,
     web_search_requested,
 )
-from services.voice import synthesize_text_segments
+from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from utils.auth import UserChatHistory, UserSettings
 from utils.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
 from utils.input_validation import InputValidator, ValidationError
@@ -48,6 +48,8 @@ from utils.responses import logger, make_ok
 
 PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
 chat_limiter = RateLimiter(max_requests=60, time_window=3600)
+translation_limiter = RateLimiter(max_requests=60, time_window=3600)
+synthesize_limiter = RateLimiter(max_requests=30, time_window=3600)
 
 
 def _resolve_db_user_id() -> int | None:
@@ -306,6 +308,12 @@ def _execute_and_attach_web_search(
 def _db_auto_web_search_enabled(db_user_id: int | None) -> bool:
     if db_user_id is None:
         return False
+    try:
+        settings = UserSettings.query.filter_by(user_id=db_user_id).first()
+        return bool(settings and settings.automatic_web_search)
+    except Exception as exc:
+        logger.warning("Failed to load automatic web-search setting: %s", exc, exc_info=True)
+        return False
 
 
 def _load_privacy_controls(db_user_id: int | None) -> dict[str, bool]:
@@ -322,12 +330,6 @@ def _load_privacy_controls(db_user_id: int | None) -> dict[str, bool]:
     except Exception as exc:
         logger.warning("Failed to load privacy controls: %s", exc, exc_info=True)
         return {"service_improvement_opt_in": False}
-    try:
-        settings = UserSettings.query.filter_by(user_id=db_user_id).first()
-        return bool(settings and settings.automatic_web_search)
-    except Exception as exc:
-        logger.warning("Failed to load automatic web-search setting: %s", exc, exc_info=True)
-        return False
 
 
 def _auto_web_search_enabled(user_data: dict[str, Any], db_user_id: int | None) -> bool:
@@ -834,6 +836,7 @@ def register_chat_routes(api_bp):
         return make_ok(response_data)
 
     @api_bp.route("/translate", methods=["POST"])
+    @rate_limit(translation_limiter)
     @api_error_boundary("translation_failed")
     def translate():
         payload = request.get_json(silent=True) or {}
@@ -880,12 +883,17 @@ def register_chat_routes(api_bp):
         return make_ok({})
 
     @api_bp.route("/synthesize", methods=["POST"])
+    @rate_limit(synthesize_limiter)
     @api_error_boundary("synthesize_failed")
     def synthesize():
         payload = request.get_json(silent=True) or {}
         text = payload.get("text")
-        if not text:
+        if not isinstance(text, str) or not text.strip():
             raise ApiError("text required", status=400, code="text_required")
+        try:
+            text = InputValidator.validate_chat_message(text, max_length=TTS_MAX_CHARS)
+        except ValidationError as exc:
+            raise ApiError(str(exc), status=400, code="invalid_text") from exc
         return make_ok({"segments": synthesize_text_segments(text)})
 
     @api_bp.route("/uploads/<path:filename>")

@@ -1,138 +1,25 @@
 .web-search-progress {
-  position: relative;
   display: inline-grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 8px minmax(0, 1fr);
   width: fit-content;
-  max-width: min(640px, 100%);
-  align-items: flex-start;
-  gap: calc(var(--spacing-unit) * 1.35);
+  max-width: min(540px, 100%);
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1.1);
   margin: 0 0 calc(var(--spacing-unit) * 2);
-  padding: calc(var(--spacing-unit) * 1.35) calc(var(--spacing-unit) * 1.55);
+  padding: 0;
   border: 0;
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(var(--color-white-raw), 0.045), rgba(var(--color-white-raw), 0.018)),
-    rgba(var(--color-bg-interactive-raw), 0.82);
-  box-shadow:
-    0 14px 34px rgba(var(--color-black-raw), 0.28),
-    0 0 0 1px rgba(var(--color-white-raw), 0.06) inset,
-    0 0 24px rgba(var(--color-accent-raw), 0.08);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--color-text-secondary);
-  font-size: 0.82rem;
-  line-height: 1.25;
-  backdrop-filter: blur(14px);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  backdrop-filter: none;
   animation: fadeIn 0.18s ease-out;
 }
 
-.web-search-progress-icon {
-  position: relative;
-  display: inline-flex;
-  width: 22px;
-  height: 22px;
-  margin-top: 1px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(var(--color-accent-raw), 0.14);
-  box-shadow:
-    0 0 0 1px rgba(var(--color-accent-raw), 0.18) inset,
-    0 0 18px rgba(var(--color-accent-raw), 0.16);
-}
-
-.web-search-progress-icon::before {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  border: 1px solid rgba(var(--color-accent-raw), 0.5);
-  animation: webSearchPulse 1.35s ease-in-out infinite;
-}
-
-.web-search-progress-icon span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.web-search-progress .thinking-status-dot {
   background: var(--color-accent);
-  box-shadow: 0 0 10px rgba(var(--color-accent-raw), 0.85);
-}
-
-.web-search-progress-body {
-  display: inline-flex;
-  min-width: 0;
-  max-width: min(560px, calc(100vw - 104px));
-  flex-direction: column;
-  gap: calc(var(--spacing-unit) * 0.75);
-}
-
-.web-search-progress-line {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: calc(var(--spacing-unit) * 1.25);
-}
-
-.web-search-progress-text {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  font-size: 0.84rem;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.web-search-progress-query {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  min-width: 0;
-  max-width: 100%;
-  align-items: center;
-  gap: calc(var(--spacing-unit) * 0.9);
-  padding: calc(var(--spacing-unit) * 0.65) calc(var(--spacing-unit) * 0.95);
-  border-radius: 10px;
-  background: rgba(var(--color-white-raw), 0.045);
-  box-shadow: 0 1px 0 rgba(var(--color-white-raw), 0.045) inset;
-  color: var(--color-text-tertiary);
-  font-size: 0.74rem;
-  font-weight: 600;
-}
-
-.web-search-progress-query span {
-  flex: 0 0 auto;
-  color: var(--color-text-tertiary);
-}
-
-.web-search-progress-query b {
-  min-width: 0;
-  overflow: hidden;
-  color: rgba(var(--color-white-raw), 0.82);
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.web-search-progress-dots {
-  display: inline-flex;
-  gap: 3px;
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.web-search-progress-dots span {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.35;
-  animation: webSearchDot 1.2s ease-in-out infinite;
-}
-
-.web-search-progress-dots span:nth-child(2) {
-  animation-delay: 0.16s;
-}
-
-.web-search-progress-dots span:nth-child(3) {
-  animation-delay: 0.32s;
 }
 
 .web-sources-container {
@@ -509,32 +396,5 @@
   .message-text .source-citation-mark:hover .source-citation-popover,
   .message-text .source-citation-mark:focus-visible .source-citation-popover {
     transform: translate(-50%, 0);
-  }
-}
-
-@keyframes webSearchPulse {
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scale(0.9);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.18);
-  }
-}
-
-@keyframes webSearchDot {
-  0%,
-  80%,
-  100% {
-    opacity: 0.28;
-    transform: translateY(0);
-  }
-
-  40% {
-    opacity: 0.9;
-    transform: translateY(-2px);
   }
 }

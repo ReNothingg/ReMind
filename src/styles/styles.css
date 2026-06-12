@@ -566,89 +566,81 @@ html[data-theme='light'] .theme-toggle-btn img {
 }
 
 .live-thinking-animation {
-  padding: calc(var(--spacing-unit) * 2);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: calc(var(--spacing-unit) * 2);
-  animation: fadeIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex;
+  margin: 0 0 calc(var(--spacing-unit) * 2);
+  animation: fadeIn 0.18s ease-out;
 }
 
 .live-thinking-animation.finished {
   animation: fadeOut 0.4s ease-out forwards;
 }
 
-.thinking-orb-wrapper {
-  display: flex;
+.thinking-status {
+  display: inline-grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  width: fit-content;
+  max-width: min(540px, 100%);
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1.1);
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  user-select: none;
+}
+
+.thinking-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-text-tertiary);
+  opacity: 0.7;
+  animation: thinkingStatusPulse 1.4s ease-in-out infinite;
+}
+
+.thinking-status-body {
+  display: inline-flex;
+  min-width: 0;
   flex-direction: column;
-  align-items: center;
-  gap: calc(var(--spacing-unit) * 1.5);
-  cursor: default;
-  user-select: none;
+  gap: calc(var(--spacing-unit) * 0.45);
 }
 
-.thinking-loader-wrapper {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: calc(var(--spacing-unit) * 1.5);
-  cursor: default;
-  user-select: none;
-}
-
-.thinking-loader-icon {
-  width: 60px;
-  height: 40px;
+.thinking-status-label {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-
-.thinking-orb {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.orb-core {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent));
-  border-radius: 50%;
-  animation: orbPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.orb-glow {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, rgba(99, 102, 241, 0) 70%);
-  animation: orbFloat 3s ease-in-out infinite;
-}
-
-.orb-pulse {
-  position: absolute;
-  width: 48px;
-  height: 48px;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  border-top-color: rgba(99, 102, 241, 0.4);
-  border-right-color: rgba(99, 102, 241, 0.4);
-  animation: orbSpin 2.5s linear infinite;
-}
-
-.live-thinking-animation .thinking-phrase {
-  font-size: 0.85rem;
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thinking-status-query {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 0.7);
+  color: var(--color-text-tertiary);
+  font-size: 0.76rem;
+}
+
+.thinking-status-query b {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-text-secondary);
-  letter-spacing: 0.02em;
-  opacity: 0.8;
-  animation: phraseGlow 2s ease-in-out infinite;
-  transition: opacity 0.3s ease;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes thinkingStatusPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .modern-loader {
@@ -1810,14 +1802,6 @@ html[data-theme='light'] .icon-wrapper svg {
   font-weight: bold;
   font-size: 14px;
   animation: tickPop var(--animation-duration-fast) var(--animation-timing-bounce);
-}
-
-.thinking-phrase {
-  animation: fadeIn var(--animation-duration-fast) ease-out;
-}
-
-.live-thinking-animation .thinking-icon {
-  animation: thinkingPulse 2s ease-in-out infinite;
 }
 
 .lightbox-loader .spinner {

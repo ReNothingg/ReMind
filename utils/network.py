@@ -1,7 +1,7 @@
 import ipaddress
 import socket
 from typing import Optional, Tuple, cast
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -40,29 +40,38 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
             return False, None
+        if parsed.username or parsed.password:
+            return False, None
         hostname = parsed.hostname
         if not hostname:
             return False, None
 
         try:
-            addr_info = socket.getaddrinfo(hostname, None)
+            addr_info = socket.getaddrinfo(hostname, parsed.port, type=socket.SOCK_STREAM)
             if not addr_info:
                 return False, None
 
-            ip_str = cast(str, addr_info[0][4][0])
-            ip_obj = ipaddress.ip_address(ip_str)
-
-            if (
-                ip_obj.is_private
-                or ip_obj.is_loopback
-                or ip_obj.is_link_local
-                or ip_obj.is_multicast
-                or ip_obj.is_reserved
-            ):
-                logger.warning(f"SSRF blocked: {hostname} resolves to {ip_str}")
+            resolved_addresses = {
+                cast(str, info[4][0]) for info in addr_info if info and info[4]
+            }
+            if not resolved_addresses:
                 return False, None
 
-            return True, ip_str
+            for ip_str in resolved_addresses:
+                ip_obj = ipaddress.ip_address(ip_str)
+
+                if (
+                    ip_obj.is_private
+                    or ip_obj.is_loopback
+                    or ip_obj.is_link_local
+                    or ip_obj.is_multicast
+                    or ip_obj.is_reserved
+                    or ip_obj.is_unspecified
+                ):
+                    logger.warning(f"SSRF blocked: {hostname} resolves to {ip_str}")
+                    return False, None
+
+            return True, sorted(resolved_addresses)[0]
         except socket.gaierror:
             logger.warning(f"DNS resolution failed for: {hostname}")
             return False, None
@@ -72,27 +81,54 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
 
 
 def make_safe_http_request(
-    url: str, method: str = "GET", timeout: int = 10, **kwargs
+    url: str, method: str = "GET", timeout: int = 10, max_redirects: int = 3, **kwargs
 ) -> Optional[requests.Response]:
-    is_safe, resolved_ip = is_safe_url(url)
-    if not is_safe:
-        logger.warning(f"Unsafe URL blocked: {url}")
-        return None
+    allow_redirects = bool(kwargs.pop("allow_redirects", True))
+    base_headers = dict(kwargs.pop("headers", {}) or {})
+    current_url = url
 
-    try:
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-        if hostname is None or resolved_ip is None:
+    for _redirect_count in range(max_redirects + 1):
+        is_safe, resolved_ip = is_safe_url(current_url)
+        if not is_safe:
+            logger.warning(f"Unsafe URL blocked: {current_url}")
             return None
-        safe_url = url.replace(hostname, resolved_ip)
 
-        headers = kwargs.pop("headers", {})
-        headers["Host"] = hostname
+        try:
+            parsed = urlparse(current_url)
+            hostname = parsed.hostname
+            if hostname is None or resolved_ip is None:
+                return None
 
-        response = HTTP_SESSION.request(
-            method, safe_url, timeout=timeout, headers=headers, **kwargs
-        )
-        return response
-    except Exception as e:
-        logger.error(f"HTTP request error: {e}")
-        return None
+            netloc = resolved_ip
+            if ":" in resolved_ip and not resolved_ip.startswith("["):
+                netloc = f"[{resolved_ip}]"
+            if parsed.port:
+                netloc = f"{netloc}:{parsed.port}"
+            safe_url = urlunparse(parsed._replace(netloc=netloc))
+
+            headers = dict(base_headers)
+            headers["Host"] = parsed.netloc
+
+            response = HTTP_SESSION.request(
+                method,
+                safe_url,
+                timeout=timeout,
+                headers=headers,
+                allow_redirects=False,
+                **kwargs,
+            )
+            if not allow_redirects or not response.is_redirect:
+                return response
+
+            location = response.headers.get("Location")
+            response.close()
+            if not location:
+                return None
+
+            current_url = urljoin(current_url, location)
+        except Exception as e:
+            logger.error(f"HTTP request error: {e}")
+            return None
+
+    logger.warning(f"Too many redirects blocked for URL: {url}")
+    return None

@@ -70,6 +70,7 @@
   },
   "think": {
     "label": "Thoughts",
+    "loading": "Thinking...",
     "expand": "Expand thoughts",
     "collapse": "Collapse thoughts"
   },

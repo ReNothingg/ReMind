@@ -69,6 +69,7 @@
   },
   "think": {
     "label": "Pensamentos",
+    "loading": "A pensar...",
     "expand": "Expandir pensamentos",
     "collapse": "Recolher pensamentos"
   },

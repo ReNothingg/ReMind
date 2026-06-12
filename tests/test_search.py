@@ -94,7 +94,7 @@ def test_robots_txt_allows_when_robots_unavailable(monkeypatch):
 
 
 def test_fetch_full_page_skips_robots_disallowed_url(monkeypatch):
-    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url: False)
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url, **_kwargs: False)
 
     def fail_get(*_args, **_kwargs):
         raise AssertionError("disallowed pages must not be fetched")
@@ -106,6 +106,87 @@ def test_fetch_full_page_skips_robots_disallowed_url(monkeypatch):
     assert result["ok"] is False
     assert result["error"] == "robots_txt_disallowed"
     assert result["text"] == ""
+
+
+def test_fetch_full_page_blocks_private_redirect_target(monkeypatch):
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url, **_kwargs: True)
+    calls = []
+
+    class FakeRedirectResponse:
+        status_code = 302
+        headers = {
+            "Location": "http://127.0.0.1/admin",
+            "content-type": "text/html",
+        }
+        is_redirect = True
+        is_permanent_redirect = False
+        encoding = "utf-8"
+        apparent_encoding = "utf-8"
+
+        def __init__(self, url):
+            self.url = url
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _traceback):
+            return False
+
+    def fake_get(url, **_kwargs):
+        calls.append(url)
+        return FakeRedirectResponse(url)
+
+    monkeypatch.setattr(web_search.requests, "get", fake_get)
+
+    result = web_search.fetch_full_page("https://93.184.216.34/start")
+
+    assert calls == ["https://93.184.216.34/start"]
+    assert result["ok"] is False
+    assert result["error"] == "blocked_redirect_url"
+    assert result["final_url"] == "http://127.0.0.1/admin"
+
+
+def test_fetch_full_page_drops_private_favicon_url(monkeypatch):
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url, **_kwargs: True)
+
+    class FakeHtmlResponse:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        is_redirect = False
+        is_permanent_redirect = False
+        encoding = "utf-8"
+        apparent_encoding = "utf-8"
+
+        def __init__(self, url):
+            self.url = url
+            self.body = (
+                '<html><head><link rel="icon" href="http://127.0.0.1/favicon.ico">'
+                "</head><body>hello</body></html>"
+            ).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _traceback):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size):
+            yield self.body
+
+    monkeypatch.setattr(
+        web_search.requests,
+        "get",
+        lambda url, **_kwargs: FakeHtmlResponse(url),
+    )
+
+    result = web_search.fetch_full_page("https://93.184.216.34/page")
+
+    assert result["ok"] is True
+    assert result["favicon_url"] is None
+    assert result["text"] == "hello"
 
 
 def test_run_web_search_skips_robots_disallowed_sources(monkeypatch):
@@ -129,7 +210,7 @@ def test_run_web_search_skips_robots_disallowed_sources(monkeypatch):
     monkeypatch.setattr(
         web_search,
         "robots_txt_allows",
-        lambda url: "blocked.example" not in url,
+        lambda url, **_kwargs: "blocked.example" not in url,
     )
     fetched_urls = []
 
@@ -158,7 +239,7 @@ def test_run_web_search_skips_robots_disallowed_sources(monkeypatch):
 
 def test_run_web_search_builds_sources_and_model_context(monkeypatch):
     monkeypatch.setattr(web_search, "is_public_http_url", lambda _url, **_kwargs: True)
-    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url: True)
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url, **_kwargs: True)
     monkeypatch.setattr(
         web_search,
         "web_search_free",
@@ -192,6 +273,93 @@ def test_run_web_search_builds_sources_and_model_context(monkeypatch):
     assert result["sources"][0]["favicon_url"] == "https://example.com/favicon.ico"
     assert "WEB SEARCH RESULTS" in result["context"]
     assert "https://example.com/openai" in result["context"]
+
+
+def test_search_query_variants_expand_time_sensitive_queries(monkeypatch):
+    class FakeDateTime:
+        @classmethod
+        def now(cls, _timezone):
+            class FakeNow:
+                year = 2026
+
+                def date(self):
+                    return self
+
+                def isoformat(self):
+                    return "2026-06-11"
+
+            return FakeNow()
+
+    monkeypatch.setattr(web_search, "datetime", FakeDateTime)
+
+    variants = web_search.build_search_query_variants("latest OpenAI news")
+
+    assert variants == [
+        "latest OpenAI news",
+        "latest OpenAI news 2026",
+        "latest OpenAI news official",
+    ]
+
+
+def test_canonical_search_url_key_removes_tracking_params():
+    key = web_search.canonical_search_url_key(
+        "https://www.example.com/news/?utm_source=x&b=2&a=1#section"
+    )
+
+    assert key == "https://example.com/news?a=1&b=2"
+
+
+def test_run_web_search_reranks_sources_by_relevance(monkeypatch):
+    monkeypatch.setattr(web_search, "is_public_http_url", lambda _url, **_kwargs: True)
+    monkeypatch.setattr(web_search, "robots_txt_allows", lambda _url, **_kwargs: True)
+
+    def fake_web_search_free(query, max_results):
+        if query == "OpenAI latest model":
+            return [
+                {
+                    "title": "Generic AI blog",
+                    "url": "https://blog.example.com/post?utm_source=newsletter",
+                    "snippet": "A broad roundup of technology links.",
+                },
+                {
+                    "title": "OpenAI latest model announcement",
+                    "url": "https://openai.com/news/model",
+                    "snippet": "OpenAI latest model release details.",
+                },
+            ]
+        return []
+
+    def fake_fetch_full_page(url):
+        if "openai.com" in url:
+            return {
+                "ok": True,
+                "final_url": url,
+                "status_code": 200,
+                "content_type": "text/html",
+                "text": "OpenAI latest model release with capabilities and availability details.",
+                "favicon_url": "https://openai.com/favicon.ico",
+                "error": None,
+            }
+        return {
+            "ok": True,
+            "final_url": url,
+            "status_code": 200,
+            "content_type": "text/html",
+            "text": "Generic article about technology trends.",
+            "favicon_url": "https://blog.example.com/favicon.ico",
+            "error": None,
+        }
+
+    monkeypatch.setattr(web_search, "web_search_free", fake_web_search_free)
+    monkeypatch.setattr(web_search, "fetch_full_page", fake_fetch_full_page)
+
+    result = web_search.run_web_search("OpenAI latest model", max_results=2)
+
+    assert [source["site_name"] for source in result["sources"]] == [
+        "openai.com",
+        "blog.example.com",
+    ]
+    assert result["sources"][0]["rank"] == 1
 
 
 def test_build_web_search_augmented_message_wraps_context():

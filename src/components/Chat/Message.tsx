@@ -400,6 +400,26 @@ const WebSourcesPanel = ({ sources, t }) => {
     );
 };
 
+const ThinkingStatus = ({
+    label,
+    query = '',
+    queryLabel = '',
+    className = 'live-thinking-animation'
+}) => (
+    <div className={cn('thinking-status', className)} role="status" aria-live="polite">
+        <span className="thinking-status-dot" aria-hidden="true" />
+        <span className="thinking-status-body">
+            <span className="thinking-status-label">{label}</span>
+            {query && (
+                <span className="thinking-status-query" title={query}>
+                    <span>{queryLabel}</span>
+                    <b>{query}</b>
+                </span>
+            )}
+        </span>
+    </div>
+);
+
 const WebSearchProgress = ({ status, t }) => {
     if (!status) {
         return null;
@@ -409,27 +429,12 @@ const WebSearchProgress = ({ status, t }) => {
     const query = typeof status.query === 'string' ? status.query.trim() : '';
 
     return (
-        <div className="web-search-progress" role="status" aria-live="polite">
-            <span className="web-search-progress-icon" aria-hidden="true">
-                <span />
-            </span>
-            <span className="web-search-progress-body">
-                <span className="web-search-progress-line">
-                    <span className="web-search-progress-text">{label}</span>
-                    <span className="web-search-progress-dots" aria-hidden="true">
-                        <span />
-                        <span />
-                        <span />
-                    </span>
-                </span>
-                {query && (
-                    <span className="web-search-progress-query" title={query}>
-                        <span>{t('webSearch.queryLabel', { defaultValue: 'Query' })}</span>
-                        <b>{query}</b>
-                    </span>
-                )}
-            </span>
-        </div>
+        <ThinkingStatus
+            className="web-search-progress"
+            label={label}
+            query={query}
+            queryLabel={t('webSearch.queryLabel')}
+        />
     );
 };
 
@@ -1503,12 +1508,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 })}
 
                 {isLoading && !displayContent && !isGeneratingImage && !webSearchStatus && (
-                    <div className="live-thinking-animation ui-message-loader">
-                        <div className="thinking-loader-wrapper">
-                            <img src="/icons/load.svg" alt="Loading" className="thinking-loader-icon" />
-                            <div className="thinking-phrase active">Думаю...</div>
-                        </div>
-                    </div>
+                    <ThinkingStatus
+                        className="live-thinking-animation"
+                        label={t('think.loading')}
+                    />
                 )}
 
                 {!isUser && hasMultipleVariants && (

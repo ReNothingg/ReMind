@@ -175,8 +175,8 @@ TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverif
 LOCALHOST_MODE = os.getenv("LOCALHOST_MODE", "False").lower() in ("1", "true", "yes")
 
 if not SECRET_KEY:
-    if os.environ.get("FLASK_ENV") == "production":
-        raise ValueError("SECRET_KEY must be set in production environment")
+    if IS_PRODUCTION:
+        raise ValueError("SECRET_KEY must be set when production settings are active")
 
     import secrets
 

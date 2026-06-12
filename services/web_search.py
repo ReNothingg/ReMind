@@ -4,11 +4,12 @@ import json
 import ipaddress
 import re
 import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
-from urllib.parse import parse_qs, quote_plus, unquote, urljoin, urlparse
+from urllib.parse import parse_qs, quote_plus, unquote, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -35,6 +36,25 @@ BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0"}
 BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal")
 ROBOTS_USER_AGENT = "ReMindBot"
 ROBOTS_MAX_BYTES = 512 * 1024
+WEB_SEARCH_MAX_REDIRECTS = 5
+WEB_SEARCH_MAX_QUERY_VARIANTS = 3
+WEB_SEARCH_FETCH_WORKERS = 4
+WEB_SEARCH_CANDIDATE_MULTIPLIER = 4
+WEB_SEARCH_MIN_FETCH_CANDIDATES = 8
+
+HIGH_SIGNAL_HOST_SUFFIXES = (
+    ".edu",
+    ".gov",
+    ".mil",
+)
+HIGH_SIGNAL_HOSTS = {
+    "developer.mozilla.org",
+    "docs.python.org",
+    "github.com",
+    "openai.com",
+    "support.google.com",
+    "learn.microsoft.com",
+}
 
 
 def _render_web_tool_prompt_section(section: str, **replacements: str) -> str:
@@ -310,6 +330,47 @@ def safe_query(query: str, max_len: int = 240) -> str:
     return cleaned[:max_len]
 
 
+def query_terms(query: str) -> set[str]:
+    return {
+        term
+        for term in re.findall(r"[\wА-Яа-яЁё]{3,}", str(query or "").lower())
+        if term not in {"the", "and", "for", "with", "что", "как", "или", "для"}
+    }
+
+
+def query_looks_time_sensitive(query: str) -> bool:
+    cleaned = safe_query(query, max_len=500)
+    return bool(AUTO_SEARCH_POSITIVE_RE.search(cleaned) or AUTO_SEARCH_TIME_SENSITIVE_RE.search(cleaned))
+
+
+def build_search_query_variants(query: str) -> list[str]:
+    normalized = safe_query(query)
+    if not normalized:
+        return []
+
+    variants = [normalized]
+    lower = normalized.lower()
+    current_year = str(datetime.now(timezone.utc).year)
+
+    if query_looks_time_sensitive(normalized) and current_year not in lower:
+        variants.append(f"{normalized} {current_year}")
+
+    if not re.search(r"\b(official|официальн\w+|site:)\b", lower):
+        variants.append(f"{normalized} official")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for variant in variants:
+        cleaned = safe_query(variant)
+        key = cleaned.lower()
+        if cleaned and key not in seen:
+            deduped.append(cleaned)
+            seen.add(key)
+        if len(deduped) >= WEB_SEARCH_MAX_QUERY_VARIANTS:
+            break
+    return deduped
+
+
 def _is_blocked_ip_address(address: str) -> bool:
     parsed = ipaddress.ip_address(address)
     return any(
@@ -353,9 +414,11 @@ def _hostname_is_allowed(hostname: str, *, resolve: bool = False) -> bool:
 
 def is_public_http_url(url: str, *, resolve_hostname: bool = False) -> bool:
     parsed = urlparse(url or "")
-    return parsed.scheme in {"http", "https"} and _hostname_is_allowed(
-        parsed.hostname or "", resolve=resolve_hostname
-    )
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if parsed.username or parsed.password:
+        return False
+    return _hostname_is_allowed(parsed.hostname or "", resolve=resolve_hostname)
 
 
 def robots_match_target(url: str) -> str:
@@ -548,6 +611,33 @@ def get_display_url(url: str) -> str:
     return f"{host}{path[:80]}"
 
 
+def canonical_search_url_key(url: str) -> str:
+    parsed = urlparse(url or "")
+    scheme = parsed.scheme.lower()
+    hostname = (parsed.hostname or "").lower()
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+    netloc = hostname
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+
+    query_pairs = [
+        (key, item)
+        for key, values in parse_qs(parsed.query, keep_blank_values=True).items()
+        if not key.lower().startswith("utm_")
+        and key.lower() not in {"fbclid", "gclid", "mc_cid", "mc_eid"}
+        for item in values
+    ]
+    query = urlencode(sorted(query_pairs), doseq=True)
+    path = parsed.path.rstrip("/") or "/"
+    return urlunparse((scheme, netloc, path, "", query, ""))
+
+
+def host_is_high_signal(url: str) -> bool:
+    host = get_site_name(url)
+    return host in HIGH_SIGNAL_HOSTS or any(host.endswith(suffix) for suffix in HIGH_SIGNAL_HOST_SUFFIXES)
+
+
 def get_favicon_url(page_url: str, html: str) -> str | None:
     soup = BeautifulSoup(html or "", "html.parser")
     icon_rels = {
@@ -606,7 +696,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
             "favicon_url": None,
             "error": "blocked_or_invalid_url",
         }
-    if not robots_txt_allows(url):
+    if not robots_txt_allows(url, resolve_hostname=True):
         return {
             "ok": False,
             "final_url": url,
@@ -617,50 +707,114 @@ def fetch_full_page(url: str) -> dict[str, Any]:
             "error": "robots_txt_disallowed",
         }
 
+    current_url = url
     try:
-        with requests.get(
-            url,
-            headers=SEARCH_HEADERS,
-            timeout=WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
-            allow_redirects=True,
-            stream=True,
-        ) as response:
-            response.raise_for_status()
-            chunks: list[bytes] = []
-            size = 0
-            for chunk in response.iter_content(chunk_size=16384):
-                if not chunk:
+        for _redirect_count in range(WEB_SEARCH_MAX_REDIRECTS + 1):
+            if not is_public_http_url(current_url, resolve_hostname=True):
+                return {
+                    "ok": False,
+                    "final_url": current_url,
+                    "status_code": None,
+                    "content_type": None,
+                    "text": "",
+                    "favicon_url": None,
+                    "error": "blocked_redirect_url",
+                }
+
+            with requests.get(
+                current_url,
+                headers=SEARCH_HEADERS,
+                timeout=WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
+                allow_redirects=False,
+                stream=True,
+            ) as response:
+                if response.is_redirect or response.is_permanent_redirect:
+                    location = response.headers.get("Location")
+                    if not location:
+                        return {
+                            "ok": False,
+                            "final_url": response.url or current_url,
+                            "status_code": response.status_code,
+                            "content_type": response.headers.get("content-type", ""),
+                            "text": "",
+                            "favicon_url": None,
+                            "error": "redirect_missing_location",
+                        }
+
+                    next_url = urljoin(response.url or current_url, location)
+                    if not is_public_http_url(next_url, resolve_hostname=True):
+                        return {
+                            "ok": False,
+                            "final_url": next_url,
+                            "status_code": response.status_code,
+                            "content_type": response.headers.get("content-type", ""),
+                            "text": "",
+                            "favicon_url": None,
+                            "error": "blocked_redirect_url",
+                        }
+                    if not robots_txt_allows(next_url, resolve_hostname=True):
+                        return {
+                            "ok": False,
+                            "final_url": next_url,
+                            "status_code": response.status_code,
+                            "content_type": response.headers.get("content-type", ""),
+                            "text": "",
+                            "favicon_url": None,
+                            "error": "robots_txt_disallowed",
+                        }
+                    current_url = next_url
                     continue
-                chunks.append(chunk)
-                size += len(chunk)
-                if size >= WEB_SEARCH_MAX_RESPONSE_BYTES:
-                    break
 
-            raw_body = b"".join(chunks)
-            encoding = response.encoding or response.apparent_encoding or "utf-8"
-            html = raw_body.decode(encoding, errors="replace")
-            content_type = response.headers.get("content-type", "")
-            final_url = response.url
-            favicon_url = None
-            text = ""
+                response.raise_for_status()
+                chunks: list[bytes] = []
+                size = 0
+                for chunk in response.iter_content(chunk_size=16384):
+                    if not chunk:
+                        continue
+                    chunks.append(chunk)
+                    size += len(chunk)
+                    if size >= WEB_SEARCH_MAX_RESPONSE_BYTES:
+                        break
 
-            if "text/html" in content_type.lower() or "<html" in html[:2048].lower():
-                favicon_url = get_favicon_url(final_url, html)
-                text = extract_text_from_html(html)
+                raw_body = b"".join(chunks)
+                encoding = response.encoding or response.apparent_encoding or "utf-8"
+                html = raw_body.decode(encoding, errors="replace")
+                content_type = response.headers.get("content-type", "")
+                final_url = response.url or current_url
+                favicon_url = None
+                text = ""
 
-            return {
-                "ok": True,
-                "final_url": final_url,
-                "status_code": response.status_code,
-                "content_type": content_type,
-                "text": compact_text(text),
-                "favicon_url": favicon_url,
-                "error": None,
-            }
+                if "text/html" in content_type.lower() or "<html" in html[:2048].lower():
+                    candidate_favicon = get_favicon_url(final_url, html)
+                    if candidate_favicon and is_public_http_url(
+                        candidate_favicon, resolve_hostname=True
+                    ):
+                        favicon_url = candidate_favicon
+                    text = extract_text_from_html(html)
+
+                return {
+                    "ok": True,
+                    "final_url": final_url,
+                    "status_code": response.status_code,
+                    "content_type": content_type,
+                    "text": compact_text(text),
+                    "favicon_url": favicon_url,
+                    "error": None,
+                }
+
+        return {
+            "ok": False,
+            "final_url": current_url,
+            "status_code": None,
+            "content_type": None,
+            "text": "",
+            "favicon_url": None,
+            "error": "too_many_redirects",
+        }
     except Exception as exc:
         return {
             "ok": False,
-            "final_url": url,
+            "final_url": current_url,
             "status_code": None,
             "content_type": None,
             "text": "",
@@ -733,6 +887,125 @@ def web_search_free(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> li
     return results
 
 
+def collect_web_search_candidates(query: str, max_candidates: int) -> list[dict[str, Any]]:
+    candidates_by_url: dict[str, dict[str, Any]] = {}
+    query_variants = build_search_query_variants(query)
+    if not query_variants:
+        return []
+
+    per_query_limit = max(4, min(10, max_candidates))
+    for variant_index, variant in enumerate(query_variants):
+        try:
+            raw_results = web_search_free(variant, max_results=per_query_limit)
+        except Exception:
+            continue
+
+        for result_index, raw in enumerate(raw_results):
+            url = normalize_search_url(raw.get("url") or raw.get("href") or "")
+            if not url:
+                continue
+            key = canonical_search_url_key(url)
+            existing = candidates_by_url.get(key)
+            if existing:
+                existing["matched_queries"].append(variant)
+                existing["search_rank"] = min(existing["search_rank"], result_index + 1)
+                existing["query_variant_index"] = min(existing["query_variant_index"], variant_index)
+                if not existing.get("snippet") and raw.get("snippet"):
+                    existing["snippet"] = str(raw.get("snippet") or "").strip()
+                continue
+
+            candidates_by_url[key] = {
+                "title": str(raw.get("title") or get_site_name(url)).strip(),
+                "url": url,
+                "snippet": str(raw.get("snippet") or "").strip(),
+                "search_rank": result_index + 1,
+                "query_variant_index": variant_index,
+                "matched_queries": [variant],
+            }
+
+            if len(candidates_by_url) >= max_candidates:
+                break
+        if len(candidates_by_url) >= max_candidates:
+            break
+
+    return list(candidates_by_url.values())
+
+
+def score_web_source(source: dict[str, Any], query: str) -> float:
+    terms = query_terms(query)
+    title = str(source.get("title") or "")
+    snippet = str(source.get("snippet") or "")
+    text = str(source.get("text") or "")
+    searchable = f"{title} {snippet} {text[:1200]}".lower()
+    matched_terms = {term for term in terms if term in searchable}
+
+    score = 0.0
+    if terms:
+        score += (len(matched_terms) / len(terms)) * 4.0
+    if source.get("ok") and text:
+        score += 2.0
+    elif snippet:
+        score += 0.6
+
+    text_length = len(text)
+    if text_length >= 1000:
+        score += 1.0
+    elif text_length >= 350:
+        score += 0.5
+
+    if host_is_high_signal(str(source.get("final_url") or source.get("url") or "")):
+        score += 1.0
+
+    search_rank = int(source.get("search_rank") or 10)
+    query_variant_index = int(source.get("query_variant_index") or 0)
+    score += max(0.0, 1.2 - (search_rank - 1) * 0.12)
+    score -= query_variant_index * 0.2
+    if source.get("error"):
+        score -= 0.8
+    return score
+
+
+def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[str, Any] | None:
+    url = normalize_search_url(candidate.get("url") or "")
+    if not url:
+        return None
+    if not is_public_http_url(url, resolve_hostname=True) or not robots_txt_allows(
+        url, resolve_hostname=True
+    ):
+        return None
+
+    page = fetch_full_page(url)
+    final_url = normalize_search_url(page.get("final_url") or url) or url
+    title = str(candidate.get("title") or get_site_name(final_url)).strip()
+    snippet = compact_text(candidate.get("snippet") or "", 360)
+    page_text = compact_text(page.get("text") or "", WEB_SEARCH_PAGE_TEXT_CHARS)
+    favicon_url = (
+        page.get("favicon_url")
+        or f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}/favicon.ico"
+    )
+
+    source = {
+        "rank": 0,
+        "title": title,
+        "url": url,
+        "final_url": final_url,
+        "display_url": get_display_url(final_url),
+        "site_name": get_site_name(final_url),
+        "snippet": snippet,
+        "text": page_text,
+        "favicon_url": favicon_url,
+        "ok": bool(page.get("ok")),
+        "status_code": page.get("status_code"),
+        "content_type": page.get("content_type"),
+        "error": page.get("error"),
+        "search_rank": candidate.get("search_rank"),
+        "query_variant_index": candidate.get("query_variant_index"),
+        "matched_queries": candidate.get("matched_queries") or [],
+    }
+    source["score"] = score_web_source(source, query)
+    return source
+
+
 def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dict[str, Any]:
     max_results = max(1, min(int(max_results or WEB_SEARCH_MAX_RESULTS), 10))
     normalized_query = safe_query(query)
@@ -744,52 +1017,55 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
             "context": "",
         }
 
-    raw_results = web_search_free(normalized_query, max_results=min(10, max_results * 2))
-    seen_urls: set[str] = set()
+    max_candidates = max(
+        WEB_SEARCH_MIN_FETCH_CANDIDATES,
+        min(30, max_results * WEB_SEARCH_CANDIDATE_MULTIPLIER),
+    )
+    candidates = collect_web_search_candidates(normalized_query, max_candidates=max_candidates)
     sources: list[dict[str, Any]] = []
-
-    for raw in raw_results:
-        url = normalize_search_url(raw.get("url") or "")
-        if not url or url in seen_urls:
-            continue
-        seen_urls.add(url)
-        if not is_public_http_url(url, resolve_hostname=True) or not robots_txt_allows(url):
-            continue
-
-        page = fetch_full_page(url)
-        final_url = normalize_search_url(page.get("final_url") or url) or url
-        title = str(raw.get("title") or get_site_name(final_url)).strip()
-        snippet = compact_text(raw.get("snippet") or "", 360)
-        page_text = compact_text(page.get("text") or "", WEB_SEARCH_PAGE_TEXT_CHARS)
-        favicon_url = (
-            page.get("favicon_url")
-            or f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}/favicon.ico"
-        )
-
-        sources.append(
-            {
-                "rank": len(sources) + 1,
-                "title": title,
-                "url": url,
-                "final_url": final_url,
-                "display_url": get_display_url(final_url),
-                "site_name": get_site_name(final_url),
-                "snippet": snippet,
-                "text": page_text,
-                "favicon_url": favicon_url,
-                "ok": bool(page.get("ok")),
-                "status_code": page.get("status_code"),
-                "content_type": page.get("content_type"),
-                "error": page.get("error"),
+    if candidates:
+        with ThreadPoolExecutor(max_workers=min(WEB_SEARCH_FETCH_WORKERS, len(candidates))) as executor:
+            future_to_candidate = {
+                executor.submit(build_source_from_candidate, candidate, normalized_query): candidate
+                for candidate in candidates
             }
+            for future in as_completed(future_to_candidate):
+                try:
+                    source = future.result()
+                except Exception:
+                    continue
+                if source:
+                    sources.append(source)
+
+    sources.sort(
+        key=lambda source: (
+            -float(source.get("score") or 0),
+            int(source.get("query_variant_index") or 0),
+            int(source.get("search_rank") or 999),
         )
-        if len(sources) >= max_results:
+    )
+
+    host_counts: dict[str, int] = {}
+    selected_sources: list[dict[str, Any]] = []
+    for source in sources:
+        host = str(source.get("site_name") or "")
+        if host_counts.get(host, 0) >= 2:
+            continue
+        host_counts[host] = host_counts.get(host, 0) + 1
+        public_source = dict(source)
+        public_source["rank"] = len(selected_sources) + 1
+        public_source.pop("score", None)
+        public_source.pop("search_rank", None)
+        public_source.pop("query_variant_index", None)
+        public_source.pop("matched_queries", None)
+        selected_sources.append(public_source)
+        if len(selected_sources) >= max_results:
             break
 
     result = {
         "query": normalized_query,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "sources": sources,
+        "sources": selected_sources,
     }
     result["context"] = build_web_search_context(result)
     return result

@@ -302,63 +302,6 @@ button:active:not(.password-toggle),
   }
 }
 
-@keyframes thinkingPulse {
-  0%,
-  100% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.02);
-  }
-}
-
-@keyframes orbPulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-}
-
-@keyframes orbFloat {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: translateY(-4px) scale(1.1);
-    opacity: 0.5;
-  }
-}
-
-@keyframes orbSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes phraseGlow {
-  0%,
-  100% {
-    opacity: 0.8;
-    text-shadow: 0 0 0 rgba(99, 102, 241, 0);
-  }
-  50% {
-    opacity: 1;
-    text-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
-  }
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -379,10 +322,6 @@ button:active:not(.password-toggle),
     opacity: 0;
     transform: scale(0.95);
   }
-}
-
-.live-thinking-animation .thinking-icon {
-  animation: thinkingPulse 2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -133,6 +133,22 @@ def test_dev_models_are_restricted_to_admin_users(
     rate_limit_store.clear()
 
 
+def test_synthesize_rejects_oversized_text_before_tts(client, monkeypatch):
+    monkeypatch.setattr(
+        chat_routes,
+        "synthesize_text_segments",
+        lambda _text: (_ for _ in ()).throw(AssertionError("TTS should not be called")),
+    )
+
+    response = client.post(
+        "/synthesize",
+        json={"text": "x" * (chat_routes.TTS_MAX_CHARS + 1)},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"]["code"] == "invalid_text"
+
+
 def test_guest_chat_cannot_load_or_overwrite_existing_file_history_without_token(
     client, monkeypatch, tmp_path
 ):

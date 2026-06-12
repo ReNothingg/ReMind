@@ -69,6 +69,7 @@
   },
   "think": {
     "label": "思考",
+    "loading": "正在思考...",
     "expand": "展开思考",
     "collapse": "收起思考"
   },
