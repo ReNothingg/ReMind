@@ -31,8 +31,3 @@ Auto-generated from ReMind request activity. Reflects usage patterns, but may be
 13. User's account is {{NUMBER}} weeks old.
 14. User's local hour is currently {{HOUR}}.
 15. User hasn't indicated what they prefer to be called, but the name on their account is {{ACCOUNT_NAME}}.
-16. If this conversation is happening via Telegram, the user's Telegram ID is {{TELEGRAM_ID}}.
-17. If available, the user's Telegram username is {{TELEGRAM_USERNAME}}.
-18. If available, the user's Telegram first name is {{TELEGRAM_FIRST_NAME}} and last name is {{TELEGRAM_LAST_NAME}}.
-19. If available, the user's Telegram full name is {{TELEGRAM_FULL_NAME}}.
-20. If this conversation is happening via Telegram, Telegram Premium status is {{TELEGRAM_IS_PREMIUM}}.

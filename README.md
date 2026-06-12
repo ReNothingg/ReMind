@@ -53,7 +53,7 @@
 
 ## ✨ Обзор
 
-**ReMind** это AI-приложение на React/Vite и Flask, собранное как продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Telegram bot, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
+**ReMind** это AI-приложение на React/Vite и Flask, собранное как продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
 
 Проект находится в статусе `beta`: основные пользовательские сценарии уже доступны, а UX и внутренняя архитектура продолжают развиваться.
 
@@ -63,7 +63,7 @@
 | Мультимодальность | File upload pipeline, image flow, voice synthesis, translate endpoint |
 | Приватность | Экспорт данных, удаление аккаунта/данных, secure session handling |
 | Production base | Nginx, PostgreSQL, Redis, Celery, health checks, metrics, CI/security gate |
-| Extensibility | OpenAPI, shared services, Telegram bot поверх того же service layer |
+| Extensibility | OpenAPI и shared services поверх общего backend layer |
 
 <a id="features"></a>
 
@@ -78,7 +78,6 @@
 - Перевод текста и text-to-speech через отдельные API endpoints.
 - Privacy flows: export/delete пользовательских данных.
 - HTML/JSON health check, Prometheus-style `/metrics` и audit logging.
-- Telegram bot на `aiogram`, использующий общий backend/service layer.
 
 <a id="tech-stack"></a>
 
@@ -179,14 +178,6 @@ Celery worker:
 celery -A celery_worker.celery worker --loglevel=info --concurrency=2
 ```
 
-Telegram bot:
-
-```bash
-python -m telegram_bot
-```
-
-Требуется `TELEGRAM_BOT_TOKEN`.
-
 <a id="docker"></a>
 
 ## 🐳 Docker
@@ -213,7 +204,6 @@ Dev URLs:
 ```mermaid
 graph TD
   UI[React + Vite SPA] -->|HTTP / SSE| API[Flask API]
-  TG[Telegram Bot] --> SERVICES[Shared Services]
   API --> SERVICES
   API --> AUTH[Auth + Session Layer]
   API --> FILES[Secure Upload Pipeline]
@@ -233,7 +223,6 @@ graph TD
 | `services/` | Chat history, files, model access, voice and shared business logic |
 | `ai_engine/` | AI provider adapters and local smoke-test providers |
 | `src/` | React SPA |
-| `telegram_bot/` | Bot integration over the shared service layer |
 | `openapi/openapi.json` | API contract used to generate `src/generated/openapi.ts` |
 
 Больше архитектурных заметок: [docs/architecture.md](docs/architecture.md).
@@ -307,7 +296,6 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 ├── routes/features/     Flask feature routes
 ├── services/            общие backend-сервисы
 ├── ai_engine/           adapters к AI providers
-├── telegram_bot/        Telegram-интеграция
 ├── openapi/             API-схема
 ├── tests/               backend-тесты
 ├── public/              branding, images, manifest и static assets

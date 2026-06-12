@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
     Accessibility,
     ArrowUpRight,
-    Bot,
     CheckCircle2,
     Download,
     FileText,
@@ -108,7 +107,6 @@ const ABOUT_LINKS = {
         { key: 'youtube', href: 'https://www.youtube.com/@ReMindAi', icon: Youtube },
         { key: 'x', href: 'https://x.com/ReMindNET', icon: X },
         { key: 'telegramChannel', href: 'https://t.me/ReMindAI', icon: MessageCircle },
-        { key: 'telegramBot', href: 'https://t.me/ReMindAIRobot', icon: Bot },
         { key: 'tiktok', href: 'https://www.tiktok.com/@remindai', icon: Music2 },
         { key: 'reddit', href: 'https://www.reddit.com/user/Weekly_Beginning6696/', icon: MessageCircle }
     ]

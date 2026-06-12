@@ -45,7 +45,6 @@ const requiredTextPaths = [
   ['settings', 'about', 'socials', 'links', 'youtube'],
   ['settings', 'about', 'socials', 'links', 'x'],
   ['settings', 'about', 'socials', 'links', 'telegramChannel'],
-  ['settings', 'about', 'socials', 'links', 'telegramBot'],
   ['settings', 'about', 'socials', 'links', 'tiktok'],
   ['settings', 'about', 'socials', 'links', 'reddit'],
   ['settings', 'about', 'policies', 'title'],

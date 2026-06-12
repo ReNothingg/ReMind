@@ -23,8 +23,6 @@ ddgs==9.14.4
 python-dotenv==1.2.2
 Pillow==12.2.0
 redis==5.2.1
-aiogram==3.28.2
-aiohttp==3.13.4
 psycopg2-binary==2.9.11
 celery==5.4.0
 gevent==24.11.1

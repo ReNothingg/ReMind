@@ -4,7 +4,7 @@ import { formatText, highlightCode } from './formatting';
 
 describe('formatText', () => {
     it('renders fenced code blocks with language metadata', () => {
-        const html = formatText('```python\nfrom aiogram.types import InlineKeyboardButton\n```');
+        const html = formatText('```python\nfrom pathlib import Path\n```');
 
         expect(html).toContain('class="code-block"');
         expect(html).toContain('Python');
@@ -17,7 +17,7 @@ describe('highlightCode', () => {
         const container = document.createElement('div');
         container.innerHTML = `
             <pre class="line-numbers language-python">
-                <code class="language-python" data-highlighted="yes">from aiogram.types import InlineKeyboardButton</code>
+                <code class="language-python" data-highlighted="yes">from pathlib import Path</code>
                 <span class="line-numbers-rows"><span></span></span>
             </pre>
         `;
