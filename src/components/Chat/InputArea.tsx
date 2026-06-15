@@ -13,6 +13,7 @@ const InputArea = ({
     onStop,
     isLoading,
     initialPrompt,
+    onInitialPromptConsumed = undefined,
     onOpenAuth,
     isReadOnly = false,
     variant = 'default',
@@ -134,6 +135,7 @@ const InputArea = ({
             autoWebSearch: automaticWebSearch,
             censorship: false,
         });
+        onInitialPromptConsumed?.();
 
         setText('');
         setQuotes([]);

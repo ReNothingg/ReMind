@@ -336,6 +336,7 @@ const MainLayout = () => {
 
     const handleSendMessage = useCallback(
         (text: string, files: File[], options = {}) => {
+            setInitialPrompt(null);
             const path = window.location.pathname;
             if (!isTemporaryChat && (path === '/' || !path.startsWith('/c/'))) {
                 clearChat({ historyMode: 'none' });
@@ -746,6 +747,7 @@ const MainLayout = () => {
                                 isLoading={isLoading}
                                 isReadOnly={isReadOnly}
                                 initialPrompt={initialPrompt}
+                                onInitialPromptConsumed={() => setInitialPrompt(null)}
                                 onOpenAuth={() => setAuthOpen('login')}
                             />
                         </LandingHero>
@@ -829,6 +831,7 @@ const MainLayout = () => {
                                 isLoading={isLoading}
                                 isReadOnly={isReadOnly}
                                 initialPrompt={initialPrompt}
+                                onInitialPromptConsumed={() => setInitialPrompt(null)}
                                 onOpenAuth={() => setAuthOpen('login')}
                             />
                         </>

@@ -659,12 +659,6 @@ const GitHubDiffCard = ({ payload, t }) => {
             <div className="github-diff-meta">
                 <span>{t('chat.githubDiff.branch')}: <b>{task.branch_name}</b></span>
                 <span>{t('chat.githubDiff.filesChanged', { count: files.length })}</span>
-                <span className="github-diff-stat is-add">
-                    {t('chat.githubDiff.additions', { count: totals.additions })}
-                </span>
-                <span className="github-diff-stat is-delete">
-                    {t('chat.githubDiff.deletions', { count: totals.deletions })}
-                </span>
             </div>
 
             <div className="github-diff-files">

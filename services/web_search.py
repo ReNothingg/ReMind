@@ -54,6 +54,7 @@ HIGH_SIGNAL_HOSTS = {
     "openai.com",
     "support.google.com",
     "learn.microsoft.com",
+    "synvexai.com"
 }
 
 

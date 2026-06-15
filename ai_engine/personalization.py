@@ -235,7 +235,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     github_tool_prompt = render_github_tool_prompt(user_id)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     if base and user_md:
-        prompt = base + "\n\n" + "PERSONALIZATION FOR USER:\n" + user_md
+        prompt = base + user_md
     elif user_md:
         prompt = user_md
     else:
