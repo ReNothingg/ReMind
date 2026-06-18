@@ -1,0 +1,69 @@
+body.compact-mode {
+  --spacing-unit: var(--compact-spacing-unit, 3px);
+}
+
+body.compact-mode .chat-container {
+  gap: calc(var(--spacing-unit) * 5);
+  margin: calc(44px + var(--spacing-unit) * 6) auto;
+  padding: 0 calc(var(--spacing-unit) * 2)
+    calc(var(--input-area-item-height) + var(--spacing-unit) * 12) calc(var(--spacing-unit) * 2);
+}
+
+body.compact-mode .message {
+  gap: calc(var(--spacing-unit) * 2);
+}
+
+body.compact-mode .message-content {
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 4);
+}
+
+body.compact-mode .global-controls {
+  top: calc(var(--spacing-unit) * 2 + env(safe-area-inset-top));
+  left: calc(var(--app-rail-offset) + var(--spacing-unit) * 2 + env(safe-area-inset-left));
+  right: calc(var(--spacing-unit) * 2 + env(safe-area-inset-right));
+}
+
+body.compact-mode .main-input-area {
+  bottom: calc(3 * var(--spacing-unit));
+  padding: calc(var(--spacing-unit) * 1);
+}
+
+body.compact-mode .sidebar {
+  width: 250px;
+}
+
+body.compact-mode .sidebar-header {
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 2.5);
+}
+
+body.compact-mode .chat-history-item {
+  padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 2.5);
+}
+
+body.compact-mode .code-block {
+  margin: calc(var(--spacing-unit) * 3) 0;
+}
+
+body.compact-mode .code-block-header {
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
+}
+
+body.compact-mode .actions-bar {
+  margin-top: calc(var(--spacing-unit) * 2);
+  gap: calc(var(--spacing-unit) * 1);
+}
+
+body.compact-mode .action-btn {
+  width: 28px;
+  height: 28px;
+}
+
+body.compact-mode .action-btn img {
+  width: 14px;
+  height: 14px;
+}
+
+html[data-theme='light'] body.compact-mode {
+  --spacing-unit: var(--compact-spacing-unit, 3px);
+}
+

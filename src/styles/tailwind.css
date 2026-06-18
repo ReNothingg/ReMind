@@ -39,6 +39,7 @@
 @import "./features/minds.css" layer(components);
 @import "./features/admin.css" layer(components);
 @import "./features/github.css" layer(components);
+@import "./features/reminders.css" layer(components);
 
 @source "../../index.html";
 @source "../**/*.{js,jsx,ts,tsx}";

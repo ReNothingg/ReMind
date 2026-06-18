@@ -241,6 +241,7 @@ BYPASS_USER_AGENT_VALIDATION_ROUTES = [
     r"^/status",
     r"^/$",
     r"^/index\.html$",
+    r"^/yandex_34c67fdadc366239\.html$",
 ]
 
 ALLOW_GUEST_CHATS_SAVE: bool = os.getenv("ALLOW_GUEST_CHATS_SAVE", "False").lower() in (

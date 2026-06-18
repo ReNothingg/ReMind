@@ -1,0 +1,47 @@
+.copy-code-btn.copied::after,
+.copy-btn.copied::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-success);
+  font-weight: bold;
+  font-size: 14px;
+  animation: tickPop var(--animation-duration-fast) var(--animation-timing-bounce);
+}
+
+.lightbox-loader .spinner {
+  animation: lightboxLoaderSpin 1s linear infinite;
+}
+
+button,
+.action-btn,
+.rail-btn {
+  transition: all var(--transition-fast);
+}
+
+button:hover,
+.action-btn:hover,
+.rail-btn:hover {
+  transform: translateY(-1px);
+}
+
+button:active:not(.password-toggle),
+.action-btn:active,
+.rail-btn:active {
+  transform: translateY(0);
+}
+
+.main-input-area.drag-over {
+  border-color: var(--color-accent);
+}
+
+.drop-zone {
+  transition: all var(--transition-normal);
+}
+
+.drop-zone:hover {
+  transform: scale(1.02);
+}
+

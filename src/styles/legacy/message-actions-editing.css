@@ -1,0 +1,323 @@
+.live-thinking-animation {
+  display: inline-flex;
+  margin: 0 0 calc(var(--spacing-unit) * 2);
+  animation: fadeIn 0.18s ease-out;
+}
+
+.live-thinking-animation.finished {
+  animation: fadeOut 0.4s ease-out forwards;
+}
+
+.thinking-status {
+  display: inline-grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  width: fit-content;
+  max-width: min(540px, 100%);
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1.1);
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  user-select: none;
+}
+
+.thinking-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-text-tertiary);
+  opacity: 0.7;
+  animation: thinkingStatusPulse 1.4s ease-in-out infinite;
+}
+
+.thinking-status-body {
+  display: inline-flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 0.45);
+}
+
+.thinking-status-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thinking-status-query {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 0.7);
+  color: var(--color-text-tertiary);
+  font-size: 0.76rem;
+}
+
+.thinking-status-query b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes thinkingStatusPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.modern-loader {
+  display: none;
+}
+
+.modern-loader .dot {
+  display: none;
+}
+
+.modern-loader .dot:nth-child(2) {
+  display: none;
+}
+
+.modern-loader .dot:nth-child(3) {
+  display: none;
+}
+
+.message-actions-wrapper {
+  position: absolute;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out;
+  pointer-events: none;
+  transform: translateY(5px);
+  z-index: 2;
+}
+
+.message:hover .message-actions-wrapper {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.user-message .message-actions-wrapper {
+  right: 16px;
+}
+
+.ai-message .message-actions-wrapper {
+  left: 16px;
+}
+
+.message-action-btn {
+  background: var(--color-bg-surface-alt);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--color-text-secondary);
+  z-index: 3;
+}
+
+.message-action-btn img {
+  width: 14px;
+  height: 14px;
+}
+
+.variants-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-surface-alt);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  z-index: 1;
+}
+
+.variant-btn {
+  background: transparent;
+  border: none;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.variant-btn:not(:disabled):hover {
+  background-color: var(--color-bg-interactive);
+}
+
+.variant-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.variant-btn img {
+  width: 16px;
+  height: 16px;
+}
+
+.variants-counter {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  padding: 0 4px;
+  user-select: none;
+  min-width: 35px;
+  text-align: center;
+}
+
+.user-message.is-editing .message-content {
+  padding: 0;
+  background: transparent;
+}
+
+.editing-textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 250px;
+  resize: vertical;
+  background-color: var(--input-element-bg);
+  border: 1px solid var(--color-border-focus);
+  border-radius: var(--radius-md);
+  padding: var(--chat-message-padding-y) var(--chat-message-padding-x);
+  font-family: var(--font-family-main);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  line-height: 1.65;
+  outline: none;
+  z-index: 1;
+}
+
+.editing-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.editing-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.save-edit-btn {
+  background-color: var(--color-text-link);
+}
+
+.save-edit-btn:hover {
+  background-color: var(--color-text-link-hover);
+}
+
+.cancel-edit-btn {
+  background-color: var(--color-bg-interactive);
+  color: var(--color-text-primary);
+}
+
+.cancel-edit-btn:hover {
+  background-color: var(--color-border-strong);
+}
+
+.user-message-edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 1.5);
+  margin-top: calc(var(--spacing-unit) * 2);
+  padding: calc(var(--spacing-unit) * 1.5);
+  background: rgba(var(--color-white-raw), 0.04);
+  border: 1px solid rgba(var(--color-white-raw), 0.1);
+  border-radius: var(--radius-md);
+}
+
+.user-message-edit-textarea {
+  background: rgba(var(--color-white-raw), 0.08);
+  border: 1px solid rgba(var(--color-white-raw), 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--user-message-text-color);
+  padding: calc(var(--spacing-unit) * 1);
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 100px;
+  transition: all var(--transition-fast);
+}
+
+.user-message-edit-textarea:focus {
+  outline: none;
+  background: rgba(var(--color-white-raw), 0.12);
+  border-color: rgba(var(--color-white-raw), 0.25);
+}
+
+.edit-panel-buttons {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 1);
+  justify-content: flex-end;
+}
+
+.edit-save-btn,
+.edit-cancel-btn {
+  padding: calc(var(--spacing-unit) * 0.75) calc(var(--spacing-unit) * 1.5);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.edit-save-btn {
+  background-color: var(--color-text-link);
+  color: white;
+}
+
+.edit-save-btn:hover:not(:disabled) {
+  background-color: var(--color-text-link-hover);
+  transform: translateY(-1px);
+}
+
+.edit-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-cancel-btn {
+  background-color: var(--color-bg-interactive);
+  color: var(--color-text-primary);
+}
+
+.edit-cancel-btn:hover {
+  background-color: var(--color-border-strong);
+}
+
+.message {
+  position: relative;
+  padding-bottom: 40px;
+}
+

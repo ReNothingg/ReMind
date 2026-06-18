@@ -1,0 +1,47 @@
+body.snow-background-enabled {
+  background-color: var(--color-bg-main);
+  background-image:
+    radial-gradient(circle, rgba(var(--color-white-raw), 0.18) 1.5px, transparent 2.5px),
+    radial-gradient(circle, rgba(var(--color-white-raw), 0.12) 2px, transparent 3px),
+    radial-gradient(circle, rgba(var(--color-white-raw), 0.08) 2.5px, transparent 4px),
+    radial-gradient(circle, rgba(var(--color-white-raw), 0.05) 3px, transparent 5px);
+
+  background-size:
+    140px 140px,
+    220px 220px,
+    320px 320px,
+    480px 480px;
+
+  background-position:
+    0 0,
+    80px 120px,
+    -120px 240px,
+    200px -100px;
+
+  animation: snowFall 12s linear infinite;
+}
+
+@keyframes snowFall {
+  from {
+    background-position:
+      0 0,
+      80px 120px,
+      -120px 240px,
+      200px -100px;
+  }
+  to {
+    background-position:
+      0 600px,
+      80px 720px,
+      -120px 840px,
+      200px 960px;
+  }
+}
+
+html[data-theme='light'] body.snow-background-enabled {
+  background-image:
+    radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.5px, transparent 2.5px),
+    radial-gradient(circle, rgba(0, 0, 0, 0.1) 2px, transparent 3px),
+    radial-gradient(circle, rgba(0, 0, 0, 0.07) 2.5px, transparent 4px),
+    radial-gradient(circle, rgba(0, 0, 0, 0.05) 3px, transparent 5px);
+}

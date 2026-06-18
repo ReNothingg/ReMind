@@ -1,0 +1,90 @@
+.app-shell {
+  width: 100%;
+  max-width: var(--content-max-width);
+}
+
+main {
+  align-self: stretch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: var(--app-viewport-height);
+  box-sizing: border-box;
+
+  padding-left: var(--app-rail-offset);
+  transition: padding-left var(--transition-duration-normal) var(--transition-timing-function);
+}
+
+.welcome-message {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  margin: 0 auto;
+  padding: calc(var(--spacing-unit) * 6) calc(var(--spacing-unit) * 4);
+  max-width: 700px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40vh;
+
+  line-height: 1.35;
+
+  opacity: 0.9;
+  animation: fadeIn 0.7s ease-out;
+  transition:
+    opacity var(--transition-normal),
+    transform var(--transition-normal);
+}
+
+.welcome-message.hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
+
+.input-wrapper .dynamic-warning {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  position: absolute;
+  bottom: calc(100% + var(--main-input-area-padding) + var(--spacing-unit));
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(var(--color-bg-surface-alt-raw), 0.9);
+  padding: calc(var(--spacing-unit) * 0.75) calc(var(--spacing-unit) * 2);
+  border-radius: var(--radius-md);
+  z-index: 1;
+  opacity: 0.9;
+  max-width: calc(100% - 32px);
+  text-align: center;
+  line-height: 1.4;
+  border: 1px solid rgba(var(--color-text-secondary-raw), 0.1);
+  animation: slideUpFadeIn 0.3s ease-out;
+  word-break: break-word;
+  pointer-events: auto;
+}
+
+.input-wrapper .dynamic-warning:empty {
+  display: none;
+}
+
+.input-wrapper .dynamic-warning.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s ease-out,
+    visibility 0.3s ease-out;
+  pointer-events: none;
+}
+
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 0.9;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+

@@ -1,0 +1,106 @@
+.user-message .message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.user-message .attachment-file-card {
+  width: 176px;
+  height: 140px;
+  background: rgba(var(--color-black-raw), 0.25);
+  border: 1px solid rgba(var(--color-white-raw), 0.12);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  box-shadow: none;
+}
+
+.user-message .attachment-card-preview {
+  flex-grow: 1;
+  background-color: rgba(var(--color-black-raw), 0.2);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px;
+  border-radius: calc(var(--radius-lg) - 6px);
+  border: 1px solid rgba(var(--color-white-raw), 0.08);
+}
+
+.user-message .attachment-card-preview.is-text {
+  align-items: flex-start;
+  padding: 8px;
+  font-family: var(--font-family-code);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.user-message .attachment-card-preview.is-text pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.user-message .attachment-card-preview img.image-thumbnail,
+.user-message .attachment-card-preview img.generic-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-message .attachment-card-preview img.generic-icon {
+  object-fit: contain;
+  width: 48px;
+  height: 48px;
+  opacity: 0.6;
+  filter: none;
+}
+
+.user-message .attachment-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  height: 42px;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(var(--color-white-raw), 0.08);
+  flex-shrink: 0;
+  background: rgba(var(--color-black-raw), 0.2);
+  backdrop-filter: none;
+}
+
+.user-message .attachment-card-footer-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.user-message .attachment-card-footer-info {
+  min-width: 0;
+}
+
+.user-message .file-card-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+}
+
+.user-message .file-card-size {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
+}
+

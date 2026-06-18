@@ -1,0 +1,76 @@
+.rail-chat-list .chat-item-main {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.rail-chat-list .chat-item-title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.rail-chat-list .chat-item-title {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  margin-right: 4px !important;
+  min-width: 0 !important;
+  display: block !important;
+}
+
+.rail-chat-list .chat-item-preview {
+  font-size: 0.78rem;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+.rail-chat-list .chat-item-details {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-end !important;
+  flex-shrink: 0 !important;
+  gap: 4px !important;
+  width: auto !important;
+  padding: 0 !important;
+  position: static !important;
+}
+
+.rail-chat-list .chat-item-details::after,
+.rail-chat-list .chat-history-item::after {
+  display: none !important;
+}
+
+.rail-chat-list .favorite-btn,
+.rail-chat-list .delete-chat-btn {
+  position: static !important;
+  transform: none !important;
+  margin: 0 !important;
+  width: 28px !important;
+  height: 28px !important;
+  opacity: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  transition:
+    opacity 0.2s,
+    color 0.2s !important;
+}
+
+.rail-chat-list .chat-history-item:hover .favorite-btn,
+.rail-chat-list .chat-history-item:hover .delete-chat-btn,
+.rail-chat-list .favorite-btn.favorited {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.rail-chat-list .chat-item-timestamp {
+  margin-right: 4px !important;
+  white-space: nowrap !important;
+}
+
