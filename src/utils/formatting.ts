@@ -10,16 +10,29 @@ import 'prismjs/components/prism-diff';
 import 'prismjs/components/prism-docker';
 import 'prismjs/components/prism-git';
 import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-graphql';
+import 'prismjs/components/prism-ini';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-kotlin';
+import 'prismjs/components/prism-lua';
+import 'prismjs/components/prism-makefile';
 import 'prismjs/components/prism-markdown';
+import 'prismjs/components/prism-nginx';
 import 'prismjs/components/prism-php';
 import 'prismjs/components/prism-powershell';
+import 'prismjs/components/prism-protobuf';
+import 'prismjs/components/prism-properties';
 import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-r';
+import 'prismjs/components/prism-regex';
 import 'prismjs/components/prism-ruby';
 import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-scss';
 import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-swift';
+import 'prismjs/components/prism-toml';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-tsx';
 import 'prismjs/components/prism-yaml';
@@ -79,10 +92,25 @@ const CODE_LANGUAGE_ALIASES = {
     md: 'markdown',
     yml: 'yaml',
     jsonc: 'json',
+    conf: 'nginx',
+    env: 'properties',
+    gql: 'graphql',
+    kt: 'kotlin',
+    kts: 'kotlin',
+    makefile: 'makefile',
+    plist: 'markup',
+    plistxml: 'markup',
+    proto: 'protobuf',
+    ps: 'powershell',
+    rlang: 'r',
+    scss: 'scss',
+    swift: 'swift',
+    toml: 'toml',
     dockerfile: 'docker',
-    plaintext: 'none',
-    text: 'none',
-    txt: 'none',
+    none: 'plaintext',
+    plaintext: 'plaintext',
+    text: 'plaintext',
+    txt: 'plaintext',
 };
 
 const replaceControlCharacters = (value: string, replacement = '') => {
@@ -109,6 +137,32 @@ const getPrismLanguage = (language) => {
     const normalizedLanguage = normalizeFenceLanguage(language);
     const prismLanguage = CODE_LANGUAGE_ALIASES[normalizedLanguage] || normalizedLanguage;
     return /^[a-z0-9_-]+$/.test(prismLanguage) ? prismLanguage : 'plaintext';
+};
+
+const highlightCodeContent = (codeContent: string, prismLanguage: string) => {
+    const grammar = Prism.languages[prismLanguage];
+    if (!grammar || prismLanguage === 'plaintext') {
+        return escapeHtml(codeContent);
+    }
+
+    try {
+        return Prism.highlight(codeContent, grammar, prismLanguage);
+    } catch (error) {
+        console.warn(`Prism failed to highlight ${prismLanguage}`, error);
+        return escapeHtml(codeContent);
+    }
+};
+
+const resizeCodeLineNumbers = (root: ParentNode) => {
+    root.querySelectorAll('pre.line-numbers').forEach((pre) => {
+        if (window.Prism?.plugins?.lineNumbers) {
+            try {
+                window.Prism.plugins.lineNumbers.resize(pre);
+            } catch (error) {
+                console.warn('Failed to resize line numbers:', error);
+            }
+        }
+    });
 };
 
 const parseFenceInfo = (info, markdownUtils) => {
@@ -293,6 +347,7 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
     const safeName = escapeHtml(displayName);
     const escapedContent = escapeHtml(codeContent);
     const codeLanguage = meta.codeLanguage || normalizedLanguage;
+    const highlightedContent = highlightCodeContent(codeContent, codeLanguage);
     const previewMarkup = typeof meta.preview === 'function' ? meta.preview({ escapedContent }) : meta.preview;
     const safeDiagramLabel = escapeHtml(formatLabels.codeBlock.diagram);
     const safePreviewLabel = escapeHtml(formatLabels.codeBlock.preview);
@@ -325,7 +380,7 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
         </div>
         <div class="code-block-pane code-block-scroll-wrapper" data-pane="code" role="tabpanel" hidden>
             <div class="code-block-content">
-                <pre class="line-numbers language-${codeLanguage}"><code class="language-${codeLanguage}">${escapedContent}</code></pre>
+                <pre class="line-numbers language-${codeLanguage}"><code class="language-${codeLanguage}">${highlightedContent}</code></pre>
             </div>
         </div>
     </div>`;
@@ -380,7 +435,7 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
     const safeFilename = escapeHtml(filename);
     const safeLanguage = escapeHtml(actualLanguage);
     const safePrismLanguage = escapeHtml(prismLanguage);
-    const escapedContent = escapeHtml(codeContent);
+    const highlightedContent = highlightCodeContent(codeContent, prismLanguage);
     const safeDownloadLabel = escapeHtml(formatLabels.codeBlock.download);
     const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
     const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
@@ -401,7 +456,7 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${escapedContent}</code></pre>
+                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code></pre>
             </div>
         </div>
     </div>`;
@@ -494,7 +549,7 @@ export const formatText = (text, options: FormatTextOptions = {}) => {
         ADD_TAGS: ['svg', 'path', 'rect', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'mark', 'c', 'button', 'img', 'input', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
-            'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
+            'data-language', 'data-filename', 'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
             'type', 'checked', 'disabled', 'src', 'name',
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
@@ -541,7 +596,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     const safeFilename = escapeHtml(filename);
     const safeLanguage = escapeHtml(actualLanguage);
     const safePrismLanguage = escapeHtml(prismLanguage);
-    const escapedContent = escapeHtml(codeContent);
+    const highlightedContent = highlightCodeContent(codeContent, prismLanguage);
     const safeDownloadLabel = escapeHtml(formatLabels.codeBlock.download);
     const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
     const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
@@ -563,7 +618,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${escapedContent}</code></pre>
+                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code></pre>
             </div>
         </div>
     </div>`;
@@ -595,8 +650,24 @@ export const highlightCode = (container?: ParentNode) => {
 
     if (container) {
         Prism.highlightAllUnder(container);
+        resizeCodeLineNumbers(container);
         return;
     }
 
     Prism.highlightAll();
+    resizeCodeLineNumbers(document);
+};
+
+export const refreshCodeLineNumbers = (container?: ParentNode) => {
+    const root = container || document;
+    const codeBlocks = Array.from(root.querySelectorAll('pre.line-numbers'));
+    if (codeBlocks.length === 0) return;
+
+    const hasMissingRows = codeBlocks.some((pre) => !pre.querySelector('.line-numbers-rows'));
+    if (hasMissingRows) {
+        highlightCode(root);
+        return;
+    }
+
+    resizeCodeLineNumbers(root);
 };

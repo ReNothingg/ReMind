@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatText, highlightCode } from './formatting';
+import { formatText, highlightCode, refreshCodeLineNumbers } from './formatting';
 
 describe('formatText', () => {
     it('renders fenced code blocks with language metadata', () => {
@@ -9,6 +9,23 @@ describe('formatText', () => {
         expect(html).toContain('class="code-block"');
         expect(html).toContain('Python');
         expect(html).toContain('language-python');
+        expect(html).toContain('token keyword');
+    });
+
+    it('normalizes common language aliases before highlighting', () => {
+        const html = formatText('```ts\nconst enabled: boolean = true;\n```');
+
+        expect(html).toContain('language-typescript');
+        expect(html).toContain('token keyword');
+        expect(html).toContain('token boolean');
+    });
+
+    it('keeps unsupported languages readable without fake highlighting', () => {
+        const html = formatText('```madeup\n<unsafe>& value\n```');
+
+        expect(html).toContain('language-madeup');
+        expect(html).toContain('&lt;unsafe&gt;&amp; value');
+        expect(html).not.toContain('token keyword');
     });
 });
 
@@ -27,5 +44,22 @@ describe('highlightCode', () => {
         const code = container.querySelector('code');
         expect(code?.querySelector('.token.keyword')?.textContent).toBe('from');
         expect(container.querySelectorAll('.line-numbers-rows')).toHaveLength(1);
+    });
+});
+
+describe('refreshCodeLineNumbers', () => {
+    it('restores missing line number rows without changing the code text', () => {
+        const container = document.createElement('div');
+        container.innerHTML = formatText('```python\nfrom pathlib import Path\nprint(Path.cwd())\n```');
+
+        highlightCode(container);
+        container.querySelector('.line-numbers-rows')?.remove();
+
+        refreshCodeLineNumbers(container);
+
+        const code = container.querySelector('code');
+        expect(code?.textContent).toBe('from pathlib import Path\nprint(Path.cwd())\n');
+        expect(container.querySelectorAll('.line-numbers-rows')).toHaveLength(1);
+        expect(container.querySelectorAll('.line-numbers-rows > span')).toHaveLength(2);
     });
 });

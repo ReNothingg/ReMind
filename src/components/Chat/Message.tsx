@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
-import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
+import { formatText, formatPlainText, formatUserText, highlightCode, refreshCodeLineNumbers } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { fileService } from '../../services/fileService';
 import Quiz from '../Widgets/Quiz';
@@ -1143,6 +1143,40 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant }) 
             window.cancelAnimationFrame(frame);
         };
     }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
+
+    useLayoutEffect(() => {
+        if (!markdownEnabledForMessage || !contentRef.current) return;
+
+        const currentRef = contentRef.current;
+        let frame = 0;
+
+        const scheduleLineNumberRefresh = () => {
+            window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(() => {
+                refreshCodeLineNumbers(currentRef);
+            });
+        };
+
+        scheduleLineNumberRefresh();
+        window.addEventListener('resize', scheduleLineNumberRefresh);
+
+        const resizeObserver = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(scheduleLineNumberRefresh)
+            : null;
+
+        if (resizeObserver) {
+            resizeObserver.observe(currentRef);
+            currentRef.querySelectorAll('.code-block-content, pre.line-numbers').forEach((element) => {
+                resizeObserver.observe(element);
+            });
+        }
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.removeEventListener('resize', scheduleLineNumberRefresh);
+            resizeObserver?.disconnect();
+        };
+    }, [htmlContent, markdownEnabledForMessage, settings.codeWrap, widgets, currentVariantIndex, variants?.length]);
 
     useEffect(() => {
         if (!markdownEnabledForMessage || !contentRef.current) return;
