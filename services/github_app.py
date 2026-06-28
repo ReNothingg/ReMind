@@ -840,7 +840,7 @@ def call_gemini_json_with_trace(prompt: str) -> tuple[dict[str, Any] | None, dic
         import google.generativeai as genai
 
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-2.5-flash")
+        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-3.1-flash-lite")
         response = model.generate_content(
             prompt,
             generation_config={
@@ -880,7 +880,7 @@ def call_gemini_text_with_trace(prompt: str) -> tuple[str | None, dict[str, Any]
         import google.generativeai as genai
 
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-2.5-flash")
+        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-3.1-flash-lite")
         response = model.generate_content(
             prompt,
             generation_config={

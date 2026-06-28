@@ -38,7 +38,7 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - SECRET_KEY=dev-secret-key-change-me
-      - GEMINI_MODEL_NAME=gemini-2.5-flash
+      - GEMINI_MODEL_NAME=gemini-3.1-flash-lite
       - BACKEND_URL=http://127.0.0.1:5000
       - DATABASE_URL=postgresql://remind:remind-dev-password@db:5432/remind_db
       - REDIS_URL=redis://:remind-dev-redis-password@redis:6379/0

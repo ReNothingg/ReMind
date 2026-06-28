@@ -236,7 +236,7 @@
   "models": {
     "choose": "Выберите модель",
     "gemini": {
-      "desc": "Легкая модель gemini-2.5-flash-lite"
+      "desc": "Легкая модель gemini-3.1-flash-lite-lite"
     },
     "demoImage": {
       "desc": "Модель генерации изображений в разработке"
