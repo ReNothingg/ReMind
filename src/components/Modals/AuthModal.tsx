@@ -377,9 +377,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
     return (
         <ModalShell
+            ariaLabel={t(isLoginView ? 'authModal.loginTitle' : 'authModal.registerTitle')}
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
             contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-[20px] border-border bg-surface px-5 pb-6 pt-5 text-foreground shadow-[var(--shadow-xl)] sm:rounded-2xl sm:px-6 sm:pb-6 sm:pt-6"
             onBackdropClick={onClose}
+            onRequestClose={onClose}
         >
             <button
                 className="auth-modal-close ui-icon-control absolute right-4 top-4 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
@@ -485,9 +487,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                 }}
                                 maxLength={100}
                                 required
+                                aria-invalid={!!fieldErrors.name}
+                                aria-describedby={fieldErrors.name ? 'regNameError' : undefined}
                             />
                             {fieldErrors.name && (
-                                <p className="text-sm font-medium text-danger">{fieldErrors.name}</p>
+                                <p id="regNameError" className="text-sm font-medium text-danger">{fieldErrors.name}</p>
                             )}
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
@@ -503,9 +507,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                                 }}
                                 maxLength={50}
                                 required
+                                aria-invalid={!!fieldErrors.username}
+                                aria-describedby={fieldErrors.username ? 'regUsernameError' : undefined}
                             />
                             {fieldErrors.username && (
-                                <p className="text-sm font-medium text-danger">{fieldErrors.username}</p>
+                                <p id="regUsernameError" className="text-sm font-medium text-danger">{fieldErrors.username}</p>
                             )}
                         </div>
                         <div className="form-group auth-field-full flex flex-col gap-1.5">
@@ -633,6 +639,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             ? 'border-[rgba(var(--color-success-raw),0.4)] bg-[rgba(var(--color-success-raw),0.12)] text-success'
                             : 'border-[rgba(var(--color-error-raw),0.35)] bg-[rgba(var(--color-error-raw),0.12)] text-danger'
                     )}
+                    role={message.type === 'success' ? 'status' : 'alert'}
                 >
                     {message.text}
                 </div>

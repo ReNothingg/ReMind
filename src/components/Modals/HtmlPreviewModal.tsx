@@ -80,14 +80,17 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
 
     return (
         <ModalShell
+            ariaLabel={t('htmlPreview.title')}
             className="html-preview-modal px-2 py-3 sm:px-4 sm:py-6"
             contentClassName="html-preview-content relative h-[min(92vh,860px)] w-full max-w-6xl rounded-[18px] border-border bg-surface shadow-[var(--shadow-xl)]"
             onBackdropClick={onClose}
+            onRequestClose={onClose}
         >
             <button
                 className="html-preview-close-btn ui-icon-control absolute right-4 top-4 z-10 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                 onClick={onClose}
                 title={t('common.closeEsc')}
+                aria-label={t('common.closeEsc')}
                 type="button"
             >
                 x
@@ -105,7 +108,7 @@ const HtmlPreviewModal = ({ isOpen, onClose, urlOrHtml, isHtml = false }) => {
                     ref={iframeRef}
                     className="block h-full w-full border-0"
                     sandbox="allow-forms"
-                    title="HTML Preview"
+                    title={t('htmlPreview.title')}
                 />
             </div>
         </ModalShell>

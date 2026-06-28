@@ -66,7 +66,9 @@
   "common": {
     "loading": "Загрузка...",
     "closeEsc": "Закрыть (Esc)",
-    "selectOption": "Выберите опцию"
+    "selectOption": "Выберите опцию",
+    "copy": "Копировать",
+    "close": "Закрыть"
   },
   "think": {
     "label": "Размышления",
@@ -91,6 +93,13 @@
   },
   "chat": {
     "readOnly": "Чат только для чтения",
+    "editUserMessage": {
+      "placeholder": "Отредактируйте ваше сообщение...",
+      "ariaLabel": "Редактирование сообщения",
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "edit": "Редактировать"
+    },
     "githubDiff": {
       "title": "Изменения в Pull Request",
       "branch": "Ветка",
@@ -110,6 +119,70 @@
         "modified": "Изменен",
         "renamed": "Переименован"
       }
+    },
+    "ariaLog": "Сообщения диалога",
+    "userMessageAria": "Ваше сообщение",
+    "assistantMessageAria": "Сообщение ассистента",
+    "regenerate": "Регенерировать",
+    "variants": {
+      "previous": "Предыдущий ответ",
+      "next": "Следующий ответ",
+      "counter": "Ответ {{current}} из {{total}}"
+    },
+    "audio": {
+      "speak": "Озвучить",
+      "label": "Аудио",
+      "loading": "Загрузка аудио...",
+      "play": "Воспроизвести",
+      "pause": "Пауза",
+      "progress": "Позиция воспроизведения аудио",
+      "error": "Не удалось загрузить аудио."
+    },
+    "feedback": {
+      "like": "Нравится ответ",
+      "dislike": "Не нравится ответ",
+      "panelTitle": "Что не так с ответом?",
+      "reasonGroup": "Причины отзыва",
+      "commentLabel": "Дополнительный отзыв",
+      "commentPlaceholder": "Опишите, что нужно улучшить",
+      "submit": "Отправить отзыв",
+      "sending": "Отправка...",
+      "sent": "Отзыв отправлен",
+      "error": "Не удалось отправить отзыв",
+      "noSession": "Отзывы доступны только в сохраненных чатах.",
+      "reasons": {
+        "incorrect": "Неверно",
+        "unsafe": "Небезопасно",
+        "not_helpful": "Не помогло",
+        "too_long": "Слишком длинно",
+        "missing_context": "Не учтен контекст",
+        "other": "Другое"
+      }
+    }
+  },
+  "canvas": {
+    "ariaLabel": "Документ canvas",
+    "badge": "Canvas",
+    "close": "Закрыть canvas",
+    "restore": "Открыть canvas",
+    "copy": "Скопировать содержимое",
+    "copied": "Скопировано",
+    "download": "Скачать",
+    "preview": "Предпросмотр",
+    "empty": "Пока нет содержимого.",
+    "lines": "{{count}} строк",
+    "type": {
+      "document": "Документ",
+      "code": "Код: {{language}}"
+    },
+    "comments": {
+      "title": "Комментарии",
+      "count": "{{count}}"
+    },
+    "editorLabel": "Редактор canvas",
+    "resizeHandle": "Изменить ширину canvas",
+    "card": {
+      "openAria": "Открыть {{name}} в canvas"
     }
   },
   "composer": {
@@ -139,7 +212,8 @@
     "code": "Код",
     "lines": "{{count}} строк",
     "previewAlt": "Предпросмотр файла {{name}}",
-    "previewUnavailable": "Предпросмотр файла \"{{name}}\" недоступен."
+    "previewUnavailable": "Предпросмотр файла \"{{name}}\" недоступен.",
+    "fileFallback": "Файл"
   },
   "share": {
     "title": "Общий доступ к чату",
@@ -375,6 +449,33 @@
       "autoSave": {
         "title": "Автосохранение",
         "description": "Автоматически сохранять историю чатов."
+      },
+      "chatPanel": {
+        "group": "Панель чата",
+        "position": {
+          "label": "Позиция на экране",
+          "bottomCenter": "Внизу по центру",
+          "center": "По центру",
+          "topCenter": "Вверху по центру",
+          "right": "Справа",
+          "left": "Слева"
+        },
+        "reset": {
+          "label": "Сбросить к новому чату",
+          "never": "Никогда",
+          "after5": "После 5 минут",
+          "after10": "После 10 минут",
+          "after30": "После 30 минут"
+        },
+        "shortcut": {
+          "label": "Сочетание клавиш",
+          "disabled": "Выключено"
+        },
+        "newChat": {
+          "label": "Открывать новые чаты",
+          "companion": "В чате-компаньоне",
+          "browser": "В браузере"
+        }
       }
     },
     "accessibility": {
@@ -473,12 +574,15 @@
       "arabic": "Арабский",
       "hindi": "Хинди",
       "bengali": "Бенгальский"
-    }
+    },
+    "translateAction": "Перевести"
   },
   "chatImage": {
     "open": "Открыть",
     "unavailableTitle": "Превью недоступно",
-    "unavailableDescription": "Изображение не удалось загрузить."
+    "unavailableDescription": "Изображение не удалось загрузить.",
+    "messageAlt": "Изображение в чате {{number}}",
+    "generating": "Создание изображения: {{prompt}}"
   },
   "imageLightbox": {
     "badge": "Превью",
@@ -772,6 +876,39 @@
         "diffLoaded": "{{files}} измененных файлов",
         "pullRequestOpened": "Pull Request #{{number}}"
       }
+    }
+  },
+  "codeBlock": {
+    "codeSnippet": "Фрагмент кода",
+    "diagram": "Диаграмма",
+    "preview": "Предпросмотр",
+    "code": "Код",
+    "download": "Скачать файл",
+    "copy": "Скопировать код",
+    "expand": "Развернуть",
+    "collapse": "Свернуть",
+    "tableCopy": "Копировать таблицу",
+    "tableCopied": "Скопировано",
+    "copyFailed": "Не удалось скопировать",
+    "loading": {
+      "chartjs": "Загрузка графика...",
+      "d3": "Загрузка визуализации...",
+      "nomnoml": "Загрузка схемы...",
+      "mermaid": "Загрузка схемы...",
+      "svg": "Безопасный рендер SVG..."
+    }
+  },
+  "widgets": {
+    "creating": "Создание {{tool}}"
+  },
+  "htmlPreview": {
+    "title": "Предпросмотр HTML"
+  },
+  "admin": {
+    "aiFeedback": {
+      "likeRatio": "Лайки ответов ИИ",
+      "dislikeRatio": "Дизлайки ответов ИИ",
+      "total": "Оценки ответов ИИ"
     }
   }
 }

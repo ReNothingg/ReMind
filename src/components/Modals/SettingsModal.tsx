@@ -120,6 +120,8 @@ const SettingsTabButton = ({ active, icon, label, onClick }: SettingsTabButtonPr
             active && 'active'
         )}
         onClick={onClick}
+        role="tab"
+        aria-selected={active}
     >
         <span className="settings-tab-icon" aria-hidden="true">
             {icon}
@@ -135,6 +137,7 @@ const SettingsPane = ({ children, dataPane, className = '' }: SettingsPaneProps)
             className
         )}
         data-pane={dataPane}
+        role="tabpanel"
     >
         {children}
     </div>
@@ -200,6 +203,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const FONT_SIZE_MAX_PX = 24;
     const FONT_SIZE_STEP_PX = 2;
     const settingsInputClass = 'settings-input ui-input min-h-11 rounded-xl bg-surface-alt px-4 py-3 text-[0.95rem]';
+    const isMacWrapper = Boolean(window.webkit?.messageHandlers?.remindMacBridge);
 
     const normalizeLanguage = (value) => {
         const candidate = String(value || '').toLowerCase();
@@ -629,6 +633,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         className={settingsInputClass}
                                         type="text"
                                         id="accountNameInput"
+                                        aria-label={t('settings.account.fields.name')}
                                         value={name}
                                         onChange={(e) => {
                                             setName(e.target.value);
@@ -650,6 +655,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         className={settingsInputClass}
                                         type="text"
                                         id="accountUsernameInput"
+                                        aria-label={t('settings.account.fields.username')}
                                         value={username}
                                         onChange={(e) => {
                                             setUsername(e.target.value);
@@ -672,6 +678,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
                                         type="email"
                                         id="accountEmailInput"
+                                        aria-label={t('settings.account.fields.email')}
                                         value={user?.email || ''}
                                         disabled
                                     />
@@ -710,6 +717,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     className={settingsInputClass}
                                     type="text"
                                     id="accountDeleteConfirmationInput"
+                                    aria-label={t('settings.account.delete.confirmLabel')}
                                     value={deleteConfirmation}
                                     onChange={(e) => setDeleteConfirmation(e.target.value)}
                                     placeholder={t('settings.account.delete.confirmPlaceholder')}
@@ -735,9 +743,11 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
     return (
         <ModalShell
+            ariaLabel={t('settings.title')}
             className="user-settings-modal active items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
             contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface shadow-[var(--shadow-xl)] sm:h-[85vh] sm:min-h-[560px] sm:rounded-[18px]"
             onBackdropClick={onClose}
+            onRequestClose={onClose}
         >
             <div className="user-settings-header flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
                 <h3 className="text-[1.05rem] font-semibold tracking-[-0.01em] text-foreground">
@@ -754,7 +764,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             </div>
 
             <div className="user-settings-body flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-                <div className="settings-tabs ui-scrollbar-thin">
+                <div className="settings-tabs ui-scrollbar-thin" role="tablist" aria-label={t('settings.title')}>
                     {tabs.map((tab) => (
                         <SettingsTabButton
                             key={tab.id}
@@ -845,6 +855,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <textarea
                                         className={cn(settingsInputClass, 'min-h-32 resize-y')}
                                         rows={5}
+                                        aria-label={t('settings.personalization.instructionsLabel')}
                                         value={settings.personalization_instructions || ''}
                                         onChange={(e) => updateSetting('personalization_instructions', e.target.value)}
                                         placeholder={t('settings.personalization.instructionsPlaceholder')}
@@ -854,6 +865,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <input
                                         type="text"
                                         className={settingsInputClass}
+                                        aria-label={t('settings.personalization.nicknameLabel')}
                                         value={settings.personalization_nickname || ''}
                                         onChange={(e) => updateSetting('personalization_nickname', e.target.value)}
                                     />
@@ -862,6 +874,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <input
                                         type="text"
                                         className={settingsInputClass}
+                                        aria-label={t('settings.personalization.professionLabel')}
                                         value={settings.personalization_profession || ''}
                                         onChange={(e) => updateSetting('personalization_profession', e.target.value)}
                                     />
@@ -870,6 +883,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <textarea
                                         className={cn(settingsInputClass, 'min-h-24 resize-y')}
                                         rows={3}
+                                        aria-label={t('settings.personalization.moreLabel')}
                                         value={settings.personalization_more || ''}
                                         onChange={(e) => updateSetting('personalization_more', e.target.value)}
                                         placeholder={t('settings.personalization.morePlaceholder')}
@@ -988,6 +1002,63 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     withDivider
                                 />
                             </SettingGroup>
+
+                            {isMacWrapper && (
+                                <SettingGroup title={t('settings.interface.chatPanel.group')}>
+                                    <SettingControlGroup className="items-start">
+                                        <CustomSelect
+                                            label={t('settings.interface.chatPanel.position.label')}
+                                            value={settings.chatPanelPosition}
+                                            onChange={(value) => updateSetting('chatPanelPosition', value)}
+                                            options={[
+                                                { value: 'bottomCenter', label: t('settings.interface.chatPanel.position.bottomCenter') },
+                                                { value: 'center', label: t('settings.interface.chatPanel.position.center') },
+                                                { value: 'topCenter', label: t('settings.interface.chatPanel.position.topCenter') },
+                                                { value: 'right', label: t('settings.interface.chatPanel.position.right') },
+                                                { value: 'left', label: t('settings.interface.chatPanel.position.left') }
+                                            ]}
+                                        />
+                                    </SettingControlGroup>
+                                    <SettingControlGroup withDivider className="items-start">
+                                        <CustomSelect
+                                            label={t('settings.interface.chatPanel.reset.label')}
+                                            value={settings.chatPanelResetPolicy}
+                                            onChange={(value) => updateSetting('chatPanelResetPolicy', value)}
+                                            options={[
+                                                { value: 'never', label: t('settings.interface.chatPanel.reset.never') },
+                                                { value: 'after5Minutes', label: t('settings.interface.chatPanel.reset.after5') },
+                                                { value: 'after10Minutes', label: t('settings.interface.chatPanel.reset.after10') },
+                                                { value: 'after30Minutes', label: t('settings.interface.chatPanel.reset.after30') }
+                                            ]}
+                                        />
+                                    </SettingControlGroup>
+                                    <SettingControlGroup withDivider className="items-start">
+                                        <CustomSelect
+                                            label={t('settings.interface.chatPanel.shortcut.label')}
+                                            value={settings.chatPanelKeyboardShortcut}
+                                            onChange={(value) => updateSetting('chatPanelKeyboardShortcut', value)}
+                                            options={[
+                                                { value: 'optionCommandSpace', label: '⌥⌘Space' },
+                                                { value: 'controlCommandSpace', label: '⌃⌘Space' },
+                                                { value: 'shiftCommandSpace', label: '⇧⌘Space' },
+                                                { value: 'commandReturn', label: '⌘Return' },
+                                                { value: 'disabled', label: t('settings.interface.chatPanel.shortcut.disabled') }
+                                            ]}
+                                        />
+                                    </SettingControlGroup>
+                                    <SettingControlGroup withDivider className="items-start">
+                                        <CustomSelect
+                                            label={t('settings.interface.chatPanel.newChat.label')}
+                                            value={settings.chatPanelNewChatDestination}
+                                            onChange={(value) => updateSetting('chatPanelNewChatDestination', value)}
+                                            options={[
+                                                { value: 'companion', label: t('settings.interface.chatPanel.newChat.companion') },
+                                                { value: 'browser', label: t('settings.interface.chatPanel.newChat.browser') }
+                                            ]}
+                                        />
+                                    </SettingControlGroup>
+                                </SettingGroup>
+                            )}
 
                             <SettingGroup title={t('settings.interface.behaviorGroup')}>
                                 <SettingToggle

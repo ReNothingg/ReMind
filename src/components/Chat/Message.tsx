@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Copy, Download, ExternalLink } from 'lucide-react';
+import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
 import { formatText, formatPlainText, formatUserText, highlightCode } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { fileService } from '../../services/fileService';
@@ -19,6 +19,7 @@ const MessageActionButton = ({ className, title, onClick, children, disabled = f
         type="button"
         className={cn('action-btn ui-action-button', className)}
         title={title}
+        aria-label={title}
         onClick={onClick}
         disabled={disabled}
     >
@@ -96,7 +97,7 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
                             window.openImageLightbox(src, messageId);
                         }
                     }}
-                    aria-label="Open image preview"
+                    aria-label={`${t('chatImage.open')}: ${alt}`}
                 >
                     {imageContent}
                 </button>
@@ -108,6 +109,18 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
         </div>
     );
 };
+
+function stripCanmoreToolMarkup(text) {
+    const cleaned = String(text || '')
+        .replace(/```[^\n`]*\n?[\s\S]*?canmore\.(?:create_textdoc|update_textdoc|comment_textdoc)[\s\S]*?```/gi, '')
+        .replace(/<canmore(?:\s[^>]*)?>[\s\S]*?<\/canmore>/gi, '')
+        .trim();
+    return cleaned
+        .split(/\n{2,}/)
+        .filter((paragraph) => !paragraph.toLowerCase().includes('canmore.'))
+        .join('\n\n')
+        .trim();
+}
 
 const sourceFallbackIcon = '/icons/ui/web.svg';
 
@@ -371,7 +384,7 @@ const WebSourcesPanel = ({ sources, t }) => {
 
     return (
         <div className="web-sources-container" aria-label={t('webSearch.sourcesAria')}>
-            <div className="web-sources-trigger" tabIndex={0} role="group">
+            <div className="web-sources-trigger">
                 <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
                 <span>{t('webSearch.sourcesLabel')}</span>
                 <span className="web-sources-count">{normalizedSources.length}</span>
@@ -447,6 +460,15 @@ const getGitHubToolPayload = (message, currentVariant) => (
     message.github_tool ||
     null
 );
+
+const AI_FEEDBACK_REASONS = [
+    'incorrect',
+    'unsafe',
+    'not_helpful',
+    'too_long',
+    'missing_context',
+    'other',
+];
 
 const getGitHubDiffPayload = (githubTool) => {
     const task = githubTool?.task;
@@ -728,7 +750,7 @@ const GitHubDiffCard = ({ payload, t }) => {
     );
 };
 
-const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
+const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant }) => {
     const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus } = message;
     const isUser = role === 'user';
     const { settings } = useSettings();
@@ -767,7 +789,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         if (githubDiffPayload) {
             displayContent = stripGitHubDiffFence(displayContent);
         }
-        displayContent = displayContent.trim();
+        displayContent = stripCanmoreToolMarkup(displayContent).trim();
     }
 
     const displayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
@@ -787,7 +809,37 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const waveformCanvasRef = useRef(null);
     const [widgets, setWidgets] = useState([]);
     const [showTranslation, setShowTranslation] = useState(false);
+    const [feedbackRating, setFeedbackRating] = useState(null);
+    const [feedbackReasons, setFeedbackReasons] = useState([]);
+    const [feedbackComment, setFeedbackComment] = useState('');
+    const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
+    const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+    const [feedbackMessage, setFeedbackMessage] = useState('');
+    const [feedbackMessageType, setFeedbackMessageType] = useState('success');
     const audio = useAudio(message.id);
+    const formatLabels = useMemo(() => ({
+        codeBlock: {
+            codeSnippet: t('codeBlock.codeSnippet'),
+            diagram: t('codeBlock.diagram'),
+            preview: t('codeBlock.preview'),
+            code: t('codeBlock.code'),
+            download: t('codeBlock.download'),
+            copy: t('codeBlock.copy'),
+            expand: t('codeBlock.expand'),
+            collapse: t('codeBlock.collapse'),
+            tableCopy: t('codeBlock.tableCopy'),
+        },
+        diagrams: {
+            chartjsLoading: t('codeBlock.loading.chartjs'),
+            d3Loading: t('codeBlock.loading.d3'),
+            nomnomlLoading: t('codeBlock.loading.nomnoml'),
+            mermaidLoading: t('codeBlock.loading.mermaid'),
+            svgLoading: t('codeBlock.loading.svg'),
+        },
+        widgets: {
+            creating: t('widgets.creating'),
+        },
+    }), [t]);
     useEffect(() => {
         if (!isUser) {
             const newWidgets = [];
@@ -1028,20 +1080,22 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
     const markdownEnabledForMessage = isUser ? !!settings.renderUserMarkdown : !!settings.renderMarkdown;
     const htmlContent = useMemo(() => {
         if (isUser) {
-            return markdownEnabledForMessage ? formatUserText(content || '') : formatPlainText(content || '');
+            return markdownEnabledForMessage
+                ? formatUserText(content || '', { labels: formatLabels })
+                : formatPlainText(content || '');
         }
         if (!markdownEnabledForMessage) {
             return formatPlainText(displayContent || '');
         }
 
         return decorateSourceCitations(
-            formatText(displayContentWithSourceLinks),
+            formatText(displayContentWithSourceLinks, { labels: formatLabels }),
             displaySourceItems,
             {
                 fragmentSources: t('webSearch.fragmentSources')
             }
         );
-    }, [displayContent, displayContentWithSourceLinks, displaySourceItems, isUser, content, markdownEnabledForMessage, t]);
+    }, [displayContent, displayContentWithSourceLinks, displaySourceItems, isUser, content, markdownEnabledForMessage, t, formatLabels]);
 
     useLayoutEffect(() => {
         if (!markdownEnabledForMessage || !contentRef.current) return;
@@ -1158,21 +1212,25 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 const tableHtml = table.outerHTML;
                 const blob = new Blob([tableHtml], { type: 'text/html' });
 
-                const originalText = target.textContent;
+                const originalHtml = target.innerHTML;
                 const applySuccessUI = () => {
-                    target.textContent = '✓ Скопировано';
+                    target.textContent = t('codeBlock.tableCopied');
+                    target.setAttribute('aria-label', t('codeBlock.tableCopied'));
                     target.style.background = 'rgba(110, 231, 183, 0.15)';
                     setTimeout(() => {
-                        target.textContent = originalText;
+                        target.innerHTML = originalHtml;
+                        target.setAttribute('aria-label', t('codeBlock.tableCopy'));
                         target.style.background = '';
                     }, 2000);
                 };
 
                 const applyErrorUI = () => {
-                    target.textContent = 'Ошибка';
+                    target.textContent = t('codeBlock.copyFailed');
+                    target.setAttribute('aria-label', t('codeBlock.copyFailed'));
                     target.style.background = 'rgba(239, 68, 68, 0.15)';
                     setTimeout(() => {
-                        target.textContent = originalText;
+                        target.innerHTML = originalHtml;
+                        target.setAttribute('aria-label', t('codeBlock.tableCopy'));
                         target.style.background = '';
                     }, 2000);
                 };
@@ -1206,10 +1264,19 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 if (!tab) return;
 
                 const tabs = codeBlock.querySelectorAll('.code-tab-btn');
-                tabs.forEach(btn => btn.classList.toggle('active', btn === target));
+                tabs.forEach(btn => {
+                    const isActiveTab = btn === target;
+                    btn.classList.toggle('active', isActiveTab);
+                    btn.setAttribute('aria-selected', String(isActiveTab));
+                    btn.tabIndex = isActiveTab ? 0 : -1;
+                });
 
                 const panes = codeBlock.querySelectorAll('.code-block-pane');
-                panes.forEach(pane => pane.classList.toggle('active', pane.dataset.pane === tab));
+                panes.forEach(pane => {
+                    const isActivePane = pane.dataset.pane === tab;
+                    pane.classList.toggle('active', isActivePane);
+                    pane.toggleAttribute('hidden', !isActivePane);
+                });
 
                 if (tab === 'code') {
                     const content = codeBlock.querySelector('.code-block-content');
@@ -1257,9 +1324,12 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 const isCurrentlyCollapsed = !content.classList.contains('expanded');
 
                 if (isCurrentlyCollapsed) {
+                    const collapseLabel = target.dataset.collapseLabel || t('codeBlock.collapse');
                     content.classList.add('expanded');
                     target.classList.add('expanded');
-                    target.title = "Свернуть";
+                    target.title = collapseLabel;
+                    target.setAttribute('aria-label', collapseLabel);
+                    target.setAttribute('aria-expanded', 'true');
                     content.style.maxHeight = content.scrollHeight + "px";
                     if (iconExpand) iconExpand.style.display = 'none';
                     if (iconCollapse) iconCollapse.style.display = 'block';
@@ -1271,9 +1341,12 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                         }
                     });
                 } else {
+                    const expandLabel = target.dataset.expandLabel || t('codeBlock.expand');
                     content.classList.remove('expanded');
                     target.classList.remove('expanded');
-                    target.title = "Развернуть";
+                    target.title = expandLabel;
+                    target.setAttribute('aria-label', expandLabel);
+                    target.setAttribute('aria-expanded', 'false');
                     const initialMaxHeight = content.dataset.initialMaxHeight || '200px';
                     content.style.maxHeight = initialMaxHeight;
                     if (iconExpand) iconExpand.style.display = 'block';
@@ -1296,7 +1369,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                 currentRef.removeEventListener('click', handleClick);
             };
         }
-    }, [displayContent, markdownEnabledForMessage]);
+    }, [displayContent, markdownEnabledForMessage, t]);
     const handleCopy = async () => {
         const contentToCopy = isUser ? content : displayContent;
         if (!contentToCopy) return;
@@ -1316,17 +1389,64 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
         setEditedContent(content);
         setIsEditingUserMessage(false);
     };
+    const submitFeedback = async (
+        rating: 'like' | 'dislike',
+        options: { reasonCodes?: string[]; comment?: string } = {}
+    ) => {
+        const responseText = String(displayContent || '').trim();
+        if (!responseText || feedbackSubmitting) return;
+        if (!sessionId) {
+            setFeedbackMessage(t('chat.feedback.noSession'));
+            return;
+        }
+
+        setFeedbackSubmitting(true);
+        setFeedbackMessage('');
+        try {
+            await apiService.submitAIResponseFeedback({
+                session_id: sessionId,
+                message_client_id: String(message.id || ''),
+                rating,
+                reason_codes: rating === 'dislike' ? (options.reasonCodes || feedbackReasons) : [],
+                comment: rating === 'dislike' ? (options.comment ?? feedbackComment) : '',
+                response_text: responseText,
+            });
+            setFeedbackRating(rating);
+            setFeedbackPanelOpen(false);
+            setFeedbackMessage(t('chat.feedback.sent'));
+            if (rating === 'like') {
+                setFeedbackReasons([]);
+                setFeedbackComment('');
+            }
+            setFeedbackMessageType('success');
+        } catch (error) {
+            setFeedbackMessage(error instanceof Error && error.message ? error.message : t('chat.feedback.error'));
+            setFeedbackMessageType('error');
+        } finally {
+            setFeedbackSubmitting(false);
+        }
+    };
+    const toggleFeedbackReason = (reason) => {
+        setFeedbackReasons((current) => (
+            current.includes(reason)
+                ? current.filter((item) => item !== reason)
+                : [...current, reason]
+        ));
+    };
     const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
+    const isUserEditMode = isUser && isEditingUserMessage;
     const messageClassName = cn(
         'message ui-message-shell',
         isUser ? 'user-message ui-message-shell-user' : 'ai-message ui-message-shell-ai',
         isLoading && 'loading',
         isError && 'error',
-        showUserActions && 'has-user-actions'
+        showUserActions && 'has-user-actions',
+        isUserEditMode && 'is-editing-user-message'
     );
     const messageContentClassName = cn(
         'message-content ui-message-bubble',
-        isUser ? 'ui-message-bubble-user' : 'ui-message-bubble-ai'
+        isUser ? 'ui-message-bubble-user' : 'ui-message-bubble-ai',
+        isUserEditMode && 'ui-message-bubble-editing'
     );
 
     return (
@@ -1334,8 +1454,43 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
             className={messageClassName}
             data-message-id={message.id}
             data-raw-content={isUser ? (content || '') : undefined}
+            role={isError ? 'alert' : 'article'}
+            aria-label={isUser ? t('chat.userMessageAria') : t('chat.assistantMessageAria')}
+            aria-busy={isLoading || undefined}
         >
             <div className={messageContentClassName}>
+                {isUserEditMode ? (
+                    <div className="user-message-edit-panel ui-edit-panel">
+                        <textarea
+                            className="user-message-edit-textarea ui-edit-textarea"
+                            value={editedContent}
+                            onChange={(e) => setEditedContent(e.target.value)}
+                            placeholder={t('chat.editUserMessage.placeholder')}
+                            aria-label={t('chat.editUserMessage.ariaLabel')}
+                            autoFocus
+                        />
+                        <div className="edit-panel-buttons ui-edit-actions">
+                            <button
+                                type="button"
+                                className="edit-save-btn ui-edit-save"
+                                onClick={handleSaveEdit}
+                                disabled={!editedContent.trim() || editedContent.trim() === content}
+                            >
+                                <Check size={16} strokeWidth={2.4} aria-hidden="true" />
+                                <span>{t('chat.editUserMessage.save')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="edit-cancel-btn ui-edit-cancel"
+                                onClick={handleCancelEdit}
+                            >
+                                <X size={16} strokeWidth={2.4} aria-hidden="true" />
+                                <span>{t('chat.editUserMessage.cancel')}</span>
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
                 {displayImages?.length > 0 && (
                     <div
                         className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
@@ -1354,7 +1509,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 <MessageImageAttachment
                                     key={`${message.id}-image-${idx}`}
                                     src={fullSrc}
-                                    alt={`Chat image ${idx + 1}`}
+                                    alt={t('chatImage.messageAlt', { number: idx + 1 })}
                                     messageId={message.id}
                                     isInteractive={!isUser}
                                 />
@@ -1376,7 +1531,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 return null;
                             }
 
-                            const fileName = file.original_name || file.name || 'File';
+                            const fileName = file.original_name || file.name || t('files.fileFallback');
                             const fileUrl = file.url_path || '';
                             const fullUrl = fileUrl.startsWith('http') ? fileUrl : (fileUrl ? `${apiService.baseURL}${fileUrl}` : '');
                             const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
@@ -1393,21 +1548,39 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 >
                                     <div className="attachment-card-preview ui-attachment-preview">
                                         {isImage && fullUrl ? (
-                                            <img
-                                                src={fullUrl}
-                                                alt={fileName}
-                                                className="image-thumbnail h-full w-full object-cover"
-                                                onClick={() => {
-                                                    if (!isUser && window.openImageLightbox) {
-                                                        window.openImageLightbox(fullUrl, message.id);
-                                                    }
-                                                }}
-                                                style={{ cursor: !isUser ? 'pointer' : 'default' }}
-                                                onError={(e) => {
-                                                    e.currentTarget.src = iconPath;
-                                                    e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
-                                                }}
-                                            />
+                                            isUser ? (
+                                                <img
+                                                    src={fullUrl}
+                                                    alt={fileName}
+                                                    className="image-thumbnail h-full w-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src = iconPath;
+                                                        e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
+                                                    }}
+                                                />
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
+                                                    onClick={() => {
+                                                        if (window.openImageLightbox) {
+                                                            window.openImageLightbox(fullUrl, message.id);
+                                                        }
+                                                    }}
+                                                    aria-label={`${t('chatImage.open')}: ${fileName}`}
+                                                >
+                                                    <img
+                                                        src={fullUrl}
+                                                        alt=""
+                                                        aria-hidden="true"
+                                                        className="image-thumbnail h-full w-full object-cover"
+                                                        onError={(e) => {
+                                                            e.currentTarget.src = iconPath;
+                                                            e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
+                                                        }}
+                                                    />
+                                                </button>
+                                            )
                                         ) : (
                                             <img
                                                 src={iconPath}
@@ -1422,7 +1595,8 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                     <div className="attachment-card-footer ui-attachment-footer">
                                         <img
                                             src={iconPath}
-                                            alt="icon"
+                                            alt=""
+                                            aria-hidden="true"
                                             className="attachment-card-footer-icon"
                                             onError={(e) => {
                                                 e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
@@ -1462,7 +1636,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                             </svg>
                         </div>
                         <div className="image-placeholder-caption ui-message-image-caption">
-                            Создание изображения: <span>"{imagePrompt || ''}"</span>
+                            {t('chatImage.generating', { prompt: imagePrompt || '' })}
                         </div>
                     </div>
                 )}
@@ -1516,13 +1690,20 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 'variant-btn ui-message-variant-button prev-btn',
                                 currentVariantIndex > 0 && 'active'
                             )}
-                            title="Предыдущий ответ"
+                            title={t('chat.variants.previous')}
+                            aria-label={t('chat.variants.previous')}
                             disabled={currentVariantIndex <= 0}
                             onClick={() => onSwitchVariant && onSwitchVariant(message.id, -1)}
                         >
-                            <img src="/icons/media/prev.svg" alt="<" />
+                            <img src="/icons/media/prev.svg" alt="" aria-hidden="true" />
                         </button>
-                        <span className="variants-counter ui-message-variant-counter">
+                        <span
+                            className="variants-counter ui-message-variant-counter"
+                            aria-label={t('chat.variants.counter', {
+                                current: (currentVariantIndex || 0) + 1,
+                                total: variants.length
+                            })}
+                        >
                             {(currentVariantIndex || 0) + 1}/{variants.length}
                         </span>
                         <button
@@ -1531,11 +1712,12 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 'variant-btn ui-message-variant-button next-btn',
                                 (currentVariantIndex || 0) < variants.length - 1 && 'active'
                             )}
-                            title="Следующий ответ"
+                            title={t('chat.variants.next')}
+                            aria-label={t('chat.variants.next')}
                             disabled={(currentVariantIndex || 0) >= variants.length - 1}
                             onClick={() => onSwitchVariant && onSwitchVariant(message.id, 1)}
                         >
-                            <img src="/icons/media/next.svg" alt=">" />
+                            <img src="/icons/media/next.svg" alt="" aria-hidden="true" />
                         </button>
                     </div>
                 )}
@@ -1548,10 +1730,10 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     <div className="actions-bar ui-message-actions">
                         <MessageActionButton
                             className="copy-md-btn"
-                            title="Копировать"
+                            title={t('common.copy')}
                             onClick={handleCopy}
                         >
-                            <img src="/icons/ui/copy.svg" alt="Copy" />
+                            <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
                         <MessageActionButton
                             className={cn(
@@ -1560,40 +1742,108 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 audio.isLoading ? 'loading' : '',
                                 audio.isError ? 'error' : ''
                             )}
-                            title="Озвучить"
+                            title={t('chat.audio.speak')}
                             onClick={() => {
                                 if (displayContent) {
                                     audio.speak(displayContent);
                                 }
                             }}
                         >
-                            <img src="/icons/media/audio.svg" alt="Speak" />
+                            <img src="/icons/media/audio.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
                         {onRegenerate && (
                             <MessageActionButton
                                 className="regenerate-btn"
-                                title="Регенерировать"
+                                title={t('chat.regenerate')}
                                 onClick={() => onRegenerate(message.id)}
                             >
-                                <img src="/icons/ui/regenerate.svg" alt="Regenerate" />
+                                <img src="/icons/ui/regenerate.svg" alt="" aria-hidden="true" />
                             </MessageActionButton>
                         )}
                         <MessageActionButton
                             className="translate-btn"
-                            title="Перевести"
+                            title={t('translationPanel.translateAction')}
                             onClick={() => {
                                 const textToTranslate = contentRef.current?.textContent?.trim() || displayContent || '';
                                 if (textToTranslate) {
                                     setShowTranslation(true);
                                 } else {
-                                    Utils.showPopupWarning?.('Нет текста для перевода.');
+                                    Utils.showPopupWarning?.(t('translationPanel.noText'));
                                 }
                             }}
                         >
-                            <img src="/icons/ui/translate.svg" alt="Translate" />
+                            <img src="/icons/ui/translate.svg" alt="" aria-hidden="true" />
+                        </MessageActionButton>
+                        <MessageActionButton
+                            className={cn('feedback-btn', feedbackRating === 'like' && 'active')}
+                            title={t('chat.feedback.like')}
+                            onClick={() => void submitFeedback('like')}
+                            disabled={feedbackSubmitting}
+                        >
+                            <img src="/icons/ui/like.svg" alt="" aria-hidden="true" />
+                        </MessageActionButton>
+                        <MessageActionButton
+                            className={cn('feedback-btn', feedbackRating === 'dislike' && 'active')}
+                            title={t('chat.feedback.dislike')}
+                            onClick={() => {
+                                setFeedbackPanelOpen((current) => !current);
+                                setFeedbackMessage('');
+                            }}
+                            disabled={feedbackSubmitting}
+                        >
+                            <img src="/icons/ui/dislike.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
                         <WebSourcesPanel sources={displaySourceItems} t={t} />
                     </div>
+                )}
+                {!isUser && !isLoading && feedbackPanelOpen && (
+                    <div className="ai-feedback-panel" role="dialog" aria-label={t('chat.feedback.panelTitle')}>
+                        <div className="ai-feedback-panel-head">
+                            <strong>{t('chat.feedback.panelTitle')}</strong>
+                            <button
+                                type="button"
+                                className="ai-feedback-close"
+                                onClick={() => setFeedbackPanelOpen(false)}
+                                aria-label={t('common.close')}
+                            >
+                                <X size={15} strokeWidth={2} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div className="ai-feedback-reasons" role="group" aria-label={t('chat.feedback.reasonGroup')}>
+                            {AI_FEEDBACK_REASONS.map((reason) => (
+                                <button
+                                    key={reason}
+                                    type="button"
+                                    className={cn(feedbackReasons.includes(reason) && 'active')}
+                                    onClick={() => toggleFeedbackReason(reason)}
+                                >
+                                    {t(`chat.feedback.reasons.${reason}`)}
+                                </button>
+                            ))}
+                        </div>
+                        <label className="ai-feedback-comment">
+                            <span>{t('chat.feedback.commentLabel')}</span>
+                            <textarea
+                                value={feedbackComment}
+                                maxLength={1200}
+                                onChange={(event) => setFeedbackComment(event.target.value)}
+                                placeholder={t('chat.feedback.commentPlaceholder')}
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            className="ai-feedback-submit"
+                            onClick={() => void submitFeedback('dislike')}
+                            disabled={feedbackSubmitting}
+                        >
+                            {feedbackSubmitting ? t('chat.feedback.sending') : t('chat.feedback.submit')}
+                        </button>
+                    </div>
+                )}
+                {!isUser && feedbackMessage && (
+                    <p className={cn('ai-feedback-status', feedbackMessageType)}>
+                        {feedbackMessage}
+                    </p>
                 )}
                 {!isUser && showTranslation && (
                     <TranslationPanel
@@ -1602,16 +1852,20 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     />
                 )}
                 {!isUser && audio.isVisible && (
-                    <div className={cn('audio-player-container ui-audio-player visible', audio.isPlaying && 'playing')}>
+                    <div
+                        className={cn('audio-player-container ui-audio-player visible', audio.isPlaying && 'playing')}
+                        role="region"
+                        aria-label={t('chat.audio.label')}
+                    >
                         <div className="audio-player-header ui-audio-player-header">
                             <div className="audio-player-icon ui-audio-player-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24">
+                                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M12 4V20M8 8V16M16 7V17M4 10V14M20 9V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                                 </svg>
-                                <span>Аудио</span>
+                                <span>{t('chat.audio.label')}</span>
                             </div>
                             {audio.isLoading && (
-                                <div className="audio-player-loader">Загрузка аудио...</div>
+                                <div className="audio-player-loader" role="status">{t('chat.audio.loading')}</div>
                             )}
                         </div>
                         {!audio.isLoading && (
@@ -1619,10 +1873,11 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                 <button
                                     type="button"
                                     className="audio-play-pause-btn ui-audio-play-button"
-                                    title={audio.isPlaying ? "Пауза" : "Воспроизвести"}
+                                    title={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
+                                    aria-label={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
                                     onClick={audio.togglePlayback}
                                 >
-                                    <svg className="play-pause-icon" width="18" height="18" viewBox="0 0 24 24">
+                                    <svg className="play-pause-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                                         {audio.isPlaying ? (
                                             <path className="pause-icon" d="M8 5V19M16 5V19" stroke="currentColor" strokeWidth="2"/>
                                         ) : (
@@ -1631,7 +1886,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                     </svg>
                                 </button>
                                 <div className="audio-waveform-container ui-audio-waveform">
-                                    <canvas ref={waveformCanvasRef} className="audio-waveform" height="48" width="200"></canvas>
+                                    <canvas ref={waveformCanvasRef} className="audio-waveform" height="48" width="200" aria-hidden="true"></canvas>
                                     <input
                                         type="range"
                                         className="audio-progress-bar"
@@ -1640,6 +1895,7 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                                         value={audio.currentTime}
                                         step="0.1"
                                         onChange={(e) => audio.seekAudio(parseFloat(e.target.value))}
+                                        aria-label={t('chat.audio.progress')}
                                     />
                                 </div>
                                 <div className="audio-time ui-audio-time">
@@ -1648,8 +1904,8 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                             </div>
                         )}
                         {audio.isError && (
-                            <div className="audio-error-message" style={{ display: 'block' }}>
-                                Ошибка: Не удалось загрузить аудио.
+                            <div className="audio-error-message" role="alert" style={{ display: 'block' }}>
+                                {t('chat.audio.error')}
                             </div>
                         )}
                     </div>
@@ -1658,46 +1914,21 @@ const Message = ({ message, onRegenerate, onEdit, onSwitchVariant }) => {
                     <div className="actions-bar ui-message-actions ui-user-message-actions">
                         <MessageActionButton
                             className="copy-btn"
-                            title="Копировать"
+                            title={t('common.copy')}
                             onClick={handleCopy}
                         >
-                            <img src="/icons/ui/copy.svg" alt="Copy" />
+                            <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
                         <MessageActionButton
                             className="edit-btn"
-                            title="Редактировать"
+                            title={t('chat.editUserMessage.edit')}
                             onClick={() => setIsEditingUserMessage(true)}
                         >
-                            <img src="/icons/ui/edit.svg" alt="Edit" />
+                            <img src="/icons/ui/edit.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
                     </div>
                 )}
-                {isUser && isEditingUserMessage && (
-                    <div className="user-message-edit-panel ui-edit-panel">
-                        <textarea
-                            className="user-message-edit-textarea ui-edit-textarea"
-                            value={editedContent}
-                            onChange={(e) => setEditedContent(e.target.value)}
-                            placeholder="Отредактируйте ваше сообщение..."
-                        />
-                        <div className="edit-panel-buttons ui-edit-actions">
-                            <button
-                                type="button"
-                                className="edit-save-btn ui-edit-save"
-                                onClick={handleSaveEdit}
-                                disabled={!editedContent.trim() || editedContent.trim() === content}
-                            >
-                                Сохранить
-                            </button>
-                            <button
-                                type="button"
-                                className="edit-cancel-btn ui-edit-cancel"
-                                onClick={handleCancelEdit}
-                            >
-                                Отмена
-                            </button>
-                        </div>
-                    </div>
+                    </>
                 )}
             </div>
         </div>

@@ -29,8 +29,34 @@ type ApiServiceError = Error & {
 
 type ChatWidgetUpdate = Record<string, unknown>;
 
+export type CanvasTextdocComment = {
+    id?: string;
+    pattern: string;
+    comment: string;
+    created_at?: number;
+};
+
+export type CanvasTextdoc = {
+    id?: string;
+    name: string;
+    type: string;
+    content: string;
+    comments?: CanvasTextdocComment[];
+    updated_at?: number;
+};
+
+export type CanvasUpdate = {
+    action?: string;
+    events?: unknown[];
+    textdoc?: CanvasTextdoc | null;
+};
+
 export type ChatStreamResult = {
     aborted?: boolean;
+    canvas_textdoc?: CanvasTextdoc | null;
+    canvas_update?: CanvasUpdate;
+    canvas_updates?: CanvasUpdate[];
+    canvasTextdoc?: CanvasTextdoc | null;
     end_of_stream?: boolean;
     images?: string[] | string;
     reply?: string;
@@ -47,6 +73,7 @@ export type ChatStreamResult = {
 type ChatCallbacks = {
     onError?: (error: Error) => void;
     onComplete?: (data: ChatStreamResult) => void;
+    onCanvasUpdate?: (data: CanvasUpdate) => void;
     onPart?: (data: ChatStreamResult) => void;
     onWidgetUpdate?: (widgetData: ChatWidgetUpdate) => void;
 };
@@ -320,6 +347,13 @@ export type AdminOverview = {
             total: number;
             updated_24h: number;
         };
+        ai_feedback: {
+            total: number;
+            likes: number;
+            dislikes: number;
+            like_percent: number;
+            dislike_percent: number;
+        };
     };
     server: {
         status: string;
@@ -422,6 +456,15 @@ type AdminMindsResponse = {
 
 type AdminMindResponse = {
     mind?: AdminMind;
+};
+
+export type AIResponseFeedbackPayload = {
+    session_id: string;
+    message_client_id?: string;
+    rating: 'like' | 'dislike';
+    reason_codes?: string[];
+    comment?: string;
+    response_text: string;
 };
 
 type AdminUserUpdatePayload = {
@@ -541,7 +584,7 @@ export const apiService = {
         signal?: AbortSignal,
         callbacks: ChatCallbacks = {}
     ): Promise<void> {
-        const { onPart, onComplete, onError, onWidgetUpdate } = callbacks;
+        const { onPart, onComplete, onError, onWidgetUpdate, onCanvasUpdate } = callbacks;
 
         try {
             const response = await fetch(
@@ -600,12 +643,31 @@ export const apiService = {
                                 continue;
                             }
 
+                            if (data.canvas_update && onCanvasUpdate) {
+                                try {
+                                    onCanvasUpdate(data.canvas_update);
+                                } catch (canvasError) {
+                                    console.warn('onCanvasUpdate handler error', canvasError);
+                                }
+
+                                finalData = {
+                                    ...finalData,
+                                    canvas_update: data.canvas_update,
+                                };
+                                if (data.canvas_update.textdoc !== undefined) {
+                                    finalData.canvas_textdoc = data.canvas_update.textdoc;
+                                }
+                                continue;
+                            }
+
                             const shouldEmitPart = [
                                 'reply_part',
                                 'status',
                                 'images',
                                 'sources',
                                 'thinkingTime',
+                                'canvas_textdoc',
+                                'canvas_updates',
                             ].some((key) => key in data);
 
                             if (shouldEmitPart) {
@@ -626,6 +688,18 @@ export const apiService = {
                             if ('sessionSlug' in data) {
                                 finalData.sessionSlug = data.sessionSlug;
                             }
+                            if ('canvas_textdoc' in data) {
+                                finalData.canvas_textdoc = data.canvas_textdoc;
+                            }
+                            if ('canvas_updates' in data) {
+                                finalData.canvas_updates = data.canvas_updates;
+                            }
+                            if ('canvas_update' in data) {
+                                finalData.canvas_update = data.canvas_update;
+                                if (data.canvas_update?.textdoc !== undefined) {
+                                    finalData.canvas_textdoc = data.canvas_update.textdoc;
+                                }
+                            }
 
                             const knownKeys = new Set([
                                 'reply',
@@ -639,6 +713,9 @@ export const apiService = {
                                 'sessionId',
                                 'sessionSlug',
                                 'widget_update',
+                                'canvas_update',
+                                'canvas_updates',
+                                'canvas_textdoc',
                             ]);
 
                             Object.keys(data).forEach((key) => {
@@ -765,6 +842,16 @@ export const apiService = {
             }
         );
         return data.mind || null;
+    },
+
+    async submitAIResponseFeedback(
+        payload: AIResponseFeedbackPayload
+    ): Promise<{ feedback?: { rating?: string; service_improvement_opt_in?: boolean } }> {
+        return fetchApi('/api/feedback/ai-response', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
     },
 
     async listMindCategories(): Promise<MindCategory[]> {

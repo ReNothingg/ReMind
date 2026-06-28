@@ -1,0 +1,658 @@
+html.has-canvas-dock {
+  width: 100%;
+  height: var(--app-viewport-height);
+  min-height: 0;
+  max-height: var(--app-viewport-height);
+  padding: 0 !important;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html.has-canvas-dock body {
+  display: block;
+  width: 100%;
+  height: var(--app-viewport-height);
+  min-height: 0;
+  max-height: var(--app-viewport-height);
+  align-items: initial;
+  padding: 0 !important;
+  transition:
+    background var(--transition-normal),
+    color var(--transition-normal);
+}
+
+html.has-canvas-dock #root {
+  width: 100%;
+  height: var(--app-viewport-height);
+  min-height: 0;
+  max-height: var(--app-viewport-height);
+  overflow: hidden;
+}
+
+.ui-app-canvas-stage {
+  min-height: var(--app-viewport-height);
+  width: 100%;
+}
+
+.chat-canvas-dock {
+  --canvas-panel-width: 520px;
+  position: sticky;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  z-index: 90;
+  align-self: start;
+  overflow: hidden;
+  width: var(--canvas-dock-width, var(--canvas-panel-width));
+  height: var(--app-viewport-height);
+  max-height: var(--app-viewport-height);
+  border-left: 1px solid rgba(var(--color-white-raw), 0.08);
+  background: rgba(16, 17, 20, 0.98);
+  box-shadow: none;
+  transition:
+    width var(--transition-normal),
+    background var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.chat-canvas-dock.is-open {
+  width: var(--canvas-dock-width, var(--canvas-panel-width));
+}
+
+.chat-canvas-dock.is-collapsed {
+  display: flex;
+  width: var(--canvas-dock-width, 88px);
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: calc(var(--app-mobile-header-height) + 18px);
+}
+
+.chat-canvas-panel {
+  position: static;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  background: rgba(16, 17, 20, 0.98);
+}
+
+body.has-canvas-dock {
+  --canvas-panel-width: 520px;
+  --canvas-dock-collapsed-width: 88px;
+  --canvas-dock-width: var(--canvas-dock-collapsed-width);
+  --canvas-dock-gap: 28px;
+  --canvas-layout-right-offset: calc(var(--canvas-dock-width) + var(--canvas-dock-gap));
+  --canvas-workspace-left: calc(var(--app-rail-offset) + var(--spacing-unit) * 6 + env(safe-area-inset-left));
+  --canvas-workspace-right: calc(var(--canvas-layout-right-offset) + var(--spacing-unit) * 6 + env(safe-area-inset-right));
+  --canvas-workspace-width: calc(100vw - var(--canvas-workspace-left) - var(--canvas-workspace-right));
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.has-canvas-dock.canvas-open {
+  --canvas-dock-width: var(--canvas-panel-width);
+}
+
+body.has-canvas-dock .ui-app-canvas-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--canvas-dock-width);
+  width: 100vw;
+  height: var(--app-viewport-height);
+  min-height: 0;
+  max-height: var(--app-viewport-height);
+  overflow: hidden;
+}
+
+body.has-canvas-dock .ui-app-main-shell {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--app-viewport-height);
+  max-height: var(--app-viewport-height);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-right: 0;
+}
+
+body.has-canvas-dock .global-controls,
+body.has-canvas-dock .ui-toolbar-shell {
+  right: var(--canvas-workspace-right);
+}
+
+body.has-canvas-dock .chat-container,
+body.has-canvas-dock .ui-chat-mind-banner {
+  --app-content-width-dynamic: min(720px, calc(var(--canvas-workspace-width) - var(--spacing-unit) * 6));
+  --app-content-max-width-dynamic: calc(var(--canvas-workspace-width) - var(--spacing-unit) * 6);
+}
+
+body.has-canvas-dock .chat-container {
+  height: var(--app-viewport-height);
+  min-height: 0;
+  max-height: var(--app-viewport-height);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) {
+  left: var(--canvas-workspace-left) !important;
+  right: var(--canvas-workspace-right) !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  transform: none !important;
+  align-items: center !important;
+}
+
+body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .input-wrapper,
+body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .attach-area {
+  width: min(720px, 100%) !important;
+  max-width: 100% !important;
+}
+
+body.canvas-resizing,
+body.canvas-resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+body.canvas-resizing .chat-canvas-dock,
+body.canvas-resizing .chat-container,
+body.canvas-resizing .main-input-area,
+body.canvas-resizing .global-controls,
+body.canvas-resizing .ui-toolbar-shell {
+  transition: none !important;
+}
+
+.chat-canvas-resize-handle {
+  position: absolute;
+  inset: 0 auto 0 -5px;
+  z-index: 3;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.chat-canvas-resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: rgba(var(--color-white-raw), 0.10);
+  transition:
+    width var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.chat-canvas-resize-handle:hover::before,
+.chat-canvas-resize-handle:focus-visible::before,
+body.canvas-resizing .chat-canvas-resize-handle::before {
+  left: 3px;
+  width: 3px;
+  background: rgba(var(--color-accent-raw), 0.72);
+  box-shadow: 0 0 18px rgba(var(--color-accent-raw), 0.28);
+}
+
+.chat-canvas-dock-trigger {
+  display: grid;
+  width: 52px;
+  min-height: 188px;
+  grid-template-rows: 38px minmax(0, 1fr) 28px;
+  align-items: center;
+  justify-items: center;
+  gap: 10px;
+  border: 1px solid rgba(var(--color-white-raw), 0.10);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: 8px 6px;
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.chat-canvas-dock-trigger:hover {
+  transform: translateX(-2px);
+  border-color: rgba(var(--color-accent-raw), 0.38);
+  background: rgba(var(--color-accent-raw), 0.10);
+}
+
+.chat-canvas-dock-trigger:focus-visible {
+  outline: 2px solid rgba(var(--color-accent-raw), 0.62);
+  outline-offset: 2px;
+}
+
+.chat-canvas-dock-icon {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(var(--color-accent-raw), 0.12);
+  color: var(--color-accent);
+}
+
+.chat-canvas-dock-copy {
+  display: flex;
+  min-height: 0;
+  align-items: center;
+  gap: 7px;
+  writing-mode: vertical-rl;
+}
+
+.chat-canvas-dock-copy span,
+.chat-canvas-dock-copy small {
+  color: var(--color-text-tertiary);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.chat-canvas-dock-copy strong {
+  display: block;
+  max-height: 108px;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 0.84rem;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-canvas-dock-copy small {
+  max-height: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-canvas-header,
+.chat-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(var(--color-white-raw), 0.07);
+  padding: 14px 16px;
+}
+
+.chat-canvas-title-block {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-canvas-title-block span:not(.chat-canvas-icon) {
+  display: block;
+  color: var(--color-text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.chat-canvas-title-block strong {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 0.98rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-canvas-icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--color-white-raw), 0.10);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--color-accent);
+}
+
+.chat-canvas-toolbar {
+  background: rgba(255, 255, 255, 0.015);
+  padding: 10px 16px;
+}
+
+.chat-canvas-meta,
+.chat-canvas-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-canvas-meta {
+  min-width: 0;
+  flex-wrap: wrap;
+  color: var(--color-text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.chat-canvas-meta span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border: 1px solid rgba(var(--color-white-raw), 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 3px 8px;
+}
+
+.chat-canvas-actions {
+  flex-shrink: 0;
+}
+
+.chat-canvas-icon-button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--color-white-raw), 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.chat-canvas-icon-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--color-accent-raw), 0.34);
+  background: rgba(var(--color-accent-raw), 0.12);
+  color: var(--color-text-primary);
+}
+
+.chat-canvas-icon-button:focus-visible {
+  outline: 2px solid rgba(var(--color-accent-raw), 0.62);
+  outline-offset: 2px;
+}
+
+.chat-canvas-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.chat-canvas-editor {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  border: 1px solid rgba(var(--color-white-raw), 0.075);
+  border-radius: 10px;
+  background: rgba(5, 6, 8, 0.58);
+  color: rgba(var(--color-white-raw), 0.88);
+  font-family: var(--font-family-main);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  outline: none;
+  padding: 16px;
+  resize: none;
+  tab-size: 2;
+}
+
+.chat-canvas-editor.is-code {
+  font-family: var(--font-family-code);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.chat-canvas-code-editor {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-white-raw), 0.075);
+  border-radius: 10px;
+  background: rgba(5, 6, 8, 0.58);
+}
+
+.chat-canvas-code-editor .chat-canvas-editor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  min-height: 100%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  caret-color: var(--color-text-primary);
+  color: transparent;
+  overflow: auto;
+  -webkit-text-fill-color: transparent;
+}
+
+.chat-canvas-code-editor .chat-canvas-editor::placeholder {
+  color: var(--color-text-tertiary);
+  -webkit-text-fill-color: var(--color-text-tertiary);
+}
+
+.chat-canvas-code-editor .chat-canvas-editor::selection {
+  background: rgba(var(--color-accent-raw), 0.28);
+}
+
+.chat-canvas-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  min-width: 100%;
+  margin: 0;
+  padding: 16px;
+  pointer-events: none;
+  color: var(--code-token-plain);
+  font-family: var(--font-family-code);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+  word-break: normal;
+}
+
+.chat-canvas-editor:focus {
+  border-color: rgba(var(--color-accent-raw), 0.46);
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-raw), 0.10);
+}
+
+.chat-canvas-code-editor:focus-within {
+  border-color: rgba(var(--color-accent-raw), 0.46);
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-raw), 0.10);
+}
+
+.chat-canvas-comments {
+  border-top: 1px solid rgba(var(--color-white-raw), 0.08);
+  background: rgba(255, 255, 255, 0.014);
+  padding: 12px 16px 16px;
+}
+
+.chat-canvas-comments-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+.chat-canvas-comments-title strong {
+  color: var(--color-text-primary);
+}
+
+.chat-canvas-comments-title span {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-size: 0.76rem;
+}
+
+.chat-canvas-comment-list {
+  display: grid;
+  max-height: 210px;
+  gap: 8px;
+  overflow: auto;
+  padding-top: 10px;
+}
+
+.chat-canvas-comment {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(var(--color-white-raw), 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px;
+}
+
+.chat-canvas-comment code {
+  overflow: hidden;
+  color: var(--color-accent);
+  font-family: var(--font-family-code);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-canvas-comment p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+html[data-theme='light'] .chat-canvas-dock,
+html[data-theme='light'] .chat-canvas-panel {
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html[data-theme='light'] .chat-canvas-toolbar,
+html[data-theme='light'] .chat-canvas-comments {
+  background: rgba(15, 23, 42, 0.018);
+}
+
+html[data-theme='light'] .chat-canvas-icon,
+html[data-theme='light'] .chat-canvas-icon-button,
+html[data-theme='light'] .chat-canvas-dock-trigger,
+html[data-theme='light'] .chat-canvas-meta span {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.028);
+}
+
+html[data-theme='light'] .chat-canvas-editor {
+  border-color: rgba(15, 23, 42, 0.10);
+  background: #fbfbfc;
+  color: var(--color-text-primary);
+}
+
+html[data-theme='light'] .chat-canvas-code-editor {
+  border-color: rgba(15, 23, 42, 0.10);
+  background: #fbfbfc;
+}
+
+@media (max-width: 760px) {
+  body.has-canvas-dock .ui-app-main-shell {
+    width: 100vw;
+    padding-right: 0;
+  }
+
+  body.has-canvas-dock .ui-app-canvas-stage {
+    display: block;
+    width: 100%;
+    overflow-x: visible;
+  }
+
+  body.has-canvas-dock .global-controls,
+  body.has-canvas-dock .ui-toolbar-shell {
+    right: calc(var(--spacing-unit) * 3 + env(safe-area-inset-right));
+  }
+
+  body.has-canvas-dock .chat-container,
+  body.has-canvas-dock .main-input-area,
+  body.has-canvas-dock .ui-chat-mind-banner {
+    --app-content-width-dynamic: var(--content-width);
+    --app-content-max-width-dynamic: var(--content-width-max);
+  }
+
+  body.has-canvas-dock .main-input-area.ui-main-input-shell {
+    left: calc(50% + (var(--app-rail-offset) / 2)) !important;
+    right: auto !important;
+    width: var(--app-content-width-dynamic) !important;
+    max-width: var(--app-content-max-width-dynamic) !important;
+    transform: translateX(-50%) !important;
+    align-items: stretch !important;
+  }
+
+  body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .input-wrapper,
+  body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .attach-area {
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .chat-canvas-dock,
+  .chat-canvas-dock.is-open {
+    position: fixed;
+    top: auto;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    max-height: min(72vh, 720px);
+    border-radius: 18px;
+    z-index: 1300;
+  }
+
+  .chat-canvas-dock.is-collapsed {
+    top: auto;
+    right: 12px;
+    bottom: calc(var(--app-composer-reserved-height) + 20px);
+    left: auto;
+    width: auto;
+    max-height: none;
+    padding: 0;
+    border-radius: 16px;
+  }
+
+  .chat-canvas-dock-trigger {
+    width: min(280px, calc(100vw - 24px));
+    min-height: 52px;
+    grid-template-columns: 34px minmax(0, 1fr) 24px;
+    grid-template-rows: none;
+    justify-items: stretch;
+  }
+
+  .chat-canvas-dock-copy {
+    display: grid;
+    gap: 2px;
+    writing-mode: horizontal-tb;
+  }
+
+  .chat-canvas-dock-copy strong,
+  .chat-canvas-dock-copy small {
+    max-height: none;
+  }
+}

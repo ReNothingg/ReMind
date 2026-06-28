@@ -65,7 +65,9 @@
   "common": {
     "loading": "加载中...",
     "closeEsc": "关闭 (Esc)",
-    "selectOption": "选择一个选项"
+    "selectOption": "选择一个选项",
+    "copy": "Copy",
+    "close": "Close"
   },
   "think": {
     "label": "思考",
@@ -90,6 +92,13 @@
   },
   "chat": {
     "readOnly": "聊天只读",
+    "editUserMessage": {
+      "placeholder": "Edit your message...",
+      "ariaLabel": "Edit your message",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit"
+    },
     "githubDiff": {
       "title": "Pull request changes",
       "branch": "Branch",
@@ -109,6 +118,70 @@
         "modified": "Modified",
         "renamed": "Renamed"
       }
+    },
+    "ariaLog": "Conversation messages",
+    "userMessageAria": "Your message",
+    "assistantMessageAria": "Assistant message",
+    "regenerate": "Regenerate",
+    "variants": {
+      "previous": "Previous response",
+      "next": "Next response",
+      "counter": "Response {{current}} of {{total}}"
+    },
+    "audio": {
+      "speak": "Read aloud",
+      "label": "Audio",
+      "loading": "Loading audio...",
+      "play": "Play",
+      "pause": "Pause",
+      "progress": "Audio playback position",
+      "error": "Could not load audio."
+    },
+    "feedback": {
+      "like": "Good answer",
+      "dislike": "Bad answer",
+      "panelTitle": "What was wrong with the answer?",
+      "reasonGroup": "Feedback reasons",
+      "commentLabel": "Additional feedback",
+      "commentPlaceholder": "Describe what should be improved",
+      "submit": "Send feedback",
+      "sending": "Sending...",
+      "sent": "Feedback sent",
+      "error": "Failed to send feedback",
+      "noSession": "Feedback is available only in saved chats.",
+      "reasons": {
+        "incorrect": "Incorrect",
+        "unsafe": "Unsafe",
+        "not_helpful": "Not helpful",
+        "too_long": "Too long",
+        "missing_context": "Missed context",
+        "other": "Other"
+      }
+    }
+  },
+  "canvas": {
+    "ariaLabel": "Canvas text document",
+    "badge": "Canvas",
+    "close": "Close canvas",
+    "restore": "Open canvas",
+    "copy": "Copy content",
+    "copied": "Copied",
+    "download": "Download",
+    "preview": "Preview",
+    "empty": "No content yet.",
+    "lines": "{{count}} lines",
+    "type": {
+      "document": "Document",
+      "code": "Code: {{language}}"
+    },
+    "comments": {
+      "title": "Comments",
+      "count": "{{count}}"
+    },
+    "editorLabel": "Canvas editor",
+    "resizeHandle": "Resize canvas",
+    "card": {
+      "openAria": "Open {{name}} in canvas"
     }
   },
   "composer": {
@@ -133,7 +206,8 @@
     "webSearchOff": "开启网页搜索"
   },
   "files": {
-    "removeFile": "移除文件"
+    "removeFile": "移除文件",
+    "fileFallback": "File"
   },
   "share": {
     "title": "聊天分享",
@@ -367,6 +441,33 @@
       "autoSave": {
         "title": "自动保存",
         "description": "自动保存聊天历史。"
+      },
+      "chatPanel": {
+        "group": "聊天面板",
+        "position": {
+          "label": "屏幕位置",
+          "bottomCenter": "底部居中",
+          "center": "居中",
+          "topCenter": "顶部居中",
+          "right": "右侧",
+          "left": "左侧"
+        },
+        "reset": {
+          "label": "重置为新聊天",
+          "never": "从不",
+          "after5": "5 分钟后",
+          "after10": "10 分钟后",
+          "after30": "30 分钟后"
+        },
+        "shortcut": {
+          "label": "键盘快捷键",
+          "disabled": "已关闭"
+        },
+        "newChat": {
+          "label": "打开新聊天",
+          "companion": "在伴随聊天中",
+          "browser": "在浏览器中"
+        }
       }
     },
     "accessibility": {
@@ -465,7 +566,8 @@
       "arabic": "阿拉伯语",
       "hindi": "印地语",
       "bengali": "孟加拉语"
-    }
+    },
+    "translateAction": "Translate"
   },
   "quiz": {
     "dataError": "测验数据错误",
@@ -722,6 +824,43 @@
         "diffLoaded": "{{files}} changed files",
         "pullRequestOpened": "Pull request #{{number}}"
       }
+    }
+  },
+  "chatImage": {
+    "messageAlt": "Chat image {{number}}",
+    "generating": "Creating image: {{prompt}}"
+  },
+  "codeBlock": {
+    "codeSnippet": "Code snippet",
+    "diagram": "Diagram",
+    "preview": "Preview",
+    "code": "Code",
+    "download": "Download file",
+    "copy": "Copy code",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "tableCopy": "Copy table",
+    "tableCopied": "Copied",
+    "copyFailed": "Copy failed",
+    "loading": {
+      "chartjs": "Loading chart...",
+      "d3": "Loading visualization...",
+      "nomnoml": "Loading diagram...",
+      "mermaid": "Loading diagram...",
+      "svg": "Rendering safe SVG..."
+    }
+  },
+  "widgets": {
+    "creating": "Creating {{tool}}"
+  },
+  "htmlPreview": {
+    "title": "HTML preview"
+  },
+  "admin": {
+    "aiFeedback": {
+      "likeRatio": "AI answer likes",
+      "dislikeRatio": "AI answer dislikes",
+      "total": "AI answer ratings"
     }
   }
 }

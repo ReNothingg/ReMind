@@ -66,9 +66,11 @@ export default function ShareModal({
 
     return (
         <ModalShell
+            ariaLabel={t('share.title')}
             className="share-modal-overlay"
             contentClassName="share-modal ui-share-modal-card"
             onBackdropClick={onClose}
+            onRequestClose={onClose}
         >
             <div className="share-modal-header ui-share-modal-header">
                 <div className="share-modal-title ui-share-modal-title">{t('share.title')}</div>
@@ -119,7 +121,7 @@ export default function ShareModal({
                             title={t('share.copyLink')}
                             aria-label={t('share.copyLink')}
                         >
-                            <img src="/icons/ui/copy.svg" alt="copy" className="h-[18px] w-[18px]" />
+                            <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px]" />
                         </button>
                     </div>
                 </ShareRow>

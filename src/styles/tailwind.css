@@ -40,9 +40,28 @@
 @import "./features/admin.css" layer(components);
 @import "./features/github.css" layer(components);
 @import "./features/reminders.css" layer(components);
+@import "./features/canvas.css" layer(components);
 
 @source "../../index.html";
 @source "../**/*.{js,jsx,ts,tsx}";
+
+@layer base {
+  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid rgba(var(--color-accent-raw), 0.82);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
 
 @theme inline {
   --font-sans: var(--font-family-main);
@@ -273,6 +292,28 @@
     color: var(--user-message-text-color);
   }
 
+  .ui-message-bubble-editing {
+    @apply border-0 bg-transparent p-0 shadow-none;
+    max-width: 620px;
+  }
+
+  .user-message.is-editing-user-message .message-content,
+  .user-message.is-editing-user-message .ui-message-bubble-user {
+    padding: 0 !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+  }
+
+  html[data-theme='light'] .user-message.is-editing-user-message .message-content,
+  html[data-theme='light'] .user-message.is-editing-user-message .ui-message-bubble-user {
+    background: transparent !important;
+    border-color: transparent !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+  }
+
   .ui-message-bubble-ai {
     @apply w-full max-w-full border-0 px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*3)] text-foreground;
     background: transparent;
@@ -405,33 +446,99 @@
   }
 
   .ui-edit-panel {
-    @apply mt-2 flex flex-col gap-1.5 rounded-[var(--radius-md)] border p-1.5;
-    background: rgba(var(--color-white-raw), 0.04);
-    border-color: rgba(var(--color-white-raw), 0.1);
+    @apply mt-0 flex w-full max-w-[620px] flex-col overflow-hidden rounded-[18px] border p-0;
+    background: var(--color-bg-surface);
+    border-color: rgba(var(--color-white-raw), 0.16);
   }
 
   .ui-edit-textarea {
-    @apply min-h-[100px] w-full resize-y rounded-[var(--radius-sm)] border px-3 py-2 text-[0.95rem] leading-6 outline-none transition duration-150 ease-out;
-    background: rgba(var(--color-white-raw), 0.08);
-    border-color: rgba(var(--color-white-raw), 0.15);
+    @apply min-h-[154px] w-full resize-y border-0 bg-transparent px-4 py-4 text-[1.02rem] leading-7 outline-none transition duration-150 ease-out;
     color: var(--user-message-text-color);
+    box-shadow: none;
+  }
+
+  .ui-edit-textarea::placeholder {
+    color: color-mix(in srgb, var(--user-message-text-color), transparent 48%);
   }
 
   .ui-edit-textarea:focus {
-    background: rgba(var(--color-white-raw), 0.12);
-    border-color: rgba(var(--color-white-raw), 0.25);
+    background: var(--color-bg-surface-alt);
+    box-shadow: none;
   }
 
   .ui-edit-actions {
-    @apply flex justify-end gap-1;
+    @apply flex flex-wrap items-center justify-end gap-1.5 border-t px-3 py-2;
+    background: var(--color-bg-surface-alt);
+    border-top-color: rgba(var(--color-white-raw), 0.1);
   }
 
   .ui-edit-save {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-text-link)] px-3 py-1.5 text-[0.9rem] font-medium text-white transition duration-150 ease-out hover:-translate-y-px hover:bg-[var(--color-text-link-hover)] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-[var(--radius-md)] border px-3.5 py-2 text-[0.9rem] font-semibold leading-none text-white transition duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-45;
+    background: var(--color-text-link);
+    border-color: var(--color-text-link);
+  }
+
+  .ui-edit-save:hover:not(:disabled) {
+    background: var(--color-text-link-hover);
+    border-color: var(--color-text-link-hover);
+  }
+
+  .ui-edit-save:disabled {
+    box-shadow: none;
   }
 
   .ui-edit-cancel {
-    @apply inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-bg-interactive)] px-3 py-1.5 text-[0.9rem] font-medium text-foreground transition duration-150 ease-out hover:-translate-y-px hover:bg-[var(--color-border-strong)];
+    @apply inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-[var(--radius-md)] border px-3.5 py-2 text-[0.9rem] font-semibold leading-none text-foreground transition duration-150 ease-out;
+    background: rgba(var(--color-white-raw), 0.08);
+    border-color: rgba(var(--color-white-raw), 0.12);
+  }
+
+  .ui-edit-cancel:hover {
+    background: rgba(var(--color-white-raw), 0.14);
+    border-color: rgba(var(--color-white-raw), 0.2);
+  }
+
+  html[data-theme='light'] .ui-edit-panel {
+    background: var(--color-bg-surface);
+    border-color: var(--color-border-medium);
+    box-shadow: none;
+  }
+
+  html[data-theme='light'] .ui-edit-textarea {
+    background: transparent;
+    color: var(--color-text-primary);
+    box-shadow: none;
+  }
+
+  html[data-theme='light'] .ui-edit-textarea:focus {
+    background: var(--color-bg-surface-alt);
+    box-shadow: none;
+  }
+
+  html[data-theme='light'] .ui-edit-actions {
+    background: var(--color-bg-surface-alt);
+    border-top-color: var(--color-border-subtle);
+  }
+
+  html[data-theme='light'] .ui-edit-cancel {
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--color-text-primary);
+    border-color: var(--color-border-medium);
+  }
+
+  @media (max-width: 640px) {
+    .ui-edit-textarea {
+      min-height: 136px;
+    }
+
+    .ui-edit-actions {
+      justify-content: stretch;
+    }
+
+    .ui-edit-save,
+    .ui-edit-cancel {
+      flex: 1 1 0;
+    }
   }
 
   .ui-chat-stack {
@@ -932,8 +1039,9 @@
 
   .ui-composer-icon-button:focus,
   .ui-composer-icon-button:focus-visible {
-    outline: none;
-    box-shadow: none;
+    outline: 2px solid rgba(var(--color-accent-raw), 0.82);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px rgba(var(--color-accent-raw), 0.16);
   }
 
   .ui-hint-pill {

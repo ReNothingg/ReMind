@@ -57,6 +57,16 @@
   object-fit: cover;
 }
 
+.message-attachments .attachment-card-preview-button {
+  display: block;
+  cursor: zoom-in;
+}
+
+.message-attachments .attachment-card-preview-button:focus-visible {
+  outline: 2px solid rgba(var(--color-accent-raw), 0.82);
+  outline-offset: -2px;
+}
+
 .message-attachments .attachment-card-preview img.generic-icon {
   object-fit: contain;
   width: 48px;

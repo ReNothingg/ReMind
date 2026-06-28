@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiService } from '../services/api';
+import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/api';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
 import { useSettings } from '../context/SettingsContext';
 
@@ -158,15 +158,56 @@ function normalizeHistoryMessage(msg) {
         files,
         sources: Array.isArray(msg.sources) ? msg.sources : [],
         githubTool: msg.github_tool || msg.githubTool || null,
+        canvasTextdoc: normalizeCanvasTextdoc(msg.canvas_textdoc || msg.canvasTextdoc),
+        canvasUpdates: Array.isArray(msg.canvas_updates || msg.canvasUpdates)
+            ? (msg.canvas_updates || msg.canvasUpdates)
+            : [],
         timestamp: msg.timestamp,
         parts
     };
+}
+
+function normalizeCanvasTextdoc(value): CanvasTextdoc | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const name = typeof value.name === 'string' ? value.name : '';
+    const type = typeof value.type === 'string' ? value.type : '';
+    if (!name || !type) {
+        return null;
+    }
+
+    return {
+        id: typeof value.id === 'string' ? value.id : undefined,
+        name,
+        type,
+        content: typeof value.content === 'string' ? value.content : '',
+        comments: Array.isArray(value.comments) ? value.comments : [],
+        updated_at: typeof value.updated_at === 'number' ? value.updated_at : undefined
+    };
+}
+
+function extractLatestCanvasTextdoc(messages): CanvasTextdoc | null {
+    if (!Array.isArray(messages)) {
+        return null;
+    }
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const textdoc = normalizeCanvasTextdoc(messages[index]?.canvasTextdoc || messages[index]?.canvas_textdoc);
+        if (textdoc) {
+            return textdoc;
+        }
+    }
+
+    return null;
 }
 
 export const useChat = () => {
     const { t } = useTranslation();
     const { settings } = useSettings();
     const [history, setHistory] = useState([]);
+    const [canvasTextdoc, setCanvasTextdoc] = useState<CanvasTextdoc | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
@@ -185,8 +226,79 @@ export const useChat = () => {
     const sessionLoadRequestIdRef = useRef(0);
     const currentSessionIdRef = useRef(null);
     const currentSessionSlugRef = useRef(null);
+    const canvasTextdocRef = useRef<CanvasTextdoc | null>(null);
     const activeMindIdRef = useRef(null);
     const temporaryChatRef = useRef(false);
+
+    const setCanvasTextdocState = useCallback((value) => {
+        const normalized = normalizeCanvasTextdoc(value);
+        canvasTextdocRef.current = normalized;
+        setCanvasTextdoc(normalized);
+    }, []);
+
+    const applyCanvasUpdate = useCallback((update: CanvasUpdate | null | undefined) => {
+        if (!update || typeof update !== 'object') {
+            return;
+        }
+        if ('textdoc' in update) {
+            setCanvasTextdocState(update.textdoc);
+        }
+    }, [setCanvasTextdocState]);
+
+    const updateCanvasTextdocContent = useCallback((content: string, textdocId?: string | null) => {
+        const current = canvasTextdocRef.current;
+        if (!current) {
+            return;
+        }
+
+        const shouldUpdateGlobal = !textdocId || !current.id || current.id === textdocId;
+        const updatedTextdoc = {
+            ...current,
+            content,
+            updated_at: Math.floor(Date.now() / 1000)
+        };
+
+        if (shouldUpdateGlobal) {
+            canvasTextdocRef.current = updatedTextdoc;
+            setCanvasTextdoc(updatedTextdoc);
+        }
+
+        const targetId = textdocId || current.id || null;
+        setHistory(prev => prev.map((message) => {
+            const messageTextdoc = normalizeCanvasTextdoc(message.canvasTextdoc || message.canvas_textdoc);
+            const isTarget = messageTextdoc && (
+                (targetId && messageTextdoc.id === targetId) ||
+                (!targetId && messageTextdoc.name === current.name && messageTextdoc.type === current.type)
+            );
+
+            if (!isTarget) {
+                return message;
+            }
+
+            const nextTextdoc = {
+                ...messageTextdoc,
+                content,
+                updated_at: updatedTextdoc.updated_at
+            };
+
+            return {
+                ...message,
+                canvasTextdoc: nextTextdoc,
+                variants: Array.isArray(message.variants)
+                    ? message.variants.map((variant) => {
+                        const variantTextdoc = normalizeCanvasTextdoc(variant.canvasTextdoc || variant.canvas_textdoc);
+                        const variantIsTarget = variantTextdoc && (
+                            (targetId && variantTextdoc.id === targetId) ||
+                            (!targetId && variantTextdoc.name === current.name && variantTextdoc.type === current.type)
+                        );
+                        return variantIsTarget
+                            ? { ...variant, canvasTextdoc: { ...variantTextdoc, content, updated_at: updatedTextdoc.updated_at } }
+                            : variant;
+                    })
+                    : message.variants
+            };
+        }));
+    }, []);
 
     const setTemporaryChatMode = useCallback((enabled) => {
         temporaryChatRef.current = !!enabled;
@@ -432,12 +544,13 @@ export const useChat = () => {
 
     const resetConversationState = useCallback(() => {
         setHistory([]);
+        setCanvasTextdocState(null);
         updateSessionIdentity(null, null);
         setSessionAccess(createDefaultSessionAccess());
         setIsReadOnly(false);
         activeMindIdRef.current = null;
         messageVariantsRef.current.clear();
-    }, [updateSessionIdentity]);
+    }, [setCanvasTextdocState, updateSessionIdentity]);
 
     const syncSessionIdentity = useCallback((sessionId, slug, options: SyncSessionOptions = {}) => {
         if (!sessionId) return;
@@ -492,6 +605,7 @@ export const useChat = () => {
 
         if (clearHistory) {
             setHistory(Array.isArray(cachedHistory) ? cachedHistory : []);
+            setCanvasTextdocState(extractLatestCanvasTextdoc(cachedHistory));
             setSessionAccess(createDefaultSessionAccess());
             setIsReadOnly(false);
             messageVariantsRef.current.clear();
@@ -528,6 +642,7 @@ export const useChat = () => {
                 };
 
                 setHistory(normalized);
+                setCanvasTextdocState(extractLatestCanvasTextdoc(normalized));
                 sessionHistoryCacheRef.current.set(resolvedSessionId, normalized);
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
@@ -559,6 +674,7 @@ export const useChat = () => {
         resetConversationState,
         sessionIdToSlug,
         setTemporaryChatMode,
+        setCanvasTextdocState,
         slugToSessionId,
         syncBrowserPath,
         syncPersistedCurrentSession,
@@ -764,6 +880,9 @@ export const useChat = () => {
         formData.append('model', model);
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
+        if (canvasTextdocRef.current) {
+            formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
+        }
         formData.append('webSearch', String(webSearch));
         formData.append('autoWebSearch', String(autoWebSearch));
         formData.append('censorship', String(censorship));
@@ -931,6 +1050,22 @@ export const useChat = () => {
                         return msg;
                     }));
                 },
+                onCanvasUpdate: (canvasUpdate) => {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
+                        return;
+                    }
+                    applyCanvasUpdate(canvasUpdate);
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
+                        if (msg.id === aiMsgId) {
+                            return {
+                                ...msg,
+                                canvasTextdoc: normalizeCanvasTextdoc(canvasUpdate?.textdoc),
+                                canvasUpdates: [...(msg.canvasUpdates || []), canvasUpdate]
+                            };
+                        }
+                        return msg;
+                    }));
+                },
                 onComplete: (finalData) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
@@ -956,8 +1091,12 @@ export const useChat = () => {
                         storeGuestSessionToken(resolvedSessionId, finalData.session_token);
                     }
 
-                    const finalContent = finalData.reply || fullReply;
+                    const finalContent = typeof finalData.reply === 'string' ? finalData.reply : fullReply;
                     const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
+                    const finalCanvasTextdoc = normalizeCanvasTextdoc(finalData.canvas_textdoc || finalData.canvasTextdoc);
+                    if (finalCanvasTextdoc) {
+                        setCanvasTextdocState(finalCanvasTextdoc);
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             const firstVariant = {
@@ -965,6 +1104,7 @@ export const useChat = () => {
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
+                                canvasTextdoc: finalCanvasTextdoc,
                                 thinkingTime: finalData.thinkingTime
                             };
                             return {
@@ -976,6 +1116,10 @@ export const useChat = () => {
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
+                                canvasTextdoc: finalCanvasTextdoc,
+                                canvasUpdates: Array.isArray(finalData.canvas_updates)
+                                    ? finalData.canvas_updates
+                                    : msg.canvasUpdates || [],
                                 thinkingTime: finalData.thinkingTime,
                                 variants: [firstVariant],
                                 currentVariantIndex: 0
@@ -1016,6 +1160,7 @@ export const useChat = () => {
         }
     }, [
         addGuestSession,
+        applyCanvasUpdate,
         beginSessionRequest,
         buildHistoryForAPI,
         completeSessionRequest,
@@ -1025,6 +1170,7 @@ export const useChat = () => {
         registerSessionSlug,
         sessionIdToSlug,
         settings?.automaticWebSearch,
+        setCanvasTextdocState,
         setTemporaryChatMode,
         storeGuestSessionToken,
         syncBrowserPath,
@@ -1078,6 +1224,9 @@ export const useChat = () => {
         formData.append('model', model);
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
+        if (canvasTextdocRef.current) {
+            formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
+        }
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
         formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
@@ -1117,18 +1266,39 @@ export const useChat = () => {
                         return msg;
                     }));
                 },
+                onCanvasUpdate: (canvasUpdate) => {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
+                        return;
+                    }
+                    applyCanvasUpdate(canvasUpdate);
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
+                        if (msg.id === aiMessageId) {
+                            return {
+                                ...msg,
+                                canvasTextdoc: normalizeCanvasTextdoc(canvasUpdate?.textdoc),
+                                canvasUpdates: [...(msg.canvasUpdates || []), canvasUpdate]
+                            };
+                        }
+                        return msg;
+                    }));
+                },
                 onComplete: (finalData) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
                     const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
+                    const finalCanvasTextdoc = normalizeCanvasTextdoc(finalData.canvas_textdoc || finalData.canvasTextdoc);
+                    if (finalCanvasTextdoc) {
+                        setCanvasTextdocState(finalCanvasTextdoc);
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             const newVariant = {
-                                content: finalData.reply || fullReply,
+                                content: typeof finalData.reply === 'string' ? finalData.reply : fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
+                                canvasTextdoc: finalCanvasTextdoc,
                                 thinkingTime: finalData.thinkingTime
                             };
                             const existingVariants = msg.variants || [];
@@ -1142,6 +1312,10 @@ export const useChat = () => {
                                 images: newVariant.images,
                                 sources: newVariant.sources,
                                 githubTool: finalGitHubTool,
+                                canvasTextdoc: finalCanvasTextdoc,
+                                canvasUpdates: Array.isArray(finalData.canvas_updates)
+                                    ? finalData.canvas_updates
+                                    : msg.canvasUpdates || [],
                                 thinkingTime: newVariant.thinkingTime,
                                 variants: newVariants,
                                 currentVariantIndex: newCurrentIndex
@@ -1178,6 +1352,7 @@ export const useChat = () => {
             }
         }
     }, [
+        applyCanvasUpdate,
         beginSessionRequest,
         buildHistoryForAPI,
         completeSessionRequest,
@@ -1185,6 +1360,7 @@ export const useChat = () => {
         isLoading,
         isSessionRequestCurrent,
         settings?.automaticWebSearch,
+        setCanvasTextdocState,
         updateSessionHistory,
         upsertOptimisticSession
     ]);
@@ -1266,6 +1442,9 @@ export const useChat = () => {
         formData.append('model', model);
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
+        if (canvasTextdocRef.current) {
+            formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
+        }
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
         formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
@@ -1305,20 +1484,44 @@ export const useChat = () => {
                         return msg;
                     }));
                 },
+                onCanvasUpdate: (canvasUpdate) => {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
+                        return;
+                    }
+                    applyCanvasUpdate(canvasUpdate);
+                    updateSessionHistory(sessionId, prev => prev.map(msg => {
+                        if (msg.id === aiMsgId) {
+                            return {
+                                ...msg,
+                                canvasTextdoc: normalizeCanvasTextdoc(canvasUpdate?.textdoc),
+                                canvasUpdates: [...(msg.canvasUpdates || []), canvasUpdate]
+                            };
+                        }
+                        return msg;
+                    }));
+                },
                 onComplete: (finalData) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
                     const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
+                    const finalCanvasTextdoc = normalizeCanvasTextdoc(finalData.canvas_textdoc || finalData.canvasTextdoc);
+                    if (finalCanvasTextdoc) {
+                        setCanvasTextdocState(finalCanvasTextdoc);
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
                                 ...msg,
                                 isLoading: false,
-                                content: finalData.reply || fullReply,
+                                content: typeof finalData.reply === 'string' ? finalData.reply : fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
-                                githubTool: finalGitHubTool
+                                githubTool: finalGitHubTool,
+                                canvasTextdoc: finalCanvasTextdoc,
+                                canvasUpdates: Array.isArray(finalData.canvas_updates)
+                                    ? finalData.canvas_updates
+                                    : msg.canvasUpdates || []
                             };
                         }
                         return msg;
@@ -1352,6 +1555,7 @@ export const useChat = () => {
             }
         }
     }, [
+        applyCanvasUpdate,
         beginSessionRequest,
         buildHistoryForAPI,
         completeSessionRequest,
@@ -1360,6 +1564,7 @@ export const useChat = () => {
         isReadOnly,
         isSessionRequestCurrent,
         settings?.automaticWebSearch,
+        setCanvasTextdocState,
         updateSessionHistory,
         upsertOptimisticSession
     ]);
@@ -1414,6 +1619,7 @@ export const useChat = () => {
 
     return {
         history,
+        canvasTextdoc,
         isLoading,
         currentSessionId,
         currentSessionSlug,
@@ -1432,6 +1638,7 @@ export const useChat = () => {
         regenerateMessage,
         editMessage,
         switchVariant,
+        updateCanvasTextdocContent,
         enableSharing,
         disableSharing,
         buildHistoryForAPI

@@ -1,9 +1,5 @@
 .audio-player-container {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.12),
-    rgba(var(--color-bg-surface-alt-raw), 0.08)
-  );
+  background: rgba(var(--color-black-raw), 0.12);
   border: 1px solid rgba(var(--color-white-raw), 0.08);
   border-radius: var(--radius-lg);
   margin-top: calc(var(--spacing-unit) * 3);
@@ -117,11 +113,7 @@
   flex-grow: 1;
   position: relative;
   height: 48px;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.15),
-    rgba(var(--color-bg-surface-alt-raw), 0.1)
-  );
+  background: rgba(var(--color-black-raw), 0.15);
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid rgba(var(--color-white-raw), 0.06);
@@ -129,11 +121,7 @@
 }
 
 .audio-waveform-container:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.2),
-    rgba(var(--color-bg-surface-alt-raw), 0.15)
-  );
+  background: rgba(var(--color-black-raw), 0.2);
   border-color: rgba(var(--color-white-raw), 0.1);
 }
 

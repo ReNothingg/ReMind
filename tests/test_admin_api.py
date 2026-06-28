@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from utils.auth import Mind, User, UserChatHistory, db
+from utils.auth import AIResponseFeedback, Mind, User, UserChatHistory, db
 from utils.rate_limiting import rate_limit_store
 
 
@@ -78,6 +78,53 @@ def test_root_admin_can_open_dashboard_without_chat_transcripts(
         item for item in users.get_json()["users"] if item["id"] == target_id
     )
     assert listed_target["chat_count"] == 1
+
+
+def test_admin_overview_exposes_only_ai_feedback_percentages(
+    client,
+    app,
+    create_confirmed_user,
+    login,
+):
+    _admin_id, admin_email, admin_password = create_confirmed_user(username="root_admin")
+    target_id, _target_email, _target_password = create_confirmed_user(username="feedback_user")
+
+    with app.app_context():
+        db.session.add_all(
+            [
+                AIResponseFeedback(
+                    user_id=target_id,
+                    session_id="feedback_session",
+                    response_hash="a" * 64,
+                    rating="like",
+                    response_text="secret liked answer",
+                ),
+                AIResponseFeedback(
+                    user_id=target_id,
+                    session_id="feedback_session",
+                    response_hash="b" * 64,
+                    rating="dislike",
+                    comment="secret dislike comment",
+                ),
+            ]
+        )
+        db.session.commit()
+
+    assert login(admin_email, admin_password).status_code == 200
+
+    overview = client.get("/api/admin/overview", headers={"User-Agent": "Mozilla/5.0 (pytest)"})
+    assert overview.status_code == 200
+    ai_feedback = overview.get_json()["stats"]["ai_feedback"]
+    assert ai_feedback == {
+        "total": 2,
+        "likes": 1,
+        "dislikes": 1,
+        "like_percent": 50.0,
+        "dislike_percent": 50.0,
+    }
+    serialized = json.dumps(overview.get_json(), ensure_ascii=False)
+    assert "secret liked answer" not in serialized
+    assert "secret dislike comment" not in serialized
 
 
 def test_non_admin_is_rejected_from_admin_api(client, create_confirmed_user, login):

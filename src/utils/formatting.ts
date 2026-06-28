@@ -143,7 +143,86 @@ const DOMPURIFY_SHARED_OPTIONS = {
     FORBID_ATTR: ['srcdoc'],
 };
 
-const buildDiagramBlock = ({ language, filename, codeContent }) => {
+type FormatLabels = {
+    codeBlock: {
+        codeSnippet: string;
+        diagram: string;
+        preview: string;
+        code: string;
+        download: string;
+        copy: string;
+        expand: string;
+        collapse: string;
+        tableCopy: string;
+    };
+    diagrams: {
+        chartjsLoading: string;
+        d3Loading: string;
+        nomnomlLoading: string;
+        mermaidLoading: string;
+        svgLoading: string;
+    };
+    widgets: {
+        creating: string;
+    };
+};
+
+type FormatTextOptions = {
+    labels?: Partial<{
+        codeBlock: Partial<FormatLabels['codeBlock']>;
+        diagrams: Partial<FormatLabels['diagrams']>;
+        widgets: Partial<FormatLabels['widgets']>;
+    }>;
+};
+
+const DEFAULT_FORMAT_LABELS: FormatLabels = {
+    codeBlock: {
+        codeSnippet: 'Code snippet',
+        diagram: 'Diagram',
+        preview: 'Preview',
+        code: 'Code',
+        download: 'Download file',
+        copy: 'Copy code',
+        expand: 'Expand',
+        collapse: 'Collapse',
+        tableCopy: 'Copy table',
+    },
+    diagrams: {
+        chartjsLoading: 'Loading chart...',
+        d3Loading: 'Loading visualization...',
+        nomnomlLoading: 'Loading diagram...',
+        mermaidLoading: 'Loading diagram...',
+        svgLoading: 'Rendering safe SVG...',
+    },
+    widgets: {
+        creating: 'Creating {{tool}}',
+    },
+};
+
+const resolveFormatLabels = (labels?: FormatTextOptions['labels']): FormatLabels => ({
+    codeBlock: {
+        ...DEFAULT_FORMAT_LABELS.codeBlock,
+        ...(labels?.codeBlock || {}),
+    },
+    diagrams: {
+        ...DEFAULT_FORMAT_LABELS.diagrams,
+        ...(labels?.diagrams || {}),
+    },
+    widgets: {
+        ...DEFAULT_FORMAT_LABELS.widgets,
+        ...(labels?.widgets || {}),
+    },
+});
+
+const interpolateLabel = (template: string, values: Record<string, string>) => (
+    Object.entries(values).reduce(
+        (current, [key, value]) => current.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), value),
+        template
+    )
+);
+
+const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
+    const formatLabels = resolveFormatLabels(labels);
     const normalizedLanguage = language === 'd3' ? 'd3js' : (language === 'mmd' ? 'mermaid' : language);
     const diagramMeta = {
         chartjs: {
@@ -152,7 +231,7 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
             preview: `
                 <div class="diagram-pan-surface chart-container loading">
                     <canvas class="diagram-pan-target" role="img" aria-label="Chart.js diagram"></canvas>
-                    <div class="chart-loading">Загрузка графика...</div>
+                    <div class="chart-loading">${escapeHtml(formatLabels.diagrams.chartjsLoading)}</div>
                     <div class="chart-error" aria-live="polite"></div>
                 </div>
             `,
@@ -164,7 +243,7 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
             preview: `
                 <div class="diagram-pan-surface d3-container loading">
                     <div class="d3-visualization diagram-pan-target" role="img" aria-label="D3 diagram"></div>
-                    <div class="d3-loading">Загрузка визуализации...</div>
+                    <div class="d3-loading">${escapeHtml(formatLabels.diagrams.d3Loading)}</div>
                     <div class="d3-error" aria-live="polite"></div>
                 </div>
             `,
@@ -176,7 +255,7 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
             preview: `
                 <div class="diagram-pan-surface nomnoml-container loading">
                     <div class="nomnoml-visualization diagram-pan-target" role="img" aria-label="Nomnoml diagram"></div>
-                    <div class="nomnoml-loading">Загрузка схемы...</div>
+                    <div class="nomnoml-loading">${escapeHtml(formatLabels.diagrams.nomnomlLoading)}</div>
                     <div class="nomnoml-error" aria-live="polite"></div>
                 </div>
             `
@@ -187,7 +266,7 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
             preview: `
                 <div class="diagram-pan-surface mermaid-container loading">
                     <div class="mermaid-visualization diagram-pan-target" role="img" aria-label="Mermaid diagram"></div>
-                    <div class="mermaid-loading">Загрузка схемы...</div>
+                    <div class="mermaid-loading">${escapeHtml(formatLabels.diagrams.mermaidLoading)}</div>
                     <div class="mermaid-error" aria-live="polite"></div>
                 </div>
             `,
@@ -199,7 +278,7 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
             preview: `
                 <div class="svg-preview-surface svg-preview-container loading">
                     <div class="svg-preview-frame-host"></div>
-                    <div class="svg-loading">Безопасный рендер SVG...</div>
+                    <div class="svg-loading">${escapeHtml(formatLabels.diagrams.svgLoading)}</div>
                     <div class="svg-error" aria-live="polite"></div>
                 </div>
             `,
@@ -215,29 +294,36 @@ const buildDiagramBlock = ({ language, filename, codeContent }) => {
     const escapedContent = escapeHtml(codeContent);
     const codeLanguage = meta.codeLanguage || normalizedLanguage;
     const previewMarkup = typeof meta.preview === 'function' ? meta.preview({ escapedContent }) : meta.preview;
+    const safeDiagramLabel = escapeHtml(formatLabels.codeBlock.diagram);
+    const safePreviewLabel = escapeHtml(formatLabels.codeBlock.preview);
+    const safeCodeLabel = escapeHtml(formatLabels.codeBlock.code);
+    const safeDownloadLabel = escapeHtml(formatLabels.codeBlock.download);
+    const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
+    const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
+    const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
 
     return `
     <div class="code-block diagram-block ${meta.blockClass}" data-language="${normalizedLanguage}" data-filename="${safeName}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeName}</span>
-            <div class="code-block-tabs" role="tablist" aria-label="Диаграмма">
-                <button class="code-tab-btn active" data-tab="preview" type="button">Предпросмотр</button>
-                <button class="code-tab-btn" data-tab="code" type="button">Код</button>
+            <div class="code-block-tabs" role="tablist" aria-label="${safeDiagramLabel}">
+                <button class="code-tab-btn active" data-tab="preview" type="button" role="tab" aria-selected="true">${safePreviewLabel}</button>
+                <button class="code-tab-btn" data-tab="code" type="button" role="tab" aria-selected="false" tabindex="-1">${safeCodeLabel}</button>
             </div>
             <div class="code-block-header-actions">
-                <button class="download-code-btn" title="Скачать файл"><img src="/icons/ui/download.svg" alt="Download"></button>
-                <button class="copy-code-btn" title="Скопировать код"><img src="/icons/ui/copy.svg" alt="Copy"></button>
-                <button class="toggle-code-btn" title="Развернуть">
-                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
+                <button class="download-code-btn" type="button" title="${safeDownloadLabel}" aria-label="${safeDownloadLabel}"><img src="/icons/ui/download.svg" alt="" aria-hidden="true"></button>
+                <button class="copy-code-btn" type="button" title="${safeCopyLabel}" aria-label="${safeCopyLabel}"><img src="/icons/ui/copy.svg" alt="" aria-hidden="true"></button>
+                <button class="toggle-code-btn" type="button" title="${safeExpandLabel}" aria-label="${safeExpandLabel}" aria-expanded="false" data-expand-label="${safeExpandLabel}" data-collapse-label="${safeCollapseLabel}">
+                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
                 </button>
             </div>
         </div>
-        <div class="code-block-pane diagram-preview active" data-pane="preview">
+        <div class="code-block-pane diagram-preview active" data-pane="preview" role="tabpanel">
             ${previewMarkup}
         </div>
-        <div class="code-block-pane code-block-scroll-wrapper" data-pane="code">
+        <div class="code-block-pane code-block-scroll-wrapper" data-pane="code" role="tabpanel" hidden>
             <div class="code-block-content">
                 <pre class="line-numbers language-${codeLanguage}"><code class="language-${codeLanguage}">${escapedContent}</code></pre>
             </div>
@@ -266,8 +352,9 @@ md.render = function (str, env) {
     }
     return html;
 };
-md.renderer.rules.fence = (tokens, idx) => {
+md.renderer.rules.fence = (tokens, idx, _options, env) => {
     const token = tokens[idx];
+    const formatLabels = resolveFormatLabels(env?.formatLabels);
     const codeContent = token.content;
     const { actualLanguage, prismLanguage, filename: parsedFilename } = parseFenceInfo(token.info, md.utils);
     let filename = parsedFilename;
@@ -280,30 +367,35 @@ md.renderer.rules.fence = (tokens, idx) => {
     const diagramBlock = buildDiagramBlock({
         language: actualLanguage,
         filename,
-        codeContent
+        codeContent,
+        labels: formatLabels
     });
     if (diagramBlock) {
         return diagramBlock;
     }
     if (!filename) {
-        filename = actualLanguage === 'plaintext' ? "Code Snippet" : (actualLanguage.charAt(0).toUpperCase() + actualLanguage.slice(1));
+        filename = actualLanguage === 'plaintext' ? formatLabels.codeBlock.codeSnippet : (actualLanguage.charAt(0).toUpperCase() + actualLanguage.slice(1));
     }
 
     const safeFilename = escapeHtml(filename);
     const safeLanguage = escapeHtml(actualLanguage);
     const safePrismLanguage = escapeHtml(prismLanguage);
     const escapedContent = escapeHtml(codeContent);
+    const safeDownloadLabel = escapeHtml(formatLabels.codeBlock.download);
+    const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
+    const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
+    const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
     return `
     <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
-                <button class="download-code-btn" title="Скачать файл"><img src="/icons/ui/download.svg" alt="Download"></button>
-                <button class="copy-code-btn" title="Скопировать код"><img src="/icons/ui/copy.svg" alt="Copy"></button>
-                <button class="toggle-code-btn" title="Развернуть">
-                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
+                <button class="download-code-btn" type="button" title="${safeDownloadLabel}" aria-label="${safeDownloadLabel}"><img src="/icons/ui/download.svg" alt="" aria-hidden="true"></button>
+                <button class="copy-code-btn" type="button" title="${safeCopyLabel}" aria-label="${safeCopyLabel}"><img src="/icons/ui/copy.svg" alt="" aria-hidden="true"></button>
+                <button class="toggle-code-btn" type="button" title="${safeExpandLabel}" aria-label="${safeExpandLabel}" aria-expanded="false" data-expand-label="${safeExpandLabel}" data-collapse-label="${safeCollapseLabel}">
+                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
                 </button>
             </div>
         </div>
@@ -314,12 +406,13 @@ md.renderer.rules.fence = (tokens, idx) => {
         </div>
     </div>`;
 };
-const processInteractiveHTMLTags = (text) => {
+const processInteractiveHTMLTags = (text, labels?: FormatTextOptions['labels']) => {
     if (typeof text !== 'string' || !text) return text;
+    const formatLabels = resolveFormatLabels(labels);
 
     const makePlaceholder = (toolName) => {
         const name = (toolName || '').toLowerCase();
-        const label = `Создание ${name}`;
+        const label = escapeHtml(interpolateLabel(formatLabels.widgets.creating, { tool: name }));
         return `<span class="interactive-placeholder" data-tool="${name}" aria-live="polite"><span class="ip-spinner"></span><span class="ip-text">${label}</span></span>`;
     };
 
@@ -341,14 +434,6 @@ const processInteractiveHTMLTags = (text) => {
         }
     }
 
-    const escapeHtml = (unsafe) => {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    };
     const toBase64 = (str) => {
         try {
             return btoa(unescape(encodeURIComponent(str)));
@@ -388,23 +473,25 @@ const processInteractiveHTMLTags = (text) => {
     return text;
 };
 
-export const formatText = (text) => {
+export const formatText = (text, options: FormatTextOptions = {}) => {
     if (!text) return '';
-    let processedText = processInteractiveHTMLTags(text);
+    const formatLabels = resolveFormatLabels(options.labels);
+    let processedText = processInteractiveHTMLTags(text, formatLabels);
     processedText = processedText.replace(/\\\[([\s\S]+?)\\\]/g, (_match, expr) => `$$${expr}$$`)
         .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr) => `$${expr}$`);
 
-    let renderedHtml = md.render(processedText);
+    let renderedHtml = md.render(processedText, { formatLabels });
     renderedHtml = renderedHtml
         .replace(/<li>\[ \] /g, '<li class="task-list-item"><input type="checkbox" name="task_item" disabled> ')
         .replace(/<li>\[x\] /g, '<li class="task-list-item"><input type="checkbox" name="task_item" checked disabled> ');
     renderedHtml = renderedHtml.replace(/<table>/g, () => {
-        return '<div class="table-wrapper"><button class="table-copy-btn" type="button" title="Копировать таблицу"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button><div><table>';
+        const safeTableCopyLabel = escapeHtml(formatLabels.codeBlock.tableCopy);
+        return `<div class="table-wrapper"><button class="table-copy-btn" type="button" title="${safeTableCopyLabel}" aria-label="${safeTableCopyLabel}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button><div><table>`;
     });
     renderedHtml = renderedHtml.replace(/<\/table>/g, '</table></div></div>');
     return DOMPurify.sanitize(renderedHtml, {
         ...DOMPURIFY_SHARED_OPTIONS,
-        ADD_TAGS: ['svg', 'path', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'mark', 'c', 'button', 'img', 'input', 'canvas'],
+        ADD_TAGS: ['svg', 'path', 'rect', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'mark', 'c', 'button', 'img', 'input', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
             'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
@@ -412,7 +499,9 @@ export const formatText = (text) => {
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
             'data-think-open', 'data-think-close', 'data-think-content',
-            'data-tool', 'data-source-ids', 's', 'tabindex', 'aria-live', 'aria-label', 'role', 'stroke-width'
+            'data-tool', 'data-source-ids', 's', 'tabindex', 'aria-live', 'aria-label', 'aria-hidden',
+            'aria-expanded', 'aria-selected', 'aria-controls', 'role', 'stroke-width',
+            'data-expand-label', 'data-collapse-label', 'hidden'
         ]
     });
 };
@@ -428,8 +517,9 @@ const userMd = new MarkdownIt({
     typographer: true,
 });
 
-userMd.renderer.rules.fence = (tokens, idx) => {
+userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     const token = tokens[idx];
+    const formatLabels = resolveFormatLabels(env?.formatLabels);
     const codeContent = token.content || '';
     const { actualLanguage, prismLanguage, filename: parsedFilename } = parseFenceInfo(token.info, userMd.utils);
     let filename = parsedFilename;
@@ -437,20 +527,25 @@ userMd.renderer.rules.fence = (tokens, idx) => {
     const diagramBlock = buildDiagramBlock({
         language: actualLanguage,
         filename,
-        codeContent
+        codeContent,
+        labels: formatLabels
     });
     if (diagramBlock) {
         return diagramBlock;
     }
 
     if (!filename) {
-        filename = actualLanguage === 'plaintext' ? "Code Snippet" : (actualLanguage.charAt(0).toUpperCase() + actualLanguage.slice(1));
+        filename = actualLanguage === 'plaintext' ? formatLabels.codeBlock.codeSnippet : (actualLanguage.charAt(0).toUpperCase() + actualLanguage.slice(1));
     }
 
     const safeFilename = escapeHtml(filename);
     const safeLanguage = escapeHtml(actualLanguage);
     const safePrismLanguage = escapeHtml(prismLanguage);
     const escapedContent = escapeHtml(codeContent);
+    const safeDownloadLabel = escapeHtml(formatLabels.codeBlock.download);
+    const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
+    const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
+    const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
 
     return `
     <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}">
@@ -458,11 +553,11 @@ userMd.renderer.rules.fence = (tokens, idx) => {
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
-                <button class="download-code-btn" title="Скачать файл"><img src="/icons/ui/download.svg" alt="Download"></button>
-                <button class="copy-code-btn" title="Скопировать код"><img src="/icons/ui/copy.svg" alt="Copy"></button>
-                <button class="toggle-code-btn" title="Развернуть">
-                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
+                <button class="download-code-btn" type="button" title="${safeDownloadLabel}" aria-label="${safeDownloadLabel}"><img src="/icons/ui/download.svg" alt="" aria-hidden="true"></button>
+                <button class="copy-code-btn" type="button" title="${safeCopyLabel}" aria-label="${safeCopyLabel}"><img src="/icons/ui/copy.svg" alt="" aria-hidden="true"></button>
+                <button class="toggle-code-btn" type="button" title="${safeExpandLabel}" aria-label="${safeExpandLabel}" aria-expanded="false" data-expand-label="${safeExpandLabel}" data-collapse-label="${safeCollapseLabel}">
+                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
                 </button>
             </div>
         </div>
@@ -474,17 +569,19 @@ userMd.renderer.rules.fence = (tokens, idx) => {
     </div>`;
 };
 
-export const formatUserText = (text) => {
+export const formatUserText = (text, options: FormatTextOptions = {}) => {
     if (!text) return '';
-    const renderedHtml = userMd.render(text);
+    const formatLabels = resolveFormatLabels(options.labels);
+    const renderedHtml = userMd.render(text, { formatLabels });
     return DOMPurify.sanitize(renderedHtml, {
         ...DOMPURIFY_SHARED_OPTIONS,
-        ADD_TAGS: ['svg', 'path', 'div', 'span', 'button', 'img', 'input', 'pre', 'code', 'canvas'],
+        ADD_TAGS: ['svg', 'path', 'rect', 'div', 'span', 'button', 'img', 'input', 'pre', 'code', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
             'type', 'checked', 'disabled', 'src', 'name',
             'data-language', 'data-filename', 'data-tab', 'data-pane',
-            'aria-label', 'role', 'aria-live',
+            'aria-label', 'aria-hidden', 'aria-expanded', 'aria-selected', 'aria-controls',
+            'role', 'aria-live', 'tabindex', 'data-expand-label', 'data-collapse-label', 'hidden',
         ]
     });
 };

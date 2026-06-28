@@ -54,6 +54,10 @@ const DEFAULT_SETTINGS = {
     keyboardSupport: true,
     highContrast: false,
     interface_language: detectInterfaceLanguage(),
+    chatPanelPosition: 'bottomCenter',
+    chatPanelResetPolicy: 'after10Minutes',
+    chatPanelKeyboardShortcut: 'optionCommandSpace',
+    chatPanelNewChatDestination: 'companion',
     automaticWebSearch: false,
     service_improvement_opt_in: false,
     personalization_instructions: '',
@@ -238,6 +242,26 @@ export const SettingsProvider = ({ children }) => {
             applySetting(key, value);
         });
     }, [settings, applySetting]);
+
+    useEffect(() => {
+        const handler = window.webkit?.messageHandlers?.remindMacBridge;
+        if (!handler) return;
+
+        handler.postMessage({
+            type: 'chatPanelSettings',
+            payload: {
+                chatPanelPosition: settings.chatPanelPosition,
+                chatPanelResetPolicy: settings.chatPanelResetPolicy,
+                chatPanelKeyboardShortcut: settings.chatPanelKeyboardShortcut,
+                chatPanelNewChatDestination: settings.chatPanelNewChatDestination
+            }
+        });
+    }, [
+        settings.chatPanelPosition,
+        settings.chatPanelResetPolicy,
+        settings.chatPanelKeyboardShortcut,
+        settings.chatPanelNewChatDestination
+    ]);
     useEffect(() => {
         if (settings.theme !== 'system') return;
 

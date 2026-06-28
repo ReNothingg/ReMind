@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -215,6 +216,38 @@ def render_web_tool_prompt() -> str:
     return "TOOL: WEB SEARCH\n" + tool_prompt.strip()
 
 
+def render_canmore_tool_prompt(user_data: dict[str, Any]) -> str:
+    tool_prompt = _load_template_file(os.path.join("tools", "canmore.md"))
+    if not tool_prompt:
+        return ""
+
+    canvas = user_data.get("canvas_textdoc") if isinstance(user_data, dict) else None
+    if not isinstance(canvas, dict):
+        return tool_prompt.strip()
+
+    name = str(canvas.get("name") or "").strip()
+    textdoc_type = str(canvas.get("type") or "").strip()
+    content = str(canvas.get("content") or "")
+    fence_language = "text"
+    if textdoc_type.startswith("code/"):
+        raw_language = textdoc_type.split("/", 1)[1].strip().lower()
+        if re.match(r"^[a-z0-9_-]{1,32}$", raw_language):
+            fence_language = raw_language
+    if len(content) > 24_000:
+        content = content[:24_000] + "\n[Current canvas content truncated]"
+
+    current_canvas = (
+        "\n\nCURRENT CANVAS TEXTDOC\n"
+        f"Name: {name}\n"
+        f"Type: {textdoc_type}\n"
+        "Content:\n"
+        f"```{fence_language}\n"
+        f"{content}\n"
+        "```"
+    )
+    return tool_prompt.strip() + current_canvas
+
+
 def _format_dimensions(dim: Optional[dict]) -> str:
     if not dim:
         return ""
@@ -232,6 +265,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
     web_tool_prompt = render_web_tool_prompt()
+    canmore_tool_prompt = render_canmore_tool_prompt(user_data)
     github_tool_prompt = render_github_tool_prompt(user_id)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     if base and user_md:
@@ -241,7 +275,9 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     else:
         prompt = base
 
-    tool_prompts = [tool for tool in [web_tool_prompt, github_tool_prompt] if tool]
+    tool_prompts = [
+        tool for tool in [web_tool_prompt, canmore_tool_prompt, github_tool_prompt] if tool
+    ]
     if tool_prompts:
         prompt = prompt + "\n\n" + "\n\n".join(tool_prompts)
 

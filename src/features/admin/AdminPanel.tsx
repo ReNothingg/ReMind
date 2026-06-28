@@ -1,5 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Activity,
     AlertTriangle,
@@ -246,6 +247,7 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
     isAuthenticated: boolean;
     onOpenAuth: () => void;
 }) {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<AdminTab>('overview');
     const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -698,6 +700,21 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                         <MetricTile icon={<Ban size={18} />} label="Банов аккаунтов" value={overview?.stats.users.banned} />
                         <MetricTile icon={<Lock size={18} />} label="Блокировок" value={overview?.stats.users.blocked} />
                         <MetricTile icon={<Activity size={18} />} label="Сессий за 24ч" value={overview?.stats.sessions.updated_24h} />
+                        <MetricTile
+                            icon={<TrendingUp size={18} />}
+                            label={t('admin.aiFeedback.likeRatio')}
+                            value={formatPercent(overview?.stats.ai_feedback.like_percent)}
+                        />
+                        <MetricTile
+                            icon={<XCircle size={18} />}
+                            label={t('admin.aiFeedback.dislikeRatio')}
+                            value={formatPercent(overview?.stats.ai_feedback.dislike_percent)}
+                        />
+                        <MetricTile
+                            icon={<Sparkles size={18} />}
+                            label={t('admin.aiFeedback.total')}
+                            value={overview?.stats.ai_feedback.total}
+                        />
                         <MetricTile icon={<Server size={18} />} label="Статус сервера" value={overview?.server.status} />
                     </div>
                 </div>

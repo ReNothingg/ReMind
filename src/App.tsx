@@ -1,12 +1,13 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, BrainCircuit, LockKeyhole, X } from 'lucide-react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { BadgeCheck, BrainCircuit, FileCode2, FileText, PanelRightOpen, LockKeyhole, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
 import SEOHelmet from './components/UI/SEOHelmet';
-import { apiService, type Mind } from './services/api';
+import { apiService, type CanvasTextdoc, type Mind } from './services/api';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
@@ -42,6 +43,10 @@ interface ImageLightboxState {
 }
 
 const MOBILE_RAIL_MEDIA_QUERY = '(max-width: 1024px)';
+const CANVAS_WIDTH_STORAGE_KEY = 'remind.canvas.width';
+const CANVAS_MIN_WIDTH = 360;
+const CANVAS_DEFAULT_WIDTH = 520;
+const CANVAS_MAX_WIDTH = 820;
 const AppRail = lazy(() => import('./components/Layout/AppRail'));
 const ChatContainer = lazy(() => import('./components/Chat/ChatContainer'));
 const SettingsModal = lazy(() => import('./components/Modals/SettingsModal'));
@@ -52,6 +57,19 @@ const ShareModal = lazy(() => import('./features/share/components/ShareModal'));
 const MindsPage = lazy(() => import('./features/minds/MindsPage'));
 const MindEditorPage = lazy(() => import('./features/minds/MindEditorPage'));
 const AdminPanel = lazy(() => import('./features/admin/AdminPanel'));
+const CanvasPanel = lazy(() => import('./features/canvas/CanvasPanel'));
+
+function clampCanvasWidth(width: number): number {
+    if (typeof window === 'undefined') {
+        return Math.min(CANVAS_MAX_WIDTH, Math.max(CANVAS_MIN_WIDTH, width));
+    }
+
+    const railOffset = Number.parseFloat(
+        window.getComputedStyle(document.body).getPropertyValue('--app-rail-offset')
+    ) || 0;
+    const maxByViewport = Math.max(CANVAS_MIN_WIDTH, window.innerWidth - railOffset - 420);
+    return Math.round(Math.min(CANVAS_MAX_WIDTH, maxByViewport, Math.max(CANVAS_MIN_WIDTH, width)));
+}
 
 function normalizeAppPath(path: string): string {
     if (path === '/editor') {
@@ -77,6 +95,17 @@ const MainLayout = () => {
     const [htmlPreview, setHtmlPreview] = useState<HtmlPreviewState>({ isOpen: false, urlOrHtml: null, isHtml: false });
     const [imageLightbox, setImageLightbox] = useState<ImageLightboxState>({ isOpen: false, imageSrc: null, messageId: null });
     const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [isCanvasVisible, setCanvasVisible] = useState(false);
+    const [selectedCanvasTextdoc, setSelectedCanvasTextdoc] = useState<CanvasTextdoc | null>(null);
+    const [canvasWidth, setCanvasWidth] = useState(() => {
+        if (typeof window === 'undefined') {
+            return CANVAS_DEFAULT_WIDTH;
+        }
+        const stored = window.localStorage.getItem(CANVAS_WIDTH_STORAGE_KEY);
+        const parsed = stored ? Number.parseInt(stored, 10) : CANVAS_DEFAULT_WIDTH;
+        return clampCanvasWidth(Number.isFinite(parsed) ? parsed : CANVAS_DEFAULT_WIDTH);
+    });
+    const [isCanvasResizing, setCanvasResizing] = useState(false);
     const [currentModel, setCurrentModel] = useState('gemini');
     const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
     const [routePath, setRoutePath] = useState(() =>
@@ -92,6 +121,7 @@ const MainLayout = () => {
 
     const {
         history,
+        canvasTextdoc,
         isLoading,
         sendMessage,
         stopGeneration,
@@ -102,6 +132,7 @@ const MainLayout = () => {
         regenerateMessage,
         editMessage,
         switchVariant,
+        updateCanvasTextdocContent,
         sessionAccess,
         isReadOnly,
         isTemporaryChat,
@@ -202,6 +233,11 @@ const MainLayout = () => {
     const wasLoadingRef = useRef(false);
     const loadingSessionIdRef = useRef<string | null>(null);
     const notifyOnDoneRef = useRef(false);
+    const canvasWidthRef = useRef(canvasWidth);
+
+    useEffect(() => {
+        canvasWidthRef.current = canvasWidth;
+    }, [canvasWidth]);
 
     useEffect(() => {
         const wasLoading = wasLoadingRef.current;
@@ -605,6 +641,136 @@ const MainLayout = () => {
     const isAdminRoute = routePath === '/admin' || routePath.startsWith('/admin/');
     const isChatSurface = !isMindsRoute && !isEditorRoute && !isAdminRoute;
     const showTemporaryChatButton = routePath === '/' && history.length === 0 && !isTemporaryChat;
+    const canvasTextdocVersion = canvasTextdoc
+        ? `${canvasTextdoc.id || ''}:${canvasTextdoc.updated_at || 0}`
+        : '';
+
+    useEffect(() => {
+        if (!canvasTextdoc) {
+            setCanvasVisible(false);
+            setSelectedCanvasTextdoc(null);
+            return;
+        }
+
+        if (isCanvasVisible) {
+            setSelectedCanvasTextdoc((current) => {
+                if (!current || current.id === canvasTextdoc.id || current.name === canvasTextdoc.name) {
+                    return canvasTextdoc;
+                }
+                return current;
+            });
+        }
+    }, [canvasTextdoc, canvasTextdocVersion, isCanvasVisible]);
+
+    const activeCanvasTextdoc = selectedCanvasTextdoc || canvasTextdoc;
+    const canvasDockTextdoc = activeCanvasTextdoc || canvasTextdoc;
+
+    const handleOpenCanvas = useCallback((textdoc: CanvasTextdoc) => {
+        setSelectedCanvasTextdoc(textdoc);
+        setCanvasVisible(true);
+    }, []);
+
+    const handleCanvasContentChange = useCallback((content: string) => {
+        const targetId = activeCanvasTextdoc?.id || null;
+        setSelectedCanvasTextdoc((current) => current
+            ? { ...current, content, updated_at: Math.floor(Date.now() / 1000) }
+            : current
+        );
+        updateCanvasTextdocContent(content, targetId);
+    }, [activeCanvasTextdoc?.id, updateCanvasTextdocContent]);
+
+    const updateCanvasWidth = useCallback((nextWidth: number) => {
+        const clampedWidth = clampCanvasWidth(nextWidth);
+        canvasWidthRef.current = clampedWidth;
+        setCanvasWidth(clampedWidth);
+    }, []);
+
+    useEffect(() => {
+        const handleResize = () => {
+            updateCanvasWidth(canvasWidthRef.current);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [updateCanvasWidth]);
+
+    const handleCanvasResizeStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setCanvasResizing(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+    }, []);
+
+    const handleCanvasResizeKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+            return;
+        }
+        event.preventDefault();
+        const step = event.shiftKey ? 48 : 16;
+        const direction = event.key === 'ArrowLeft' ? 1 : -1;
+        const nextWidth = clampCanvasWidth(canvasWidthRef.current + direction * step);
+        setCanvasWidth(nextWidth);
+        window.localStorage.setItem(CANVAS_WIDTH_STORAGE_KEY, String(nextWidth));
+    }, []);
+
+    useEffect(() => {
+        if (!isCanvasResizing) {
+            return undefined;
+        }
+
+        const handlePointerMove = (event: PointerEvent) => {
+            updateCanvasWidth(window.innerWidth - event.clientX);
+        };
+
+        const handlePointerUp = () => {
+            setCanvasResizing(false);
+            window.localStorage.setItem(CANVAS_WIDTH_STORAGE_KEY, String(canvasWidthRef.current));
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp, { once: true });
+        window.addEventListener('pointercancel', handlePointerUp, { once: true });
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+        };
+    }, [isCanvasResizing, updateCanvasWidth]);
+
+    useLayoutEffect(() => {
+        const shouldShowCanvasDock = Boolean(canvasDockTextdoc && isChatSurface);
+        document.documentElement.classList.toggle('has-canvas-dock', shouldShowCanvasDock);
+        document.documentElement.classList.toggle('canvas-open', shouldShowCanvasDock && isCanvasVisible);
+        document.documentElement.classList.toggle('canvas-resizing', isCanvasResizing);
+        document.body.classList.toggle('has-canvas-dock', shouldShowCanvasDock);
+        document.body.classList.toggle('canvas-open', shouldShowCanvasDock && isCanvasVisible);
+        document.body.classList.toggle('canvas-resizing', isCanvasResizing);
+        if (shouldShowCanvasDock) {
+            document.body.style.setProperty('--canvas-panel-width', `${canvasWidth}px`);
+        } else {
+            document.body.style.removeProperty('--canvas-panel-width');
+        }
+        return () => {
+            document.documentElement.classList.remove('has-canvas-dock');
+            document.documentElement.classList.remove('canvas-open');
+            document.documentElement.classList.remove('canvas-resizing');
+            document.body.classList.remove('has-canvas-dock');
+            document.body.classList.remove('canvas-open');
+            document.body.classList.remove('canvas-resizing');
+            document.body.style.removeProperty('--canvas-panel-width');
+        };
+    }, [canvasDockTextdoc, canvasWidth, isCanvasResizing, isCanvasVisible, isChatSurface]);
+
+    const canvasDockIsCode = canvasDockTextdoc?.type?.startsWith('code/') ?? false;
+    const canvasDockLanguage = canvasDockIsCode ? canvasDockTextdoc?.type.slice('code/'.length) : '';
+    const canvasDockTypeLabel = canvasDockTextdoc
+        ? (canvasDockIsCode
+            ? t('canvas.type.code', { language: canvasDockLanguage })
+            : t('canvas.type.document'))
+        : '';
+    const canvasDockLineCount = canvasDockTextdoc
+        ? (canvasDockTextdoc.content || '').split(/\r\n|\r|\n/).length
+        : 0;
 
     return (
         <>
@@ -639,205 +805,255 @@ const MainLayout = () => {
                 </Suspense>
             )}
 
-            <main className="ui-app-main-shell">
-                <GlobalHeader
-                    isAuthenticated={isAuthenticated}
-                    currentUser={user}
-                    onMenuToggle={handleRailToggle}
-                    currentModel={selectedModel}
-                    onModelChange={setCurrentModel}
-                    onOpenAuth={() => setAuthOpen('login')}
-                    onShowRegister={() => setAuthOpen('register')}
-                    shareInfo={isTemporaryChat ? null : sessionAccess}
-                    currentSessionId={isTemporaryChat ? null : currentSessionId}
-                    isReadOnly={isReadOnly}
-                    onOpenShareModal={() => setShareModalOpen(true)}
-                    onNewChat={handleNewChat}
-                    onTemporaryChat={handleTemporaryChat}
-                    isTemporaryChat={isTemporaryChat}
-                    showChatControls={isChatSurface}
-                    showTemporaryChatButton={showTemporaryChatButton}
-                />
+            <div className="ui-app-canvas-stage">
+                <main className="ui-app-main-shell">
+                    <GlobalHeader
+                        isAuthenticated={isAuthenticated}
+                        currentUser={user}
+                        onMenuToggle={handleRailToggle}
+                        currentModel={selectedModel}
+                        onModelChange={setCurrentModel}
+                        onOpenAuth={() => setAuthOpen('login')}
+                        onShowRegister={() => setAuthOpen('register')}
+                        shareInfo={isTemporaryChat ? null : sessionAccess}
+                        currentSessionId={isTemporaryChat ? null : currentSessionId}
+                        isReadOnly={isReadOnly}
+                        onOpenShareModal={() => setShareModalOpen(true)}
+                        onNewChat={handleNewChat}
+                        onTemporaryChat={handleTemporaryChat}
+                        isTemporaryChat={isTemporaryChat}
+                        showChatControls={isChatSurface}
+                        showTemporaryChatButton={showTemporaryChatButton}
+                    />
 
-                {isAdminRoute ? (
-                    <Suspense fallback={null}>
-                        <AdminPanel
-                            isAuthenticated={isAuthenticated}
-                            onOpenAuth={() => setAuthOpen('login')}
-                        />
-                    </Suspense>
-                ) : isMindsRoute ? (
-                    <Suspense fallback={null}>
-                        <MindsPage
-                            isAuthenticated={isAuthenticated}
-                            onCreateMind={handleCreateMind}
-                            onEditMind={handleEditMind}
-                            onOpenAuth={() => setAuthOpen('login')}
-                            onPinnedChange={refreshPinnedMinds}
-                            onStartMind={handleStartMind}
-                        />
-                    </Suspense>
-                ) : isEditorRoute ? (
-                    <Suspense fallback={null}>
-                        <MindEditorPage
-                            editingMindId={editorMindId}
-                            isAuthenticated={isAuthenticated}
-                            onCancel={() => navigateTo('/minds')}
-                            onOpenAuth={() => setAuthOpen('login')}
-                            onSaved={handleMindSaved}
-                        />
-                    </Suspense>
-                ) : history.length === 0 ? (
-                    <div className="ui-empty-conversation-shell">
-                        <LandingHero isReadOnly={isReadOnly}>
-                            {isTemporaryChat && (
-                                <p className="ui-landing-temporary-note">
-                                    <LockKeyhole size={15} aria-hidden="true" />
-                                    <span>{t('temporaryChat.description')}</span>
-                                </p>
-                            )}
-                            {activeMind && (
-                                <div className="ui-landing-mind-panel">
-                                    <div className="ui-landing-mind-header">
-                                        <div className="ui-landing-mind-title">
-                                            <BrainCircuit size={22} />
-                                            <div>
+                    {isAdminRoute ? (
+                        <Suspense fallback={null}>
+                            <AdminPanel
+                                isAuthenticated={isAuthenticated}
+                                onOpenAuth={() => setAuthOpen('login')}
+                            />
+                        </Suspense>
+                    ) : isMindsRoute ? (
+                        <Suspense fallback={null}>
+                            <MindsPage
+                                isAuthenticated={isAuthenticated}
+                                onCreateMind={handleCreateMind}
+                                onEditMind={handleEditMind}
+                                onOpenAuth={() => setAuthOpen('login')}
+                                onPinnedChange={refreshPinnedMinds}
+                                onStartMind={handleStartMind}
+                            />
+                        </Suspense>
+                    ) : isEditorRoute ? (
+                        <Suspense fallback={null}>
+                            <MindEditorPage
+                                editingMindId={editorMindId}
+                                isAuthenticated={isAuthenticated}
+                                onCancel={() => navigateTo('/minds')}
+                                onOpenAuth={() => setAuthOpen('login')}
+                                onSaved={handleMindSaved}
+                            />
+                        </Suspense>
+                    ) : history.length === 0 ? (
+                        <div className="ui-empty-conversation-shell">
+                            <LandingHero isReadOnly={isReadOnly}>
+                                {isTemporaryChat && (
+                                    <p className="ui-landing-temporary-note">
+                                        <LockKeyhole size={15} aria-hidden="true" />
+                                        <span>{t('temporaryChat.description')}</span>
+                                    </p>
+                                )}
+                                {activeMind && (
+                                    <div className="ui-landing-mind-panel">
+                                        <div className="ui-landing-mind-header">
+                                            <div className="ui-landing-mind-title">
+                                                <BrainCircuit size={22} />
+                                                <div>
+                                                    <strong>
+                                                        {activeMind.name}
+                                                        {activeMind.is_verified && (
+                                                            <BadgeCheck size={15} className="ml-1 inline-block align-[-2px]" />
+                                                        )}
+                                                    </strong>
+                                                    <span>{activeMind.description}</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="ui-landing-mind-close"
+                                                onClick={handleClearActiveMind}
+                                                aria-label={t('minds.disableActive')}
+                                                title={t('minds.disableActive')}
+                                            >
+                                                <X size={17} />
+                                            </button>
+                                        </div>
+                                        {activeMind.starters?.length > 0 && (
+                                            <div className="ui-landing-mind-starters">
+                                                {activeMind.starters.map((starter) => (
+                                                    <button
+                                                        key={starter}
+                                                        type="button"
+                                                        onClick={() => handleSendMessage(starter, [], {})}
+                                                    >
+                                                        {starter}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <InputArea
+                                    variant="landing"
+                                    showDynamicWarning={false}
+                                    onSendMessage={handleSendMessage}
+                                    onStop={() => {
+                                        notifyOnDoneRef.current = false;
+                                        stopGeneration();
+                                    }}
+                                    isLoading={isLoading}
+                                    isReadOnly={isReadOnly}
+                                    initialPrompt={initialPrompt}
+                                    onInitialPromptConsumed={() => setInitialPrompt(null)}
+                                    onOpenAuth={() => setAuthOpen('login')}
+                                />
+                            </LandingHero>
+                        </div>
+                    ) : (
+                        <Suspense fallback={null}>
+                            <>
+                                {isTemporaryChat && (
+                                    <div className="ui-chat-mind-banner" role="status">
+                                        <div className="ui-chat-mind-banner-main">
+                                            <div className="ui-chat-mind-banner-icon" aria-hidden="true">
+                                                <LockKeyhole size={19} />
+                                            </div>
+                                            <div className="ui-chat-mind-banner-copy">
+                                                <span>{t('temporaryChat.badge')}</span>
+                                                <strong>{t('temporaryChat.title')}</strong>
+                                                <p>{t('temporaryChat.description')}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeMind && (
+                                    <div className="ui-chat-mind-banner" role="status">
+                                        <div className="ui-chat-mind-banner-main">
+                                            <div className="ui-chat-mind-banner-icon" aria-hidden="true">
+                                                <BrainCircuit size={19} />
+                                            </div>
+                                            <div className="ui-chat-mind-banner-copy">
+                                                <span>{t('minds.activeLabel')}</span>
                                                 <strong>
                                                     {activeMind.name}
                                                     {activeMind.is_verified && (
-                                                        <BadgeCheck size={15} className="ml-1 inline-block align-[-2px]" />
+                                                        <BadgeCheck size={14} className="ml-1 inline-block align-[-2px]" />
                                                     )}
                                                 </strong>
-                                                <span>{activeMind.description}</span>
+                                                {activeMind.description && (
+                                                    <p>{activeMind.description}</p>
+                                                )}
                                             </div>
                                         </div>
                                         <button
                                             type="button"
-                                            className="ui-landing-mind-close"
+                                            className="ui-chat-mind-banner-close"
                                             onClick={handleClearActiveMind}
                                             aria-label={t('minds.disableActive')}
                                             title={t('minds.disableActive')}
                                         >
-                                            <X size={17} />
+                                            <X size={16} />
                                         </button>
                                     </div>
-                                    {activeMind.starters?.length > 0 && (
-                                        <div className="ui-landing-mind-starters">
-                                            {activeMind.starters.map((starter) => (
-                                                <button
-                                                    key={starter}
-                                                    type="button"
-                                                    onClick={() => handleSendMessage(starter, [], {})}
-                                                >
-                                                    {starter}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <InputArea
-                                variant="landing"
-                                showDynamicWarning={false}
-                                onSendMessage={handleSendMessage}
-                                onStop={() => {
-                                    notifyOnDoneRef.current = false;
-                                    stopGeneration();
-                                }}
-                                isLoading={isLoading}
-                                isReadOnly={isReadOnly}
-                                initialPrompt={initialPrompt}
-                                onInitialPromptConsumed={() => setInitialPrompt(null)}
-                                onOpenAuth={() => setAuthOpen('login')}
-                            />
-                        </LandingHero>
-                    </div>
-                ) : (
-                    <Suspense fallback={null}>
-                        <>
-                            {isTemporaryChat && (
-                                <div className="ui-chat-mind-banner" role="status">
-                                    <div className="ui-chat-mind-banner-main">
-                                        <div className="ui-chat-mind-banner-icon" aria-hidden="true">
-                                            <LockKeyhole size={19} />
-                                        </div>
-                                        <div className="ui-chat-mind-banner-copy">
-                                            <span>{t('temporaryChat.badge')}</span>
-                                            <strong>{t('temporaryChat.title')}</strong>
-                                            <p>{t('temporaryChat.description')}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {activeMind && (
-                                <div className="ui-chat-mind-banner" role="status">
-                                    <div className="ui-chat-mind-banner-main">
-                                        <div className="ui-chat-mind-banner-icon" aria-hidden="true">
-                                            <BrainCircuit size={19} />
-                                        </div>
-                                        <div className="ui-chat-mind-banner-copy">
-                                            <span>{t('minds.activeLabel')}</span>
-                                            <strong>
-                                                {activeMind.name}
-                                                {activeMind.is_verified && (
-                                                    <BadgeCheck size={14} className="ml-1 inline-block align-[-2px]" />
-                                                )}
-                                            </strong>
-                                            {activeMind.description && (
-                                                <p>{activeMind.description}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="ui-chat-mind-banner-close"
-                                        onClick={handleClearActiveMind}
-                                        aria-label={t('minds.disableActive')}
-                                        title={t('minds.disableActive')}
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            )}
-                            <ChatContainer
-                                history={history}
-                                isLoading={isLoading}
-                                isReadOnly={isReadOnly}
-                                onRegenerate={(messageId) => {
-                                    if (regenerateMessage) {
-                                        notifyOnDoneRef.current = true;
-                                        regenerateMessage(messageId, currentModel);
-                                    }
-                                }}
-                                onEdit={(messageId, newText) => {
-                                    if (editMessage) {
-                                        notifyOnDoneRef.current = true;
-                                        editMessage(messageId, newText, currentModel);
-                                    }
-                                }}
-                                onSwitchVariant={(messageId, direction) => {
-                                    if (switchVariant) {
-                                        switchVariant(messageId, direction);
-                                    }
-                                }}
-                            />
+                                )}
+                                <ChatContainer
+                                    history={history}
+                                    isLoading={isLoading}
+                                    currentSessionId={isTemporaryChat ? null : currentSessionId}
+                                    isReadOnly={isReadOnly}
+                                    onRegenerate={(messageId) => {
+                                        if (regenerateMessage) {
+                                            notifyOnDoneRef.current = true;
+                                            regenerateMessage(messageId, currentModel);
+                                        }
+                                    }}
+                                    onEdit={(messageId, newText) => {
+                                        if (editMessage) {
+                                            notifyOnDoneRef.current = true;
+                                            editMessage(messageId, newText, currentModel);
+                                        }
+                                    }}
+                                    onSwitchVariant={(messageId, direction) => {
+                                        if (switchVariant) {
+                                            switchVariant(messageId, direction);
+                                        }
+                                    }}
+                                />
 
-                            <InputArea
-                                onSendMessage={handleSendMessage}
-                                onStop={() => {
-                                    notifyOnDoneRef.current = false;
-                                    stopGeneration();
-                                }}
-                                isLoading={isLoading}
-                                isReadOnly={isReadOnly}
-                                initialPrompt={initialPrompt}
-                                onInitialPromptConsumed={() => setInitialPrompt(null)}
-                                onOpenAuth={() => setAuthOpen('login')}
-                            />
-                        </>
-                    </Suspense>
+                                <InputArea
+                                    onSendMessage={handleSendMessage}
+                                    onStop={() => {
+                                        notifyOnDoneRef.current = false;
+                                        stopGeneration();
+                                    }}
+                                    isLoading={isLoading}
+                                    isReadOnly={isReadOnly}
+                                    initialPrompt={initialPrompt}
+                                    onInitialPromptConsumed={() => setInitialPrompt(null)}
+                                    onOpenAuth={() => setAuthOpen('login')}
+                                />
+                            </>
+                        </Suspense>
+                    )}
+                </main>
+
+                {isChatSurface && canvasDockTextdoc && (
+                    <aside
+                        className={isCanvasVisible ? 'chat-canvas-dock is-open' : 'chat-canvas-dock is-collapsed'}
+                        aria-label={t('canvas.ariaLabel')}
+                        style={{ '--canvas-panel-width': `${canvasWidth}px` } as CSSProperties}
+                    >
+                        {isCanvasVisible ? (
+                            <>
+                                <div
+                                    className="chat-canvas-resize-handle"
+                                    role="separator"
+                                    aria-orientation="vertical"
+                                    aria-label={t('canvas.resizeHandle')}
+                                    tabIndex={0}
+                                    onPointerDown={handleCanvasResizeStart}
+                                    onKeyDown={handleCanvasResizeKeyDown}
+                                />
+                                <Suspense fallback={null}>
+                                    <CanvasPanel
+                                        textdoc={canvasDockTextdoc}
+                                        onClose={() => setCanvasVisible(false)}
+                                        onContentChange={handleCanvasContentChange}
+                                    />
+                                </Suspense>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                className="chat-canvas-dock-trigger"
+                                onClick={() => handleOpenCanvas(canvasDockTextdoc)}
+                                aria-label={t('canvas.card.openAria', { name: canvasDockTextdoc.name })}
+                                title={t('canvas.card.openAria', { name: canvasDockTextdoc.name })}
+                            >
+                                <span className="chat-canvas-dock-icon" aria-hidden="true">
+                                    {canvasDockIsCode ? <FileCode2 size={18} /> : <FileText size={18} />}
+                                </span>
+                                <span className="chat-canvas-dock-copy">
+                                    <span>{t('canvas.badge')}</span>
+                                    <strong>{canvasDockTextdoc.name}</strong>
+                                    <small>{canvasDockTypeLabel} / {t('canvas.lines', { count: canvasDockLineCount })}</small>
+                                </span>
+                                <PanelRightOpen size={17} aria-hidden="true" />
+                            </button>
+                        )}
+                    </aside>
                 )}
-            </main>
+            </div>
 
             {isSettingsOpen && (
                 <Suspense fallback={null}>

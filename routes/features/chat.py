@@ -25,6 +25,7 @@ from services.chat_history import (
     normalize_message,
     resolve_session_identifier,
 )
+from services.canvas_tools import find_canmore_marker, normalize_canvas_textdoc, process_canmore_calls
 from services.files import handle_file_upload
 from services.github_chat import handle_github_chat_message
 from services.model_access import can_user_access_model, get_model_stage
@@ -143,6 +144,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         session_id = resolve_session_id(_extract_session_identifier(data))
         model_name = data.get("model", "gemini")
         data["session_id"] = session_id
+        data["canvas_textdoc"] = normalize_canvas_textdoc(data.get("canvas_textdoc"))
         data.setdefault("files", [])
         if auth_user_id is None and _has_files_payload(data.get("files")):
             raise ApiError(
@@ -179,6 +181,8 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             user_data["meta"] = json.loads(user_data["meta"])
         except json.JSONDecodeError:
             user_data["meta"] = {}
+
+    user_data["canvas_textdoc"] = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
 
     return session_id, user_data, model_name
 
@@ -266,12 +270,19 @@ def _build_model_message_for_history(
     images: Any,
     sources: Any,
     github_tool: Any = None,
+    canvas_textdoc: Any = None,
+    canvas_updates: Any = None,
 ) -> dict:
     message = {"role": "model", "parts": _build_model_message_parts(reply_text, images)}
     if isinstance(sources, list) and sources:
         message["sources"] = sources
     if isinstance(github_tool, dict) and github_tool:
         message["github_tool"] = github_tool
+    normalized_canvas = normalize_canvas_textdoc(canvas_textdoc)
+    if normalized_canvas:
+        message["canvas_textdoc"] = normalized_canvas
+    if isinstance(canvas_updates, list) and canvas_updates:
+        message["canvas_updates"] = canvas_updates
     return message
 
 
@@ -482,7 +493,40 @@ def _stream_chat_response(
     def stream_generator():
         with captured_app.app_context():
             full_response = ""
+            streamed_response = ""
+            pending_reply_buffer = ""
+            suppress_canmore_output = False
             final_data: dict[str, Any] = {}
+            current_canvas_textdoc = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
+
+            def stream_reply_text(chunk_text: str):
+                nonlocal pending_reply_buffer, streamed_response, suppress_canmore_output
+                if not chunk_text:
+                    return
+
+                pending_reply_buffer += chunk_text
+                if suppress_canmore_output:
+                    return
+
+                marker_index = find_canmore_marker(pending_reply_buffer)
+                if marker_index >= 0:
+                    visible_text = pending_reply_buffer[:marker_index]
+                    pending_reply_buffer = pending_reply_buffer[marker_index:]
+                    suppress_canmore_output = True
+                    if visible_text:
+                        streamed_response += visible_text
+                        yield _stream_event({"reply_part": visible_text})
+                    return
+
+                flush_length = max(0, len(pending_reply_buffer) - 160)
+                if flush_length <= 0:
+                    return
+
+                visible_text = pending_reply_buffer[:flush_length]
+                pending_reply_buffer = pending_reply_buffer[flush_length:]
+                streamed_response += visible_text
+                yield _stream_event({"reply_part": visible_text})
+
             try:
                 message_for_search = str(original_user_message or "")
                 manual_search = _manual_web_search_requested(user_data, message_for_search)
@@ -605,6 +649,13 @@ def _stream_chat_response(
 
                 for chunk in model_func(db_user_id, user_data):
                     if isinstance(chunk, dict):
+                        if "canvas_update" in chunk:
+                            yield _stream_event({"canvas_update": chunk["canvas_update"]})
+                            final_data.update(
+                                {k: v for k, v in chunk.items() if k != "canvas_update"}
+                            )
+                            continue
+
                         if "widget_update" in chunk:
                             yield _stream_event({"widget_update": chunk["widget_update"]})
                             final_data.update(
@@ -615,7 +666,7 @@ def _stream_chat_response(
                         if "reply_part" in chunk:
                             chunk_str = str(chunk.get("reply_part") or "")
                             full_response += chunk_str
-                            yield _stream_event({"reply_part": chunk_str})
+                            yield from stream_reply_text(chunk_str)
                             final_data.update({k: v for k, v in chunk.items() if k != "reply_part"})
                             continue
 
@@ -631,9 +682,20 @@ def _stream_chat_response(
 
                     chunk_str = str(chunk)
                     full_response += chunk_str
-                    yield _stream_event({"reply_part": chunk_str})
+                    yield from stream_reply_text(chunk_str)
 
-                final_data["reply"] = full_response
+                if not suppress_canmore_output and pending_reply_buffer:
+                    streamed_response += pending_reply_buffer
+                    yield _stream_event({"reply_part": pending_reply_buffer})
+
+                canvas_result = process_canmore_calls(full_response, current_canvas_textdoc)
+                if canvas_result.updates:
+                    final_data["canvas_updates"] = canvas_result.updates
+                    final_data["canvas_textdoc"] = canvas_result.textdoc
+                    for canvas_update in canvas_result.updates:
+                        yield _stream_event({"canvas_update": canvas_update})
+
+                final_data["reply"] = canvas_result.reply
                 final_data["sessionId"] = resolved_session_id
                 if allow_guest_file_persistence and not temporary_chat:
                     final_data["session_token"] = _generate_guest_session_token(
@@ -646,11 +708,19 @@ def _stream_chat_response(
                 yield _stream_event({"error": "stream_failed"})
 
             finally:
-                reply_text = str(final_data.get("reply") or full_response or "")
+                reply_text = (
+                    str(final_data["reply"])
+                    if "reply" in final_data
+                    else str(full_response or streamed_response or "")
+                )
                 new_messages_batch = [
                     user_message_for_history,
                     _build_model_message_for_history(
-                        reply_text, final_data.get("images"), final_data.get("sources")
+                        reply_text,
+                        final_data.get("images"),
+                        final_data.get("sources"),
+                        canvas_textdoc=final_data.get("canvas_textdoc"),
+                        canvas_updates=final_data.get("canvas_updates"),
                     ),
                 ]
                 if temporary_chat:
@@ -792,18 +862,39 @@ def register_chat_routes(api_bp):
         _attach_web_search_context(user_data, str(original_user_message or ""), db_user_id)
         model_output = model_func(db_user_id, user_data)
         web_sources = _extract_web_sources(user_data)
+        canvas_textdoc = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
+        non_stream_canvas_updates: list[dict[str, Any]] = []
+        non_stream_canvas_textdoc: dict[str, Any] | None = None
         if isinstance(model_output, dict):
+            canvas_result = process_canmore_calls(str(model_output.get("reply") or ""), canvas_textdoc)
+            if canvas_result.updates:
+                model_output["reply"] = canvas_result.reply
+                model_output["canvas_updates"] = canvas_result.updates
+                model_output["canvas_textdoc"] = canvas_result.textdoc
+                non_stream_canvas_updates = canvas_result.updates
+                non_stream_canvas_textdoc = canvas_result.textdoc
             if web_sources and "sources" not in model_output:
                 model_output["sources"] = web_sources
             model_message_for_history = _build_model_message_for_history(
                 str(model_output.get("reply") or ""),
                 model_output.get("images"),
                 model_output.get("sources"),
+                canvas_textdoc=model_output.get("canvas_textdoc"),
+                canvas_updates=model_output.get("canvas_updates"),
             )
         else:
+            canvas_result = process_canmore_calls(str(model_output), canvas_textdoc)
+            if canvas_result.updates:
+                non_stream_canvas_updates = canvas_result.updates
+                non_stream_canvas_textdoc = canvas_result.textdoc
             model_message_for_history = _build_model_message_for_history(
-                str(model_output), None, web_sources
+                canvas_result.reply,
+                None,
+                web_sources,
+                canvas_textdoc=canvas_result.textdoc if canvas_result.updates else None,
+                canvas_updates=canvas_result.updates,
             )
+            model_output = canvas_result.reply
 
         new_messages_batch = [user_message_for_history, model_message_for_history]
         if not temporary_chat:
@@ -826,6 +917,9 @@ def register_chat_routes(api_bp):
             response_data = {"ok": True, "reply": str(model_output)}
             if web_sources:
                 response_data["sources"] = web_sources
+            if non_stream_canvas_updates:
+                response_data["canvas_updates"] = non_stream_canvas_updates
+                response_data["canvas_textdoc"] = non_stream_canvas_textdoc
 
         if allow_guest_file_persistence and not temporary_chat:
             response_data["session_token"] = _generate_guest_session_token(

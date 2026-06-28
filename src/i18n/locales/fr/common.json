@@ -65,7 +65,9 @@
   "common": {
     "loading": "Chargement...",
     "closeEsc": "Fermer (Esc)",
-    "selectOption": "Sélectionnez une option"
+    "selectOption": "Sélectionnez une option",
+    "copy": "Copy",
+    "close": "Close"
   },
   "think": {
     "label": "Pensées",
@@ -90,6 +92,13 @@
   },
   "chat": {
     "readOnly": "Le chat est en lecture seule",
+    "editUserMessage": {
+      "placeholder": "Edit your message...",
+      "ariaLabel": "Edit your message",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit"
+    },
     "githubDiff": {
       "title": "Pull request changes",
       "branch": "Branch",
@@ -109,6 +118,70 @@
         "modified": "Modified",
         "renamed": "Renamed"
       }
+    },
+    "ariaLog": "Conversation messages",
+    "userMessageAria": "Your message",
+    "assistantMessageAria": "Assistant message",
+    "regenerate": "Regenerate",
+    "variants": {
+      "previous": "Previous response",
+      "next": "Next response",
+      "counter": "Response {{current}} of {{total}}"
+    },
+    "audio": {
+      "speak": "Read aloud",
+      "label": "Audio",
+      "loading": "Loading audio...",
+      "play": "Play",
+      "pause": "Pause",
+      "progress": "Audio playback position",
+      "error": "Could not load audio."
+    },
+    "feedback": {
+      "like": "Good answer",
+      "dislike": "Bad answer",
+      "panelTitle": "What was wrong with the answer?",
+      "reasonGroup": "Feedback reasons",
+      "commentLabel": "Additional feedback",
+      "commentPlaceholder": "Describe what should be improved",
+      "submit": "Send feedback",
+      "sending": "Sending...",
+      "sent": "Feedback sent",
+      "error": "Failed to send feedback",
+      "noSession": "Feedback is available only in saved chats.",
+      "reasons": {
+        "incorrect": "Incorrect",
+        "unsafe": "Unsafe",
+        "not_helpful": "Not helpful",
+        "too_long": "Too long",
+        "missing_context": "Missed context",
+        "other": "Other"
+      }
+    }
+  },
+  "canvas": {
+    "ariaLabel": "Canvas text document",
+    "badge": "Canvas",
+    "close": "Close canvas",
+    "restore": "Open canvas",
+    "copy": "Copy content",
+    "copied": "Copied",
+    "download": "Download",
+    "preview": "Preview",
+    "empty": "No content yet.",
+    "lines": "{{count}} lines",
+    "type": {
+      "document": "Document",
+      "code": "Code: {{language}}"
+    },
+    "comments": {
+      "title": "Comments",
+      "count": "{{count}}"
+    },
+    "editorLabel": "Canvas editor",
+    "resizeHandle": "Resize canvas",
+    "card": {
+      "openAria": "Open {{name}} in canvas"
     }
   },
   "composer": {
@@ -133,7 +206,8 @@
     "webSearchOff": "Activer la recherche web"
   },
   "files": {
-    "removeFile": "Retirer le fichier"
+    "removeFile": "Retirer le fichier",
+    "fileFallback": "File"
   },
   "share": {
     "title": "Partage du chat",
@@ -367,6 +441,33 @@
       "autoSave": {
         "title": "Sauvegarde automatique",
         "description": "Enregistrer automatiquement l'historique du chat."
+      },
+      "chatPanel": {
+        "group": "Panneau de chat",
+        "position": {
+          "label": "Position à l'écran",
+          "bottomCenter": "En bas au centre",
+          "center": "Centre",
+          "topCenter": "En haut au centre",
+          "right": "Droite",
+          "left": "Gauche"
+        },
+        "reset": {
+          "label": "Réinitialiser vers une nouvelle discussion",
+          "never": "Jamais",
+          "after5": "Après 5 minutes",
+          "after10": "Après 10 minutes",
+          "after30": "Après 30 minutes"
+        },
+        "shortcut": {
+          "label": "Raccourci clavier",
+          "disabled": "Désactivé"
+        },
+        "newChat": {
+          "label": "Ouvrir les nouvelles discussions",
+          "companion": "Dans le chat compagnon",
+          "browser": "Dans le navigateur"
+        }
       }
     },
     "accessibility": {
@@ -465,7 +566,8 @@
       "arabic": "Arabe",
       "hindi": "Hindi",
       "bengali": "Bengali"
-    }
+    },
+    "translateAction": "Translate"
   },
   "quiz": {
     "dataError": "Erreur de données du quiz",
@@ -722,6 +824,43 @@
         "diffLoaded": "{{files}} changed files",
         "pullRequestOpened": "Pull request #{{number}}"
       }
+    }
+  },
+  "chatImage": {
+    "messageAlt": "Chat image {{number}}",
+    "generating": "Creating image: {{prompt}}"
+  },
+  "codeBlock": {
+    "codeSnippet": "Code snippet",
+    "diagram": "Diagram",
+    "preview": "Preview",
+    "code": "Code",
+    "download": "Download file",
+    "copy": "Copy code",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "tableCopy": "Copy table",
+    "tableCopied": "Copied",
+    "copyFailed": "Copy failed",
+    "loading": {
+      "chartjs": "Loading chart...",
+      "d3": "Loading visualization...",
+      "nomnoml": "Loading diagram...",
+      "mermaid": "Loading diagram...",
+      "svg": "Rendering safe SVG..."
+    }
+  },
+  "widgets": {
+    "creating": "Creating {{tool}}"
+  },
+  "htmlPreview": {
+    "title": "HTML preview"
+  },
+  "admin": {
+    "aiFeedback": {
+      "likeRatio": "AI answer likes",
+      "dislikeRatio": "AI answer dislikes",
+      "total": "AI answer ratings"
     }
   }
 }

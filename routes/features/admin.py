@@ -15,6 +15,7 @@ from sqlalchemy import and_, func, or_, text
 
 from config import LOGS_FOLDER
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
+from utils.feedback import feedback_rating_summary
 from utils.audit_log import AuditEvents, log_audit_event
 from utils.auth import (
     Mind,
@@ -305,6 +306,7 @@ def _dashboard_stats() -> dict[str, Any]:
             "total": UserChatHistory.query.count(),
             "updated_24h": UserChatHistory.query.filter(UserChatHistory.updated_at >= since).count(),
         },
+        "ai_feedback": feedback_rating_summary(),
     }
 
 

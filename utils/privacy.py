@@ -39,6 +39,7 @@ def get_user_data_locations(user_id):
             "user",
             "user_settings",
             "user_chat_history",
+            "ai_response_feedback",
             "chat_share",
             "mind",
             "mind_pin",
@@ -104,7 +105,7 @@ def _delete_referenced_files(chats):
 
 
 def export_user_data(user_id):
-    from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
+    from utils.auth import AIResponseFeedback, ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
 
     export_data = {
         "exported_at": datetime.utcnow().isoformat(),
@@ -141,6 +142,8 @@ def export_user_data(user_id):
     }
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
     export_data["chats"] = [chat.to_dict() for chat in chats]
+    feedback = AIResponseFeedback.query.filter_by(user_id=user_id).all()
+    export_data["ai_response_feedback"] = [item.to_dict() for item in feedback]
     shares = ChatShare.query.filter_by(user_id=user_id).all()
     export_data["shares"] = [share.to_dict() for share in shares]
     minds = Mind.query.filter_by(user_id=user_id).all()
@@ -159,7 +162,7 @@ def export_user_data(user_id):
 
 def delete_user_data(user_id, delete_account=False):
     from utils.audit_log import AuditEvents, log_audit_event
-    from utils.auth import ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
+    from utils.auth import AIResponseFeedback, ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
 
     results = {
         "user_id": user_id,
@@ -170,6 +173,8 @@ def delete_user_data(user_id, delete_account=False):
     try:
         shares_deleted = ChatShare.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["chat_shares"] = shares_deleted
+        feedback_deleted = AIResponseFeedback.query.filter_by(user_id=user_id).delete()
+        results["items_deleted"]["ai_response_feedback"] = feedback_deleted
         chats = UserChatHistory.query.filter_by(user_id=user_id).all()
         chat_session_ids = [chat.session_id for chat in chats]
         referenced_files_deleted = _delete_referenced_files(chats)
@@ -227,7 +232,7 @@ def delete_user_data(user_id, delete_account=False):
 
 
 def anonymize_user_data(user_id):
-    from utils.auth import User, UserChatHistory, UserSettings, db
+    from utils.auth import AIResponseFeedback, User, UserChatHistory, UserSettings, db
 
     user = db.session.get(User, user_id)
     if not user:
@@ -241,6 +246,7 @@ def anonymize_user_data(user_id):
     user.reset_token = None
     user.oauth_id = None
     UserSettings.query.filter_by(user_id=user_id).delete()
+    AIResponseFeedback.query.filter_by(user_id=user_id).delete()
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
     for chat in chats:
         chat.title = "Deleted Chat"

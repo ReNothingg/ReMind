@@ -310,6 +310,9 @@ const InputArea = ({
                     isDragActive ? 'active visible opacity-100' : 'invisible opacity-0 pointer-events-none'
                 )}
                 id="dragOverlay"
+                role="status"
+                aria-live="polite"
+                aria-hidden={!isDragActive}
             >
                 <div
                     className={cn(
@@ -375,14 +378,16 @@ const InputArea = ({
 
                 <div className="input-wrapper ui-composer-shell">
                     {isAuthenticated && !isReadOnly ? (
-                        <label
-                            htmlFor="fileInput"
+                        <button
+                            type="button"
                             className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]"
                             title={t('composer.attachFiles')}
                             aria-label={t('composer.attachFiles')}
-                        ></label>
+                            onClick={() => fileInputRef.current?.click()}
+                        />
                     ) : (
-                        <label
+                        <button
+                            type="button"
                             className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)] cursor-not-allowed opacity-50"
                             title={isReadOnly ? t('composer.attachUnavailableReadOnly') : t('composer.attachRequiresAccount')}
                             aria-label={t('composer.attachUnavailable')}
@@ -390,7 +395,7 @@ const InputArea = ({
                                 event.preventDefault();
                                 if (!isReadOnly && onOpenAuth) onOpenAuth();
                             }}
-                        ></label>
+                        />
                     )}
 
                     {!automaticWebSearch && (
@@ -413,7 +418,12 @@ const InputArea = ({
                     )}
 
                     {hasQuotes && (
-                        <div id="quotePreviewArea" className="quote-preview-area ui-composer-quote-stack ui-scrollbar-thin">
+                        <div
+                            id="quotePreviewArea"
+                            className="quote-preview-area ui-composer-quote-stack ui-scrollbar-thin"
+                            role="group"
+                            aria-label={t('composer.quote')}
+                        >
                             {quotes.map((quote, index) => (
                             <div key={index} className="quote-item ui-composer-quote-card">
                                 <blockquote className="overflow-hidden whitespace-pre-wrap break-words text-[var(--color-text-secondary)] italic leading-6">
@@ -437,6 +447,8 @@ const InputArea = ({
                         <div
                             id="dynamicWarningLabel"
                             className="warning-label ui-hint-pill absolute bottom-[calc(100%+var(--main-input-area-padding)+var(--spacing-unit))] left-1/2 max-w-[calc(100%-32px)] -translate-x-1/2"
+                            role="status"
+                            aria-live="polite"
                         >
                             {dynamicWarning}
                         </div>
@@ -448,6 +460,7 @@ const InputArea = ({
                         className="ui-composer-textarea"
                         placeholder={isReadOnly ? t('composer.placeholderReadOnly') : t('composer.placeholder')}
                         aria-label={t('composer.ariaInput')}
+                        aria-describedby={showDynamicWarning && dynamicWarning ? 'dynamicWarningLabel' : undefined}
                         rows={1}
                         value={text}
                         onChange={(event) => setText(event.target.value)}
@@ -466,7 +479,7 @@ const InputArea = ({
                             sendButtonClass
                         )}
                         title={isReadOnly ? t('chat.readOnly') : sendButtonTitle}
-                        aria-label={isLoading ? t('composer.stop') : t('composer.send')}
+                        aria-label={isLoading ? t('composer.stop') : sendButtonTitle}
                         onClick={handleSend}
                         disabled={isReadOnly}
                     >

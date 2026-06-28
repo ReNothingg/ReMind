@@ -69,14 +69,17 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
 
     return (
         <ModalShell
+            ariaLabel={t('files.previewAlt', { name: file.name })}
             className="file-modal active px-3 py-4 sm:px-4 sm:py-6"
             contentClassName="file-modal-content flex h-[min(90vh,820px)] w-full max-w-5xl flex-col rounded-[18px] border-border bg-surface text-foreground shadow-[var(--shadow-xl)]"
             onBackdropClick={onClose}
+            onRequestClose={onClose}
         >
             <button
                 className="file-modal-close ui-icon-control absolute right-4 top-4 z-10 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                 onClick={onClose}
                 title={t('common.closeEsc')}
+                aria-label={t('common.closeEsc')}
                 type="button"
             >
                 x
@@ -112,7 +115,7 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
 
                 {isHtml && (
                     <>
-                        <div className="preview-tabs flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5">
+                        <div className="preview-tabs flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5" role="tablist" aria-label={t('files.preview')}>
                             <button
                                 className={cn(
                                     'tab rounded-xl px-4 py-2 text-sm font-medium transition duration-200 ease-out',
@@ -123,6 +126,8 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                                 data-tab="preview"
                                 onClick={() => setActiveTab('preview')}
                                 type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'preview'}
                             >
                                 {t('files.preview')}
                             </button>
@@ -136,20 +141,23 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                                 data-tab="code"
                                 onClick={() => setActiveTab('code')}
                                 type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'code'}
                             >
                                 {t('files.code')} ({t('files.lines', { count: lineCount })})
                             </button>
                         </div>
 
                         <div className="tab-content-wrapper min-h-0 flex-1">
-                            <div className={cn('preview-tab tab-pane h-full', activeTab === 'preview' ? 'active block' : 'hidden')} data-pane="preview">
+                            <div className={cn('preview-tab tab-pane h-full', activeTab === 'preview' ? 'active block' : 'hidden')} data-pane="preview" role="tabpanel" hidden={activeTab !== 'preview'}>
                                 <iframe
                                     srcDoc={content}
                                     sandbox="allow-forms"
                                     className="h-full w-full border-0"
+                                    title={t('files.previewAlt', { name: file.name })}
                                 />
                             </div>
-                            <div className={cn('code-tab tab-pane h-full', activeTab === 'code' ? 'active block' : 'hidden')} data-pane="code">
+                            <div className={cn('code-tab tab-pane h-full', activeTab === 'code' ? 'active block' : 'hidden')} data-pane="code" role="tabpanel" hidden={activeTab !== 'code'}>
                                 <pre className="line-numbers ui-scrollbar-thin h-full overflow-auto p-4 sm:p-5">
                                     <code className="language-html">{content}</code>
                                 </pre>

@@ -270,20 +270,19 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
 
     return (
         <ModalShell
+            ariaLabel={translate(
+                currentModel === 'demo_image'
+                    ? 'imageLightbox.demoTitle'
+                    : 'imageLightbox.title',
+                currentModel === 'demo_image' ? 'ReMind demo image' : 'Image preview'
+            )}
             className="image-lightbox active px-3 py-4 sm:px-4 sm:py-6"
             contentClassName="w-full max-w-[min(900px,calc(100vw-32px))] overflow-visible border-transparent bg-transparent shadow-none"
             onBackdropClick={onClose}
+            onRequestClose={onClose}
         >
             <section
                 className="image-lightbox-panel"
-                role="dialog"
-                aria-modal="true"
-                aria-label={translate(
-                    currentModel === 'demo_image'
-                        ? 'imageLightbox.demoTitle'
-                        : 'imageLightbox.title',
-                    currentModel === 'demo_image' ? 'ReMind demo image' : 'Image preview'
-                )}
             >
                 <div className="image-lightbox-header">
                     <div className="image-lightbox-heading">

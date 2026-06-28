@@ -65,7 +65,9 @@
   "common": {
     "loading": "লোড হচ্ছে...",
     "closeEsc": "বন্ধ করুন (Esc)",
-    "selectOption": "একটি অপশন নির্বাচন করুন"
+    "selectOption": "একটি অপশন নির্বাচন করুন",
+    "copy": "Copy",
+    "close": "Close"
   },
   "think": {
     "label": "ভাবনা",
@@ -90,6 +92,13 @@
   },
   "chat": {
     "readOnly": "চ্যাট শুধুমাত্র পড়ার জন্য",
+    "editUserMessage": {
+      "placeholder": "Edit your message...",
+      "ariaLabel": "Edit your message",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit"
+    },
     "githubDiff": {
       "title": "Pull request changes",
       "branch": "Branch",
@@ -109,6 +118,70 @@
         "modified": "Modified",
         "renamed": "Renamed"
       }
+    },
+    "ariaLog": "Conversation messages",
+    "userMessageAria": "Your message",
+    "assistantMessageAria": "Assistant message",
+    "regenerate": "Regenerate",
+    "variants": {
+      "previous": "Previous response",
+      "next": "Next response",
+      "counter": "Response {{current}} of {{total}}"
+    },
+    "audio": {
+      "speak": "Read aloud",
+      "label": "Audio",
+      "loading": "Loading audio...",
+      "play": "Play",
+      "pause": "Pause",
+      "progress": "Audio playback position",
+      "error": "Could not load audio."
+    },
+    "feedback": {
+      "like": "Good answer",
+      "dislike": "Bad answer",
+      "panelTitle": "What was wrong with the answer?",
+      "reasonGroup": "Feedback reasons",
+      "commentLabel": "Additional feedback",
+      "commentPlaceholder": "Describe what should be improved",
+      "submit": "Send feedback",
+      "sending": "Sending...",
+      "sent": "Feedback sent",
+      "error": "Failed to send feedback",
+      "noSession": "Feedback is available only in saved chats.",
+      "reasons": {
+        "incorrect": "Incorrect",
+        "unsafe": "Unsafe",
+        "not_helpful": "Not helpful",
+        "too_long": "Too long",
+        "missing_context": "Missed context",
+        "other": "Other"
+      }
+    }
+  },
+  "canvas": {
+    "ariaLabel": "Canvas text document",
+    "badge": "Canvas",
+    "close": "Close canvas",
+    "restore": "Open canvas",
+    "copy": "Copy content",
+    "copied": "Copied",
+    "download": "Download",
+    "preview": "Preview",
+    "empty": "No content yet.",
+    "lines": "{{count}} lines",
+    "type": {
+      "document": "Document",
+      "code": "Code: {{language}}"
+    },
+    "comments": {
+      "title": "Comments",
+      "count": "{{count}}"
+    },
+    "editorLabel": "Canvas editor",
+    "resizeHandle": "Resize canvas",
+    "card": {
+      "openAria": "Open {{name}} in canvas"
     }
   },
   "composer": {
@@ -133,7 +206,8 @@
     "webSearchOff": "ওয়েব অনুসন্ধান চালু করুন"
   },
   "files": {
-    "removeFile": "ফাইল সরান"
+    "removeFile": "ফাইল সরান",
+    "fileFallback": "File"
   },
   "share": {
     "title": "চ্যাট শেয়ারিং",
@@ -367,6 +441,33 @@
       "autoSave": {
         "title": "অটো-সেভ",
         "description": "চ্যাট ইতিহাস স্বয়ংক্রিয়ভাবে সংরক্ষণ করুন।"
+      },
+      "chatPanel": {
+        "group": "চ্যাট প্যানেল",
+        "position": {
+          "label": "স্ক্রিনে অবস্থান",
+          "bottomCenter": "নিচে মাঝখানে",
+          "center": "মাঝখানে",
+          "topCenter": "উপরে মাঝখানে",
+          "right": "ডানদিকে",
+          "left": "বামদিকে"
+        },
+        "reset": {
+          "label": "নতুন চ্যাটে রিসেট",
+          "never": "কখনও নয়",
+          "after5": "৫ মিনিট পরে",
+          "after10": "১০ মিনিট পরে",
+          "after30": "৩০ মিনিট পরে"
+        },
+        "shortcut": {
+          "label": "কীবোর্ড শর্টকাট",
+          "disabled": "বন্ধ"
+        },
+        "newChat": {
+          "label": "নতুন চ্যাট খুলুন",
+          "companion": "সহচর চ্যাটে",
+          "browser": "ব্রাউজারে"
+        }
       }
     },
     "accessibility": {
@@ -465,7 +566,8 @@
       "arabic": "আরবি",
       "hindi": "হিন্দি",
       "bengali": "বাংলা"
-    }
+    },
+    "translateAction": "Translate"
   },
   "quiz": {
     "dataError": "কুইজ ডেটা ত্রুটি",
@@ -722,6 +824,43 @@
         "diffLoaded": "{{files}} changed files",
         "pullRequestOpened": "Pull request #{{number}}"
       }
+    }
+  },
+  "chatImage": {
+    "messageAlt": "Chat image {{number}}",
+    "generating": "Creating image: {{prompt}}"
+  },
+  "codeBlock": {
+    "codeSnippet": "Code snippet",
+    "diagram": "Diagram",
+    "preview": "Preview",
+    "code": "Code",
+    "download": "Download file",
+    "copy": "Copy code",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "tableCopy": "Copy table",
+    "tableCopied": "Copied",
+    "copyFailed": "Copy failed",
+    "loading": {
+      "chartjs": "Loading chart...",
+      "d3": "Loading visualization...",
+      "nomnoml": "Loading diagram...",
+      "mermaid": "Loading diagram...",
+      "svg": "Rendering safe SVG..."
+    }
+  },
+  "widgets": {
+    "creating": "Creating {{tool}}"
+  },
+  "htmlPreview": {
+    "title": "HTML preview"
+  },
+  "admin": {
+    "aiFeedback": {
+      "likeRatio": "AI answer likes",
+      "dislikeRatio": "AI answer dislikes",
+      "total": "AI answer ratings"
     }
   }
 }

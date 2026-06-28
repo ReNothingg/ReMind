@@ -217,6 +217,12 @@ def normalize_message(msg: Any) -> dict:
         github_tool = msg.get("github_tool")
         if isinstance(github_tool, dict) and github_tool:
             normalized["github_tool"] = github_tool
+        canvas_textdoc = msg.get("canvas_textdoc") or msg.get("canvasTextdoc")
+        if isinstance(canvas_textdoc, dict) and canvas_textdoc:
+            normalized["canvas_textdoc"] = canvas_textdoc
+        canvas_updates = msg.get("canvas_updates") or msg.get("canvasUpdates")
+        if isinstance(canvas_updates, list) and canvas_updates:
+            normalized["canvas_updates"] = canvas_updates
         return normalized
     except Exception:
         return {

@@ -27,6 +27,9 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
   font-size: 0.875rem;
+  appearance: none;
+  font: inherit;
+  text-align: left;
 }
 
 html[data-theme='light'] .custom-select-container {
@@ -206,6 +209,9 @@ html[data-theme='light'] .custom-select-dropdown {
   color: var(--color-text-primary);
   font-size: 0.875rem;
   user-select: none;
+  appearance: none;
+  font: inherit;
+  text-align: left;
 }
 
 html[data-theme='light'] .custom-select-option {
@@ -213,6 +219,12 @@ html[data-theme='light'] .custom-select-option {
 }
 
 .custom-select-option:hover:not(.disabled) {
+  background: var(--color-bg-hover);
+}
+
+.custom-select-option:focus-visible {
+  outline: 2px solid rgba(var(--color-accent-raw), 0.82);
+  outline-offset: -2px;
   background: var(--color-bg-hover);
 }
 

@@ -28,6 +28,13 @@ interface Window {
     reset: (widgetId?: string | number) => void;
     remove: (widgetId?: string | number) => void;
   };
+  webkit?: {
+    messageHandlers?: {
+      remindMacBridge?: {
+        postMessage: (message: unknown) => void;
+      };
+    };
+  };
 }
 
 interface Navigator {

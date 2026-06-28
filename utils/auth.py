@@ -197,6 +197,58 @@ class UserChatHistory(db.Model):
         }
 
 
+class AIResponseFeedback(db.Model):
+    __tablename__ = "ai_response_feedback"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    session_id = db.Column(db.String(100), nullable=False, index=True)
+    message_client_id = db.Column(db.String(120), nullable=True)
+    response_hash = db.Column(db.String(64), nullable=False, index=True)
+    rating = db.Column(db.String(12), nullable=False, index=True)
+    reason_codes_data = db.Column(db.Text, default="[]", nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+    prompt_text = db.Column(db.Text, nullable=True)
+    response_text = db.Column(db.Text, nullable=True)
+    service_improvement_opt_in = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "session_id",
+            "response_hash",
+            name="uq_ai_feedback_user_session_response",
+        ),
+    )
+
+    def get_reason_codes(self):
+        try:
+            parsed = json.loads(self.reason_codes_data) if self.reason_codes_data else []
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+
+    def set_reason_codes(self, reason_codes):
+        self.reason_codes_data = json.dumps(reason_codes or [], ensure_ascii=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "session_id": self.session_id,
+            "message_client_id": self.message_client_id,
+            "response_hash": self.response_hash,
+            "rating": self.rating,
+            "reason_codes": self.get_reason_codes(),
+            "comment": self.comment,
+            "prompt_text": self.prompt_text,
+            "response_text": self.response_text,
+            "service_improvement_opt_in": bool(self.service_improvement_opt_in),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class ChatShare(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
