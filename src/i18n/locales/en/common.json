@@ -185,6 +185,32 @@
       "openAria": "Open {{name}} in canvas"
     }
   },
+  "beatbox": {
+    "title": "Beatbot",
+    "bpmLabel": "BPM",
+    "play": "Play beat",
+    "stop": "Stop beat",
+    "addTrack": "Add track",
+    "deleteTrack": "Delete track",
+    "adsrSettings": "ADSR settings",
+    "selectInstrument": "Select instrument: {{instrument}}",
+    "adsr": {
+      "attack": "Attack",
+      "decay": "Decay",
+      "sustain": "Sustain",
+      "release": "Release"
+    },
+    "instruments": {
+      "kick": "Kick",
+      "snare": "Snare",
+      "clap": "Clap",
+      "hihat": "Hi-hat",
+      "open_hat": "Open hat",
+      "tom": "Tom",
+      "triangle": "Triangle",
+      "cowbell": "Cowbell"
+    }
+  },
   "composer": {
     "attachFiles": "Attach files",
     "attachUnavailable": "Attachment unavailable",

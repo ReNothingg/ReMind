@@ -226,6 +226,9 @@ def test_session_routes_cover_create_history_guest_listing_share_and_delete(
     assert public_history_as_guest.get_json()["read_only"] is True
     assert public_history_as_guest.get_json()["public_id"] == "public_history_id"
 
+    random_history_as_guest = guest_client.get("/sessions/random-not-real/history")
+    assert random_history_as_guest.status_code == 404
+
     import routes.features.sessions as sessions_routes
     import services.chat_history as chat_history
 
@@ -248,6 +251,16 @@ def test_session_routes_cover_create_history_guest_listing_share_and_delete(
     )
     assert guest_list.status_code == 200
     assert guest_list.get_json()["sessions"][0]["session_id"] == guest_session_id
+
+    guest_history_without_token = guest_client.get(f"/sessions/{guest_session_id}/history")
+    assert guest_history_without_token.status_code == 401
+
+    guest_history_with_token = guest_client.get(
+        f"/sessions/{guest_session_id}/history",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert guest_history_with_token.status_code == 200
+    assert guest_history_with_token.get_json()["history"][0]["parts"][0]["text"] == "guest history"
 
     csrf_value = client.get("/health").headers.get("X-CSRF-Token")
     share_response = client.post(

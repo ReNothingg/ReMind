@@ -43,6 +43,10 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - LOCALHOST_MODE=False
+      - CORS_ALLOW_LOCAL_ORIGINS=False
+      - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
+      - PUBLIC_METRICS_ENABLED=False
+      - PUBLIC_OPENAPI_ENABLED=False
       - ALLOW_GUEST_CHATS_SAVE=False
       - ENABLE_STRICT_HTTPS=False
       - VALIDATE_USER_AGENT=True
@@ -95,6 +99,9 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - ENABLE_STRICT_HTTPS=False
+      - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
+      - PUBLIC_METRICS_ENABLED=False
+      - PUBLIC_OPENAPI_ENABLED=False
     volumes:
       - ./database:/app/database
       - ./logs:/app/logs

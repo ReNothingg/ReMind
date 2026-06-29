@@ -216,6 +216,41 @@ def rate_limit(limiter, error_message="Too many requests"):
     return decorator
 
 
+def anonymous_rate_limit(limiter, error_message="Too many anonymous requests"):
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_function(*args, **kwargs):
+            try:
+                if session and "user_id" in session:
+                    return view_func(*args, **kwargs)
+            except RuntimeError:
+                pass
+
+            identifier = f"anonymous:{limiter.get_identifier(request)}:{request.endpoint or request.path}"
+            state = limiter.evaluate(identifier)
+
+            if not state.allowed:
+                from utils.responses import make_error
+
+                blocked = make_response(
+                    make_error(
+                        error_message,
+                        status=429,
+                        code="anonymous_rate_limit_exceeded",
+                        extra={"remaining_requests": state.remaining},
+                    )
+                )
+                retry_after = max(1, state.reset_at - int(time.time()))
+                blocked.headers["Retry-After"] = str(retry_after)
+                return _inject_rate_headers(blocked, state)
+
+            return view_func(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
 def get_rate_limit_headers(limiter, identifier):
     state = limiter.evaluate(identifier)
     return _headers_from_state(state)

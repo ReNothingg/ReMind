@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime
+from ipaddress import ip_address
 
 from flask import (
     Response,
@@ -16,7 +17,12 @@ from flask import (
 )
 from sqlalchemy import text
 
-from config import BASE_PATH
+from config import (
+    BASE_PATH,
+    OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS,
+    PUBLIC_METRICS_ENABLED,
+    PUBLIC_OPENAPI_ENABLED,
+)
 from routes.api_errors import ApiError, api_error_boundary
 from services.model_access import list_released_models
 from utils.auth import db
@@ -37,6 +43,20 @@ def _prefer_html_health_page() -> bool:
         return False
 
     return accepts["text/html"] > accepts["application/json"]
+
+
+def _has_operational_access() -> bool:
+    raw_addr = request.remote_addr or ""
+    try:
+        client_ip = ip_address(raw_addr)
+    except ValueError:
+        return False
+
+    return any(client_ip in network for network in OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS)
+
+
+def _operational_not_found():
+    return make_error("Not found", status=404, code="not_found")
 
 
 def _format_uptime(seconds: float) -> str:
@@ -126,6 +146,8 @@ def register_system_routes(api_bp):
     @api_bp.route("/openapi.json", methods=["GET"])
     @api_error_boundary("openapi_spec_failed")
     def openapi_spec():
+        if not PUBLIC_OPENAPI_ENABLED and not _has_operational_access():
+            return _operational_not_found()
         spec_path = BASE_PATH / "openapi" / "openapi.json"
         if not spec_path.exists():
             raise ApiError("OpenAPI contract not found", status=404, code="not_found")
@@ -180,9 +202,12 @@ def register_system_routes(api_bp):
 
         now_mono = time.perf_counter()
         startup_mono = current_app.config.get("APP_STARTED_MONOTONIC", now_mono)
-        include_full = (request.args.get("full", "") or "").lower() in {"1", "true", "yes"}
+        has_operational_access = _has_operational_access()
+        include_full = has_operational_access and (
+            (request.args.get("full", "") or "").lower() in {"1", "true", "yes"}
+        )
 
-        payload = {
+        detailed_payload = {
             "ok": status != "fail",
             "status": status,
             "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -190,7 +215,10 @@ def register_system_routes(api_bp):
             "latency_ms": round((time.perf_counter() - started_at) * 1000.0, 3),
         }
         if include_full or status != "ok":
-            payload["checks"] = checks
+            detailed_payload["checks"] = checks
+
+        if not has_operational_access:
+            return jsonify({"ok": status != "fail"}), http_status
 
         if _prefer_html_health_page():
             component_checks = []
@@ -233,10 +261,10 @@ def register_system_routes(api_bp):
             return (
                 render_template(
                     "health.html",
-                    payload=payload,
+                    payload=detailed_payload,
                     status=status,
                     http_status=http_status,
-                    uptime_human=_format_uptime(payload["uptime_seconds"]),
+                    uptime_human=_format_uptime(detailed_payload["uptime_seconds"]),
                     component_checks=component_checks,
                     raw_json_url="/health?format=json&full=true",
                     shared_stylesheet_url=_resolve_app_css_url(),
@@ -244,10 +272,12 @@ def register_system_routes(api_bp):
                 http_status,
             )
 
-        return jsonify(payload), http_status
+        return jsonify(detailed_payload), http_status
 
     @api_bp.route("/metrics", methods=["GET"])
     def metrics():
+        if not PUBLIC_METRICS_ENABLED and not _has_operational_access():
+            return _operational_not_found()
         try:
             return Response(
                 export_prometheus_metrics(),
@@ -256,3 +286,20 @@ def register_system_routes(api_bp):
         except Exception as exc:
             logger.exception("Failed to export metrics: %s", exc)
             return make_error("Metrics export failed", status=500, code="metrics_export_failed")
+
+    @api_bp.route("/.well-known/security.txt", methods=["GET"])
+    def security_txt():
+        body = "\n".join(
+            [
+                "Contact: mailto:security@synvexai.com",
+                "Policy: https://synvexai.com/policies/privacy-policy/",
+                "Preferred-Languages: en, ru",
+                "Canonical: https://chat.synvexai.com/.well-known/security.txt",
+                "",
+            ]
+        )
+        return Response(body, mimetype="text/plain; charset=utf-8")
+
+    @api_bp.route("/.well-known/change-password", methods=["GET"])
+    def well_known_change_password():
+        return redirect("/forgot_password", code=302)

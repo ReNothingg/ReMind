@@ -130,6 +130,22 @@
               }
             }
           },
+          "401": {
+            "description": "Authentication required for private guest history",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {

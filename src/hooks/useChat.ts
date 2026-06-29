@@ -203,11 +203,107 @@ function extractLatestCanvasTextdoc(messages): CanvasTextdoc | null {
     return null;
 }
 
+function normalizeBeatboxState(value) {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const rawMeta = value.meta && typeof value.meta === 'object' ? value.meta : {};
+    const bpm = Math.max(40, Math.min(240, Number.parseInt(rawMeta.bpm, 10) || 120));
+    const bars = Math.max(1, Math.min(16, Number.parseInt(rawMeta.bars, 10) || 1));
+    const rawTracks = Array.isArray(value.tracks) ? value.tracks : [];
+    const tracks = rawTracks.slice(0, 32).map((track, index) => {
+        if (!track || typeof track !== 'object') {
+            return null;
+        }
+        const steps = Array.isArray(track.steps)
+            ? track.steps.slice(0, bars * 16).map(step => step === 1 || step === true ? 1 : 0)
+            : [];
+        if (!steps.length) {
+            return null;
+        }
+        const adsr = track.adsr && typeof track.adsr === 'object' ? track.adsr : {};
+        return {
+            id: typeof track.id === 'string' && track.id.trim() ? track.id.slice(0, 80) : `track_${index + 1}`,
+            type: 'drum',
+            drum: typeof track.drum === 'string' && track.drum.trim() ? track.drum.slice(0, 40) : 'kick',
+            steps,
+            adsr: {
+                attack: Number.isFinite(Number(adsr.attack)) ? Number(adsr.attack) : 0.001,
+                decay: Number.isFinite(Number(adsr.decay)) ? Number(adsr.decay) : 0.1,
+                sustain: Number.isFinite(Number(adsr.sustain)) ? Number(adsr.sustain) : 0,
+                release: Number.isFinite(Number(adsr.release)) ? Number(adsr.release) : 0.05
+            }
+        };
+    }).filter(Boolean);
+
+    if (!tracks.length) {
+        return null;
+    }
+
+    return {
+        meta: { bpm, bars },
+        tracks,
+        isPlaying: false,
+        currentStep: 0,
+        timerId: null
+    };
+}
+
+function extractLatestBeatboxState(messages) {
+    if (!Array.isArray(messages)) {
+        return null;
+    }
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const texts = [];
+        if (typeof messages[index]?.content === 'string') {
+            texts.push(messages[index].content);
+        }
+        if (Array.isArray(messages[index]?.parts)) {
+            messages[index].parts.forEach((part) => {
+                if (typeof part?.text === 'string') {
+                    texts.push(part.text);
+                }
+            });
+        }
+        for (const text of texts) {
+            const matches = [...text.matchAll(/<beatbox>([\s\S]*?)<\/beatbox>/gi)];
+            for (let matchIndex = matches.length - 1; matchIndex >= 0; matchIndex -= 1) {
+                try {
+                    const state = normalizeBeatboxState(JSON.parse(matches[matchIndex][1].trim()));
+                    if (state) {
+                        return state;
+                    }
+                } catch {
+                }
+            }
+        }
+
+        const widgets = messages[index]?.widgets;
+        if (!Array.isArray(widgets)) {
+            continue;
+        }
+        for (let widgetIndex = widgets.length - 1; widgetIndex >= 0; widgetIndex -= 1) {
+            const widget = widgets[widgetIndex];
+            if (widget?.type === 'beatbox') {
+                const state = normalizeBeatboxState(widget.state);
+                if (state) {
+                    return state;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
 export const useChat = () => {
     const { t } = useTranslation();
     const { settings } = useSettings();
     const [history, setHistory] = useState([]);
     const [canvasTextdoc, setCanvasTextdoc] = useState<CanvasTextdoc | null>(null);
+    const [beatboxState, setBeatboxState] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
@@ -227,6 +323,7 @@ export const useChat = () => {
     const currentSessionIdRef = useRef(null);
     const currentSessionSlugRef = useRef(null);
     const canvasTextdocRef = useRef<CanvasTextdoc | null>(null);
+    const beatboxStateRef = useRef(null);
     const activeMindIdRef = useRef(null);
     const temporaryChatRef = useRef(false);
 
@@ -244,6 +341,12 @@ export const useChat = () => {
             setCanvasTextdocState(update.textdoc);
         }
     }, [setCanvasTextdocState]);
+
+    const updateBeatboxState = useCallback((value) => {
+        const normalized = normalizeBeatboxState(value);
+        beatboxStateRef.current = normalized;
+        setBeatboxState(normalized);
+    }, []);
 
     const updateCanvasTextdocContent = useCallback((content: string, textdocId?: string | null) => {
         const current = canvasTextdocRef.current;
@@ -545,12 +648,13 @@ export const useChat = () => {
     const resetConversationState = useCallback(() => {
         setHistory([]);
         setCanvasTextdocState(null);
+        updateBeatboxState(null);
         updateSessionIdentity(null, null);
         setSessionAccess(createDefaultSessionAccess());
         setIsReadOnly(false);
         activeMindIdRef.current = null;
         messageVariantsRef.current.clear();
-    }, [setCanvasTextdocState, updateSessionIdentity]);
+    }, [setCanvasTextdocState, updateBeatboxState, updateSessionIdentity]);
 
     const syncSessionIdentity = useCallback((sessionId, slug, options: SyncSessionOptions = {}) => {
         if (!sessionId) return;
@@ -606,6 +710,7 @@ export const useChat = () => {
         if (clearHistory) {
             setHistory(Array.isArray(cachedHistory) ? cachedHistory : []);
             setCanvasTextdocState(extractLatestCanvasTextdoc(cachedHistory));
+            updateBeatboxState(extractLatestBeatboxState(cachedHistory));
             setSessionAccess(createDefaultSessionAccess());
             setIsReadOnly(false);
             messageVariantsRef.current.clear();
@@ -643,6 +748,7 @@ export const useChat = () => {
 
                 setHistory(normalized);
                 setCanvasTextdocState(extractLatestCanvasTextdoc(normalized));
+                updateBeatboxState(extractLatestBeatboxState(normalized));
                 sessionHistoryCacheRef.current.set(resolvedSessionId, normalized);
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
@@ -882,6 +988,9 @@ export const useChat = () => {
         formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
         if (canvasTextdocRef.current) {
             formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
+        }
+        if (beatboxStateRef.current) {
+            formData.append('beatbox_state', JSON.stringify(beatboxStateRef.current));
         }
         formData.append('webSearch', String(webSearch));
         formData.append('autoWebSearch', String(autoWebSearch));
@@ -1227,6 +1336,9 @@ export const useChat = () => {
         if (canvasTextdocRef.current) {
             formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
         }
+        if (beatboxStateRef.current) {
+            formData.append('beatbox_state', JSON.stringify(beatboxStateRef.current));
+        }
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
         formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
@@ -1445,6 +1557,9 @@ export const useChat = () => {
         if (canvasTextdocRef.current) {
             formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
         }
+        if (beatboxStateRef.current) {
+            formData.append('beatbox_state', JSON.stringify(beatboxStateRef.current));
+        }
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
         formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
@@ -1620,6 +1735,7 @@ export const useChat = () => {
     return {
         history,
         canvasTextdoc,
+        beatboxState,
         isLoading,
         currentSessionId,
         currentSessionSlug,
@@ -1639,6 +1755,7 @@ export const useChat = () => {
         editMessage,
         switchVariant,
         updateCanvasTextdocContent,
+        updateBeatboxState,
         enableSharing,
         disableSharing,
         buildHistoryForAPI

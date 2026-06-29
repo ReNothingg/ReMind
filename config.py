@@ -1,4 +1,5 @@
 import os
+from ipaddress import ip_network
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -28,6 +29,20 @@ except ValueError:
 
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 DEFAULT_LANGUAGE: str = "ru"
+
+_flask_debug = os.getenv("FLASK_DEBUG", "0")
+_is_debug = _flask_debug == "1" or _flask_debug.lower() == "true"
+IS_PRODUCTION = not _is_debug and os.getenv("FLASK_ENV") != "development"
+
+DEBUG_MODE = _is_debug
+TESTING = False
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.lower() in ("1", "true", "yes", "on")
 
 
 def _sqlite_directory_usable(folder: Path) -> bool:
@@ -74,7 +89,8 @@ if os.getenv("ALLOWED_HOSTS"):
         if normalized and normalized not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(normalized)
 
-CORS_ORIGINS = [
+CORS_ORIGINS = []
+_DEV_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
     "http://127.0.0.1:3000",
@@ -83,9 +99,19 @@ CORS_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+if not IS_PRODUCTION:
+    CORS_ORIGINS.extend(_DEV_CORS_ORIGINS)
 if os.getenv("CORS_ORIGINS"):
     CORS_ORIGINS.extend([o.strip() for o in os.getenv("CORS_ORIGINS").split(",") if o.strip()])
 CORS_ORIGINS = [o for o in CORS_ORIGINS if o != "*"]
+CORS_ALLOW_LOCAL_ORIGINS = _env_bool("CORS_ALLOW_LOCAL_ORIGINS", default=not IS_PRODUCTION)
+if not CORS_ALLOW_LOCAL_ORIGINS:
+    CORS_ORIGINS = [
+        origin
+        for origin in CORS_ORIGINS
+        if _normalize_host_entry(origin) not in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+    ]
 
 CORS_ALLOW_HEADERS = [
     "Content-Type",
@@ -110,6 +136,31 @@ CORS_MAX_AGE = 3600
 CORS_ALLOW_CREDENTIALS = True
 CORS_SEND_WILDCARD = False
 CORS_ALWAYS_SEND = True
+
+_DEFAULT_OPERATIONAL_ALLOWED_NETWORKS = (
+    "127.0.0.1/32,"
+    "::1/128,"
+    "10.0.0.0/8,"
+    "172.16.0.0/12,"
+    "192.168.0.0/16,"
+    "fc00::/7"
+)
+_raw_operational_networks = os.getenv(
+    "OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS",
+    _DEFAULT_OPERATIONAL_ALLOWED_NETWORKS,
+)
+OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS = []
+for raw_network in _raw_operational_networks.split(","):
+    candidate = raw_network.strip()
+    if not candidate:
+        continue
+    try:
+        OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS.append(ip_network(candidate, strict=False))
+    except ValueError:
+        continue
+
+PUBLIC_METRICS_ENABLED = _env_bool("PUBLIC_METRICS_ENABLED", default=False)
+PUBLIC_OPENAPI_ENABLED = _env_bool("PUBLIC_OPENAPI_ENABLED", default=False)
 
 SERVER_THREADS: int = 8
 SERVER_CONNECTION_LIMIT: int = 200
@@ -164,6 +215,11 @@ if BACKEND_URL:
         ALLOWED_HOSTS.append(backend_host)
 
 SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None
+ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE = _env_bool(
+    "ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE", default=False
+)
+if SESSION_COOKIE_DOMAIN and not ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE:
+    SESSION_COOKIE_DOMAIN = None
 SESSION_COOKIE_NAME = (
     os.getenv("SESSION_COOKIE_NAME") or "remind_session"
 ).strip() or "remind_session"
@@ -172,14 +228,6 @@ TURNSTILE_SITE_KEY = os.getenv("TURNSTILE_SITE_KEY", "")
 TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY", "")
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 LOCALHOST_MODE = os.getenv("LOCALHOST_MODE", "False").lower() in ("1", "true", "yes")
-
-if not SECRET_KEY:
-    if IS_PRODUCTION:
-        raise ValueError("SECRET_KEY must be set when production settings are active")
-
-    import secrets
-
-    SECRET_KEY = secrets.token_hex(32)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME")
@@ -200,12 +248,13 @@ try:
 except ValueError:
     GITHUB_AGENT_MAX_PLAN_FILES = 8
 
-_flask_debug = os.getenv("FLASK_DEBUG", "0")
-_is_debug = _flask_debug == "1" or _flask_debug.lower() == "true"
-IS_PRODUCTION = not _is_debug and os.getenv("FLASK_ENV") != "development"
+if not SECRET_KEY:
+    if IS_PRODUCTION:
+        raise ValueError("SECRET_KEY must be set when production settings are active")
 
-DEBUG_MODE = _is_debug
-TESTING = False
+    import secrets
+
+    SECRET_KEY = secrets.token_hex(32)
 
 try:
 

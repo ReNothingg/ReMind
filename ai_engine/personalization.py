@@ -248,6 +248,27 @@ def render_canmore_tool_prompt(user_data: dict[str, Any]) -> str:
     return tool_prompt.strip() + current_canvas
 
 
+def render_beatbox_state_prompt(user_data: dict[str, Any]) -> str:
+    beatbox_state = user_data.get("beatbox_state") if isinstance(user_data, dict) else None
+    if not isinstance(beatbox_state, dict):
+        return ""
+
+    try:
+        serialized_state = json.dumps(beatbox_state, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return ""
+
+    if len(serialized_state) > 24_000:
+        serialized_state = serialized_state[:24_000] + "...[Current BeatBox state truncated]"
+
+    return (
+        "CURRENT BEATBOX STATE\n"
+        "The user may have edited the BeatBox widget after it was created. Treat this JSON as the current beat, "
+        "including added tracks and toggled steps, when answering or generating the next <beatbox> block.\n"
+        f"```json\n{serialized_state}\n```"
+    )
+
+
 def _format_dimensions(dim: Optional[dict]) -> str:
     if not dim:
         return ""
@@ -266,6 +287,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     user_md = render_user_md_with_settings(user_id, metadata)
     web_tool_prompt = render_web_tool_prompt()
     canmore_tool_prompt = render_canmore_tool_prompt(user_data)
+    beatbox_state_prompt = render_beatbox_state_prompt(user_data)
     github_tool_prompt = render_github_tool_prompt(user_id)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     if base and user_md:
@@ -276,7 +298,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         prompt = base
 
     tool_prompts = [
-        tool for tool in [web_tool_prompt, canmore_tool_prompt, github_tool_prompt] if tool
+        tool for tool in [web_tool_prompt, canmore_tool_prompt, beatbox_state_prompt, github_tool_prompt] if tool
     ]
     if tool_prompts:
         prompt = prompt + "\n\n" + "\n\n".join(tool_prompts)

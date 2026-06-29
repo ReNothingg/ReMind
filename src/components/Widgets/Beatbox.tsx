@@ -1,18 +1,47 @@
 import { Fragment, useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+
 const INSTRUMENT_MAP = {
-    kick: { name: 'Бас-барабан', icon: 'kick' },
-    snare: { name: 'Малый барабан', icon: 'snare' },
-    clap: { name: 'Хлопок', icon: 'clap' },
-    hihat: { name: 'Хай-хэт', icon: 'hihat' },
-    open_hat: { name: 'Открытый хэт', icon: 'ride' },
-    tom: { name: 'Том', icon: 'tom' },
-    triangle: { name: 'Треугольник', icon: 'triangle' },
-    cowbell: { name: 'Ковбел', icon: 'cowbell' }
+    kick: { labelKey: 'beatbox.instruments.kick', icon: 'kick' },
+    snare: { labelKey: 'beatbox.instruments.snare', icon: 'snare' },
+    clap: { labelKey: 'beatbox.instruments.clap', icon: 'clap' },
+    hihat: { labelKey: 'beatbox.instruments.hihat', icon: 'hihat' },
+    open_hat: { labelKey: 'beatbox.instruments.open_hat', icon: 'ride' },
+    tom: { labelKey: 'beatbox.instruments.tom', icon: 'tom' },
+    triangle: { labelKey: 'beatbox.instruments.triangle', icon: 'triangle' },
+    cowbell: { labelKey: 'beatbox.instruments.cowbell', icon: 'cowbell' }
 };
 
 const DRUM_TYPES = Object.keys(INSTRUMENT_MAP);
 
-const Beatbox = ({ initialState }) => {
+const buildBeatboxState = (meta, tracks) => ({
+    meta: {
+        bpm: meta.bpm,
+        bars: meta.bars
+    },
+    tracks: tracks.map(track => ({
+        id: track.id,
+        type: track.type || 'drum',
+        drum: track.drum,
+        steps: track.steps,
+        adsr: track.adsr
+    })),
+    isPlaying: false,
+    currentStep: 0,
+    timerId: null
+});
+
+const ADSR_LIMITS = {
+    attack: { min: 0.001, max: 0.5 },
+    decay: { min: 0.001, max: 0.5 },
+    sustain: { min: 0.001, max: 0.5 },
+    release: { min: 0.001, max: 1.5 }
+};
+
+const formatAdsrLimit = (value) => `${value.toFixed(3)}s`;
+
+const Beatbox = ({ initialState, onStateChange }) => {
+    const { t } = useTranslation();
     const containerRef = useRef(null);
     const audioContextRef = useRef(null);
     const masterGainRef = useRef(null);
@@ -50,6 +79,9 @@ const Beatbox = ({ initialState }) => {
     useEffect(() => { tracksRef.current = tracks; }, [tracks]);
     useEffect(() => { metaRef.current = meta; }, [meta]);
     useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+    useEffect(() => {
+        onStateChange?.(buildBeatboxState(meta, tracks));
+    }, [meta, tracks, onStateChange]);
     useEffect(() => {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         const ctx = new AudioCtx();
@@ -303,8 +335,12 @@ const Beatbox = ({ initialState }) => {
         const btnRect = e.currentTarget.getBoundingClientRect();
         const containerRect = containerRef.current.getBoundingClientRect();
 
-        const top = btnRect.bottom - containerRect.top + 5;
-        const left = btnRect.left - containerRect.left;
+        const panelWidth = 320;
+        const top = btnRect.bottom - containerRect.top + 8;
+        const left = Math.max(
+            8,
+            Math.min(btnRect.left - containerRect.left, containerRect.width - panelWidth - 8)
+        );
 
         setInstrumentPanel({
             isOpen: true,
@@ -376,12 +412,12 @@ const Beatbox = ({ initialState }) => {
 
     return (
         <div ref={containerRef} className="beatbox-instance-host">
-            <div className="beatbox-app-container" style={{ position: 'relative' }}>
+            <div className="beatbox-app-container">
                 <header className="beatbox-app-header">
-                    <h1>Beatbot</h1>
+                    <h1>{t('beatbox.title')}</h1>
                     <div className="master-controls">
                         <div className="control-group">
-                            <label htmlFor="bpm">BPM</label>
+                            <label htmlFor="bpm">{t('beatbox.bpmLabel')}</label>
                             <input
                                 type="number"
                                 id="bpm"
@@ -395,6 +431,8 @@ const Beatbox = ({ initialState }) => {
                             id="play-stop-btn"
                             className={`play-button ${isPlaying ? 'playing' : ''}`}
                             onClick={togglePlayback}
+                            aria-label={t(isPlaying ? 'beatbox.stop' : 'beatbox.play')}
+                            title={t(isPlaying ? 'beatbox.stop' : 'beatbox.play')}
                         >
                             <svg className="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
                             <svg className="icon-stop" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"></path></svg>
@@ -402,9 +440,10 @@ const Beatbox = ({ initialState }) => {
                     </div>
                 </header>
 
-                <main className="sequencer" id="sequencer-container">
+                <div className="sequencer" id="sequencer-container">
                     {tracks.map((track, trackIndex) => {
                         const instrument = INSTRUMENT_MAP[track.drum] || INSTRUMENT_MAP.kick;
+                        const instrumentName = t(instrument.labelKey);
                         const isDragging = draggedTrackIndex === trackIndex;
                         const isDragOver = dragOverIndex === trackIndex;
 
@@ -419,41 +458,47 @@ const Beatbox = ({ initialState }) => {
                                     onDragEnd={() => { setDraggedTrackIndex(null); setDragOverIndex(null); }}
                                 >
                                     <div className="track-controls">
-                                        <div style={{position: 'relative'}}>
+                                        <div className="instrument-control">
                                             <button
                                                 className="instrument-select-btn"
-                                                title={instrument.name}
+                                                title={instrumentName}
+                                                aria-label={t('beatbox.selectInstrument', { instrument: instrumentName })}
                                                 onClick={(e) => handleInstrumentButtonClick(e, trackIndex)}
                                             >
                                                 <img
                                                     src={`/icons/instruments/${instrument.icon}.svg`}
-                                                    alt={instrument.name}
+                                                    alt=""
+                                                    aria-hidden="true"
                                                     onError={(e) => {
                                                         e.currentTarget.style.display = 'none';
                                                     }}
                                                 />
-                                                <span style={{fontSize: '10px'}}>{instrument.icon}</span>
+                                                <span className="instrument-fallback">{instrumentName}</span>
                                             </button>
                                         </div>
 
-                                        <button
-                                            className="control-btn"
-                                            title="Настройки ADSR"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setOpenAdsrPanel(openAdsrPanel === trackIndex ? null : trackIndex);
-                                            }}
-                                        >
-                                            <svg viewBox="0 0 24 24"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
-                                        </button>
+                                        <div className="track-action-buttons">
+                                            <button
+                                                className="control-btn"
+                                                title={t('beatbox.adsrSettings')}
+                                                aria-label={t('beatbox.adsrSettings')}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenAdsrPanel(openAdsrPanel === trackIndex ? null : trackIndex);
+                                                }}
+                                            >
+                                                <svg viewBox="0 0 24 24"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+                                            </button>
 
-                                        <button
-                                            className="control-btn delete-track-btn"
-                                            title="Удалить дорожку"
-                                            onClick={() => deleteTrack(trackIndex)}
-                                        >
-                                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
-                                        </button>
+                                            <button
+                                                className="control-btn delete-track-btn"
+                                                title={t('beatbox.deleteTrack')}
+                                                aria-label={t('beatbox.deleteTrack')}
+                                                onClick={() => deleteTrack(trackIndex)}
+                                            >
+                                                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="steps-container">
@@ -469,33 +514,40 @@ const Beatbox = ({ initialState }) => {
 
                                 {openAdsrPanel === trackIndex && (
                                     <div className="adsr-panel visible">
-                                        {Object.keys(track.adsr).map(param => (
-                                            <div key={param} className="adsr-control">
-                                                <label>
-                                                    <span>{param.charAt(0).toUpperCase() + param.slice(1)}</span>
-                                                    <span>{track.adsr[param].toFixed(3)}s</span>
-                                                </label>
-                                                <input
-                                                    type="range"
-                                                    min="0.001"
-                                                    max={param === 'release' ? 1.5 : 0.5}
-                                                    step="0.001"
-                                                    value={track.adsr[param]}
-                                                    onChange={(e) => updateAdsr(trackIndex, param, e.target.value)}
-                                                />
-                                            </div>
-                                        ))}
+                                        {Object.keys(track.adsr).map(param => {
+                                            const limits = ADSR_LIMITS[param] || ADSR_LIMITS.decay;
+                                            return (
+                                                <div key={param} className="adsr-control">
+                                                    <label>
+                                                        <span>{t(`beatbox.adsr.${param}`)}</span>
+                                                        <span>{track.adsr[param].toFixed(3)}s</span>
+                                                    </label>
+                                                    <input
+                                                        type="range"
+                                                        min={limits.min}
+                                                        max={limits.max}
+                                                        step="0.001"
+                                                        value={track.adsr[param]}
+                                                        onChange={(e) => updateAdsr(trackIndex, param, e.target.value)}
+                                                    />
+                                                    <div className="adsr-range-bounds" aria-hidden="true">
+                                                        <span>{formatAdsrLimit(limits.min)}</span>
+                                                        <span>{formatAdsrLimit(limits.max)}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </Fragment>
                         );
                     })}
-                </main>
+                </div>
 
                 <footer className="beatbox-footer">
                     <button className="add-track-button" onClick={addTrack}>
                         <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
-                        <span>Добавить дорожку</span>
+                        <span>{t('beatbox.addTrack')}</span>
                     </button>
                 </footer>
 
@@ -507,7 +559,7 @@ const Beatbox = ({ initialState }) => {
                             position: 'absolute',
                             top: `${instrumentPanel.top}px`,
                             left: `${instrumentPanel.left}px`,
-                            zIndex: 1000 // Гарантирует перекрытие
+                            zIndex: 1000
                         }}
                     >
                         {DRUM_TYPES.map(type => (
@@ -518,10 +570,11 @@ const Beatbox = ({ initialState }) => {
                             >
                                 <img
                                     src={`/icons/instruments/${INSTRUMENT_MAP[type].icon}.svg`}
-                                    alt={INSTRUMENT_MAP[type].name}
+                                    alt=""
+                                    aria-hidden="true"
                                     width="20"
                                 />
-                                <span>{INSTRUMENT_MAP[type].name}</span>
+                                <span>{t(INSTRUMENT_MAP[type].labelKey)}</span>
                             </button>
                         ))}
                     </div>

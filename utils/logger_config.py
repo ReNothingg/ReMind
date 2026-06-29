@@ -5,7 +5,7 @@ import os
 import re
 from datetime import datetime, timezone
 
-from flask import has_request_context, request
+from flask import g, has_request_context, request
 
 from config import IS_PRODUCTION, LOGS_FOLDER
 from utils.observability import get_request_id
@@ -73,6 +73,10 @@ class JsonFormatter(logging.Formatter):
         request_id = get_request_id()
         if request_id:
             payload["request_id"] = request_id
+        if has_request_context():
+            cf_ray = getattr(g, "cf_ray", "")
+            if cf_ray:
+                payload["cf_ray"] = cf_ray
 
         if has_request_context():
             payload["path"] = request.path

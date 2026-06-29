@@ -26,6 +26,7 @@ from services.chat_history import (
     resolve_session_identifier,
 )
 from services.canvas_tools import find_canmore_marker, normalize_canvas_textdoc, process_canmore_calls
+from services.beatbox_tools import normalize_beatbox_state
 from services.files import handle_file_upload
 from services.github_chat import handle_github_chat_message
 from services.model_access import can_user_access_model, get_model_stage
@@ -44,13 +45,17 @@ from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from utils.auth import UserChatHistory, UserSettings
 from utils.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
 from utils.input_validation import InputValidator, ValidationError
-from utils.rate_limiting import RateLimiter, rate_limit
+from utils.rate_limiting import RateLimiter, anonymous_rate_limit, rate_limit
 from utils.responses import logger, make_ok
+from utils.url_security import UnsafeUrlError, validate_public_http_url
 
 PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
 chat_limiter = RateLimiter(max_requests=60, time_window=3600)
 translation_limiter = RateLimiter(max_requests=60, time_window=3600)
+anonymous_translation_limiter = RateLimiter(max_requests=10, time_window=3600)
 synthesize_limiter = RateLimiter(max_requests=30, time_window=3600)
+anonymous_synthesize_limiter = RateLimiter(max_requests=5, time_window=3600)
+ANONYMOUS_TRANSLATION_MAX_CHARS = 2000
 
 
 def _resolve_db_user_id() -> int | None:
@@ -145,6 +150,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         model_name = data.get("model", "gemini")
         data["session_id"] = session_id
         data["canvas_textdoc"] = normalize_canvas_textdoc(data.get("canvas_textdoc"))
+        data["beatbox_state"] = normalize_beatbox_state(data.get("beatbox_state"))
         data.setdefault("files", [])
         if auth_user_id is None and _has_files_payload(data.get("files")):
             raise ApiError(
@@ -183,6 +189,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             user_data["meta"] = {}
 
     user_data["canvas_textdoc"] = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
+    user_data["beatbox_state"] = normalize_beatbox_state(user_data.get("beatbox_state"))
 
     return session_id, user_data, model_name
 
@@ -930,6 +937,7 @@ def register_chat_routes(api_bp):
         return make_ok(response_data)
 
     @api_bp.route("/translate", methods=["POST"])
+    @anonymous_rate_limit(anonymous_translation_limiter)
     @rate_limit(translation_limiter)
     @api_error_boundary("translation_failed")
     def translate():
@@ -942,7 +950,8 @@ def register_chat_routes(api_bp):
         if not isinstance(target_lang, str) or not target_lang.strip():
             raise ApiError("target_lang required", status=400, code="target_lang_required")
 
-        text = InputValidator.validate_chat_message(text, max_length=10000)
+        max_length = 10000 if _resolve_db_user_id() is not None else ANONYMOUS_TRANSLATION_MAX_CHARS
+        text = InputValidator.validate_chat_message(text, max_length=max_length)
         if not re.match(r"^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$", target_lang.strip()):
             raise ApiError("Invalid target_lang", status=400, code="invalid_target_lang")
 
@@ -973,10 +982,20 @@ def register_chat_routes(api_bp):
         return make_ok({"translated_text": translated_text})
 
     @api_bp.route("/get-link-metadata", methods=["POST"])
+    @api_error_boundary("link_metadata_failed")
     def get_link_metadata():
-        return make_ok({})
+        payload = request.get_json(silent=True) or {}
+        url = payload.get("url")
+        if not isinstance(url, str):
+            raise ApiError("URL is required", status=400, code="url_required")
+        try:
+            validated_url = validate_public_http_url(url)
+        except UnsafeUrlError as exc:
+            raise ApiError(str(exc), status=400, code="invalid_url") from exc
+        return make_ok({"url": validated_url})
 
     @api_bp.route("/synthesize", methods=["POST"])
+    @anonymous_rate_limit(anonymous_synthesize_limiter)
     @rate_limit(synthesize_limiter)
     @api_error_boundary("synthesize_failed")
     def synthesize():

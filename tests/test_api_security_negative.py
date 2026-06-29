@@ -4,7 +4,7 @@ import time
 
 import routes.features.chat as chat_routes
 import services.chat_history as chat_history
-from routes.features.chat import chat_limiter
+from routes.features.chat import anonymous_synthesize_limiter, chat_limiter
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.rate_limiting import rate_limit_store
 
@@ -147,6 +147,58 @@ def test_synthesize_rejects_oversized_text_before_tts(client, monkeypatch):
 
     assert response.status_code == 400
     assert response.get_json()["error"]["code"] == "invalid_text"
+
+
+def test_anonymous_synthesize_has_stricter_quota(client, monkeypatch):
+    original_max = anonymous_synthesize_limiter.max_requests
+    original_window = anonymous_synthesize_limiter.time_window
+    original_redis_mode = anonymous_synthesize_limiter.use_redis
+
+    anonymous_synthesize_limiter.max_requests = 1
+    anonymous_synthesize_limiter.time_window = 120
+    anonymous_synthesize_limiter.use_redis = False
+    rate_limit_store.clear()
+    monkeypatch.setattr(
+        chat_routes,
+        "synthesize_text_segments",
+        lambda _text: [{"audio_base64": "ZmFrZQ==", "lang": "en", "error": None}],
+    )
+
+    try:
+        first = client.post("/synthesize", json={"text": "hello"})
+        assert first.status_code == 200
+
+        second = client.post("/synthesize", json={"text": "hello again"})
+        assert second.status_code == 429
+        assert second.get_json()["error"]["code"] == "anonymous_rate_limit_exceeded"
+    finally:
+        anonymous_synthesize_limiter.max_requests = original_max
+        anonymous_synthesize_limiter.time_window = original_window
+        anonymous_synthesize_limiter.use_redis = original_redis_mode
+        rate_limit_store.clear()
+
+
+def test_link_metadata_rejects_non_http_and_private_targets(client):
+    for url in [
+        "file:///etc/passwd",
+        "ftp://example.com/",
+        "javascript:alert(1)",
+        "http://127.0.0.1:80/",
+        "http://localhost/",
+        "http://[::1]/",
+        "http://10.0.0.1/",
+        "http://169.254.169.254/",
+    ]:
+        response = client.post("/get-link-metadata", json={"url": url})
+        assert response.status_code == 400
+        assert response.get_json()["error"]["code"] == "invalid_url"
+
+
+def test_link_metadata_accepts_public_http_url(client):
+    response = client.post("/get-link-metadata", json={"url": "https://93.184.216.34/"})
+
+    assert response.status_code == 200
+    assert response.get_json()["url"] == "https://93.184.216.34/"
 
 
 def test_guest_chat_cannot_load_or_overwrite_existing_file_history_without_token(

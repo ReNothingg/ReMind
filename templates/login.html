@@ -252,7 +252,7 @@
     <main class="login-container" id="main-content" tabindex="-1">
         <div class="login-header" aria-label="Вход в ReMind">
             <div class="logo">
-                <img src="/icons/branding/logo-light.svg" alt="ReMind Logo" onerror="this.style.display='none'">
+                <img src="/icons/branding/logo-light.svg" alt="ReMind Logo">
             </div>
             <h1 class="login-title">ReMind</h1>
             <p class="login-subtitle">Ваш персональный ассистент</p>
@@ -270,8 +270,8 @@
         <div class="loading-text" role="status" aria-live="polite">Пожалуйста, подождите...</div>
     </main>
 
-    <script>
-        window.TURNSTILE_SITE_KEY = '{{ turnstile_site_key }}';
+    <script nonce="{{ csp_nonce }}">
+        window.TURNSTILE_SITE_KEY = {{ turnstile_site_key|tojson }};
         window.location.assign('/');
         // const delay = document.querySelector('.message') ? 2000 : 1000;
         // setTimeout(() => {

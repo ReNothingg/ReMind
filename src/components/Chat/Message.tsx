@@ -750,7 +750,7 @@ const GitHubDiffCard = ({ payload, t }) => {
     );
 };
 
-const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant }) => {
+const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, onBeatboxStateChange }) => {
     const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus } = message;
     const isUser = role === 'user';
     const { settings } = useSettings();
@@ -1695,7 +1695,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant }) 
                     } else if (widget.type === 'spinwheel') {
                         return <Spinwheel key={widget.id} initialState={widget.state} />;
                     } else if (widget.type === 'beatbox') {
-                        return <Beatbox key={widget.id} initialState={widget.state} />;
+                        return <Beatbox key={widget.id} initialState={widget.state} onStateChange={onBeatboxStateChange} />;
                     } else if (widget.type === 'think') {
                         return (
                             <ThinkBlock

@@ -306,6 +306,16 @@ export interface paths {
             "application/json": components["schemas"]["SessionHistoryResponse"];
           };
         };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
         "500": {
           content: {
             "application/json": components["schemas"]["ErrorResponse"];

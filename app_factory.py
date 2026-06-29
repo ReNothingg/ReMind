@@ -1,4 +1,5 @@
 import os
+import secrets
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -132,6 +133,11 @@ def create_app():
     @app.before_request
     def attach_request_context():
         start_request_context()
+        g.csp_nonce = secrets.token_urlsafe(16)
+
+    @app.context_processor
+    def inject_security_context():
+        return {"csp_nonce": getattr(g, "csp_nonce", "")}
 
     @app.before_request
     def validate_user_agent():

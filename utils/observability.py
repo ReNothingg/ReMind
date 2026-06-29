@@ -53,6 +53,7 @@ def resolve_request_id(incoming: str | None) -> str:
 def start_request_context() -> None:
     rid = resolve_request_id(request.headers.get(REQUEST_ID_HEADER))
     g.request_id = rid
+    g.cf_ray = (request.headers.get("CF-Ray") or "").strip()[:128]
     g.request_started_at = time.perf_counter()
 
 

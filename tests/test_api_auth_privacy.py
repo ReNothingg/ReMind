@@ -73,7 +73,13 @@ def test_html_security_headers_allow_turnstile_iframe(client):
 
     assert response.status_code == 200
     csp = response.headers["Content-Security-Policy"]
+    script_src = next(part for part in csp.split(";") if part.strip().startswith("script-src"))
+    connect_src = next(part for part in csp.split(";") if part.strip().startswith("connect-src"))
     assert "frame-src 'self' https://challenges.cloudflare.com" in csp
+    assert "'unsafe-inline'" not in script_src
+    assert "'sha256-eOo7R2QxzL/n0WXjk+i1Gj3T+BbZVyQd3/ZhRDi4nig='" in script_src
+    assert "https:" not in connect_src.split()
+    assert "ws:" not in connect_src.split()
     assert "Cross-Origin-Embedder-Policy" not in response.headers
 
 
@@ -750,6 +756,28 @@ def test_health_full_includes_component_checks(client):
     assert "checks" in payload
     assert "database" in payload["checks"]
     assert "storage" in payload["checks"]
+
+
+def test_public_health_is_minimal_and_operational_routes_are_internal(client):
+    public_base = {"REMOTE_ADDR": "8.8.8.8"}
+
+    public_health = client.get("/health?full=true", environ_base=public_base)
+    assert public_health.status_code in (200, 503)
+    assert public_health.get_json() == {"ok": public_health.status_code != 503}
+
+    public_metrics = client.get("/metrics", environ_base=public_base)
+    assert public_metrics.status_code == 404
+
+    public_openapi = client.get("/openapi.json", environ_base=public_base)
+    assert public_openapi.status_code == 404
+
+    internal_metrics = client.get("/metrics")
+    assert internal_metrics.status_code == 200
+    assert "text/plain" in internal_metrics.headers.get("Content-Type", "")
+
+    internal_openapi = client.get("/openapi.json")
+    assert internal_openapi.status_code == 200
+    assert "application/json" in internal_openapi.headers.get("Content-Type", "")
 
 
 def test_health_defaults_to_json_for_api_clients(client):

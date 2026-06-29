@@ -13,6 +13,8 @@ from routes.features.minds import get_mind_for_session_binding, serialize_mind_f
 from services.chat_history import (
     _verify_guest_session_token,
     build_share_url,
+    chat_file_exists,
+    has_valid_guest_session_token,
     load_chat_history,
     read_chat_file,
     read_chat_file_secure,
@@ -115,10 +117,18 @@ def register_session_routes(api_bp):
                     }
                 )
 
-        if not ALLOW_GUEST_CHATS_SAVE and "user_id" not in session:
-            return make_ok({"session_id": resolved_session_id, "history": [], "title": None})
+        if db_user_id is not None:
+            raise ApiError("Chat not found", status=404, code="not_found")
+
+        if not ALLOW_GUEST_CHATS_SAVE:
+            raise ApiError("Chat not found", status=404, code="not_found")
 
         safe_session_id = secure_filename(str(resolved_session_id))
+        if not safe_session_id or not chat_file_exists(safe_session_id):
+            raise ApiError("Chat not found", status=404, code="not_found")
+        if not has_valid_guest_session_token(safe_session_id):
+            raise ApiError("Authentication required", status=401, code="auth_required")
+
         data = read_chat_file_secure(safe_session_id, require_auth=True)
         history = data.get("history", []) if isinstance(data, dict) else []
         title = data.get("title") if isinstance(data, dict) else None

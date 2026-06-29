@@ -185,6 +185,32 @@
       "openAria": "Открыть {{name}} в canvas"
     }
   },
+  "beatbox": {
+    "title": "Beatbot",
+    "bpmLabel": "BPM",
+    "play": "Запустить бит",
+    "stop": "Остановить бит",
+    "addTrack": "Добавить дорожку",
+    "deleteTrack": "Удалить дорожку",
+    "adsrSettings": "Настройки ADSR",
+    "selectInstrument": "Выбрать инструмент: {{instrument}}",
+    "adsr": {
+      "attack": "Атака",
+      "decay": "Спад",
+      "sustain": "Удержание",
+      "release": "Затухание"
+    },
+    "instruments": {
+      "kick": "Бас-барабан",
+      "snare": "Малый барабан",
+      "clap": "Хлопок",
+      "hihat": "Хай-хэт",
+      "open_hat": "Открытый хэт",
+      "tom": "Том",
+      "triangle": "Треугольник",
+      "cowbell": "Ковбел"
+    }
+  },
   "composer": {
     "attachFiles": "Прикрепить файлы",
     "attachUnavailable": "Прикрепление недоступно",

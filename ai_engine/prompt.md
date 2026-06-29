@@ -116,6 +116,8 @@ This is Interactive rhythmic component.
 
 **Sounds:** kick, snare, clap, hihat, open_hat, tom, triangle, cowbell.
 
+When a `CURRENT BEATBOX STATE` block is present in the system context, it is the user's latest edited BeatBox widget state. Use it as the source of truth for added tracks, selected instruments, ADSR changes, BPM, bars, and toggled steps. If the user asks to continue, change, explain, or export the beat, base the answer on that current state rather than the older `<beatbox>` JSON in chat history.
+
 **Example syntax:**
 
 ```

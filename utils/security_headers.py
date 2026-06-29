@@ -1,17 +1,51 @@
-from flask import has_request_context, request
+from urllib.parse import urlparse
 
-from config import ENABLE_STRICT_HTTPS
+from flask import g, has_request_context, request
+
+from config import BACKEND_URL, CORS_ORIGINS, ENABLE_STRICT_HTTPS
+
+JSON_LD_SCRIPT_HASH = "'sha256-eOo7R2QxzL/n0WXjk+i1Gj3T+BbZVyQd3/ZhRDi4nig='"
+
+
+def _origin_from_url(raw_url: str | None) -> str | None:
+    if not raw_url:
+        return None
+    try:
+        parsed = urlparse(raw_url)
+    except ValueError:
+        return None
+    if parsed.scheme not in {"http", "https", "ws", "wss"} or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _configured_connect_sources() -> list[str]:
+    sources = ["'self'", "https://challenges.cloudflare.com"]
+    for raw_origin in [BACKEND_URL, *CORS_ORIGINS]:
+        origin = _origin_from_url(raw_origin)
+        if origin and origin not in sources:
+            sources.append(origin)
+    return sources
+
+
+def _script_sources() -> list[str]:
+    sources = ["'self'", JSON_LD_SCRIPT_HASH, "https://challenges.cloudflare.com"]
+    if has_request_context():
+        nonce = getattr(g, "csp_nonce", "")
+        if nonce:
+            sources.insert(1, f"'nonce-{nonce}'")
+    return sources
 
 
 def get_csp_header():
     directives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+        f"script-src {' '.join(_script_sources())}",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
         "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com https://cdn.jsdelivr.net data:",
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
-        "connect-src 'self' https: wss: ws:",
+        f"connect-src {' '.join(_configured_connect_sources())}",
         "frame-src 'self' https://challenges.cloudflare.com",
         "object-src 'none'",
         "base-uri 'self'",

@@ -3,11 +3,12 @@
   border-radius: var(--radius-lg);
   overflow: visible;
   margin: calc(var(--spacing-unit) * 3) 0;
-  max-height: 500px;
+  max-height: none;
   display: flex;
   background-color: var(--color-bg-surface);
   position: relative;
   z-index: 0;
+  box-shadow: 0 14px 36px rgba(var(--color-black-raw), 0.18);
 }
 
 .beatbox-instance-host .beatbox-app-container {
@@ -25,8 +26,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: calc(var(--spacing-unit) * 2.5) calc(var(--spacing-unit) * 5);
-  background-color: rgba(var(--color-black-raw), 0.1);
+  gap: calc(var(--spacing-unit) * 3);
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 4);
+  background: var(--color-white-raw);
   border-bottom: 1px solid var(--color-border-medium);
   flex-shrink: 0;
 }
@@ -40,7 +42,13 @@
 .beatbox-instance-host .master-controls {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: calc(var(--spacing-unit) * 3);
+}
+
+.beatbox-instance-host .control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1.5);
 }
 
 .beatbox-instance-host .control-group label {
@@ -104,13 +112,17 @@
 
 .beatbox-instance-host .sequencer {
   padding: 0;
-  overflow: auto;
-  flex-grow: 1;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-content: start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 0 1 auto;
+  display: block;
+  align-self: stretch;
+  height: auto;
+  min-height: 0;
   position: relative;
   z-index: 0;
+  overscroll-behavior: contain;
+  max-height: none;
 }
 
 .beatbox-instance-host .sequencer::-webkit-scrollbar {
@@ -132,32 +144,45 @@
 }
 
 .beatbox-instance-host .track {
-  display: contents;
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
 }
 
 .beatbox-instance-host .track-controls {
   position: sticky;
   left: 0;
   z-index: 2;
+  flex: 0 0 76px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: calc(var(--spacing-unit) * 2);
-  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 5);
+  justify-content: center;
+  gap: calc(var(--spacing-unit) * 1.5);
+  padding: calc(var(--spacing-unit) * 2);
   background-color: var(--color-bg-surface);
   border-bottom: 1px solid var(--color-border-medium);
-  width: 140px;
-  height: 65px;
+  width: 76px;
+  min-height: 88px;
   border-right: 1px solid var(--color-border-medium);
+  box-shadow: 8px 0 18px rgba(var(--color-black-raw), 0.10);
 }
 
 .beatbox-instance-host .steps-container {
+  flex: 0 0 auto;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 40px;
+  grid-auto-columns: 38px;
   gap: calc(var(--spacing-unit) * 1.5);
-  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 5);
+  align-items: center;
+  padding: calc(var(--spacing-unit) * 2.5) calc(var(--spacing-unit) * 4);
   border-bottom: 1px solid var(--color-border-medium);
-  height: 65px;
+  min-height: 88px;
+}
+
+.beatbox-instance-host .instrument-control {
+  position: relative;
 }
 
 .beatbox-instance-host .instrument-select-btn {
@@ -169,9 +194,9 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--transition-fast);
-  width: 36px;
-  height: 36px;
-  padding: 6px;
+  width: 42px;
+  height: 42px;
+  padding: 7px;
 }
 
 .beatbox-instance-host .instrument-select-btn:hover {
@@ -179,17 +204,18 @@
 }
 
 .beatbox-instance-host .instrument-select-btn img {
-  width: 150%;
-  height: 150%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
-.beatbox-instance-host .instrument-select-btn span {
-  flex-grow: 1;
-  font-size: 0.85rem;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.beatbox-instance-host .instrument-fallback {
+  display: none;
+  font-size: 0.55rem;
+  line-height: 1;
+  max-width: 100%;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .beatbox-instance-host .instrument-select-btn .chevron {
@@ -209,6 +235,8 @@
   grid-template-columns: repeat(4, 1fr);
   gap: calc(var(--spacing-unit) * 2);
   width: 320px;
+  max-width: calc(100% - 16px);
+  box-shadow: 0 18px 44px rgba(var(--color-black-raw), 0.28);
   animation: fadeInPanel var(--animation-duration-fast) var(--animation-timing-smooth);
   pointer-events: none;
 }
@@ -264,8 +292,10 @@
 }
 
 .beatbox-instance-host .control-btn {
-  background: none;
-  border: none;
+  width: 28px;
+  height: 28px;
+  background: var(--color-bg-interactive);
+  border: 1px solid transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
   padding: calc(var(--spacing-unit) * 1);
@@ -278,19 +308,28 @@
 
 .beatbox-instance-host .control-btn:hover {
   color: var(--color-text-primary);
-  background-color: var(--color-bg-interactive);
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-surface-alt);
 }
 
 .beatbox-instance-host .control-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   fill: currentColor;
+}
+
+.beatbox-instance-host .track-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing-unit) * 1);
 }
 
 .beatbox-instance-host .step {
   aspect-ratio: 1 / 1;
   background-color: var(--color-bg-interactive);
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -325,13 +364,21 @@
 }
 
 .beatbox-instance-host .adsr-panel {
-  background-color: var(--color-bg-surface-alt);
-  padding: 0.75rem;
-  border-radius: var(--radius-md);
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: min(620px, 100%);
+  max-width: calc(100vw - 32px);
+  background-color: var(--color-bg-surface);
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 4);
+  border-bottom: 1px solid var(--color-border-medium);
+  border-right: 1px solid var(--color-border-medium);
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.75rem;
-  margin-top: -0.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing-unit) * 3);
+  box-shadow: 0 10px 24px rgba(var(--color-black-raw), 0.08);
 }
 
 .beatbox-instance-host .adsr-panel.visible {
@@ -341,49 +388,109 @@
 .beatbox-instance-host .adsr-control {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: calc(var(--spacing-unit) * 1.5);
+  min-width: 0;
 }
 
 .beatbox-instance-host .adsr-control label {
   font-size: 0.75rem;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  gap: calc(var(--spacing-unit) * 2);
+  line-height: 1.2;
+}
+
+.beatbox-instance-host .adsr-control label span:first-child,
+.beatbox-instance-host .adsr-control label span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.beatbox-instance-host .adsr-control label span:last-child {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .beatbox-instance-host input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 5px;
-  background: var(--color-bg-interactive);
+  height: 18px;
+  margin: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--color-accent-raw), 0.78),
+      rgba(var(--color-accent-raw), 0.26)
+    )
+    center / 100% 6px no-repeat;
   border-radius: 3px;
   outline: none;
+}
+
+.beatbox-instance-host input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--color-accent-raw), 0.78),
+    rgba(var(--color-accent-raw), 0.26)
+  );
+  border: 1px solid rgba(var(--color-accent-raw), 0.38);
 }
 
 .beatbox-instance-host input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
-  background: var(--color-text-primary);
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  background: rgb(var(--color-accent-raw));
   cursor: pointer;
   border-radius: 50%;
-  border: none;
+  border: 2px solid var(--color-bg-surface);
+  box-shadow: 0 1px 6px rgba(var(--color-black-raw), 0.22);
 }
 
 .beatbox-instance-host input[type='range']::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  background: var(--color-text-primary);
+  width: 16px;
+  height: 16px;
+  background: rgb(var(--color-accent-raw));
   cursor: pointer;
   border-radius: 50%;
-  border: none;
+  border: 2px solid var(--color-bg-surface);
+  box-shadow: 0 1px 6px rgba(var(--color-black-raw), 0.22);
+}
+
+.beatbox-instance-host input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--color-accent-raw), 0.78),
+    rgba(var(--color-accent-raw), 0.26)
+  );
+  border: 1px solid rgba(var(--color-accent-raw), 0.38);
+}
+
+.beatbox-instance-host .adsr-range-bounds {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--spacing-unit) * 2);
+  color: var(--color-text-tertiary);
+  font-size: 0.68rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .beatbox-instance-host .beatbox-footer {
-  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 5);
-  background-color: rgba(var(--color-black-raw), 0.1);
+  padding: calc(var(--spacing-unit) * 2.5) calc(var(--spacing-unit) * 4);
+  background: rgba(var(--color-black-raw), 0.06);
   border-top: 1px solid var(--color-border-medium);
   text-align: center;
   flex-shrink: 0;
@@ -412,4 +519,109 @@
 
 .beatbox-instance-host .add-track-button svg {
   fill: currentColor;
+}
+
+@media (max-width: 640px) {
+  .beatbox-instance-host {
+    max-height: none;
+    border-radius: var(--radius-md);
+    margin: calc(var(--spacing-unit) * 2) 0;
+  }
+
+  .beatbox-instance-host .beatbox-app-header {
+    padding: calc(var(--spacing-unit) * 2.5);
+    align-items: flex-start;
+  }
+
+  .beatbox-instance-host .beatbox-app-header h1 {
+    padding-top: calc(var(--spacing-unit) * 1);
+  }
+
+  .beatbox-instance-host .master-controls {
+    gap: calc(var(--spacing-unit) * 2);
+  }
+
+  .beatbox-instance-host .control-group {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: calc(var(--spacing-unit) * 0.5);
+  }
+
+  .beatbox-instance-host #bpm {
+    width: 52px;
+    padding: calc(var(--spacing-unit) * 1.25);
+  }
+
+  .beatbox-instance-host #play-stop-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .beatbox-instance-host .track-controls {
+    flex-basis: 64px;
+    width: 64px;
+    min-height: 78px;
+    padding: calc(var(--spacing-unit) * 1.5);
+  }
+
+  .beatbox-instance-host .steps-container {
+    grid-auto-columns: 28px;
+    gap: calc(var(--spacing-unit) * 1);
+    min-height: 78px;
+    padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 2.5);
+  }
+
+  .beatbox-instance-host .sequencer {
+    width: 100%;
+    max-width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none;
+    padding: 0 !important;
+    flex: 0 0 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .beatbox-instance-host .adsr-panel {
+    width: 100%;
+    max-width: calc(100vw - 48px);
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--spacing-unit) * 3);
+    padding: calc(var(--spacing-unit) * 2.75);
+  }
+
+  .beatbox-instance-host .adsr-control label {
+    font-size: 0.75rem;
+  }
+
+  .beatbox-instance-host .instrument-select-btn {
+    width: 38px;
+    height: 38px;
+    padding: 6px;
+  }
+
+  .beatbox-instance-host .control-btn {
+    width: 25px;
+    height: 25px;
+  }
+
+  .beatbox-instance-host .instrument-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--spacing-unit) * 1.5);
+    width: min(260px, calc(100% - 16px));
+  }
+
+  .beatbox-instance-host .instrument-item {
+    padding: calc(var(--spacing-unit) * 1.75);
+  }
+
+  .beatbox-instance-host .beatbox-footer {
+    padding: calc(var(--spacing-unit) * 2.5);
+  }
+
+  .beatbox-instance-host .add-track-button {
+    width: 100%;
+    justify-content: center;
+  }
 }

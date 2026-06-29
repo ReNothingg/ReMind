@@ -133,6 +133,7 @@ const MainLayout = () => {
         editMessage,
         switchVariant,
         updateCanvasTextdocContent,
+        updateBeatboxState,
         sessionAccess,
         isReadOnly,
         isTemporaryChat,
@@ -988,6 +989,7 @@ const MainLayout = () => {
                                             switchVariant(messageId, direction);
                                         }
                                     }}
+                                    onBeatboxStateChange={updateBeatboxState}
                                 />
 
                                 <InputArea

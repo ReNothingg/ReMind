@@ -3,7 +3,16 @@ import { useTranslation } from 'react-i18next';
 import Message from './Message';
 import { useSettings } from '../../context/SettingsContext';
 
-const ChatContainer = ({ history, isLoading, onRegenerate, onEdit, onSwitchVariant, currentSessionId = null, isReadOnly = false }) => {
+const ChatContainer = ({
+    history,
+    isLoading,
+    onRegenerate,
+    onEdit,
+    onSwitchVariant,
+    onBeatboxStateChange,
+    currentSessionId = null,
+    isReadOnly = false
+}) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const chatEndRef = useRef<HTMLDivElement | null>(null);
     const { settings } = useSettings();
@@ -60,6 +69,7 @@ const ChatContainer = ({ history, isLoading, onRegenerate, onEdit, onSwitchVaria
                     onRegenerate={isReadOnly ? null : onRegenerate}
                     onEdit={isReadOnly ? null : onEdit}
                     onSwitchVariant={onSwitchVariant}
+                    onBeatboxStateChange={onBeatboxStateChange}
                 />
             ))}
             <div ref={chatEndRef} className="clear-both float-left" />
