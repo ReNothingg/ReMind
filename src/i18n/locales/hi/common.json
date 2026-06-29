@@ -487,12 +487,19 @@
         },
         "shortcut": {
           "label": "कीबोर्ड शॉर्टकट",
-          "disabled": "बंद"
+          "disabled": "बंद",
+          "record": "Record shortcut (current: {{shortcut}})",
+          "recording": "Press a shortcut now, or Esc to cancel",
+          "invalid": "Press a keyboard shortcut with at least one modifier."
         },
         "newChat": {
           "label": "नई चैट खोलें",
           "companion": "कंपैनियन चैट में",
           "browser": "ब्राउजर में"
+        },
+        "launchAtLogin": {
+          "title": "Launch at login",
+          "description": "Keep ReMind ready in the background after you sign in to your Mac."
         }
       }
     },

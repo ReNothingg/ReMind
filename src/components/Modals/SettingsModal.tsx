@@ -99,6 +99,125 @@ type ProfileMessage = {
     text: string;
 } | null;
 
+const MAC_SHORTCUT_KEY_CODES: Record<string, number> = {
+    Space: 49,
+    Enter: 36,
+    NumpadEnter: 76,
+    Escape: 53,
+    Tab: 48,
+    Backspace: 51,
+    Delete: 117,
+    ArrowLeft: 123,
+    ArrowRight: 124,
+    ArrowDown: 125,
+    ArrowUp: 126,
+    KeyA: 0,
+    KeyS: 1,
+    KeyD: 2,
+    KeyF: 3,
+    KeyH: 4,
+    KeyG: 5,
+    KeyZ: 6,
+    KeyX: 7,
+    KeyC: 8,
+    KeyV: 9,
+    KeyB: 11,
+    KeyQ: 12,
+    KeyW: 13,
+    KeyE: 14,
+    KeyR: 15,
+    KeyY: 16,
+    KeyT: 17,
+    Digit1: 18,
+    Digit2: 19,
+    Digit3: 20,
+    Digit4: 21,
+    Digit6: 22,
+    Digit5: 23,
+    Equal: 24,
+    Digit9: 25,
+    Digit7: 26,
+    Minus: 27,
+    Digit8: 28,
+    Digit0: 29,
+    BracketRight: 30,
+    KeyO: 31,
+    KeyU: 32,
+    BracketLeft: 33,
+    KeyI: 34,
+    KeyP: 35,
+    KeyL: 37,
+    KeyJ: 38,
+    Quote: 39,
+    KeyK: 40,
+    Semicolon: 41,
+    Backslash: 42,
+    Comma: 43,
+    Slash: 44,
+    KeyN: 45,
+    KeyM: 46,
+    Period: 47,
+    Backquote: 50,
+    F1: 122,
+    F2: 120,
+    F3: 99,
+    F4: 118,
+    F5: 96,
+    F6: 97,
+    F7: 98,
+    F8: 100,
+    F9: 101,
+    F10: 109,
+    F11: 103,
+    F12: 111
+};
+
+const shortcutDisplayFromRaw = (raw: string): string => {
+    if (raw?.startsWith('custom:')) {
+        return raw.split(':').slice(3).join(':') || raw;
+    }
+
+    return {
+        optionCommandSpace: '⌥⌘Space',
+        controlCommandSpace: '⌃⌘Space',
+        shiftCommandSpace: '⇧⌘Space',
+        commandReturn: '⌘Return'
+    }[raw] || raw;
+};
+
+const keyLabelFromEvent = (event: KeyboardEvent): string => {
+    if (event.code === 'Space') return 'Space';
+    if (event.code === 'Enter' || event.code === 'NumpadEnter') return 'Return';
+    if (event.code.startsWith('Key')) return event.code.slice(3).toUpperCase();
+    if (event.code.startsWith('Digit')) return event.code.slice(5);
+    if (event.code.startsWith('Numpad')) return event.code.replace('Numpad', 'Num ');
+    if (event.code.startsWith('Arrow')) return event.code.replace('Arrow', '');
+    return event.key && event.key.length === 1 ? event.key.toUpperCase() : event.key;
+};
+
+const shortcutRawFromEvent = (event: KeyboardEvent): string | null => {
+    const keyCode = MAC_SHORTCUT_KEY_CODES[event.code];
+    const modifiers = [
+        event.metaKey ? 'cmd' : '',
+        event.altKey ? 'option' : '',
+        event.ctrlKey ? 'control' : '',
+        event.shiftKey ? 'shift' : ''
+    ].filter(Boolean);
+
+    if (keyCode === undefined || modifiers.length === 0) {
+        return null;
+    }
+
+    const modifierLabel = [
+        event.ctrlKey ? '⌃' : '',
+        event.altKey ? '⌥' : '',
+        event.shiftKey ? '⇧' : '',
+        event.metaKey ? '⌘' : ''
+    ].join('');
+
+    return `custom:${keyCode}:${modifiers.join(',')}:${modifierLabel}${keyLabelFromEvent(event)}`;
+};
+
 const ABOUT_LINKS = {
     website: 'https://synvexai.com/',
     policies: 'https://synvexai.com/policies/privacy-policy/',
@@ -235,6 +354,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
     const [profileMessage, setProfileMessage] = useState<ProfileMessage>(null);
+    const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
 
     useEffect(() => {
         setName(user?.name || '');
@@ -257,6 +377,14 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
     useEffect(() => {
         const handleEscapeKey = (e) => {
+            if (isRecordingShortcut) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setIsRecordingShortcut(false);
+                }
+                return;
+            }
+
             if (e.key === 'Escape') {
                 onClose();
             }
@@ -264,7 +392,37 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
         document.addEventListener('keydown', handleEscapeKey);
         return () => document.removeEventListener('keydown', handleEscapeKey);
-    }, [onClose]);
+    }, [isRecordingShortcut, onClose]);
+
+    useEffect(() => {
+        if (!isRecordingShortcut) return undefined;
+
+        const handleShortcutKeyDown = (event: KeyboardEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (event.key === 'Escape') {
+                setIsRecordingShortcut(false);
+                return;
+            }
+
+            if (event.key === 'Meta' || event.key === 'Alt' || event.key === 'Control' || event.key === 'Shift') {
+                return;
+            }
+
+            const shortcut = shortcutRawFromEvent(event);
+            if (!shortcut) {
+                showToast(t('settings.interface.chatPanel.shortcut.invalid'), { type: 'warning' });
+                return;
+            }
+
+            updateSetting('chatPanelKeyboardShortcut', shortcut);
+            setIsRecordingShortcut(false);
+        };
+
+        window.addEventListener('keydown', handleShortcutKeyDown, true);
+        return () => window.removeEventListener('keydown', handleShortcutKeyDown, true);
+    }, [isRecordingShortcut, t, updateSetting]);
 
     useEffect(() => {
         if (!isAuthenticated && activeTab === 'personalization') {
@@ -1033,18 +1191,40 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         />
                                     </SettingControlGroup>
                                     <SettingControlGroup withDivider className="items-start">
-                                        <CustomSelect
-                                            label={t('settings.interface.chatPanel.shortcut.label')}
-                                            value={settings.chatPanelKeyboardShortcut}
-                                            onChange={(value) => updateSetting('chatPanelKeyboardShortcut', value)}
-                                            options={[
-                                                { value: 'optionCommandSpace', label: '⌥⌘Space' },
-                                                { value: 'controlCommandSpace', label: '⌃⌘Space' },
-                                                { value: 'shiftCommandSpace', label: '⇧⌘Space' },
-                                                { value: 'commandReturn', label: '⌘Return' },
-                                                { value: 'disabled', label: t('settings.interface.chatPanel.shortcut.disabled') }
-                                            ]}
-                                        />
+                                        <div className="flex w-full flex-col gap-3">
+                                            <CustomSelect
+                                                label={t('settings.interface.chatPanel.shortcut.label')}
+                                                value={settings.chatPanelKeyboardShortcut}
+                                                onChange={(value) => updateSetting('chatPanelKeyboardShortcut', value)}
+                                                options={[
+                                                    ...(String(settings.chatPanelKeyboardShortcut || '').startsWith('custom:')
+                                                        ? [{
+                                                            value: settings.chatPanelKeyboardShortcut,
+                                                            label: shortcutDisplayFromRaw(settings.chatPanelKeyboardShortcut)
+                                                        }]
+                                                        : []),
+                                                    { value: 'optionCommandSpace', label: '⌥⌘Space' },
+                                                    { value: 'controlCommandSpace', label: '⌃⌘Space' },
+                                                    { value: 'shiftCommandSpace', label: '⇧⌘Space' },
+                                                    { value: 'commandReturn', label: '⌘Return' },
+                                                    { value: 'disabled', label: t('settings.interface.chatPanel.shortcut.disabled') }
+                                                ]}
+                                            />
+                                            <button
+                                                type="button"
+                                                className={cn(
+                                                    'ui-button-secondary min-h-11 rounded-xl px-4 py-3 text-left',
+                                                    isRecordingShortcut && 'border-accent-brand text-accent-brand'
+                                                )}
+                                                onClick={() => setIsRecordingShortcut((recording) => !recording)}
+                                            >
+                                                {isRecordingShortcut
+                                                    ? t('settings.interface.chatPanel.shortcut.recording')
+                                                    : t('settings.interface.chatPanel.shortcut.record', {
+                                                        shortcut: shortcutDisplayFromRaw(settings.chatPanelKeyboardShortcut)
+                                                    })}
+                                            </button>
+                                        </div>
                                     </SettingControlGroup>
                                     <SettingControlGroup withDivider className="items-start">
                                         <CustomSelect
@@ -1057,6 +1237,12 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                             ]}
                                         />
                                     </SettingControlGroup>
+                                    <SettingToggle
+                                        title={t('settings.interface.chatPanel.launchAtLogin.title')}
+                                        description={t('settings.interface.chatPanel.launchAtLogin.description')}
+                                        checked={settings.macLaunchAtLogin === true}
+                                        onClick={() => updateSetting('macLaunchAtLogin', settings.macLaunchAtLogin !== true)}
+                                    />
                                 </SettingGroup>
                             )}
 

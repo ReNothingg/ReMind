@@ -110,6 +110,8 @@
   html {
     scroll-behavior: smooth;
     font-size: 16px;
+    overscroll-behavior: none;
+    background: var(--color-bg-main);
   }
 
   body {
@@ -117,6 +119,7 @@
     min-height: var(--app-viewport-height);
     font-optical-sizing: auto;
     font-variant-numeric: tabular-nums slashed-zero;
+    overscroll-behavior: none;
   }
 
   #root {

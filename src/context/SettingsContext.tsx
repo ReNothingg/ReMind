@@ -58,6 +58,7 @@ const DEFAULT_SETTINGS = {
     chatPanelResetPolicy: 'after10Minutes',
     chatPanelKeyboardShortcut: 'optionCommandSpace',
     chatPanelNewChatDestination: 'companion',
+    macLaunchAtLogin: null,
     automaticWebSearch: false,
     service_improvement_opt_in: false,
     personalization_instructions: '',
@@ -253,14 +254,18 @@ export const SettingsProvider = ({ children }) => {
                 chatPanelPosition: settings.chatPanelPosition,
                 chatPanelResetPolicy: settings.chatPanelResetPolicy,
                 chatPanelKeyboardShortcut: settings.chatPanelKeyboardShortcut,
-                chatPanelNewChatDestination: settings.chatPanelNewChatDestination
+                chatPanelNewChatDestination: settings.chatPanelNewChatDestination,
+                ...(typeof settings.macLaunchAtLogin === 'boolean'
+                    ? { macLaunchAtLogin: settings.macLaunchAtLogin }
+                    : {})
             }
         });
     }, [
         settings.chatPanelPosition,
         settings.chatPanelResetPolicy,
         settings.chatPanelKeyboardShortcut,
-        settings.chatPanelNewChatDestination
+        settings.chatPanelNewChatDestination,
+        settings.macLaunchAtLogin
     ]);
     useEffect(() => {
         if (settings.theme !== 'system') return;

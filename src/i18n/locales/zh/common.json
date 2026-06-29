@@ -487,12 +487,19 @@
         },
         "shortcut": {
           "label": "键盘快捷键",
-          "disabled": "已关闭"
+          "disabled": "已关闭",
+          "record": "Record shortcut (current: {{shortcut}})",
+          "recording": "Press a shortcut now, or Esc to cancel",
+          "invalid": "Press a keyboard shortcut with at least one modifier."
         },
         "newChat": {
           "label": "打开新聊天",
           "companion": "在伴随聊天中",
           "browser": "在浏览器中"
+        },
+        "launchAtLogin": {
+          "title": "Launch at login",
+          "description": "Keep ReMind ready in the background after you sign in to your Mac."
         }
       }
     },

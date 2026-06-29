@@ -487,12 +487,19 @@
         },
         "shortcut": {
           "label": "Atalho de teclado",
-          "disabled": "Desativado"
+          "disabled": "Desativado",
+          "record": "Record shortcut (current: {{shortcut}})",
+          "recording": "Press a shortcut now, or Esc to cancel",
+          "invalid": "Press a keyboard shortcut with at least one modifier."
         },
         "newChat": {
           "label": "Abrir novos chats",
           "companion": "No chat companheiro",
           "browser": "No navegador"
+        },
+        "launchAtLogin": {
+          "title": "Launch at login",
+          "description": "Keep ReMind ready in the background after you sign in to your Mac."
         }
       }
     },
