@@ -9,16 +9,13 @@ import {
     Github,
     Globe2,
     Info,
-    Keyboard,
     LayoutPanelLeft,
     LogOut,
     Loader2,
-    MapPin,
     MessageCircle,
     Music2,
     Palette,
     PlugZap,
-    RotateCcw,
     Send,
     Save,
     ShieldAlert,
@@ -1167,9 +1164,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                             {isMacWrapper && (
                                 <SettingGroup className="mac-chat-panel-group">
                                     <div className="mac-chat-panel-head">
-                                        <div className="mac-chat-panel-head-icon" aria-hidden="true">
-                                            <MessageCircle size={20} strokeWidth={2} />
-                                        </div>
                                         <div className="mac-chat-panel-head-copy">
                                             <h4>{t('settings.interface.chatPanel.group')}</h4>
                                             <p>{t('settings.interface.chatPanel.shortcut.record', {
@@ -1184,7 +1178,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                             )}
                                             onClick={() => setIsRecordingShortcut((recording) => !recording)}
                                         >
-                                            <Keyboard size={17} strokeWidth={2} aria-hidden="true" />
                                             <span>
                                                 {isRecordingShortcut
                                                     ? t('settings.interface.chatPanel.shortcut.recording')
@@ -1196,7 +1189,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <div className="mac-chat-panel-grid">
                                         <section className="mac-chat-panel-card mac-chat-panel-card-wide">
                                             <div className="mac-chat-panel-card-title">
-                                                <MapPin size={17} strokeWidth={2} aria-hidden="true" />
                                                 <span>{t('settings.interface.chatPanel.position.label')}</span>
                                             </div>
                                             <div className="mac-chat-panel-option-grid position-grid">
@@ -1224,7 +1216,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
                                         <section className="mac-chat-panel-card">
                                             <div className="mac-chat-panel-card-title">
-                                                <RotateCcw size={17} strokeWidth={2} aria-hidden="true" />
                                                 <span>{t('settings.interface.chatPanel.reset.label')}</span>
                                             </div>
                                             <div className="mac-chat-panel-option-stack">
@@ -1251,7 +1242,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
                                         <section className="mac-chat-panel-card">
                                             <div className="mac-chat-panel-card-title">
-                                                <Send size={17} strokeWidth={2} aria-hidden="true" />
                                                 <span>{t('settings.interface.chatPanel.newChat.label')}</span>
                                             </div>
                                             <div className="mac-chat-panel-option-stack">
@@ -1282,9 +1272,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                             settings.macLaunchAtLogin === true && 'is-active'
                                         )}
                                     >
-                                        <span className="mac-chat-panel-launch-icon" aria-hidden="true">
-                                            <PlugZap size={18} strokeWidth={2} />
-                                        </span>
                                         <span className="mac-chat-panel-launch-copy">
                                             <strong>{t('settings.interface.chatPanel.launchAtLogin.title')}</strong>
                                             <small>{t('settings.interface.chatPanel.launchAtLogin.description')}</small>

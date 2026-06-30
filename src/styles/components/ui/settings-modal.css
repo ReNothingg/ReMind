@@ -331,32 +331,16 @@
 .user-settings-modal .mac-chat-panel-group {
   overflow: hidden;
   border-color: rgba(var(--color-accent-raw), 0.18);
-  background:
-    linear-gradient(145deg, rgba(var(--color-accent-raw), 0.08), transparent 34%),
-    var(--color-bg-surface);
+  background: var(--color-bg-surface);
 }
 
 .user-settings-modal .mac-chat-panel-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   padding: 18px;
   border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.user-settings-modal .mac-chat-panel-head-icon,
-.user-settings-modal .mac-chat-panel-launch-icon {
-  display: inline-flex;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(var(--color-accent-raw), 0.2);
-  border-radius: 14px;
-  background: rgba(var(--color-accent-raw), 0.1);
-  color: var(--color-accent);
 }
 
 .user-settings-modal .mac-chat-panel-head-copy {
@@ -441,15 +425,10 @@
 .user-settings-modal .mac-chat-panel-card-title {
   display: flex;
   align-items: center;
-  gap: 8px;
   margin-bottom: 12px;
   color: var(--color-text-primary);
   font-size: 0.86rem;
   font-weight: 680;
-}
-
-.user-settings-modal .mac-chat-panel-card-title svg {
-  color: var(--color-accent);
 }
 
 .user-settings-modal .mac-chat-panel-option-grid {
@@ -499,7 +478,7 @@
 
 .user-settings-modal .mac-chat-panel-launch {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   margin: 0 14px 14px;
@@ -540,13 +519,16 @@
 @media (max-width: 820px) {
   .user-settings-modal .mac-chat-panel-head,
   .user-settings-modal .mac-chat-panel-launch {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 
-  .user-settings-modal .mac-chat-panel-record,
-  .user-settings-modal .mac-chat-panel-launch .relative {
+  .user-settings-modal .mac-chat-panel-record {
     grid-column: 1 / -1;
     justify-self: stretch;
+  }
+
+  .user-settings-modal .mac-chat-panel-launch .relative {
+    justify-self: start;
   }
 
   .user-settings-modal .mac-chat-panel-grid {
