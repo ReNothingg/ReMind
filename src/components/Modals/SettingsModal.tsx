@@ -9,13 +9,16 @@ import {
     Github,
     Globe2,
     Info,
+    Keyboard,
     LayoutPanelLeft,
     LogOut,
     Loader2,
+    MapPin,
     MessageCircle,
     Music2,
     Palette,
     PlugZap,
+    RotateCcw,
     Send,
     Save,
     ShieldAlert,
@@ -1162,87 +1165,136 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                             </SettingGroup>
 
                             {isMacWrapper && (
-                                <SettingGroup title={t('settings.interface.chatPanel.group')}>
-                                    <SettingControlGroup className="items-start">
-                                        <CustomSelect
-                                            label={t('settings.interface.chatPanel.position.label')}
-                                            value={settings.chatPanelPosition}
-                                            onChange={(value) => updateSetting('chatPanelPosition', value)}
-                                            options={[
-                                                { value: 'bottomCenter', label: t('settings.interface.chatPanel.position.bottomCenter') },
-                                                { value: 'center', label: t('settings.interface.chatPanel.position.center') },
-                                                { value: 'topCenter', label: t('settings.interface.chatPanel.position.topCenter') },
-                                                { value: 'right', label: t('settings.interface.chatPanel.position.right') },
-                                                { value: 'left', label: t('settings.interface.chatPanel.position.left') }
-                                            ]}
-                                        />
-                                    </SettingControlGroup>
-                                    <SettingControlGroup withDivider className="items-start">
-                                        <CustomSelect
-                                            label={t('settings.interface.chatPanel.reset.label')}
-                                            value={settings.chatPanelResetPolicy}
-                                            onChange={(value) => updateSetting('chatPanelResetPolicy', value)}
-                                            options={[
-                                                { value: 'never', label: t('settings.interface.chatPanel.reset.never') },
-                                                { value: 'after5Minutes', label: t('settings.interface.chatPanel.reset.after5') },
-                                                { value: 'after10Minutes', label: t('settings.interface.chatPanel.reset.after10') },
-                                                { value: 'after30Minutes', label: t('settings.interface.chatPanel.reset.after30') }
-                                            ]}
-                                        />
-                                    </SettingControlGroup>
-                                    <SettingControlGroup withDivider className="items-start">
-                                        <div className="flex w-full flex-col gap-3">
-                                            <CustomSelect
-                                                label={t('settings.interface.chatPanel.shortcut.label')}
-                                                value={settings.chatPanelKeyboardShortcut}
-                                                onChange={(value) => updateSetting('chatPanelKeyboardShortcut', value)}
-                                                options={[
-                                                    ...(String(settings.chatPanelKeyboardShortcut || '').startsWith('custom:')
-                                                        ? [{
-                                                            value: settings.chatPanelKeyboardShortcut,
-                                                            label: shortcutDisplayFromRaw(settings.chatPanelKeyboardShortcut)
-                                                        }]
-                                                        : []),
-                                                    { value: 'optionCommandSpace', label: '⌥⌘Space' },
-                                                    { value: 'controlCommandSpace', label: '⌃⌘Space' },
-                                                    { value: 'shiftCommandSpace', label: '⇧⌘Space' },
-                                                    { value: 'commandReturn', label: '⌘Return' },
-                                                    { value: 'disabled', label: t('settings.interface.chatPanel.shortcut.disabled') }
-                                                ]}
-                                            />
-                                            <button
-                                                type="button"
-                                                className={cn(
-                                                    'ui-button-secondary min-h-11 rounded-xl px-4 py-3 text-left',
-                                                    isRecordingShortcut && 'border-accent-brand text-accent-brand'
-                                                )}
-                                                onClick={() => setIsRecordingShortcut((recording) => !recording)}
-                                            >
+                                <SettingGroup className="mac-chat-panel-group">
+                                    <div className="mac-chat-panel-head">
+                                        <div className="mac-chat-panel-head-icon" aria-hidden="true">
+                                            <MessageCircle size={20} strokeWidth={2} />
+                                        </div>
+                                        <div className="mac-chat-panel-head-copy">
+                                            <h4>{t('settings.interface.chatPanel.group')}</h4>
+                                            <p>{t('settings.interface.chatPanel.shortcut.record', {
+                                                shortcut: shortcutDisplayFromRaw(settings.chatPanelKeyboardShortcut)
+                                            })}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                'mac-chat-panel-record',
+                                                isRecordingShortcut && 'is-recording'
+                                            )}
+                                            onClick={() => setIsRecordingShortcut((recording) => !recording)}
+                                        >
+                                            <Keyboard size={17} strokeWidth={2} aria-hidden="true" />
+                                            <span>
                                                 {isRecordingShortcut
                                                     ? t('settings.interface.chatPanel.shortcut.recording')
-                                                    : t('settings.interface.chatPanel.shortcut.record', {
-                                                        shortcut: shortcutDisplayFromRaw(settings.chatPanelKeyboardShortcut)
-                                                    })}
-                                            </button>
-                                        </div>
-                                    </SettingControlGroup>
-                                    <SettingControlGroup withDivider className="items-start">
-                                        <CustomSelect
-                                            label={t('settings.interface.chatPanel.newChat.label')}
-                                            value={settings.chatPanelNewChatDestination}
-                                            onChange={(value) => updateSetting('chatPanelNewChatDestination', value)}
-                                            options={[
-                                                { value: 'companion', label: t('settings.interface.chatPanel.newChat.companion') },
-                                                { value: 'browser', label: t('settings.interface.chatPanel.newChat.browser') }
-                                            ]}
+                                                    : shortcutDisplayFromRaw(settings.chatPanelKeyboardShortcut)}
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    <div className="mac-chat-panel-grid">
+                                        <section className="mac-chat-panel-card mac-chat-panel-card-wide">
+                                            <div className="mac-chat-panel-card-title">
+                                                <MapPin size={17} strokeWidth={2} aria-hidden="true" />
+                                                <span>{t('settings.interface.chatPanel.position.label')}</span>
+                                            </div>
+                                            <div className="mac-chat-panel-option-grid position-grid">
+                                                {[
+                                                    ['bottomCenter', t('settings.interface.chatPanel.position.bottomCenter')],
+                                                    ['center', t('settings.interface.chatPanel.position.center')],
+                                                    ['topCenter', t('settings.interface.chatPanel.position.topCenter')],
+                                                    ['right', t('settings.interface.chatPanel.position.right')],
+                                                    ['left', t('settings.interface.chatPanel.position.left')]
+                                                ].map(([value, label]) => (
+                                                    <button
+                                                        key={value}
+                                                        type="button"
+                                                        className={cn(
+                                                            'mac-chat-panel-option',
+                                                            settings.chatPanelPosition === value && 'is-active'
+                                                        )}
+                                                        onClick={() => updateSetting('chatPanelPosition', value)}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </section>
+
+                                        <section className="mac-chat-panel-card">
+                                            <div className="mac-chat-panel-card-title">
+                                                <RotateCcw size={17} strokeWidth={2} aria-hidden="true" />
+                                                <span>{t('settings.interface.chatPanel.reset.label')}</span>
+                                            </div>
+                                            <div className="mac-chat-panel-option-stack">
+                                                {[
+                                                    ['never', t('settings.interface.chatPanel.reset.never')],
+                                                    ['after5Minutes', t('settings.interface.chatPanel.reset.after5')],
+                                                    ['after10Minutes', t('settings.interface.chatPanel.reset.after10')],
+                                                    ['after30Minutes', t('settings.interface.chatPanel.reset.after30')]
+                                                ].map(([value, label]) => (
+                                                    <button
+                                                        key={value}
+                                                        type="button"
+                                                        className={cn(
+                                                            'mac-chat-panel-option',
+                                                            settings.chatPanelResetPolicy === value && 'is-active'
+                                                        )}
+                                                        onClick={() => updateSetting('chatPanelResetPolicy', value)}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </section>
+
+                                        <section className="mac-chat-panel-card">
+                                            <div className="mac-chat-panel-card-title">
+                                                <Send size={17} strokeWidth={2} aria-hidden="true" />
+                                                <span>{t('settings.interface.chatPanel.newChat.label')}</span>
+                                            </div>
+                                            <div className="mac-chat-panel-option-stack">
+                                                {[
+                                                    ['companion', t('settings.interface.chatPanel.newChat.companion')],
+                                                    ['browser', t('settings.interface.chatPanel.newChat.browser')]
+                                                ].map(([value, label]) => (
+                                                    <button
+                                                        key={value}
+                                                        type="button"
+                                                        className={cn(
+                                                            'mac-chat-panel-option',
+                                                            settings.chatPanelNewChatDestination === value && 'is-active'
+                                                        )}
+                                                        onClick={() => updateSetting('chatPanelNewChatDestination', value)}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    </div>
+
+                                    <div
+                                        role="group"
+                                        className={cn(
+                                            'mac-chat-panel-launch',
+                                            settings.macLaunchAtLogin === true && 'is-active'
+                                        )}
+                                    >
+                                        <span className="mac-chat-panel-launch-icon" aria-hidden="true">
+                                            <PlugZap size={18} strokeWidth={2} />
+                                        </span>
+                                        <span className="mac-chat-panel-launch-copy">
+                                            <strong>{t('settings.interface.chatPanel.launchAtLogin.title')}</strong>
+                                            <small>{t('settings.interface.chatPanel.launchAtLogin.description')}</small>
+                                        </span>
+                                        <ToggleSwitch
+                                            checked={settings.macLaunchAtLogin === true}
+                                            onClick={() => updateSetting('macLaunchAtLogin', settings.macLaunchAtLogin !== true)}
+                                            ariaLabel={t('settings.interface.chatPanel.launchAtLogin.title')}
                                         />
-                                    </SettingControlGroup>
-                                    <SettingToggle
-                                        title={t('settings.interface.chatPanel.launchAtLogin.title')}
-                                        description={t('settings.interface.chatPanel.launchAtLogin.description')}
-                                        checked={settings.macLaunchAtLogin === true}
-                                        onClick={() => updateSetting('macLaunchAtLogin', settings.macLaunchAtLogin !== true)}
-                                    />
+                                    </div>
                                 </SettingGroup>
                             )}
 
