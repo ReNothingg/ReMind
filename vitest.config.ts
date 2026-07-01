@@ -10,6 +10,15 @@ export default defineConfig({
             provider: 'v8',
             reporter: ['text', 'lcov'],
             reportsDirectory: './coverage/frontend',
+            include: [
+                'src/services/api.ts',
+                'src/services/auth.ts',
+                'src/services/fileService.ts',
+                'src/services/http.ts',
+                'src/services/openapiClient.ts',
+                'src/utils/formatting.ts',
+                'src/utils/svgPreview.ts',
+            ],
             thresholds: {
                 lines: 60,
                 functions: 60,

@@ -2,9 +2,7 @@ from ai_engine.personalization import build_system_prompt, render_user_md_with_s
 from utils.auth import GitHubInstallation, db
 
 
-def test_account_name_fills_personalization_when_nickname_is_missing(
-    app, create_confirmed_user
-):
+def test_account_name_fills_personalization_when_nickname_is_missing(app, create_confirmed_user):
     with app.app_context():
         user_id, _, _ = create_confirmed_user(username="ada_user", name="Ada Lovelace")
         rendered = render_user_md_with_settings(

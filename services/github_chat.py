@@ -5,12 +5,12 @@ import re
 import secrets
 from datetime import datetime
 from difflib import get_close_matches
-from typing import Any
+from typing import Any, cast
 
 from services.github_app import (
-    GitHubAPIError,
     GitHubAgentExecutionError,
     GitHubAgentService,
+    GitHubAPIError,
     call_gemini_json,
     github_app_configured,
     github_app_missing_fields,
@@ -44,6 +44,12 @@ GITHUB_TERMS = (
     "пулл реквест",
     "пул реквест",
 )
+
+
+def _dict_or_empty(value: Any) -> dict[str, Any]:
+    return cast(dict[str, Any], value) if isinstance(value, dict) else {}
+
+
 INFO_TERMS = (
     "access",
     "available",
@@ -387,22 +393,25 @@ def _build_github_route_prompt(text: str, history: list[Any]) -> str:
     for item in history[-8:]:
         if not isinstance(item, dict):
             continue
-        github_tool = item.get("github_tool") if isinstance(item.get("github_tool"), dict) else {}
-        task = github_tool.get("task") if isinstance(github_tool.get("task"), dict) else {}
+        github_tool = _dict_or_empty(item.get("github_tool"))
+        task = _dict_or_empty(github_tool.get("task"))
         recent_messages.append(
             {
                 "role": item.get("role"),
                 "text": _history_text(item)[:700],
-                "github_tool": {
-                    "status": github_tool.get("status"),
-                    "repo_full_name": task.get("repo_full_name") or github_tool.get("profile_login"),
-                    "task_status": task.get("status"),
-                    "task_id": task.get("id"),
-                    "has_diff": bool(task.get("diff")),
-                    "pull_request_url": task.get("pull_request_url"),
-                }
-                if github_tool
-                else None,
+                "github_tool": (
+                    {
+                        "status": github_tool.get("status"),
+                        "repo_full_name": task.get("repo_full_name")
+                        or github_tool.get("profile_login"),
+                        "task_status": task.get("status"),
+                        "task_id": task.get("id"),
+                        "has_diff": bool(task.get("diff")),
+                        "pull_request_url": task.get("pull_request_url"),
+                    }
+                    if github_tool
+                    else None
+                ),
             }
         )
     return json.dumps(
@@ -437,16 +446,18 @@ def _build_github_route_prompt(text: str, history: list[Any]) -> str:
             },
             "latest_user_message": text,
             "recent_repo": recent_repo,
-            "recent_task": {
-                "repo_full_name": recent_task.get("repo_full_name"),
-                "status": recent_task.get("status"),
-                "task": recent_task.get("task"),
-                "branch_name": recent_task.get("branch_name"),
-                "has_diff": bool(recent_task.get("diff")),
-                "pull_request_url": recent_task.get("pull_request_url"),
-            }
-            if recent_task
-            else None,
+            "recent_task": (
+                {
+                    "repo_full_name": recent_task.get("repo_full_name"),
+                    "status": recent_task.get("status"),
+                    "task": recent_task.get("task"),
+                    "branch_name": recent_task.get("branch_name"),
+                    "has_diff": bool(recent_task.get("diff")),
+                    "pull_request_url": recent_task.get("pull_request_url"),
+                }
+                if recent_task
+                else None
+            ),
             "recent_messages": recent_messages,
         },
         ensure_ascii=False,
@@ -454,7 +465,9 @@ def _build_github_route_prompt(text: str, history: list[Any]) -> str:
 
 
 def _effective_text_from_ai_route(text: str, route: dict[str, Any], history: list[Any]) -> str:
-    effective = str(route.get("task_text") or text).strip() if route.get("intent") == "task" else text
+    effective = (
+        str(route.get("task_text") or text).strip() if route.get("intent") == "task" else text
+    )
     if route.get("use_recent_task"):
         recent_task_text = _find_recent_github_request(history)
         if recent_task_text and recent_task_text.lower() not in effective.lower():
@@ -545,7 +558,9 @@ def _merge_recent_task_if_needed(text: str, history: list[Any]) -> str:
         recent_task
         and _recent_github_repo_context(history)
         and len(normalized) <= 80
-        and _contains_any(normalized, ("ну сделай", "давай", "do it", "go ahead", "try again", "попробуй"))
+        and _contains_any(
+            normalized, ("ну сделай", "давай", "do it", "go ahead", "try again", "попробуй")
+        )
     ):
         return f"{recent_task}\n{text}"
 
@@ -573,7 +588,9 @@ def _recent_github_profile_context(history: list[Any]) -> bool:
         if not isinstance(item, dict):
             continue
         text = _history_text(item).lower()
-        if _contains_github_reference(text) and _contains_any(text, ("profile", "профиль", "account", "аккаунт")):
+        if _contains_github_reference(text) and _contains_any(
+            text, ("profile", "профиль", "account", "аккаунт")
+        ):
             return True
     return False
 
@@ -706,7 +723,9 @@ def _resolve_profile_login(
 ) -> str:
     known_logins = [item.account_login for item in installations if item.account_login]
     search_space = [text]
-    search_space.extend(_history_text(item) for item in reversed(history[-8:]) if isinstance(item, dict))
+    search_space.extend(
+        _history_text(item) for item in reversed(history[-8:]) if isinstance(item, dict)
+    )
     for chunk in search_space:
         chunk_lower = chunk.lower()
         for login in known_logins:
@@ -722,7 +741,9 @@ def _repo_visibility_counts(repositories: list[dict[str, Any]]) -> tuple[int, in
 
 
 def _format_repo_examples(repositories: list[dict[str, Any]], limit: int = 8) -> list[str]:
-    return [str(repo.get("full_name") or "") for repo in repositories[:limit] if repo.get("full_name")]
+    return [
+        str(repo.get("full_name") or "") for repo in repositories[:limit] if repo.get("full_name")
+    ]
 
 
 def _format_github_info_reply_ru(
@@ -733,7 +754,10 @@ def _format_github_info_reply_ru(
     errors: list[str],
 ) -> str:
     public_count, private_count = _repo_visibility_counts(repositories)
-    account_names = ", ".join(f"`{item.account_login}`" for item in installations if item.account_login) or "GitHub"
+    account_names = (
+        ", ".join(f"`{item.account_login}`" for item in installations if item.account_login)
+        or "GitHub"
+    )
     examples = _format_repo_examples(repositories)
 
     lines = [
@@ -777,7 +801,10 @@ def _format_github_info_reply_en(
     errors: list[str],
 ) -> str:
     public_count, private_count = _repo_visibility_counts(repositories)
-    account_names = ", ".join(f"`{item.account_login}`" for item in installations if item.account_login) or "GitHub"
+    account_names = (
+        ", ".join(f"`{item.account_login}`" for item in installations if item.account_login)
+        or "GitHub"
+    )
     examples = _format_repo_examples(repositories)
 
     lines = [
@@ -843,8 +870,7 @@ def _resolve_repo(
             "status": "repo_required",
             "reply": (
                 "Укажите репозиторий в формате `owner/repo`, например "
-                f"`{repositories[0]['full_name']}`.\n\n"
-                + _format_available_repos(repositories)
+                f"`{repositories[0]['full_name']}`.\n\n" + _format_available_repos(repositories)
             ),
         }
 
@@ -896,7 +922,9 @@ def _extract_task_text(text: str, repo_full_name: str) -> str:
         " ",
         task,
     )
-    task = re.sub(r"(?i)\b(гитхаб[ае]?|репо|репозитор(?:ий|ии|ия)?|пулл?\s+реквест|pr)\b", " ", task)
+    task = re.sub(
+        r"(?i)\b(гитхаб[ае]?|репо|репозитор(?:ий|ии|ия)?|пулл?\s+реквест|pr)\b", " ", task
+    )
     task = re.sub(r"\s+", " ", task).strip(" .:-\n\t")
     return task or text.strip()
 
@@ -1003,7 +1031,11 @@ def _run_confirmed_task(user_id: int, task_id: str) -> dict[str, Any]:
                 f"GitHub-задачу `{task_id}` нельзя запустить из текущего статуса "
                 f"`{task.status}`."
             ),
-            "github_tool": {"handled": True, "status": "invalid_task_state", "task": task.to_dict()},
+            "github_tool": {
+                "handled": True,
+                "status": "invalid_task_state",
+                "task": task.to_dict(),
+            },
         }
 
     task.status = "running"
@@ -1139,7 +1171,7 @@ def _format_plan_reply(task: dict[str, Any]) -> str:
     files = [item for item in plan.get("files") or [] if isinstance(item, dict)]
     if files:
         lines.extend(["", labels["files"]])
-        action_labels = labels.get("actions") if isinstance(labels.get("actions"), dict) else {}
+        action_labels = _dict_or_empty(labels.get("actions"))
         for item in files[:12]:
             path = str(item.get("path") or "").strip()
             action = str(item.get("action") or "inspect").strip()
@@ -1197,7 +1229,7 @@ def _format_recent_change_summary(task: dict[str, Any], language: str) -> str:
     pr_number = task.get("pull_request_number")
     branch = str(task.get("branch_name") or "").strip()
     status = str(task.get("status") or "").strip()
-    edits = task.get("edits") if isinstance(task.get("edits"), dict) else {}
+    edits = _dict_or_empty(task.get("edits"))
     diff = str(task.get("diff") or "").strip()
     files = _summarize_diff_files(diff)
     edit_items = [item for item in edits.get("edits") or [] if isinstance(item, dict)]
@@ -1246,7 +1278,12 @@ def _format_recent_change_summary(task: dict[str, Any], language: str) -> str:
                 action = str(item.get("action") or "update").strip()
                 reason = str(item.get("reason") or "").strip()
                 lines.append(f"- `{path}` ({action})" + (f" - {reason}" if reason else ""))
-        lines.extend(["", "Это только данные из сохраненного результата GitHub-инструмента; я не добавляю сюда предположения из плана."])
+        lines.extend(
+            [
+                "",
+                "Это только данные из сохраненного результата GitHub-инструмента; я не добавляю сюда предположения из плана.",
+            ]
+        )
         return "\n".join(lines)
 
     if status == "completed_no_changes" and not pr_url:
@@ -1274,7 +1311,9 @@ def _format_recent_change_summary(task: dict[str, Any], language: str) -> str:
     if files:
         lines.extend(["", "Files in the diff:"])
         for item in files[:12]:
-            lines.append(f"- `{item['path']}`: {item['additions']} added, {item['deletions']} deleted")
+            lines.append(
+                f"- `{item['path']}`: {item['additions']} added, {item['deletions']} deleted"
+            )
             for removed in item["removed"][:3]:
                 lines.append(f"  - deleted: `{removed}`")
             for added in item["added"][:3]:
@@ -1286,7 +1325,12 @@ def _format_recent_change_summary(task: dict[str, Any], language: str) -> str:
             action = str(item.get("action") or "update").strip()
             reason = str(item.get("reason") or "").strip()
             lines.append(f"- `{path}` ({action})" + (f" - {reason}" if reason else ""))
-    lines.extend(["", "This is based only on the saved GitHub tool result; I am not adding assumptions from the plan."])
+    lines.extend(
+        [
+            "",
+            "This is based only on the saved GitHub tool result; I am not adding assumptions from the plan.",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -1320,7 +1364,9 @@ def _human_no_changes_reason(reason: str, language: str) -> str:
         return "The AI editor did not return JSON edits."
     if "did not return valid json edits after retry" in normalized:
         if language == "ru":
-            return "AI-редактор дважды не вернул валидный JSON с правками, поэтому PR не создавался."
+            return (
+                "AI-редактор дважды не вернул валидный JSON с правками, поэтому PR не создавался."
+            )
         return "The AI editor did not return valid JSON edits after retry, so no PR was created."
     if language == "ru" and not _is_russian_text(clean_reason):
         return f"Техническая причина: {clean_reason}"

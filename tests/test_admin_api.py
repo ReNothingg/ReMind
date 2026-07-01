@@ -15,9 +15,9 @@ def clear_rate_limits():
 
 
 def _csrf_headers(client):
-    csrf_value = client.get(
-        "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
-    ).headers.get("X-CSRF-Token")
+    csrf_value = client.get("/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}).headers.get(
+        "X-CSRF-Token"
+    )
     assert csrf_value
     return {
         "User-Agent": "Mozilla/5.0 (pytest)",
@@ -74,9 +74,7 @@ def test_root_admin_can_open_dashboard_without_chat_transcripts(
     assert users.status_code == 200
     serialized = json.dumps(users.get_json(), ensure_ascii=False)
     assert "very secret transcript" not in serialized
-    listed_target = next(
-        item for item in users.get_json()["users"] if item["id"] == target_id
-    )
+    listed_target = next(item for item in users.get_json()["users"] if item["id"] == target_id)
     assert listed_target["chat_count"] == 1
 
 

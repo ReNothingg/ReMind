@@ -1,7 +1,7 @@
 import hashlib
 import os
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from flask import current_app, has_app_context
 
@@ -105,7 +105,16 @@ def _delete_referenced_files(chats):
 
 
 def export_user_data(user_id):
-    from utils.auth import AIResponseFeedback, ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
+    from utils.auth import (
+        AIResponseFeedback,
+        ChatShare,
+        Mind,
+        MindPin,
+        User,
+        UserChatHistory,
+        UserSettings,
+        db,
+    )
 
     export_data = {
         "exported_at": datetime.utcnow().isoformat(),
@@ -129,7 +138,9 @@ def export_user_data(user_id):
         settings_data = {}
 
     export_data["privacy_controls"] = {
-        "service_improvement_opt_in": bool(settings_data.get(SERVICE_IMPROVEMENT_SETTING_KEY, False)),
+        "service_improvement_opt_in": bool(
+            settings_data.get(SERVICE_IMPROVEMENT_SETTING_KEY, False)
+        ),
         "personalization_enabled": any(
             bool(settings_data.get(key))
             for key in (
@@ -162,7 +173,16 @@ def export_user_data(user_id):
 
 def delete_user_data(user_id, delete_account=False):
     from utils.audit_log import AuditEvents, log_audit_event
-    from utils.auth import AIResponseFeedback, ChatShare, Mind, MindPin, User, UserChatHistory, UserSettings, db
+    from utils.auth import (
+        AIResponseFeedback,
+        ChatShare,
+        Mind,
+        MindPin,
+        User,
+        UserChatHistory,
+        UserSettings,
+        db,
+    )
 
     results = {
         "user_id": user_id,

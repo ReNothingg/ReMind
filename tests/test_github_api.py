@@ -1,7 +1,7 @@
 import json
 
-from utils.auth import GitHubInstallation, UserChatHistory, db
 from services.github_app import GitHubAgentExecutionError
+from utils.auth import GitHubInstallation, UserChatHistory, db
 
 
 class FakeGitHubAgentService:
@@ -23,7 +23,7 @@ class FakeGitHubAgentService:
                 "default_branch": "main",
                 "private": False,
                 "permissions": {"pull": True, "push": True, "admin": False},
-            }
+            },
         ]
 
     def plan(self, repo_full_name, base_branch, task):
@@ -177,7 +177,9 @@ def test_github_status_lists_user_installation_repositories(
     assert payload["repositories"][0]["full_name"] == "ReNothingg/ReMind"
 
 
-def test_github_agent_plan_and_run_create_task(app, client, create_confirmed_user, login, monkeypatch):
+def test_github_agent_plan_and_run_create_task(
+    app, client, create_confirmed_user, login, monkeypatch
+):
     import routes.features.github as github_routes
 
     monkeypatch.setattr(github_routes, "GitHubAgentService", FakeGitHubAgentService)
@@ -216,7 +218,9 @@ def test_github_agent_plan_and_run_create_task(app, client, create_confirmed_use
     assert completed_task["edits"]["activity"][0]["code"] == "pullRequestOpened"
 
 
-def test_github_agent_run_error_keeps_activity(app, client, create_confirmed_user, login, monkeypatch):
+def test_github_agent_run_error_keeps_activity(
+    app, client, create_confirmed_user, login, monkeypatch
+):
     import routes.features.github as github_routes
 
     monkeypatch.setattr(github_routes, "GitHubAgentService", FailingGitHubAgentService)
@@ -372,8 +376,7 @@ def test_github_agent_run_falls_back_to_pull_request_files_for_diff(monkeypatch)
     assert "-old" in result["diff"]
     assert "+new" in result["diff"]
     assert any(
-        item.get("code") == "diffLoadedFromPullRequest"
-        for item in result["edits"]["activity"]
+        item.get("code") == "diffLoadedFromPullRequest" for item in result["edits"]["activity"]
     )
 
 
@@ -394,7 +397,11 @@ def test_github_agent_retries_invalid_editor_json(monkeypatch):
             }
 
         def create_pull_request(self, owner, repo, title, head, base, body):
-            return {"number": 3, "html_url": "https://github.com/ReNothingg/ReSave/pull/3", "title": title}
+            return {
+                "number": 3,
+                "html_url": "https://github.com/ReNothingg/ReSave/pull/3",
+                "title": title,
+            }
 
         def list_pull_request_files(self, owner, repo, number):
             return []
@@ -416,7 +423,9 @@ def test_github_agent_retries_invalid_editor_json(monkeypatch):
     monkeypatch.setattr(
         github_app,
         "read_file_contexts",
-        lambda *_args, **_kwargs: [{"path": "README.md", "content": "old readme\n", "exists": True}],
+        lambda *_args, **_kwargs: [
+            {"path": "README.md", "content": "old readme\n", "exists": True}
+        ],
     )
     calls = []
 
@@ -463,7 +472,9 @@ def test_github_agent_retries_invalid_editor_json(monkeypatch):
     assert "previous editor response was rejected" in calls[1]
     assert result["pull_request"]["url"].endswith("/pull/3")
     assert result["diff"].startswith("diff --git a/README.md b/README.md")
-    assert any(item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"])
+    assert any(
+        item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"]
+    )
 
 
 def test_github_agent_invalid_editor_json_after_retry_completes_without_pr(monkeypatch):
@@ -486,7 +497,9 @@ def test_github_agent_invalid_editor_json_after_retry_completes_without_pr(monke
     monkeypatch.setattr(
         github_app,
         "read_file_contexts",
-        lambda *_args, **_kwargs: [{"path": "README.md", "content": "old readme\n", "exists": True}],
+        lambda *_args, **_kwargs: [
+            {"path": "README.md", "content": "old readme\n", "exists": True}
+        ],
     )
     monkeypatch.setattr(
         github_app,
@@ -522,8 +535,13 @@ def test_github_agent_invalid_editor_json_after_retry_completes_without_pr(monke
     assert result["no_changes"] is True
     assert result["diff"] == ""
     assert result["edits"]["edits"] == []
-    assert result["edits"]["no_changes_reason"] == "AI editor did not return valid JSON edits after retry."
-    assert any(item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"])
+    assert (
+        result["edits"]["no_changes_reason"]
+        == "AI editor did not return valid JSON edits after retry."
+    )
+    assert any(
+        item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"]
+    )
 
 
 def test_github_agent_uses_text_editor_fallback_for_readme_after_invalid_json(monkeypatch):
@@ -543,7 +561,11 @@ def test_github_agent_uses_text_editor_fallback_for_readme_after_invalid_json(mo
             }
 
         def create_pull_request(self, owner, repo, title, head, base, body):
-            return {"number": 4, "html_url": "https://github.com/ReNothingg/devex-pr-agent/pull/4", "title": title}
+            return {
+                "number": 4,
+                "html_url": "https://github.com/ReNothingg/devex-pr-agent/pull/4",
+                "title": title,
+            }
 
         def list_pull_request_files(self, owner, repo, number):
             return []
@@ -612,8 +634,12 @@ def test_github_agent_uses_text_editor_fallback_for_readme_after_invalid_json(mo
     assert result["pull_request"]["url"].endswith("/pull/4")
     assert result["edits"]["edits"][0]["path"] == "README.md"
     assert "Local development" in result["edits"]["edits"][0]["content"]
-    assert any(item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"])
-    assert any(item.get("code") == "textEditorFallbackSucceeded" for item in result["edits"]["activity"])
+    assert any(
+        item.get("code") == "editorJsonRepairStarted" for item in result["edits"]["activity"]
+    )
+    assert any(
+        item.get("code") == "textEditorFallbackSucceeded" for item in result["edits"]["activity"]
+    )
 
 
 def test_github_chat_request_without_repo_asks_for_repository(
@@ -907,7 +933,10 @@ def test_github_chat_uses_recent_repo_context_for_followup_task(
         headers=headers,
     )
     assert first_response.status_code == 200
-    assert first_response.get_json()["github_tool"]["task"]["repo_full_name"] == "ReNothingg/devex-pr-agent"
+    assert (
+        first_response.get_json()["github_tool"]["task"]["repo_full_name"]
+        == "ReNothingg/devex-pr-agent"
+    )
 
     followup_response = client.post(
         "/chat",
@@ -959,7 +988,9 @@ def test_github_chat_intercepts_correction_followups_in_recent_repo_context(
     assert correction_response.status_code == 200
     correction_payload = correction_response.get_json()
     assert correction_payload["github_tool"]["status"] == "planned"
-    assert correction_payload["github_tool"]["task"]["repo_full_name"] == "ReNothingg/devex-pr-agent"
+    assert (
+        correction_payload["github_tool"]["task"]["repo_full_name"] == "ReNothingg/devex-pr-agent"
+    )
     assert "Подтвердить GitHub PR" in correction_payload["reply"]
 
     short_followup_response = client.post(
@@ -1102,7 +1133,9 @@ def test_github_agent_prompts_preserve_russian_user_language():
         "flat": [{"path": "src/App.tsx", "type": "file"}],
         "stats": {"files": 1, "directories": 1, "nodes": 2},
     }
-    file_contexts = [{"path": "src/App.tsx", "content": "export default function App() {}", "size": 32}]
+    file_contexts = [
+        {"path": "src/App.tsx", "content": "export default function App() {}", "size": 32}
+    ]
 
     plan_prompt = json.loads(
         build_plan_prompt(
@@ -1196,7 +1229,9 @@ def test_github_agent_filters_noop_file_edits():
         ],
     )
 
-    assert skipped == [{"path": "requirements.txt", "action": "update", "reason": "content_unchanged"}]
+    assert skipped == [
+        {"path": "requirements.txt", "action": "update", "reason": "content_unchanged"}
+    ]
     assert [item["path"] for item in edit_payload["edits"]] == ["backend/app.py"]
     assert edit_payload["skipped_edits"][0]["path"] == "requirements.txt"
 
@@ -1220,18 +1255,8 @@ def test_github_agent_sanitizes_no_change_findings_that_claim_edits():
 def test_github_agent_filters_cosmetic_css_token_only_edits_for_vague_bugfix():
     from services.github_app import _filter_unsafe_edits
 
-    original = (
-        ":root {\n"
-        "  --line-strong: #a8a8a0;\n"
-        "  --muted: #686866;\n"
-        "}\n"
-    )
-    changed = (
-        ":root {\n"
-        "  --line-strong: #a8a0;\n"
-        "  --muted: #6866;\n"
-        "}\n"
-    )
+    original = ":root {\n" "  --line-strong: #a8a8a0;\n" "  --muted: #686866;\n" "}\n"
+    changed = ":root {\n" "  --line-strong: #a8a0;\n" "  --muted: #6866;\n" "}\n"
     edit_payload = {
         "edits": [
             {

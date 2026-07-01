@@ -6,6 +6,7 @@ exclude = '''
   /(
       \.git
     | \.venv
+    | \.agents
     | node_modules
     | dist
     | migrations/versions

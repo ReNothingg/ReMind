@@ -13,7 +13,7 @@ export default tseslint.config(
   prettier,
 
   {
-    files: ['**/*.{ts,tsx,js,jsx}'],
+    files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
     settings: {
       react: {
         version: 'detect',

@@ -190,10 +190,7 @@ def user_has_github_connection(user_id: Optional[int]) -> bool:
 
         if not github_app_configured():
             return False
-        return (
-            GitHubInstallation.query.filter_by(user_id=int(user_id)).first()
-            is not None
-        )
+        return GitHubInstallation.query.filter_by(user_id=int(user_id)).first() is not None
     except Exception as e:
         logger.exception(f"Failed to resolve GitHub tool connection for {user_id}: {e}")
         return False
@@ -298,7 +295,9 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         prompt = base
 
     tool_prompts = [
-        tool for tool in [web_tool_prompt, canmore_tool_prompt, beatbox_state_prompt, github_tool_prompt] if tool
+        tool
+        for tool in [web_tool_prompt, canmore_tool_prompt, beatbox_state_prompt, github_tool_prompt]
+        if tool
     ]
     if tool_prompts:
         prompt = prompt + "\n\n" + "\n\n".join(tool_prompts)

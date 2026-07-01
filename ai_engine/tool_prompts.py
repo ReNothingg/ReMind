@@ -1,7 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
 
-
 _TOOLS_DIR = Path(__file__).with_name("tools")
 
 

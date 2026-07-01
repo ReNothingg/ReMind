@@ -4,9 +4,9 @@ from utils.auth import AIResponseFeedback, UserChatHistory, UserSettings, db
 
 
 def _csrf_headers(client):
-    csrf_value = client.get(
-        "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
-    ).headers.get("X-CSRF-Token")
+    csrf_value = client.get("/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}).headers.get(
+        "X-CSRF-Token"
+    )
     assert csrf_value
     return {
         "User-Agent": "Mozilla/5.0 (pytest)",

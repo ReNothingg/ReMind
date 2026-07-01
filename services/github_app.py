@@ -279,9 +279,7 @@ def _is_probably_text_path(path: str) -> bool:
 
 def _tokenize(value: str) -> set[str]:
     return {
-        token
-        for token in re.split(r"[^a-zA-Z0-9_а-яА-ЯёЁ]+", value.lower())
-        if len(token) >= 2
+        token for token in re.split(r"[^a-zA-Z0-9_а-яА-ЯёЁ]+", value.lower()) if len(token) >= 2
     }
 
 
@@ -345,7 +343,9 @@ def _coerce_plan_files(value: Any, fallback_paths: list[str]) -> list[dict[str, 
     seen = {file["path"] for file in files}
     for path in fallback_paths:
         if path not in seen:
-            files.append({"path": path, "reason": "Matched by repository map.", "action": "inspect"})
+            files.append(
+                {"path": path, "reason": "Matched by repository map.", "action": "inspect"}
+            )
             seen.add(path)
         if len(files) >= GITHUB_AGENT_MAX_PLAN_FILES:
             break
@@ -370,7 +370,10 @@ def build_nested_tree(tree_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     for item in sorted(
         (item for item in tree_items if item.get("type") in {"tree", "blob"}),
-        key=lambda item: (str(item.get("path") or "").count("/"), str(item.get("path") or "").lower()),
+        key=lambda item: (
+            str(item.get("path") or "").count("/"),
+            str(item.get("path") or "").lower(),
+        ),
     ):
         normalized_path = str(item.get("path") or "").strip("/")
         if not normalized_path or _is_ignored_path(normalized_path):
@@ -416,7 +419,12 @@ def summarize_tree(nodes: list[dict[str, Any]]) -> dict[str, int]:
                 files += 1
 
     walk(nodes, 1)
-    return {"files": files, "directories": directories, "nodes": files + directories, "max_depth": max_depth}
+    return {
+        "files": files,
+        "directories": directories,
+        "nodes": files + directories,
+        "max_depth": max_depth,
+    }
 
 
 def flatten_tree(nodes: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -507,8 +515,10 @@ class GitHubClient:
             message = f"GitHub API returned status {response.status_code}."
             payload: dict[str, Any] | None = None
             try:
-                payload = response.json()
-                message = payload.get("message", message)
+                raw_payload = response.json()
+                if isinstance(raw_payload, dict):
+                    payload = raw_payload
+                    message = str(payload.get("message") or message)
             except ValueError:
                 message = response.text.strip() or message
             raise GitHubAPIError(response.status_code, message, payload, dict(response.headers))
@@ -607,7 +617,9 @@ class GitHubClient:
         try:
             content = raw_bytes.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise GitHubAPIError(400, "Binary files and non-UTF-8 files are not supported.") from exc
+            raise GitHubAPIError(
+                400, "Binary files and non-UTF-8 files are not supported."
+            ) from exc
         return {
             "path": payload["path"],
             "sha": payload["sha"],
@@ -917,8 +929,13 @@ def _editing_policy_for_task(task: str) -> dict[str, Any]:
 def _task_allows_ai_selected_safe_improvements(task: str) -> bool:
     normalized = str(task or "").lower()
     return bool(
-        re.search(r"\b(any|some|whatever|couple of|few)\b.*\b(file|files|change|changes|edit|edits)\b", normalized)
-        or re.search(r"\b(change|edit|touch|modify)\b.*\b(any|some|whatever|couple of|few)\b", normalized)
+        re.search(
+            r"\b(any|some|whatever|couple of|few)\b.*\b(file|files|change|changes|edit|edits)\b",
+            normalized,
+        )
+        or re.search(
+            r"\b(change|edit|touch|modify)\b.*\b(any|some|whatever|couple of|few)\b", normalized
+        )
         or re.search(r"\b[2-9]\s+files?\b", normalized)
         or re.search(r"\b(хоть|какие-то|какие-нибудь|любые|любой|пару|несколько)\b", normalized)
         or re.search(r"\b[2-9]\s+файл", normalized)
@@ -937,7 +954,9 @@ def _requested_changed_file_count(task: str) -> int | None:
     return None
 
 
-def _fallback_plan(task: str, repo_full_name: str, base_branch: str, candidate_paths: list[str]) -> dict[str, Any]:
+def _fallback_plan(
+    task: str, repo_full_name: str, base_branch: str, candidate_paths: list[str]
+) -> dict[str, Any]:
     suffix_source = task or repo_full_name
     if _is_russian_text(task):
         return {
@@ -969,9 +988,18 @@ def _fallback_plan(task: str, repo_full_name: str, base_branch: str, candidate_p
     return {
         "summary": "Prepare a focused code change in a pull request.",
         "steps": [
-            {"title": "Inspect repository map", "details": "Use the selected files as the first editing context."},
-            {"title": "Generate code edits", "details": "Apply a small, reviewable change on a new branch."},
-            {"title": "Open pull request", "details": "Show the generated diff and create a PR against the base branch."},
+            {
+                "title": "Inspect repository map",
+                "details": "Use the selected files as the first editing context.",
+            },
+            {
+                "title": "Generate code edits",
+                "details": "Apply a small, reviewable change on a new branch.",
+            },
+            {
+                "title": "Open pull request",
+                "details": "Show the generated diff and create a PR against the base branch.",
+            },
         ],
         "files": [
             {"path": path, "reason": "Matched by repository map.", "action": "inspect"}
@@ -1030,7 +1058,9 @@ def build_plan_prompt(
     repo_map: dict[str, Any],
     file_contexts: list[dict[str, Any]],
 ) -> str:
-    flat_paths = [item["path"] for item in repo_map.get("flat", []) if item.get("type") == "file"][:500]
+    flat_paths = [item["path"] for item in repo_map.get("flat", []) if item.get("type") == "file"][
+        :500
+    ]
     context_summary = [
         {
             "path": item["path"],
@@ -1071,7 +1101,9 @@ def build_plan_prompt(
             "schema": {
                 "summary": "string",
                 "steps": [{"title": "string", "details": "string"}],
-                "files": [{"path": "string", "reason": "string", "action": "inspect|edit|create|delete"}],
+                "files": [
+                    {"path": "string", "reason": "string", "action": "inspect|edit|create|delete"}
+                ],
                 "risks": ["string"],
                 "branch_suffix": "short-kebab-case",
                 "commit_message": "string",
@@ -1164,7 +1196,9 @@ def build_edit_repair_prompt(original_prompt: str, invalid_trace: dict[str, Any]
                 "no_changes_reason and findings in the user's language."
             ),
             "original_editor_request": _json_from_text(original_prompt) or original_prompt,
-            "invalid_response_preview": (invalid_trace.get("details") or {}).get("response_preview"),
+            "invalid_response_preview": (invalid_trace.get("details") or {}).get(
+                "response_preview"
+            ),
             "schema": {
                 "summary": "string",
                 "edits": [
@@ -1186,7 +1220,10 @@ def build_edit_repair_prompt(original_prompt: str, invalid_trace: dict[str, Any]
 
 def _is_documentation_path(path: str) -> bool:
     name = Path(path).name
-    return name in DOCUMENTATION_FALLBACK_FILENAMES or Path(path).suffix.lower() in DOCUMENTATION_FALLBACK_EXTENSIONS
+    return (
+        name in DOCUMENTATION_FALLBACK_FILENAMES
+        or Path(path).suffix.lower() in DOCUMENTATION_FALLBACK_EXTENSIONS
+    )
 
 
 def _task_allows_single_file_text_fallback(task: str, plan: dict[str, Any]) -> bool:
@@ -1226,11 +1263,19 @@ def _select_single_file_text_context(
             continue
         if not _is_documentation_path(path):
             continue
-        candidates.append((path_rank.get(path, 999), 0 if Path(path).name.lower().startswith("readme") else 1, item))
+        candidates.append(
+            (
+                path_rank.get(path, 999),
+                0 if Path(path).name.lower().startswith("readme") else 1,
+                item,
+            )
+        )
 
     if not candidates:
         return None
-    candidates.sort(key=lambda candidate: (candidate[0], candidate[1], str(candidate[2].get("path") or "")))
+    candidates.sort(
+        key=lambda candidate: (candidate[0], candidate[1], str(candidate[2].get("path") or ""))
+    )
     return candidates[0][2]
 
 
@@ -1298,7 +1343,11 @@ def build_single_file_text_edit_payload(
     activity: list[dict[str, Any]] = []
     file_context = _select_single_file_text_context(task, plan, file_contexts)
     if not file_context:
-        activity.append(_activity("textEditorFallbackSkipped", "warning", {"reason": "no_single_documentation_file"}))
+        activity.append(
+            _activity(
+                "textEditorFallbackSkipped", "warning", {"reason": "no_single_documentation_file"}
+            )
+        )
         return None, activity
 
     path = _normalize_path(str(file_context.get("path") or ""))
@@ -1315,18 +1364,28 @@ def build_single_file_text_edit_payload(
 
     activity.append(_activity("textEditorFallbackSucceeded", "done", {"path": path}))
     return {
-        "summary": "Документация обновлена." if _is_russian_text(task) else "Documentation updated.",
+        "summary": (
+            "Документация обновлена." if _is_russian_text(task) else "Documentation updated."
+        ),
         "edits": [
             {
                 "path": path,
                 "action": "update",
                 "content": content,
-                "reason": "Обновить документацию по запросу пользователя." if _is_russian_text(task) else "Update documentation for the user request.",
+                "reason": (
+                    "Обновить документацию по запросу пользователя."
+                    if _is_russian_text(task)
+                    else "Update documentation for the user request."
+                ),
             }
         ],
         "findings": [],
         "no_changes_reason": "",
-        "tests": ["Не запускались: изменена только документация."] if _is_russian_text(task) else ["Not run: documentation-only change."],
+        "tests": (
+            ["Не запускались: изменена только документация."]
+            if _is_russian_text(task)
+            else ["Not run: documentation-only change."]
+        ),
     }, activity
 
 
@@ -1512,7 +1571,9 @@ def _sanitize_no_change_findings(edit_payload: dict[str, Any]) -> None:
     if not isinstance(findings, list):
         return
     edit_payload["findings"] = [
-        item for item in findings if isinstance(item, str) and not _looks_like_applied_change_claim(item)
+        item
+        for item in findings
+        if isinstance(item, str) and not _looks_like_applied_change_claim(item)
     ]
 
 
@@ -1619,7 +1680,9 @@ class GitHubAgentService:
                 {"count": len(candidate_paths), "paths": candidate_paths},
             )
         )
-        file_contexts = read_file_contexts(self.client, owner, repo, repo_map["base_branch"], candidate_paths)
+        file_contexts = read_file_contexts(
+            self.client, owner, repo, repo_map["base_branch"], candidate_paths
+        )
         activity.append(
             _activity(
                 "fileContextLoaded",
@@ -1632,13 +1695,17 @@ class GitHubAgentService:
         )
         activity.append(_activity("plannerStarted", "done"))
         raw_plan, planner_trace = call_gemini_json_with_trace(
-            build_plan_prompt(task, repo_full_name, repo_map["base_branch"], repo_map, file_contexts)
+            build_plan_prompt(
+                task, repo_full_name, repo_map["base_branch"], repo_map, file_contexts
+            )
         )
         if raw_plan is None:
             activity.extend([planner_trace, _activity("plannerFallback", "warning")])
         else:
             activity.extend([planner_trace, _activity("plannerSucceeded", "done")])
-        plan = normalize_plan(raw_plan, task, repo_full_name, repo_map["base_branch"], candidate_paths)
+        plan = normalize_plan(
+            raw_plan, task, repo_full_name, repo_map["base_branch"], candidate_paths
+        )
         return {
             **plan,
             "activity": activity,
@@ -1649,7 +1716,9 @@ class GitHubAgentService:
             },
         }
 
-    def _reserve_branch(self, owner: str, repo: str, base_branch: str, branch_suffix: str) -> tuple[str, str, str]:
+    def _reserve_branch(
+        self, owner: str, repo: str, base_branch: str, branch_suffix: str
+    ) -> tuple[str, str, str]:
         base_ref = self.client.get_branch_ref(owner, repo, base_branch)
         base_commit_sha = base_ref["object"]["sha"]
         base_commit = self.client.get_git_commit(owner, repo, base_commit_sha)
@@ -1710,7 +1779,9 @@ class GitHubAgentService:
         self.client.update_ref(owner, repo, branch_name, commit["sha"])
         return branch_name, commit["sha"]
 
-    def run(self, repo_full_name: str, base_branch: str, task: str, plan: dict[str, Any]) -> dict[str, Any]:
+    def run(
+        self, repo_full_name: str, base_branch: str, task: str, plan: dict[str, Any]
+    ) -> dict[str, Any]:
         owner, repo = parse_repo_full_name(repo_full_name)
         repo_map = self.load_repo_map(repo_full_name, base_branch)
         activity = [
@@ -1736,7 +1807,9 @@ class GitHubAgentService:
             if isinstance(item, dict) and str(item.get("path") or "").strip()
         ]
         if not planned_paths:
-            planned_paths = select_candidate_paths(repo_map["flat"], task, max(1, GITHUB_AGENT_MAX_PLAN_FILES))
+            planned_paths = select_candidate_paths(
+                repo_map["flat"], task, max(1, GITHUB_AGENT_MAX_PLAN_FILES)
+            )
         activity.append(
             _activity(
                 "plannedFilesLoaded",
@@ -1744,7 +1817,9 @@ class GitHubAgentService:
                 {"count": len(planned_paths), "paths": planned_paths},
             )
         )
-        file_contexts = read_file_contexts(self.client, owner, repo, repo_map["base_branch"], planned_paths)
+        file_contexts = read_file_contexts(
+            self.client, owner, repo, repo_map["base_branch"], planned_paths
+        )
         activity.append(
             _activity(
                 "fileContextLoaded",
@@ -1756,7 +1831,9 @@ class GitHubAgentService:
             )
         )
         activity.append(_activity("editorStarted", "done"))
-        edit_prompt = build_edit_prompt(task, repo_full_name, repo_map["base_branch"], plan, repo_map, file_contexts)
+        edit_prompt = build_edit_prompt(
+            task, repo_full_name, repo_map["base_branch"], plan, repo_map, file_contexts
+        )
         raw_edits, editor_trace = call_gemini_json_with_trace(edit_prompt)
         activity.append(editor_trace)
         if raw_edits is None and editor_trace.get("code") == "geminiInvalidJson":
@@ -1800,7 +1877,10 @@ class GitHubAgentService:
                 _activity(
                     "noopEditsSkipped",
                     "warning",
-                    {"count": len(skipped_edits), "paths": [item["path"] for item in skipped_edits]},
+                    {
+                        "count": len(skipped_edits),
+                        "paths": [item["path"] for item in skipped_edits],
+                    },
                 )
             )
         unsafe_edits = _filter_unsafe_edits(edit_payload, file_contexts, task, plan)
@@ -1856,7 +1936,9 @@ class GitHubAgentService:
             commit_message=str(plan.get("commit_message") or f"Implement {task[:60]}"),
             edits=edit_payload["edits"],
         )
-        activity.append(_activity("commitCreated", "done", {"branch": branch_name, "commit_sha": commit_sha}))
+        activity.append(
+            _activity("commitCreated", "done", {"branch": branch_name, "commit_sha": commit_sha})
+        )
         compare_payload = self.client.compare(owner, repo, repo_map["base_branch"], branch_name)
         diff = compare_to_patch(compare_payload)
         activity.append(
@@ -1868,7 +1950,9 @@ class GitHubAgentService:
         )
         pr_body = str(plan.get("pr_body") or "").strip()
         if edit_payload.get("tests"):
-            pr_body = f"{pr_body}\n\nTests:\n" + "\n".join(f"- {item}" for item in edit_payload["tests"])
+            pr_body = f"{pr_body}\n\nTests:\n" + "\n".join(
+                f"- {item}" for item in edit_payload["tests"]
+            )
         pr_body = f"{pr_body}\n\nGenerated by ReMind GitHub agent.\nCommit: {commit_sha}".strip()
         pull_request = self.client.create_pull_request(
             owner=owner,
@@ -1886,7 +1970,9 @@ class GitHubAgentService:
             )
         )
         if not diff_has_visible_changes(diff):
-            pull_request_files = self.client.list_pull_request_files(owner, repo, int(pull_request["number"]))
+            pull_request_files = self.client.list_pull_request_files(
+                owner, repo, int(pull_request["number"])
+            )
             pull_request_diff = files_to_patch(pull_request_files)
             if diff_has_visible_changes(pull_request_diff):
                 diff = pull_request_diff

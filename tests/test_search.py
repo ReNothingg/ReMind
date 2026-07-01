@@ -438,9 +438,7 @@ def test_rewrite_web_search_query_uses_model_json(monkeypatch):
         lambda _prompt: '{"query": "OpenAI latest news May 2026", "reason": "clean search query"}',
     )
 
-    rewrite = web_search.rewrite_web_search_query(
-        "Tell me the latest OpenAI news. Use web search."
-    )
+    rewrite = web_search.rewrite_web_search_query("Tell me the latest OpenAI news. Use web search.")
 
     assert rewrite == {
         "query": "OpenAI latest news May 2026",
@@ -673,7 +671,11 @@ def test_chat_auto_web_search_skips_static_query(client, monkeypatch):
 
     response = client.post(
         "/chat",
-        json={"message": "напиши короткое стихотворение про осень", "model": "gemini", "autoWebSearch": True},
+        json={
+            "message": "напиши короткое стихотворение про осень",
+            "model": "gemini",
+            "autoWebSearch": True,
+        },
     )
 
     assert response.status_code == 200
@@ -684,9 +686,7 @@ def test_chat_auto_web_search_skips_static_query(client, monkeypatch):
     rate_limit_store.clear()
 
 
-def test_auth_settings_persist_automatic_web_search(
-    client, create_confirmed_user, login
-):
+def test_auth_settings_persist_automatic_web_search(client, create_confirmed_user, login):
     _user_id, email, password = create_confirmed_user()
     login_response = login(email, password)
     assert login_response.status_code == 200

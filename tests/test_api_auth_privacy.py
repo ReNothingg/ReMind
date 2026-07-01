@@ -8,8 +8,8 @@ import pytest
 
 import routes.features.chat as chat_routes
 import services.chat_history as chat_history
-import utils.retention as retention
 import utils.auth as auth_module
+import utils.retention as retention
 from config import SESSION_COOKIE_NAME
 from utils.auth import ChatShare, User, UserChatHistory, UserSettings, db
 from utils.rate_limiting import rate_limit_store
@@ -477,9 +477,9 @@ def test_chat_demo_image_stream_returns_image_and_persists_history(
     rate_limit_store.clear()
     user_id, email, password = create_confirmed_user()
     assert login(email, password).status_code == 200
-    csrf_value = client.get(
-        "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
-    ).headers.get("X-CSRF-Token")
+    csrf_value = client.get("/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}).headers.get(
+        "X-CSRF-Token"
+    )
     assert csrf_value
 
     response = client.post(
@@ -692,7 +692,10 @@ def test_service_improvement_opt_in_defaults_false_and_persists(
     )
 
     assert update_response.status_code == 200
-    assert update_response.get_json()["settings"]["settings_data"]["service_improvement_opt_in"] is True
+    assert (
+        update_response.get_json()["settings"]["settings_data"]["service_improvement_opt_in"]
+        is True
+    )
 
 
 def test_retention_prunes_guest_chat_files_older_than_policy(tmp_path):

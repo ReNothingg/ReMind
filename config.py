@@ -138,12 +138,7 @@ CORS_SEND_WILDCARD = False
 CORS_ALWAYS_SEND = True
 
 _DEFAULT_OPERATIONAL_ALLOWED_NETWORKS = (
-    "127.0.0.1/32,"
-    "::1/128,"
-    "10.0.0.0/8,"
-    "172.16.0.0/12,"
-    "192.168.0.0/16,"
-    "fc00::/7"
+    "127.0.0.1/32," "::1/128," "10.0.0.0/8," "172.16.0.0/12," "192.168.0.0/16," "fc00::/7"
 )
 _raw_operational_networks = os.getenv(
     "OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS",
@@ -202,8 +197,7 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 IOS_OAUTH_REDIRECT_URI = (
-    os.getenv("IOS_OAUTH_REDIRECT_URI", "remind://auth/google").strip()
-    or "remind://auth/google"
+    os.getenv("IOS_OAUTH_REDIRECT_URI", "remind://auth/google").strip() or "remind://auth/google"
 )
 IOS_OAUTH_CALLBACK_SCHEME = urlparse(IOS_OAUTH_REDIRECT_URI).scheme or "remind"
 

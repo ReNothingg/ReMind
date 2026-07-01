@@ -45,9 +45,7 @@ def test_prepare_history_skips_invalid_messages():
 
 
 def test_format_google_api_error_redacts_unsupported_location_details():
-    error = google_exceptions.FailedPrecondition(
-        "User location is not supported for the API use."
-    )
+    error = google_exceptions.FailedPrecondition("User location is not supported for the API use.")
 
     formatted = _format_google_api_error(error)
 

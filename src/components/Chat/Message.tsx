@@ -579,14 +579,25 @@ const GitHubDiffCard = ({ payload, t }) => {
         deletions: acc.deletions + file.deletions,
         lines: acc.lines + file.rows.filter((row) => row.kind !== 'hunk').length
     }), { additions: 0, deletions: 0, lines: 0 }), [files]);
+    const renderedFiles = useMemo(() => files.reduce((acc, file) => {
+        const isCollapsed = collapsedFiles.has(file.id);
+        const displayRows = file.rows.filter((row) => row.kind !== 'hunk');
+        const visibleRows = !isCollapsed && acc.remainingRows > 0
+            ? displayRows.slice(0, acc.remainingRows)
+            : [];
 
-    useEffect(() => {
-        setCollapsedFiles((current) => {
-            const fileIds = new Set(files.map((file) => file.id));
-            const next = new Set([...current].filter((fileId) => fileIds.has(fileId)));
-            return next.size === current.size ? current : next;
-        });
-    }, [files]);
+        return {
+            remainingRows: isCollapsed
+                ? acc.remainingRows
+                : Math.max(0, acc.remainingRows - visibleRows.length),
+            items: acc.items.concat({
+                file,
+                isCollapsed,
+                visibleRows,
+                fileBodyId: `github-diff-file-${String(file.id).replace(/[^a-z0-9_-]+/gi, '-')}`,
+            }),
+        };
+    }, { remainingRows: MAX_RENDERED_DIFF_LINES, items: [] }).items, [collapsedFiles, files]);
 
     if (!payload || files.length === 0) {
         return null;
@@ -630,8 +641,6 @@ const GitHubDiffCard = ({ payload, t }) => {
             return next;
         });
     };
-
-    let renderedRows = 0;
 
     return (
         <section className="github-diff-card" aria-label={t('chat.githubDiff.title')}>
@@ -684,18 +693,10 @@ const GitHubDiffCard = ({ payload, t }) => {
             </div>
 
             <div className="github-diff-files">
-                {files.map((file) => {
-                    const remainingBudget = MAX_RENDERED_DIFF_LINES - renderedRows;
-                    const displayRows = file.rows.filter((row) => row.kind !== 'hunk');
-                    const visibleRows = remainingBudget > 0 ? displayRows.slice(0, remainingBudget) : [];
-                    const isCollapsed = collapsedFiles.has(file.id);
+                {renderedFiles.map(({ file, isCollapsed, visibleRows, fileBodyId }) => {
                     const toggleLabel = isCollapsed
                         ? t('chat.githubDiff.expandFile')
                         : t('chat.githubDiff.collapseFile');
-                    const fileBodyId = `github-diff-file-${String(file.id).replace(/[^a-z0-9_-]+/gi, '-')}`;
-                    if (!isCollapsed) {
-                        renderedRows += visibleRows.length;
-                    }
 
                     return (
                         <article className={cn('github-diff-file', isCollapsed && 'is-collapsed')} key={file.id}>
@@ -794,7 +795,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
 
     const displayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
     const displayFiles = filesFromParts;
-    const displaySources = currentVariant ? (currentVariant.sources || []) : (sources || []);
+    const displaySources = useMemo(
+        () => (currentVariant ? (currentVariant.sources || []) : (sources || [])),
+        [currentVariant, sources]
+    );
     const sourceFallbackLabel = t('webSearch.sourceFallback', { defaultValue: 'Source' });
     const displaySourceItems = useMemo(
         () => normalizeWebSources(displaySources, sourceFallbackLabel),

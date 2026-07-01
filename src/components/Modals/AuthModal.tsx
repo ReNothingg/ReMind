@@ -221,7 +221,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             cancelled = true;
             if (timeoutId !== undefined) clearTimeout(timeoutId);
         };
-    }, [authConfig, isLoginView, shouldUseTurnstile]);
+    }, [authConfig, isLoginView, shouldUseTurnstile, t]);
 
     useEffect(() => {
         if (!window.turnstile) return;

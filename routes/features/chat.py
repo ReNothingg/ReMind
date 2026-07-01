@@ -16,6 +16,12 @@ from ai_engine import get_model_function
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
+from services.beatbox_tools import normalize_beatbox_state
+from services.canvas_tools import (
+    find_canmore_marker,
+    normalize_canvas_textdoc,
+    process_canmore_calls,
+)
 from services.chat_history import (
     _generate_guest_session_token,
     append_messages_to_history,
@@ -25,11 +31,10 @@ from services.chat_history import (
     normalize_message,
     resolve_session_identifier,
 )
-from services.canvas_tools import find_canmore_marker, normalize_canvas_textdoc, process_canmore_calls
-from services.beatbox_tools import normalize_beatbox_state
 from services.files import handle_file_upload
 from services.github_chat import handle_github_chat_message
 from services.model_access import can_user_access_model, get_model_stage
+from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
     auto_web_search_requested,
     build_web_search_augmented_message,
@@ -41,10 +46,9 @@ from services.web_search import (
     run_web_search,
     web_search_requested,
 )
-from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from utils.auth import UserChatHistory, UserSettings
-from utils.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
 from utils.input_validation import InputValidator, ValidationError
+from utils.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
 from utils.rate_limiting import RateLimiter, anonymous_rate_limit, rate_limit
 from utils.responses import logger, make_ok
 from utils.url_security import UnsafeUrlError, validate_public_http_url
@@ -280,7 +284,10 @@ def _build_model_message_for_history(
     canvas_textdoc: Any = None,
     canvas_updates: Any = None,
 ) -> dict:
-    message = {"role": "model", "parts": _build_model_message_parts(reply_text, images)}
+    message: dict[str, Any] = {
+        "role": "model",
+        "parts": _build_model_message_parts(reply_text, images),
+    }
     if isinstance(sources, list) and sources:
         message["sources"] = sources
     if isinstance(github_tool, dict) and github_tool:
@@ -650,9 +657,7 @@ def _stream_chat_response(
                         final_data["sources"] = web_sources
                         yield _stream_event({"sources": web_sources})
 
-                yield _stream_event(
-                    {"status": "generating_text", "message": "Готовлю ответ..."}
-                )
+                yield _stream_event({"status": "generating_text", "message": "Готовлю ответ..."})
 
                 for chunk in model_func(db_user_id, user_data):
                     if isinstance(chunk, dict):
@@ -730,27 +735,26 @@ def _stream_chat_response(
                         canvas_updates=final_data.get("canvas_updates"),
                     ),
                 ]
-                if temporary_chat:
-                    return
-                try:
-                    append_messages_to_history(
-                        resolved_session_id,
-                        new_messages_batch,
-                        model_name,
-                        db_user_id,
-                        allow_guest_file_persistence=allow_guest_file_persistence,
-                        mind_id=mind_context.get("id") if mind_context else None,
-                    )
-                except OSError as exc:
-                    logger.warning("Failed to persist stream messages: %s", exc)
-                    append_messages_to_history(
-                        resolved_session_id,
-                        [user_message_for_history],
-                        model_name,
-                        db_user_id,
-                        allow_guest_file_persistence=allow_guest_file_persistence,
-                        mind_id=mind_context.get("id") if mind_context else None,
-                    )
+                if not temporary_chat:
+                    try:
+                        append_messages_to_history(
+                            resolved_session_id,
+                            new_messages_batch,
+                            model_name,
+                            db_user_id,
+                            allow_guest_file_persistence=allow_guest_file_persistence,
+                            mind_id=mind_context.get("id") if mind_context else None,
+                        )
+                    except OSError as exc:
+                        logger.warning("Failed to persist stream messages: %s", exc)
+                        append_messages_to_history(
+                            resolved_session_id,
+                            [user_message_for_history],
+                            model_name,
+                            db_user_id,
+                            allow_guest_file_persistence=allow_guest_file_persistence,
+                            mind_id=mind_context.get("id") if mind_context else None,
+                        )
 
     response = Response(stream_generator(), mimetype="text/event-stream")
     response.headers["Cache-Control"] = "no-cache"
@@ -873,7 +877,9 @@ def register_chat_routes(api_bp):
         non_stream_canvas_updates: list[dict[str, Any]] = []
         non_stream_canvas_textdoc: dict[str, Any] | None = None
         if isinstance(model_output, dict):
-            canvas_result = process_canmore_calls(str(model_output.get("reply") or ""), canvas_textdoc)
+            canvas_result = process_canmore_calls(
+                str(model_output.get("reply") or ""), canvas_textdoc
+            )
             if canvas_result.updates:
                 model_output["reply"] = canvas_result.reply
                 model_output["canvas_updates"] = canvas_result.updates

@@ -166,7 +166,9 @@ class UserChatHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     session_id = db.Column(db.String(100), nullable=False)
-    mind_id = db.Column(db.Integer, db.ForeignKey("mind.id", ondelete="SET NULL"), nullable=True, index=True)
+    mind_id = db.Column(
+        db.Integer, db.ForeignKey("mind.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     title = db.Column(db.String(200), default="Новый чат")
     messages_data = db.Column(db.Text, default="[]")  # JSON array of messages
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -325,9 +327,7 @@ class Mind(db.Model):
 
 class MindPin(db.Model):
     __tablename__ = "mind_pin"
-    __table_args__ = (
-        db.UniqueConstraint("user_id", "mind_id", name="uq_mind_pin_user_mind"),
-    )
+    __table_args__ = (db.UniqueConstraint("user_id", "mind_id", name="uq_mind_pin_user_mind"),)
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
@@ -455,13 +455,10 @@ LEGACY_DEFAULT_MIND_PUBLIC_IDS = (
 
 def _remove_legacy_default_minds(app):
     try:
-        minds = (
-            Mind.query.filter(
-                Mind.public_id.in_(LEGACY_DEFAULT_MIND_PUBLIC_IDS),
-                Mind.is_system.is_(True),
-            )
-            .all()
-        )
+        minds = Mind.query.filter(
+            Mind.public_id.in_(LEGACY_DEFAULT_MIND_PUBLIC_IDS),
+            Mind.is_system.is_(True),
+        ).all()
         if not minds:
             return
 
@@ -1195,9 +1192,7 @@ def register_auth_routes(app):
 
             if not user:
                 account_name = (
-                    user_info.get("name")
-                    or user_info.get("given_name")
-                    or email.split("@")[0]
+                    user_info.get("name") or user_info.get("given_name") or email.split("@")[0]
                 )
                 username = _build_unique_username(
                     user_info.get("preferred_username"),
@@ -1223,9 +1218,7 @@ def register_auth_routes(app):
                 user.is_confirmed = True
                 if not user.name:
                     user.name = (
-                        user_info.get("name")
-                        or user_info.get("given_name")
-                        or user.username
+                        user_info.get("name") or user_info.get("given_name") or user.username
                     )
                 db.session.commit()
                 flash("Ваш аккаунт связан с Google", "success")
@@ -1240,9 +1233,7 @@ def register_auth_routes(app):
                     return redirect(url_for("login"))
 
                 mobile_token = _encode_mobile_google_oauth_token(SECRET_KEY, user.id)
-                response = redirect(
-                    _append_url_query(mobile_redirect_uri, {"token": mobile_token})
-                )
+                response = redirect(_append_url_query(mobile_redirect_uri, {"token": mobile_token}))
                 cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
                 response.delete_cookie(
                     OAUTH_FALLBACK_STATE_COOKIE,
@@ -1572,9 +1563,7 @@ def register_auth_routes(app):
                 return jsonify({"error": "Пользователь не найден"}), 404
 
             if "username" in data:
-                user.username = _validate_unique_username(
-                    data["username"], exclude_user_id=user.id
-                )
+                user.username = _validate_unique_username(data["username"], exclude_user_id=user.id)
                 session["username"] = InputValidator.sanitize_output(user.username)
             if "name" in data:
                 raw_name = data.get("name")
@@ -1963,9 +1952,7 @@ def setup_auth(app):
         _remove_legacy_default_minds(app)
         inspector = inspect(db.engine)
         date_time_type = (
-            "TIMESTAMP"
-            if db.engine.dialect.name in {"postgresql", "postgres"}
-            else "DATETIME"
+            "TIMESTAMP" if db.engine.dialect.name in {"postgresql", "postgres"} else "DATETIME"
         )
         if "user" in inspector.get_table_names():
             user_columns = {column["name"] for column in inspector.get_columns("user")}
@@ -2000,9 +1987,7 @@ def setup_auth(app):
                         connection.execute(text(ddl))
                 app.logger.info("Added missing user admin/moderation columns")
         if "user_settings" in inspector.get_table_names():
-            settings_columns = {
-                column["name"] for column in inspector.get_columns("user_settings")
-            }
+            settings_columns = {column["name"] for column in inspector.get_columns("user_settings")}
             if "automatic_web_search" not in settings_columns:
                 with db.engine.begin() as connection:
                     connection.execute(
@@ -2035,17 +2020,16 @@ def setup_auth(app):
                         )
                     )
                     connection.execute(
-                        text(
-                            "CREATE INDEX IF NOT EXISTS ix_mind_is_banned "
-                            "ON mind (is_banned)"
-                        )
+                        text("CREATE INDEX IF NOT EXISTS ix_mind_is_banned " "ON mind (is_banned)")
                     )
                 app.logger.info("Added missing mind admin/moderation columns")
         if "user_chat_history" in inspector.get_table_names():
             chat_columns = {column["name"] for column in inspector.get_columns("user_chat_history")}
             if "mind_id" not in chat_columns:
                 with db.engine.begin() as connection:
-                    connection.execute(text('ALTER TABLE user_chat_history ADD COLUMN mind_id INTEGER'))
+                    connection.execute(
+                        text("ALTER TABLE user_chat_history ADD COLUMN mind_id INTEGER")
+                    )
                     connection.execute(
                         text(
                             "CREATE INDEX IF NOT EXISTS ix_user_chat_history_mind_id "

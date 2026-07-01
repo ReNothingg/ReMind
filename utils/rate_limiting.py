@@ -226,7 +226,9 @@ def anonymous_rate_limit(limiter, error_message="Too many anonymous requests"):
             except RuntimeError:
                 pass
 
-            identifier = f"anonymous:{limiter.get_identifier(request)}:{request.endpoint or request.path}"
+            identifier = (
+                f"anonymous:{limiter.get_identifier(request)}:{request.endpoint or request.path}"
+            )
             state = limiter.evaluate(identifier)
 
             if not state.allowed:

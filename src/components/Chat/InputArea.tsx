@@ -35,11 +35,7 @@ const InputArea = ({
     const fileUploadsEnabled = isAuthenticated && !isReadOnly;
     const automaticWebSearch = !!settings.automaticWebSearch;
 
-    useEffect(() => {
-        if (automaticWebSearch && webSearchEnabled) {
-            setWebSearchEnabled(false);
-        }
-    }, [automaticWebSearch, webSearchEnabled]);
+    const manualWebSearchEnabled = !automaticWebSearch && webSearchEnabled;
 
     useEffect(() => {
         if (!initialPrompt) {
@@ -131,7 +127,7 @@ const InputArea = ({
         }
 
         onSendMessage(fullText, effectiveFiles, {
-            webSearch: !automaticWebSearch && webSearchEnabled,
+            webSearch: manualWebSearchEnabled,
             autoWebSearch: automaticWebSearch,
             censorship: false,
         });
@@ -401,10 +397,10 @@ const InputArea = ({
                     {!automaticWebSearch && (
                         <button
                             type="button"
-                            className={cn('web-search-toggle', webSearchEnabled && 'active')}
-                            title={webSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
-                            aria-label={webSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
-                            aria-pressed={webSearchEnabled}
+                            className={cn('web-search-toggle', manualWebSearchEnabled && 'active')}
+                            title={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
+                            aria-label={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
+                            aria-pressed={manualWebSearchEnabled}
                             disabled={isReadOnly}
                             onClick={() => {
                                 if (!isReadOnly) {

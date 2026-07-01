@@ -1,7 +1,6 @@
 import json
 from typing import Any
 
-
 DRUM_TYPES = {"kick", "snare", "clap", "hihat", "open_hat", "tom", "triangle", "cowbell"}
 ADSR_DEFAULTS = {
     "attack": 0.001,
@@ -21,7 +20,8 @@ def normalize_beatbox_state(value: Any) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
 
-    raw_meta = value.get("meta") if isinstance(value.get("meta"), dict) else {}
+    raw_meta_value = value.get("meta")
+    raw_meta = raw_meta_value if isinstance(raw_meta_value, dict) else {}
     bpm = _clamp_int(raw_meta.get("bpm"), 120, 40, 240)
     bars = _clamp_int(raw_meta.get("bars"), 1, 1, 16)
     max_steps = bars * 16
@@ -67,8 +67,7 @@ def normalize_beatbox_state(value: Any) -> dict[str, Any] | None:
 def _normalize_adsr(value: Any) -> dict[str, float]:
     raw = value if isinstance(value, dict) else {}
     return {
-        key: _clamp_float(raw.get(key), default, 0.0, 2.0)
-        for key, default in ADSR_DEFAULTS.items()
+        key: _clamp_float(raw.get(key), default, 0.0, 2.0) for key, default in ADSR_DEFAULTS.items()
     }
 
 

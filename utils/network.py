@@ -51,9 +51,7 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
             if not addr_info:
                 return False, None
 
-            resolved_addresses = {
-                cast(str, info[4][0]) for info in addr_info if info and info[4]
-            }
+            resolved_addresses = {cast(str, info[4][0]) for info in addr_info if info and info[4]}
             if not resolved_addresses:
                 return False, None
 

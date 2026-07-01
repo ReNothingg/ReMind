@@ -63,7 +63,9 @@ def process_canmore_calls(raw_reply: str, current_textdoc: Any = None) -> Canvas
     textdoc = normalize_canvas_textdoc(current_textdoc)
     calls, spans = _extract_canmore_calls(reply)
     if not calls:
-        return CanvasProcessingResult(reply=_strip_canmore_tool_text(reply), textdoc=textdoc, updates=[])
+        return CanvasProcessingResult(
+            reply=_strip_canmore_tool_text(reply), textdoc=textdoc, updates=[]
+        )
 
     updates: list[dict[str, Any]] = []
     working_textdoc = deepcopy(textdoc)
@@ -80,7 +82,13 @@ def process_canmore_calls(raw_reply: str, current_textdoc: Any = None) -> Canvas
 
 def find_canmore_marker(text: str) -> int:
     haystack = str(text or "").lower()
-    markers = ["```canmore", "<canmore", "canmore.create_textdoc", "canmore.update_textdoc", "canmore.comment_textdoc"]
+    markers = [
+        "```canmore",
+        "<canmore",
+        "canmore.create_textdoc",
+        "canmore.update_textdoc",
+        "canmore.comment_textdoc",
+    ]
     positions = [haystack.find(marker) for marker in markers]
     valid = [position for position in positions if position >= 0]
     if not valid:
@@ -95,14 +103,14 @@ def find_canmore_marker(text: str) -> int:
     return marker_index
 
 
-def _apply_canmore_call(call: dict[str, Any], current_textdoc: dict[str, Any] | None) -> dict[str, Any] | None:
+def _apply_canmore_call(
+    call: dict[str, Any], current_textdoc: dict[str, Any] | None
+) -> dict[str, Any] | None:
     function_name = _normalize_function_name(call.get("function") or call.get("name"))
     arguments = _normalize_arguments(
         call.get("arguments")
         if "arguments" in call
-        else call.get("args")
-        if "args" in call
-        else call.get("payload")
+        else call.get("args") if "args" in call else call.get("payload")
     )
     if function_name not in ALLOWED_CANMORE_FUNCTIONS or not isinstance(arguments, dict):
         return None
@@ -119,7 +127,11 @@ def _apply_canmore_call(call: dict[str, Any], current_textdoc: dict[str, Any] | 
         textdoc = _update_textdoc(current_textdoc, arguments)
         if not textdoc:
             return None
-        return {"action": function_name, "textdoc": textdoc, "events": _summarize_update_events(arguments)}
+        return {
+            "action": function_name,
+            "textdoc": textdoc,
+            "events": _summarize_update_events(arguments),
+        }
 
     if function_name == "comment_textdoc":
         if not current_textdoc:
@@ -127,7 +139,11 @@ def _apply_canmore_call(call: dict[str, Any], current_textdoc: dict[str, Any] | 
         textdoc = _comment_textdoc(current_textdoc, arguments)
         if not textdoc:
             return None
-        return {"action": function_name, "textdoc": textdoc, "events": _summarize_comment_events(arguments)}
+        return {
+            "action": function_name,
+            "textdoc": textdoc,
+            "events": _summarize_comment_events(arguments),
+        }
 
     return None
 
@@ -149,7 +165,9 @@ def _create_textdoc(arguments: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def _update_textdoc(current_textdoc: dict[str, Any], arguments: dict[str, Any]) -> dict[str, Any] | None:
+def _update_textdoc(
+    current_textdoc: dict[str, Any], arguments: dict[str, Any]
+) -> dict[str, Any] | None:
     updates = arguments.get("updates")
     if not isinstance(updates, list) or not updates:
         return None
@@ -180,7 +198,9 @@ def _update_textdoc(current_textdoc: dict[str, Any], arguments: dict[str, Any]) 
     return normalize_canvas_textdoc(textdoc)
 
 
-def _comment_textdoc(current_textdoc: dict[str, Any], arguments: dict[str, Any]) -> dict[str, Any] | None:
+def _comment_textdoc(
+    current_textdoc: dict[str, Any], arguments: dict[str, Any]
+) -> dict[str, Any] | None:
     comments = arguments.get("comments")
     if not isinstance(comments, list) or not comments:
         return None
@@ -215,7 +235,10 @@ def _extract_canmore_calls(reply: str) -> tuple[list[dict[str, Any]], list[tuple
 
     block_patterns = [
         re.compile(r"```canmore\s*([\s\S]*?)```", re.IGNORECASE),
-        re.compile(r"```[^\n`]*\n([\s\S]*?canmore\.(?:create_textdoc|update_textdoc|comment_textdoc)[\s\S]*?)```", re.IGNORECASE),
+        re.compile(
+            r"```[^\n`]*\n([\s\S]*?canmore\.(?:create_textdoc|update_textdoc|comment_textdoc)[\s\S]*?)```",
+            re.IGNORECASE,
+        ),
         re.compile(r"<canmore(?:\s[^>]*)?>([\s\S]*?)</canmore>", re.IGNORECASE),
     ]
     for pattern in block_patterns:
@@ -260,7 +283,12 @@ def _parse_canmore_payload(raw_payload: str) -> list[dict[str, Any]]:
         parsed = _loads_json(parsed)
 
     if isinstance(parsed, list):
-        return [_normalize_call_object(item) for item in parsed if _normalize_call_object(item)]
+        calls: list[dict[str, Any]] = []
+        for item in parsed:
+            normalized = _normalize_call_object(item)
+            if normalized:
+                calls.append(normalized)
+        return calls
 
     normalized = _normalize_call_object(parsed)
     return [normalized] if normalized else []
@@ -327,11 +355,11 @@ def _normalize_call_object(value: Any) -> dict[str, Any] | None:
     arguments = _normalize_arguments(
         value.get("arguments")
         if "arguments" in value
-        else value.get("args")
-        if "args" in value
-        else value.get("payload")
-        if "payload" in value
-        else value
+        else (
+            value.get("args")
+            if "args" in value
+            else value.get("payload") if "payload" in value else value
+        )
     )
     if function_name not in ALLOWED_CANMORE_FUNCTIONS or not isinstance(arguments, dict):
         return None

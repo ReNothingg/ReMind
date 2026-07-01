@@ -9,9 +9,9 @@ from flask import redirect, request, session, url_for
 from config import GITHUB_PUBLIC_BASE_URL
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
 from services.github_app import (
-    GitHubAPIError,
     GitHubAgentExecutionError,
     GitHubAgentService,
+    GitHubAPIError,
     build_github_app_install_url,
     build_github_app_page_url,
     build_github_oauth_url,
@@ -71,7 +71,9 @@ def _installation_for_user(user_id: int, installation_id: int) -> GitHubInstalla
         installation_id=int(installation_id),
     ).first()
     if not installation:
-        raise ApiError("GitHub installation not found", status=404, code="github_installation_not_found")
+        raise ApiError(
+            "GitHub installation not found", status=404, code="github_installation_not_found"
+        )
     return installation
 
 
@@ -277,7 +279,9 @@ def register_github_routes(api_bp):
         db_user_id = require_authenticated_user_id()
         installation_id = request.args.get("installation_id", type=int)
         if not installation_id:
-            raise ApiError("installation_id is required", status=400, code="missing_installation_id")
+            raise ApiError(
+                "installation_id is required", status=400, code="missing_installation_id"
+            )
         _installation_for_user(db_user_id, installation_id)
         try:
             repositories = GitHubAgentService(installation_id).list_repositories()
@@ -294,10 +298,16 @@ def register_github_routes(api_bp):
         repo_full_name = str(payload.get("repo_full_name") or "").strip()
         base_branch = str(payload.get("base_branch") or "").strip() or None
         if not installation_id or not repo_full_name:
-            raise ApiError("installation_id and repo_full_name are required", status=400, code="invalid_github_payload")
+            raise ApiError(
+                "installation_id and repo_full_name are required",
+                status=400,
+                code="invalid_github_payload",
+            )
         _installation_for_user(db_user_id, int(installation_id))
         try:
-            repo_map = GitHubAgentService(int(installation_id)).load_repo_map(repo_full_name, base_branch)
+            repo_map = GitHubAgentService(int(installation_id)).load_repo_map(
+                repo_full_name, base_branch
+            )
         except GitHubAPIError as exc:
             raise _github_api_error(exc) from exc
         return make_ok(
@@ -321,7 +331,11 @@ def register_github_routes(api_bp):
         base_branch = str(payload.get("base_branch") or "").strip()
         task_text = str(payload.get("task") or "").strip()
         if not installation_id or not repo_full_name or not base_branch or not task_text:
-            raise ApiError("installation_id, repo_full_name, base_branch and task are required", status=400, code="invalid_github_payload")
+            raise ApiError(
+                "installation_id, repo_full_name, base_branch and task are required",
+                status=400,
+                code="invalid_github_payload",
+            )
         if len(task_text) > 4000:
             raise ApiError("Task is too long", status=400, code="github_task_too_long")
 
@@ -339,7 +353,9 @@ def register_github_routes(api_bp):
         db.session.commit()
 
         try:
-            plan = GitHubAgentService(int(installation_id)).plan(repo_full_name, base_branch, task_text)
+            plan = GitHubAgentService(int(installation_id)).plan(
+                repo_full_name, base_branch, task_text
+            )
             task.set_plan(plan)
             task.status = "planned"
             task.updated_at = datetime.utcnow()
@@ -371,7 +387,9 @@ def register_github_routes(api_bp):
         task = _task_for_user(db_user_id, task_id)
         _installation_for_user(db_user_id, int(task.installation_id))
         if task.status not in {"planned", "error"}:
-            raise ApiError("Task cannot be run from its current state", status=409, code="invalid_task_state")
+            raise ApiError(
+                "Task cannot be run from its current state", status=409, code="invalid_task_state"
+            )
 
         task.status = "running"
         task.error = None

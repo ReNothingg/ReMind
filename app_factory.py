@@ -38,8 +38,8 @@ from utils.csrf_protection import add_csrf_token_to_response, setup_csrf_protect
 from utils.logger_config import setup_logging
 from utils.observability import finish_request_context, start_request_context
 from utils.privacy import anonymize_ip
-from utils.retention import prune_guest_chat_files
 from utils.responses import logger, make_error
+from utils.retention import prune_guest_chat_files
 from utils.security_headers import apply_security_headers
 from utils.session_security import (
     RequestAwareSessionInterface,
@@ -89,7 +89,7 @@ def create_app():
     app.config["SESSION_USE_SIGNER"] = True
     app.config["SESSION_REDIS"] = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     app.config["SESSION_COOKIE_SECURE"] = ENABLE_STRICT_HTTPS
-    app.config["SESSION_COOKIE_HTTPONLY"] = True 
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_NAME"] = SESSION_COOKIE_NAME
     app.config["SESSION_COOKIE_DOMAIN"] = SESSION_COOKIE_DOMAIN

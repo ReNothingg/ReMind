@@ -132,8 +132,12 @@ const CanvasPanel = ({ textdoc, onClose, onContentChange }: CanvasPanelProps) =>
 
     useEffect(() => {
         const nextContent = textdoc.content || '';
-        setDraft(nextContent);
-        lastSyncedDraftRef.current = nextContent;
+        const frame = window.requestAnimationFrame(() => {
+            setDraft(nextContent);
+            lastSyncedDraftRef.current = nextContent;
+        });
+
+        return () => window.cancelAnimationFrame(frame);
     }, [textdoc.id, textdoc.updated_at, textdoc.content]);
 
     const handleCopy = async () => {

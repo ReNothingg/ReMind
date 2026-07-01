@@ -4,9 +4,9 @@ from utils.rate_limiting import rate_limit_store
 
 
 def _csrf_headers(client):
-    csrf_value = client.get(
-        "/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
-    ).headers.get("X-CSRF-Token")
+    csrf_value = client.get("/health", headers={"User-Agent": "Mozilla/5.0 (pytest)"}).headers.get(
+        "X-CSRF-Token"
+    )
     assert csrf_value
     return {
         "User-Agent": "Mozilla/5.0 (pytest)",
@@ -42,7 +42,9 @@ def test_mind_create_list_pin_and_delete_lifecycle(client, app, create_confirmed
 
     mine_response = client.get("/api/minds?mine=1", headers={"User-Agent": "Mozilla/5.0 (pytest)"})
     assert mine_response.status_code == 200
-    assert [mind["public_id"] for mind in mine_response.get_json()["minds"]] == [created["public_id"]]
+    assert [mind["public_id"] for mind in mine_response.get_json()["minds"]] == [
+        created["public_id"]
+    ]
 
     public_response = client.application.test_client().get(f"/api/minds/{created['public_id']}")
     assert public_response.status_code == 404
@@ -51,7 +53,9 @@ def test_mind_create_list_pin_and_delete_lifecycle(client, app, create_confirmed
     assert pin_response.status_code == 200
     assert pin_response.get_json()["mind"]["is_pinned"] is True
 
-    pinned_response = client.get("/api/minds/pinned", headers={"User-Agent": "Mozilla/5.0 (pytest)"})
+    pinned_response = client.get(
+        "/api/minds/pinned", headers={"User-Agent": "Mozilla/5.0 (pytest)"}
+    )
     assert pinned_response.status_code == 200
     assert pinned_response.get_json()["minds"][0]["public_id"] == created["public_id"]
 

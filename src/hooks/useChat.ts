@@ -784,7 +784,8 @@ export const useChat = () => {
         slugToSessionId,
         syncBrowserPath,
         syncPersistedCurrentSession,
-        syncSessionIdentity
+        syncSessionIdentity,
+        updateBeatboxState
     ]);
 
     const clearChat = useCallback((options: ClearChatOptions = {}) => {

@@ -74,7 +74,9 @@ def _owned_chat(user_id: int, session_id: str) -> UserChatHistory:
     return chat
 
 
-def _matching_training_pair(chat: UserChatHistory, response_text: str) -> tuple[str | None, str | None]:
+def _matching_training_pair(
+    chat: UserChatHistory, response_text: str
+) -> tuple[str | None, str | None]:
     messages = chat.get_messages()
     if not response_text:
         return None, None
@@ -131,7 +133,9 @@ def save_ai_response_feedback(user_id: int, payload: dict[str, Any]) -> AIRespon
         raise ApiError("session_id is required", status=400, code="validation_error")
     chat = _owned_chat(user_id, session_id)
 
-    response_text = _clean_optional_text(payload.get("response_text"), MAX_FEEDBACK_TEXT_LENGTH) or ""
+    response_text = (
+        _clean_optional_text(payload.get("response_text"), MAX_FEEDBACK_TEXT_LENGTH) or ""
+    )
     message_client_id = _clean_optional_text(payload.get("message_client_id"), 120)
     response_hash = _response_hash(response_text, message_client_id)
     reason_codes = _normalize_reason_codes(payload.get("reason_codes"))
@@ -156,7 +160,9 @@ def save_ai_response_feedback(user_id: int, payload: dict[str, Any]) -> AIRespon
     feedback.set_reason_codes(reason_codes if rating == "dislike" else [])
     feedback.comment = comment if rating == "dislike" else None
     feedback.service_improvement_opt_in = opt_in
-    prompt_text, matched_response_text = _matching_training_pair(chat, response_text) if opt_in else (None, None)
+    prompt_text, matched_response_text = (
+        _matching_training_pair(chat, response_text) if opt_in else (None, None)
+    )
     feedback.prompt_text = prompt_text
     feedback.response_text = matched_response_text
     feedback.created_at = datetime.utcnow()

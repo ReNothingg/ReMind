@@ -80,9 +80,7 @@ def _clean_text_field(
             code="validation_error",
         )
     has_invalid_markup = (
-        UNSAFE_HTML_RE.search(text)
-        if allow_markup_examples
-        else HTML_TAG_RE.search(text)
+        UNSAFE_HTML_RE.search(text) if allow_markup_examples else HTML_TAG_RE.search(text)
     )
     if CONTROL_CHARS_RE.search(text) or has_invalid_markup:
         raise ApiError(
@@ -134,7 +132,9 @@ def _normalize_category(value: Any, *, required: bool = False) -> str:
     category = str(value or "").strip().lower()
     if not category:
         if required:
-            raise ApiError("Category is required for Mind store", status=400, code="category_required")
+            raise ApiError(
+                "Category is required for Mind store", status=400, code="category_required"
+            )
         return "general"
     if category not in MIND_CATEGORY_IDS:
         raise ApiError("Invalid mind category", status=400, code="invalid_category")
@@ -253,7 +253,11 @@ def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> d
             data.get("starters", data.get("conversation_starters"))
         )
 
-    visibility = _normalize_visibility(data.get("visibility")) if not partial or "visibility" in data else None
+    visibility = (
+        _normalize_visibility(data.get("visibility"))
+        if not partial or "visibility" in data
+        else None
+    )
     if visibility:
         fields["visibility"] = visibility
 
@@ -266,7 +270,9 @@ def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> d
     return fields
 
 
-def resolve_mind_context_for_chat(public_id: str | None, viewer_id: int | None) -> dict[str, Any] | None:
+def resolve_mind_context_for_chat(
+    public_id: str | None, viewer_id: int | None
+) -> dict[str, Any] | None:
     if not public_id:
         return None
 
@@ -283,7 +289,9 @@ def resolve_mind_context_for_chat(public_id: str | None, viewer_id: int | None) 
     }
 
 
-def resolve_bound_mind_context_for_chat(mind_id: int | None, viewer_id: int | None) -> dict[str, Any] | None:
+def resolve_bound_mind_context_for_chat(
+    mind_id: int | None, viewer_id: int | None
+) -> dict[str, Any] | None:
     if not mind_id:
         return None
 

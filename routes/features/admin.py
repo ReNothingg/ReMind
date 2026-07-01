@@ -15,7 +15,6 @@ from sqlalchemy import and_, func, or_, text
 
 from config import LOGS_FOLDER
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
-from utils.feedback import feedback_rating_summary
 from utils.audit_log import AuditEvents, log_audit_event
 from utils.auth import (
     Mind,
@@ -28,6 +27,7 @@ from utils.auth import (
     is_admin_user,
     is_super_admin_user,
 )
+from utils.feedback import feedback_rating_summary
 from utils.responses import make_ok
 
 MAX_PAGE_SIZE = 100
@@ -78,11 +78,15 @@ def _parse_optional_datetime(value: Any) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
-        raise ApiError("Invalid restriction expiration date", status=400, code="validation_error") from exc
+        raise ApiError(
+            "Invalid restriction expiration date", status=400, code="validation_error"
+        ) from exc
     if parsed.tzinfo is not None:
         parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
     if parsed <= datetime.utcnow():
-        raise ApiError("Restriction expiration must be in the future", status=400, code="validation_error")
+        raise ApiError(
+            "Restriction expiration must be in the future", status=400, code="validation_error"
+        )
     return parsed
 
 
@@ -208,7 +212,9 @@ def _disk_usage(path: str) -> dict[str, int] | None:
 def _server_snapshot() -> dict[str, Any]:
     now_mono = time.perf_counter()
     started_mono = current_app.config.get("APP_STARTED_MONOTONIC", now_mono)
-    started_at = current_app.config.get("APP_STARTED_AT")
+    started_at_value = current_app.config.get("APP_STARTED_AT")
+    isoformat_started_at = getattr(started_at_value, "isoformat", None)
+    started_at = str(isoformat_started_at()) if callable(isoformat_started_at) else None
 
     database = {"status": "ok"}
     try:
@@ -232,7 +238,7 @@ def _server_snapshot() -> dict[str, Any]:
         except OSError:
             load_average = None
 
-    memory = {"max_rss_bytes": None}
+    memory: dict[str, int | None] = {"max_rss_bytes": None}
     try:
         import resource
 
@@ -245,7 +251,7 @@ def _server_snapshot() -> dict[str, Any]:
     return {
         "status": "ok" if database["status"] == "ok" else "degraded",
         "uptime_seconds": round(max(0.0, now_mono - started_mono), 3),
-        "started_at": started_at.isoformat() if hasattr(started_at, "isoformat") else None,
+        "started_at": started_at,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "process": {
             "pid": os.getpid(),
@@ -304,7 +310,9 @@ def _dashboard_stats() -> dict[str, Any]:
         },
         "sessions": {
             "total": UserChatHistory.query.count(),
-            "updated_24h": UserChatHistory.query.filter(UserChatHistory.updated_at >= since).count(),
+            "updated_24h": UserChatHistory.query.filter(
+                UserChatHistory.updated_at >= since
+            ).count(),
         },
         "ai_feedback": feedback_rating_summary(),
     }
@@ -347,7 +355,9 @@ def _moderation_queues() -> dict[str, int]:
 
 def _top_active_users(limit: int = 6) -> list[dict[str, Any]]:
     chat_rows = (
-        db.session.query(UserChatHistory.user_id, func.count(UserChatHistory.id).label("chat_count"))
+        db.session.query(
+            UserChatHistory.user_id, func.count(UserChatHistory.id).label("chat_count")
+        )
         .group_by(UserChatHistory.user_id)
         .order_by(text("chat_count DESC"))
         .limit(limit * 3)
@@ -402,7 +412,11 @@ def _recent_audit_events(limit: int = AUDIT_PREVIEW_LIMIT) -> list[dict[str, Any
             continue
         details = event.get("details") if isinstance(event.get("details"), dict) else {}
         event_type = str(event.get("event_type") or "UNKNOWN")
-        severity = "warning" if event_type.startswith("SECURITY_") or details.get("success") is False else "info"
+        severity = (
+            "warning"
+            if event_type.startswith("SECURITY_") or details.get("success") is False
+            else "info"
+        )
         events.append(
             {
                 "timestamp": event.get("timestamp"),
@@ -591,12 +605,7 @@ def register_admin_routes(api_bp):
             raise ApiError("Invalid user status filter", status=400, code="invalid_status")
 
         total = query.count()
-        users = (
-            query.order_by(User.id.asc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-            .all()
-        )
+        users = query.order_by(User.id.asc()).offset((page - 1) * page_size).limit(page_size).all()
         user_ids = [int(user.id) for user in users]
         mind_counts = _load_group_counts(Mind, user_ids)
         chat_counts = _load_group_counts(UserChatHistory, user_ids)
@@ -626,11 +635,19 @@ def register_admin_routes(api_bp):
         if not target:
             raise ApiError("User not found", status=404, code="not_found")
         if is_super_admin_user(target):
-            raise ApiError("Root admin cannot be restricted", status=403, code="root_admin_protected")
+            raise ApiError(
+                "Root admin cannot be restricted", status=403, code="root_admin_protected"
+            )
         if target.id == admin.id:
-            raise ApiError("You cannot restrict your own account", status=400, code="self_update_denied")
+            raise ApiError(
+                "You cannot restrict your own account", status=400, code="self_update_denied"
+            )
         if is_admin_user(target) and not is_super_admin_user(admin):
-            raise ApiError("Only root admin can restrict administrators", status=403, code="root_admin_required")
+            raise ApiError(
+                "Only root admin can restrict administrators",
+                status=403,
+                code="root_admin_required",
+            )
 
         payload = _request_json()
         is_banned = _bool_from_payload(payload, "is_banned")
@@ -697,7 +714,9 @@ def register_admin_routes(api_bp):
         if is_admin is None:
             raise ApiError("is_admin is required", status=400, code="validation_error")
         if is_admin and is_account_disabled(target):
-            raise ApiError("Disabled account cannot become admin", status=400, code="account_disabled")
+            raise ApiError(
+                "Disabled account cannot become admin", status=400, code="account_disabled"
+            )
 
         target.is_admin = is_admin
         db.session.commit()

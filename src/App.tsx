@@ -647,20 +647,24 @@ const MainLayout = () => {
         : '';
 
     useEffect(() => {
-        if (!canvasTextdoc) {
-            setCanvasVisible(false);
-            setSelectedCanvasTextdoc(null);
-            return;
-        }
+        const frame = window.requestAnimationFrame(() => {
+            if (!canvasTextdoc) {
+                setCanvasVisible(false);
+                setSelectedCanvasTextdoc(null);
+                return;
+            }
 
-        if (isCanvasVisible) {
-            setSelectedCanvasTextdoc((current) => {
-                if (!current || current.id === canvasTextdoc.id || current.name === canvasTextdoc.name) {
-                    return canvasTextdoc;
-                }
-                return current;
-            });
-        }
+            if (isCanvasVisible) {
+                setSelectedCanvasTextdoc((current) => {
+                    if (!current || current.id === canvasTextdoc.id || current.name === canvasTextdoc.name) {
+                        return canvasTextdoc;
+                    }
+                    return current;
+                });
+            }
+        });
+
+        return () => window.cancelAnimationFrame(frame);
     }, [canvasTextdoc, canvasTextdocVersion, isCanvasVisible]);
 
     const activeCanvasTextdoc = selectedCanvasTextdoc || canvasTextdoc;

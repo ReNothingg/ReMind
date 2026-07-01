@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import ipaddress
+import json
 import re
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -54,7 +54,7 @@ HIGH_SIGNAL_HOSTS = {
     "openai.com",
     "support.google.com",
     "learn.microsoft.com",
-    "synvexai.com"
+    "synvexai.com",
 }
 
 
@@ -172,8 +172,7 @@ def should_auto_web_search(query: str) -> bool:
     if AUTO_SEARCH_NEGATIVE_RE.search(cleaned):
         return False
     return explicit_web_search_requested(cleaned) or bool(
-        AUTO_SEARCH_POSITIVE_RE.search(cleaned)
-        or AUTO_SEARCH_TIME_SENSITIVE_RE.search(cleaned)
+        AUTO_SEARCH_POSITIVE_RE.search(cleaned) or AUTO_SEARCH_TIME_SENSITIVE_RE.search(cleaned)
     )
 
 
@@ -341,7 +340,9 @@ def query_terms(query: str) -> set[str]:
 
 def query_looks_time_sensitive(query: str) -> bool:
     cleaned = safe_query(query, max_len=500)
-    return bool(AUTO_SEARCH_POSITIVE_RE.search(cleaned) or AUTO_SEARCH_TIME_SENSITIVE_RE.search(cleaned))
+    return bool(
+        AUTO_SEARCH_POSITIVE_RE.search(cleaned) or AUTO_SEARCH_TIME_SENSITIVE_RE.search(cleaned)
+    )
 
 
 def build_search_query_variants(query: str) -> list[str]:
@@ -410,7 +411,9 @@ def _hostname_is_allowed(hostname: str, *, resolve: bool = False) -> bool:
     except socket.gaierror:
         return False
 
-    return bool(addresses) and all(not _is_blocked_ip_address(address) for address in addresses)
+    return bool(addresses) and all(
+        not _is_blocked_ip_address(str(address)) for address in addresses
+    )
 
 
 def is_public_http_url(url: str, *, resolve_hostname: bool = False) -> bool:
@@ -636,7 +639,9 @@ def canonical_search_url_key(url: str) -> str:
 
 def host_is_high_signal(url: str) -> bool:
     host = get_site_name(url)
-    return host in HIGH_SIGNAL_HOSTS or any(host.endswith(suffix) for suffix in HIGH_SIGNAL_HOST_SUFFIXES)
+    return host in HIGH_SIGNAL_HOSTS or any(
+        host.endswith(suffix) for suffix in HIGH_SIGNAL_HOST_SUFFIXES
+    )
 
 
 def get_favicon_url(page_url: str, html: str) -> str | None:
@@ -910,7 +915,9 @@ def collect_web_search_candidates(query: str, max_candidates: int) -> list[dict[
             if existing:
                 existing["matched_queries"].append(variant)
                 existing["search_rank"] = min(existing["search_rank"], result_index + 1)
-                existing["query_variant_index"] = min(existing["query_variant_index"], variant_index)
+                existing["query_variant_index"] = min(
+                    existing["query_variant_index"], variant_index
+                )
                 if not existing.get("snippet") and raw.get("snippet"):
                     existing["snippet"] = str(raw.get("snippet") or "").strip()
                 continue
@@ -1025,7 +1032,9 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
     candidates = collect_web_search_candidates(normalized_query, max_candidates=max_candidates)
     sources: list[dict[str, Any]] = []
     if candidates:
-        with ThreadPoolExecutor(max_workers=min(WEB_SEARCH_FETCH_WORKERS, len(candidates))) as executor:
+        with ThreadPoolExecutor(
+            max_workers=min(WEB_SEARCH_FETCH_WORKERS, len(candidates))
+        ) as executor:
             future_to_candidate = {
                 executor.submit(build_source_from_candidate, candidate, normalized_query): candidate
                 for candidate in candidates
@@ -1120,12 +1129,7 @@ def build_web_search_augmented_message(user_message: str, search_payload: dict[s
     if not context:
         return str(user_message or "")
 
-    return (
-        f"{user_message}\n\n"
-        "<web_search_context>\n"
-        f"{context}\n"
-        "</web_search_context>"
-    )
+    return f"{user_message}\n\n" "<web_search_context>\n" f"{context}\n" "</web_search_context>"
 
 
 def public_sources(search_payload: dict[str, Any] | None) -> list[dict[str, Any]]:
