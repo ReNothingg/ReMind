@@ -27,7 +27,7 @@
 }
 
 .quiz-header {
-  font-size: clamp(13px, 1.1vw, 14px);
+  font-size: 0.875rem;
   color: var(--color-text-secondary);
   letter-spacing: 0.2px;
 }
@@ -35,7 +35,7 @@
 .progress-bar-container {
   width: 100%;
   background-color: var(--color-bg-interactive);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   height: 8px;
   margin-top: 8px;
   overflow: hidden;
@@ -47,7 +47,7 @@
   width: 0%;
   height: 100%;
   background-color: var(--color-accent);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   transition: width 0.45s cubic-bezier(0.2, 0.9, 0.2, 1);
   will-change: width;
 }
@@ -58,7 +58,7 @@
   gap: 16px;
 }
 .quiz-body h2 {
-  font-size: clamp(18px, 2.4vw, 22px);
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.35;
   margin: 0;
@@ -83,7 +83,7 @@
   background-color: var(--color-bg-interactive);
   border: 1px solid var(--color-border-medium);
   border-radius: var(--radius-md);
-  font-size: clamp(15px, 1.6vw, 16px);
+  font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.08s ease;
   position: relative;
@@ -115,7 +115,7 @@
 .choice-item.correct {
   background-color: color-mix(in srgb, rgba(var(--color-success-raw), 0.12), transparent 10%);
   border-color: rgba(var(--color-success-raw), 0.7);
-  color: rgb(94, 255, 0);
+  color: var(--color-success);
   font-weight: 700;
 }
 
@@ -196,7 +196,7 @@
 }
 
 .feedback-section.correct {
-  color: rgb(94, 255, 0);
+  color: var(--color-success);
 }
 
 .feedback-section.incorrect {
@@ -229,7 +229,7 @@
 }
 
 .results-card h2 {
-  font-size: clamp(22px, 3vw, 28px);
+  font-size: 1.6rem;
   margin: 0;
 }
 

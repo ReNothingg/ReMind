@@ -131,14 +131,14 @@
   font-size: var(--type-h1);
   line-height: 1.15;
   font-weight: 800;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
 }
 
 .ai-message h2 {
   font-size: var(--type-h2);
   line-height: 1.18;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .ai-message h1,

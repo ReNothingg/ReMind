@@ -33,7 +33,7 @@
 
   .admin-title-row h1 {
     margin: 0;
-    font-size: clamp(2rem, 3.5vw, 3.5rem);
+    font-size: 3rem;
     line-height: 1;
     letter-spacing: 0;
     font-weight: 760;
@@ -856,6 +856,10 @@
       align-items: stretch;
     }
 
+    .admin-title-row h1 {
+      font-size: 2.25rem;
+    }
+
     .admin-controls {
       grid-template-columns: 1fr;
     }
@@ -872,6 +876,10 @@
   }
 
   @media (max-width: 620px) {
+    .admin-title-row h1 {
+      font-size: 1.9rem;
+    }
+
     .admin-overview-grid,
     .admin-ops-grid,
     .admin-server-grid {

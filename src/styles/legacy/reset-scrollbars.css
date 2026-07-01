@@ -46,7 +46,7 @@ body {
     padding-left var(--transition-normal);
   font-weight: 500;
   line-height: 1.55;
-  letter-spacing: -0.003em;
+  letter-spacing: 0;
 }
 
 body.has-rail {
@@ -209,4 +209,3 @@ pre::-webkit-scrollbar,
 .input-wrapper textarea#promptInput:focus::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
-

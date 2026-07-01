@@ -18,7 +18,7 @@ main {
   text-align: center;
   color: var(--color-text-secondary);
   font-weight: 400;
-  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-size: 2.25rem;
   margin: 0 auto;
   padding: calc(var(--spacing-unit) * 6) calc(var(--spacing-unit) * 4);
   max-width: 700px;
@@ -35,6 +35,12 @@ main {
   transition:
     opacity var(--transition-normal),
     transform var(--transition-normal);
+}
+
+@media (max-width: 640px) {
+  .welcome-message {
+    font-size: 1.55rem;
+  }
 }
 
 .welcome-message.hidden {
@@ -87,4 +93,3 @@ main {
     transform: translateX(-50%) translateY(0);
   }
 }
-

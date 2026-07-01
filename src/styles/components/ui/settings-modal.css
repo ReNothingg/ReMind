@@ -750,9 +750,7 @@
   border: 1px solid var(--color-border-medium);
   border-radius: var(--radius-md);
   background: var(--color-bg-surface);
-  box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.16),
-    0 0 0 1px rgba(var(--color-white-raw), 0.03) inset;
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
 }
 

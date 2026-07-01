@@ -42,7 +42,7 @@
 
   .minds-title-row h1 {
     margin: 0;
-    font-size: clamp(2rem, 3.5vw, 3.5rem);
+    font-size: 3rem;
     line-height: 1;
     letter-spacing: 0;
     font-weight: 760;
@@ -707,6 +707,10 @@
       align-items: stretch;
     }
 
+    .minds-title-row h1 {
+      font-size: 2.25rem;
+    }
+
     .minds-controls,
     .mind-editor-form {
       grid-template-columns: 1fr;
@@ -728,6 +732,10 @@
   }
 
   @media (max-width: 560px) {
+    .minds-title-row h1 {
+      font-size: 1.9rem;
+    }
+
     .minds-grid {
       grid-template-columns: 1fr;
     }

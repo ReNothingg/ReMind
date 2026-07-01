@@ -395,7 +395,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             {isLoginView ? (
                 <div className="auth-form space-y-4">
                     <div className="space-y-1 pr-12">
-                        <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
+                        <h2 className="text-[1.45rem] font-bold tracking-normal text-foreground">
                             {t('authModal.loginTitle')}
                         </h2>
                     </div>
@@ -468,7 +468,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             ) : (
                 <div className="auth-form auth-register-panel space-y-4">
                     <div className="space-y-1 pr-12">
-                        <h2 className="text-[1.45rem] font-bold tracking-[-0.01em] text-foreground">
+                        <h2 className="text-[1.45rem] font-bold tracking-normal text-foreground">
                             {t('authModal.registerTitle')}
                         </h2>
                     </div>

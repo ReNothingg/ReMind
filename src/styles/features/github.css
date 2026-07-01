@@ -37,7 +37,7 @@
 
 .github-title-row h1 {
   margin: 0;
-  font-size: clamp(2rem, 3.4vw, 3.4rem);
+  font-size: 3rem;
   font-weight: 760;
   letter-spacing: 0;
   line-height: 1;
@@ -566,6 +566,10 @@
     flex-direction: column;
   }
 
+  .github-title-row h1 {
+    font-size: 2.25rem;
+  }
+
   .github-toolbar-actions,
   .github-agent-actions {
     justify-content: flex-start;
@@ -575,5 +579,11 @@
   .github-agent-controls,
   .github-plan-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .github-title-row h1 {
+    font-size: 1.9rem;
   }
 }

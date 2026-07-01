@@ -237,7 +237,7 @@
   }
 
   .welcome-message {
-    font-size: clamp(1.4rem, 2.5vw, 1.8rem) !important;
+    font-size: 1.55rem !important;
     padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 2) !important;
     min-height: 35vh !important;
     max-width: 100% !important;

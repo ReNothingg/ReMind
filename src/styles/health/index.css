@@ -42,7 +42,7 @@ body.health-page {
 
 .health-title {
   margin: 0;
-  font-size: clamp(1.8rem, 1.2rem + 1.4vw, 2.6rem);
+  font-size: 2.25rem;
   line-height: 1.12;
   font-weight: 700;
 }
@@ -116,7 +116,7 @@ body.health-page {
 .health-metric-value {
   margin: 0;
   font-family: var(--font-family-code, 'JetBrains Mono', Consolas, monospace);
-  font-size: clamp(1.05rem, 0.92rem + 0.5vw, 1.35rem);
+  font-size: 1.2rem;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -202,6 +202,10 @@ body.health-page {
 }
 
 @media (max-width: 560px) {
+  .health-title {
+    font-size: 1.8rem;
+  }
+
   .health-table th,
   .health-table td {
     font-size: 0.84rem;

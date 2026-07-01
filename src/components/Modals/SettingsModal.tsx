@@ -908,7 +908,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             onRequestClose={onClose}
         >
             <div className="user-settings-header flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
-                <h3 className="text-[1.05rem] font-semibold tracking-[-0.01em] text-foreground">
+                <h3 className="text-[1.05rem] font-semibold tracking-normal text-foreground">
                     {t('settings.title')}
                 </h3>
                 <button

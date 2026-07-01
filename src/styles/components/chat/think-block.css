@@ -70,7 +70,7 @@
   font-size: 12px;
   color: var(--color-text-tertiary);
   font-family: 'Monaco', 'Courier New', monospace;
-  background: rgba(120, 156, 255, 0.08);
+  background: rgba(var(--color-accent-raw), 0.08);
   padding: 4px 8px;
   border-radius: var(--radius-sm);
   white-space: nowrap;

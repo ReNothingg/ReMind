@@ -234,10 +234,10 @@
   --animation-timing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --animation-timing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-  --type-h1: clamp(1.6rem, 1.1rem + 2.2vw, 2.6rem);
-  --type-h2: clamp(1.4rem, 1.05rem + 1.6vw, 2.1rem);
-  --type-h3: clamp(1.2rem, 1rem + 1vw, 1.6rem);
-  --type-h4: clamp(1.1rem, 1rem + 0.6vw, 1.35rem);
+  --type-h1: 2.25rem;
+  --type-h2: 1.85rem;
+  --type-h3: 1.45rem;
+  --type-h4: 1.2rem;
   --type-body: 1rem;
   --type-small: 0.92rem;
   --type-micro: 0.78rem;

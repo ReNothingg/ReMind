@@ -323,7 +323,7 @@
   }
 
   .ui-message-text {
-    @apply break-words text-[var(--type-body)] font-normal leading-7 tracking-[-0.01em] text-foreground;
+    @apply break-words text-[var(--type-body)] font-normal leading-7 tracking-normal text-foreground;
   }
 
   .ui-message-text > *:last-child {
@@ -331,7 +331,7 @@
   }
 
   .ui-message-actions {
-    @apply mt-3 flex items-center gap-2 p-0 text-[var(--type-small)] font-medium tracking-[-0.002em];
+    @apply mt-3 flex items-center gap-2 p-0 text-[var(--type-small)] font-medium tracking-normal;
   }
 
   .ui-user-message-actions {
@@ -773,7 +773,7 @@
   .ui-rail-menu {
     @apply absolute top-[calc(100%+8px)] right-0 z-[10000] min-w-[200px] max-w-[280px] rounded-md border bg-surface p-1.5;
     border-color: var(--color-border-medium);
-    box-shadow: 0 10px 24px rgba(12, 20, 40, 0.12);
+    box-shadow: var(--shadow-lg);
   }
 
   .ui-rail-menu::before {
@@ -1393,7 +1393,7 @@
   }
 
   .ui-guest-empty-title {
-    @apply m-0 text-4xl font-bold leading-tight tracking-[-0.02em] text-foreground sm:text-5xl;
+    @apply m-0 text-4xl font-bold leading-tight tracking-normal text-foreground sm:text-5xl;
   }
 
   .ui-guest-empty-description {
@@ -1444,7 +1444,7 @@
   }
 
   .ui-guest-modal-title {
-    @apply m-0 text-[1.75rem] font-bold leading-[1.25] tracking-[-0.02em] text-foreground;
+    @apply m-0 text-[1.75rem] font-bold leading-[1.25] tracking-normal text-foreground;
   }
 
   .ui-guest-modal-description {

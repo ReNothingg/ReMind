@@ -116,7 +116,7 @@
   background: rgba(var(--color-accent-raw), 0.2) 0%;
   color: var(--user-message-text-color);
   font-weight: 500;
-  letter-spacing: -0.003em;
+  letter-spacing: 0;
 
   border-radius: var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-xl);
   border: 1px solid rgba(var(--color-accent-raw), 0.2);
@@ -126,7 +126,7 @@
   background: transparent;
   color: var(--ai-message-text-color);
   font-weight: 500;
-  letter-spacing: -0.003em;
+  letter-spacing: 0;
   padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 4);
   min-height: var(--input-area-height-base);
   border: none;
@@ -187,7 +187,7 @@
   line-height: 1.75;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.9);
 }
@@ -231,7 +231,7 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
   overflow: visible;
   padding: 0;
   font-size: var(--type-small);
-  letter-spacing: -0.002em;
+  letter-spacing: 0;
   font-weight: 500;
 }
 

@@ -271,9 +271,7 @@
   border: 0;
   border-radius: var(--radius-md);
   background: rgba(12, 12, 14, 0.92);
-  box-shadow:
-    0 16px 44px rgba(0, 0, 0, 0.48),
-    0 0 34px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-lg);
   color: var(--color-text-secondary);
   font-size: 0.78rem;
   font-weight: 500;

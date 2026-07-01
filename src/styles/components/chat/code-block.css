@@ -385,7 +385,7 @@ pre.line-numbers > code {
   font-size: 100%;
   line-height: inherit !important;
   width: 3em;
-  letter-spacing: -1px;
+  letter-spacing: 0;
   border-right: 1px solid var(--line-numbers-border) !important;
 
   -webkit-user-select: none;

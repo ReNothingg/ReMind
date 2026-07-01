@@ -266,7 +266,7 @@ html[data-theme='light'] .auth-modal-close:hover {
   margin: 0 0 0.75rem;
   font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .auth-modal .form-group {
