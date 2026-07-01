@@ -271,7 +271,7 @@ html[data-theme='light'] .user-message.is-editing-user-message .ui-message-bubbl
   overflow: hidden;
   background: var(--color-bg-surface);
   border: 1px solid rgba(var(--color-white-raw), 0.16);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
 }
 
 .user-message-edit-textarea {

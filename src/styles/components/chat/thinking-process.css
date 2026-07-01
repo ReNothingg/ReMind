@@ -1,11 +1,7 @@
 .thinking-process-block {
   font-family: var(--font-main-thinking);
   position: relative;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.08),
-    rgba(var(--color-black-raw), 0.18)
-  );
+  background: rgba(var(--color-black-raw), 0.12);
   border: 1px solid rgba(var(--color-white-raw), 0.06);
   border-radius: var(--radius-lg);
   padding: calc(var(--spacing-unit) * 3);

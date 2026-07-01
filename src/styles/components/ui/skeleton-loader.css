@@ -67,7 +67,7 @@
   gap: 6px;
   margin-left: 8px;
   padding: 4px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   color: var(--color-text-primary);
   background: rgba(52, 199, 89, 0.14);
@@ -215,6 +215,6 @@
   display: inline-flex !important;
   width: 20px !important;
   height: 20px !important;
-  border-radius: 6px !important;
+  border-radius: var(--radius-sm) !important;
   margin-left: 2px;
 }

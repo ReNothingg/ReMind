@@ -321,7 +321,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const FONT_SIZE_MIN_PX = 10;
     const FONT_SIZE_MAX_PX = 24;
     const FONT_SIZE_STEP_PX = 2;
-    const settingsInputClass = 'settings-input ui-input min-h-11 rounded-xl bg-surface-alt px-4 py-3 text-[0.95rem]';
+    const settingsInputClass = 'settings-input ui-input min-h-11 rounded-md bg-surface-alt px-4 py-3 text-[0.95rem]';
     const isMacWrapper = Boolean(window.webkit?.messageHandlers?.remindMacBridge);
 
     const normalizeLanguage = (value) => {
@@ -699,7 +699,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                     </span>
                     <button
                         type="button"
-                        className="account-connected-app-action ui-button-secondary min-h-10 rounded-lg px-3 py-2"
+                        className="account-connected-app-action ui-button-secondary min-h-10 rounded-md px-3 py-2"
                         onClick={handleGitHubConnect}
                         disabled={isLoadingGitHubStatus || !isGitHubConfigured}
                     >
@@ -737,7 +737,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                             <div className="account-actions">
                                 <button
                                     type="button"
-                                    className="btn-primary ui-button-primary min-h-11 rounded-xl px-5 py-3"
+                                    className="btn-primary ui-button-primary min-h-11 rounded-md px-5 py-3"
                                     onClick={() => { onClose(); onOpenAuth(); }}
                                 >
                                     {t('settings.account.signInOrRegister')}
@@ -766,7 +766,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                         </div>
                         <button
                             type="button"
-                            className="account-signout-btn ui-button-secondary min-h-10 rounded-lg px-3 py-2"
+                            className="account-signout-btn ui-button-secondary min-h-10 rounded-md px-3 py-2"
                             onClick={logout}
                         >
                             <LogOut size={16} strokeWidth={1.9} />
@@ -846,7 +846,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                             <div className="account-actions">
                                 <button
                                     type="submit"
-                                    className="btn-primary account-save-btn ui-button-primary min-h-11 rounded-xl px-5 py-3"
+                                    className="btn-primary account-save-btn ui-button-primary min-h-11 rounded-md px-5 py-3"
                                     disabled={isSavingProfile}
                                 >
                                     <Save size={16} strokeWidth={1.9} />
@@ -883,7 +883,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                             </SettingField>
                             <button
                                 type="button"
-                                className="account-delete-btn ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                className="account-delete-btn ui-button-secondary min-h-11 rounded-md px-4 py-3"
                                 onClick={handleDeleteAccount}
                                 disabled={isDeletingAccount}
                             >
@@ -903,7 +903,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         <ModalShell
             ariaLabel={t('settings.title')}
             className="user-settings-modal active items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-            contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface shadow-[var(--shadow-xl)] sm:h-[85vh] sm:min-h-[560px] sm:rounded-[18px]"
+            contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface shadow-[var(--shadow-xl)] sm:h-[85vh] sm:min-h-[560px] sm:rounded-xl"
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
@@ -912,7 +912,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                     {t('settings.title')}
                 </h3>
                 <button
-                    className="user-settings-close ui-icon-control size-9 rounded-xl border-transparent bg-transparent text-muted hover:bg-interactive hover:text-foreground"
+                    className="user-settings-close ui-icon-control size-9 rounded-md border-transparent bg-transparent text-muted hover:bg-interactive hover:text-foreground"
                     onClick={onClose}
                     aria-label={t('settings.close')}
                     type="button"
@@ -1077,7 +1077,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <SettingControlGroup withDivider>
                                         <button
                                             type="button"
-                                            className="ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                            className="ui-button-secondary min-h-11 rounded-md px-4 py-3"
                                             onClick={handleExportData}
                                             disabled={isExportingData}
                                         >
@@ -1091,7 +1091,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <SettingControlGroup withDivider>
                                         <button
                                             type="button"
-                                            className="ui-button-secondary min-h-11 rounded-xl px-4 py-3"
+                                            className="ui-button-secondary min-h-11 rounded-md px-4 py-3"
                                             onClick={() => { onClose(); onOpenAuth(); }}
                                         >
                                             {t('settings.privacy.signInForExport')}

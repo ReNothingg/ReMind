@@ -72,9 +72,9 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
 
     const fieldLabelClass = 'ui-field-label';
-    const fieldInputClass = 'ui-input min-h-10 rounded-xl bg-interactive px-4 py-2.5 text-[0.94rem]';
-    const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-10 w-full justify-center rounded-xl px-4 py-2.5 text-[0.94rem] font-semibold';
-    const secondaryAuthButtonClass = 'btn btn-google flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4 py-2.5 text-[0.94rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
+    const fieldInputClass = 'ui-input min-h-10 rounded-md bg-interactive px-4 py-2.5 text-[0.94rem]';
+    const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-10 w-full justify-center rounded-md px-4 py-2.5 text-[0.94rem] font-semibold';
+    const secondaryAuthButtonClass = 'btn btn-google flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-4 py-2.5 text-[0.94rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
     const shouldUseTurnstile = Boolean(authConfig?.turnstile_site_key) && authConfig?.turnstile_required !== false;
     const passwordStrength = getPasswordStrength(password);
     const passwordStrengthColor = PASSWORD_STRENGTH_COLORS[passwordStrength.score];
@@ -379,12 +379,12 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         <ModalShell
             ariaLabel={t(isLoginView ? 'authModal.loginTitle' : 'authModal.registerTitle')}
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-            contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-[20px] border-border bg-surface px-5 pb-6 pt-5 text-foreground shadow-[var(--shadow-xl)] sm:rounded-2xl sm:px-6 sm:pb-6 sm:pt-6"
+            contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-xl border-border bg-surface px-5 pb-6 pt-5 text-foreground shadow-[var(--shadow-xl)] sm:rounded-xl sm:px-6 sm:pb-6 sm:pt-6"
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
             <button
-                className="auth-modal-close ui-icon-control absolute right-4 top-4 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                className="auth-modal-close ui-icon-control absolute right-4 top-4 size-10 rounded-md border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                 onClick={onClose}
                 aria-label={t('translationPanel.close')}
                 type="button"
@@ -634,7 +634,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             {message && (
                 <div
                     className={cn(
-                        'auth-message mt-5 rounded-xl border px-4 py-3 text-center text-sm font-semibold',
+                        'auth-message mt-5 rounded-lg border px-4 py-3 text-center text-sm font-semibold',
                         message.type === 'success'
                             ? 'border-[rgba(var(--color-success-raw),0.4)] bg-[rgba(var(--color-success-raw),0.12)] text-success'
                             : 'border-[rgba(var(--color-error-raw),0.35)] bg-[rgba(var(--color-error-raw),0.12)] text-danger'

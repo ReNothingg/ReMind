@@ -227,11 +227,7 @@
 
   .ui-inline-panel {
     @apply mt-3 overflow-hidden rounded-xl border text-foreground;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-black-raw), 0.12),
-      rgba(var(--color-bg-surface-alt-raw), 0.08)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.08);
   }
 
@@ -289,7 +285,7 @@
   }
 
   .ui-message-bubble-user {
-    @apply rounded-[20px_20px_4px_20px] border px-[var(--chat-message-padding-x)] py-[var(--chat-message-padding-y)] text-foreground;
+    @apply rounded-[var(--radius-xl)_var(--radius-xl)_var(--radius-sm)_var(--radius-xl)] border px-[var(--chat-message-padding-x)] py-[var(--chat-message-padding-y)] text-foreground;
     background: rgba(var(--color-accent-raw), 0.2);
     border-color: rgba(var(--color-accent-raw), 0.2);
     color: var(--user-message-text-color);
@@ -389,11 +385,7 @@
 
   .ui-audio-player {
     @apply mt-3 overflow-hidden rounded-xl border text-foreground;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-black-raw), 0.12),
-      rgba(var(--color-bg-surface-alt-raw), 0.08)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.08);
   }
 
@@ -416,31 +408,19 @@
 
   .ui-audio-play-button {
     @apply flex size-9 shrink-0 items-center justify-center rounded-full border text-foreground transition duration-150 ease-out;
-    background: linear-gradient(
-      135deg,
-      var(--color-bg-interactive),
-      rgba(var(--color-bg-surface-alt-raw), 0.8)
-    );
+    background: var(--color-bg-interactive);
     border-color: rgba(var(--color-white-raw), 0.15);
   }
 
   .ui-audio-play-button:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-white-raw), 0.15),
-      rgba(var(--color-bg-surface-alt-raw), 0.9)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.25);
     transform: scale(1.05);
   }
 
   .ui-audio-waveform {
     @apply relative h-12 flex-1 overflow-hidden rounded-[var(--radius-md)] border;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-black-raw), 0.15),
-      rgba(var(--color-bg-surface-alt-raw), 0.1)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.06);
   }
 
@@ -449,7 +429,7 @@
   }
 
   .ui-edit-panel {
-    @apply mt-0 flex w-full max-w-[620px] flex-col overflow-hidden rounded-[18px] border p-0;
+    @apply mt-0 flex w-full max-w-[620px] flex-col overflow-hidden rounded-lg border p-0;
     background: var(--color-bg-surface);
     border-color: rgba(var(--color-white-raw), 0.16);
   }
@@ -551,11 +531,7 @@
 
   .ui-notice-banner {
     @apply mb-3 flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm text-foreground;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-bg-surface-alt-raw), 0.92),
-      rgba(var(--color-bg-surface-raw), 0.88)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.1);
   }
 
@@ -795,7 +771,7 @@
   }
 
   .ui-rail-menu {
-    @apply absolute top-[calc(100%+8px)] right-0 z-[10000] min-w-[200px] max-w-[280px] rounded-[10px] border bg-surface p-1.5;
+    @apply absolute top-[calc(100%+8px)] right-0 z-[10000] min-w-[200px] max-w-[280px] rounded-md border bg-surface p-1.5;
     border-color: var(--color-border-medium);
     box-shadow: 0 10px 24px rgba(12, 20, 40, 0.12);
   }
@@ -975,21 +951,13 @@
 
   .ui-composer-quote-stack {
     @apply flex max-h-[200px] max-w-[280px] flex-col gap-1.5 self-stretch overflow-y-auto rounded-[calc(var(--input-area-border-radius)-3px)] border p-1.5;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-bg-surface-alt-raw), 0.8),
-      rgba(var(--color-bg-surface-alt-raw), 0.6)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.08);
   }
 
   .ui-composer-quote-card {
     @apply relative overflow-hidden rounded-[var(--radius-lg)] border border-l-[3px] px-3.5 py-2.5 pr-8 text-[0.85em] text-foreground transition duration-150;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-bg-surface-alt-raw), 0.9),
-      rgba(var(--color-bg-surface-alt-raw), 0.7)
-    );
+    background: var(--color-bg-surface);
     border-color: rgba(var(--color-white-raw), 0.06);
     border-left-color: var(--color-accent);
   }
@@ -1104,11 +1072,7 @@
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background: linear-gradient(
-      135deg,
-      var(--color-bg-interactive),
-      rgba(var(--color-bg-surface-alt-raw), 0.8)
-    );
+    background-color: var(--color-bg-interactive);
     border-color: rgba(var(--color-white-raw), 0.12);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23cccccc'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 011.06 0L8 8.94l2.72-2.72a.75.75 0 111.06 1.06l-3.25 3.25a.75.75 0 01-1.06 0L4.22 7.28a.75.75 0 010-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -1131,20 +1095,12 @@
 
   .ui-rich-panel {
     @apply max-h-52 overflow-y-auto rounded-lg border px-4 py-3 text-[0.9rem] leading-6 text-muted transition duration-200 ease-out;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-black-raw), 0.2),
-      rgba(var(--color-bg-surface-alt-raw), 0.1)
-    );
+    background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.04);
   }
 
   .ui-rich-panel:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(var(--color-black-raw), 0.25),
-      rgba(var(--color-bg-surface-alt-raw), 0.15)
-    );
+    background: var(--color-bg-interactive);
     border-color: rgba(var(--color-white-raw), 0.08);
   }
 

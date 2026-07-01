@@ -163,11 +163,7 @@
 }
 
 .table-wrapper .table-copy-btn:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-white-raw), 0.15),
-    rgba(var(--color-bg-surface-alt-raw), 0.12)
-  );
+  background: var(--color-bg-surface-alt);
   border-color: rgba(var(--color-white-raw), 0.15);
   color: var(--color-text-primary);
   transform: translateY(-2px) scale(1.05);
@@ -386,11 +382,7 @@
 .table-wrapper thead {
   position: sticky;
   top: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(var(--color-black-raw), 0.85),
-    rgba(var(--color-black-raw), 0.82)
-  );
+  background: rgba(var(--color-black-raw), 0.85);
   backdrop-filter: saturate(1.04);
   z-index: 5;
   color: var(--color-text-secondary);
@@ -443,11 +435,7 @@
 }
 
 .table-wrapper tbody tr:nth-child(odd) td {
-  background: linear-gradient(
-    90deg,
-    rgba(var(--color-white-raw), 0.005),
-    rgba(var(--color-white-raw), 0.002)
-  );
+  background: rgba(var(--color-white-raw), 0.005);
 }
 
 .table-wrapper tbody tr td {

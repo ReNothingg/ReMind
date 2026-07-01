@@ -10,18 +10,7 @@ body.health-page {
   width: 100%;
   font-family: var(--font-family-main, 'Manrope', 'Segoe UI', sans-serif);
   color: var(--color-text-primary, #e5e7eb);
-  background:
-    radial-gradient(
-      circle at 12% 10%,
-      rgba(var(--color-accent-raw, 120, 156, 255), 0.2),
-      transparent 40%
-    ),
-    radial-gradient(
-      circle at 88% 24%,
-      rgba(var(--color-accent-raw, 120, 156, 255), 0.1),
-      transparent 34%
-    ),
-    var(--color-bg-main, #111111);
+  background: var(--color-bg-main, #111111);
   display: block;
   padding: clamp(12px, 2vw, 24px);
 }

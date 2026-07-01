@@ -191,7 +191,7 @@ html[data-theme='light'] .custom-select-dropdown {
 
 .custom-select-list::-webkit-scrollbar-thumb {
   background: var(--color-text-tertiary);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   opacity: 0.3;
 }
 

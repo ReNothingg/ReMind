@@ -285,7 +285,7 @@
 .model-btn-icon {
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: inline-block;
   background: var(--color-accent-secondary, var(--color-accent-primary));
 }

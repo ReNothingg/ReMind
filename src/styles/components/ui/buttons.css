@@ -1,7 +1,7 @@
 .btn {
   display: inline-block;
   padding: 0.6rem 1.2rem;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 500;
   text-align: center;
@@ -30,7 +30,7 @@
 .btn-primary {
   background-color: var(--color-accent);
   color: var(--color-text-on-accent-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0.85rem 1.2rem;
   font-size: 0.95rem;
   font-weight: 600;

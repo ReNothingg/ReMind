@@ -42,11 +42,11 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
     ].filter(Boolean).join(' ');
 
     return (
-        <div className="file-card group relative flex h-[92px] w-[92px] shrink-0 flex-col overflow-hidden rounded-[18px] border border-[rgba(var(--color-white-raw),0.12)] bg-[rgba(var(--color-black-raw),0.25)]">
+        <div className="file-card group relative flex h-[92px] w-[92px] shrink-0 flex-col overflow-hidden rounded-lg border border-[rgba(var(--color-white-raw),0.12)] bg-[rgba(var(--color-black-raw),0.25)]">
             <div
                 className={cn(
                     previewClass,
-                    'file-card-preview mx-1.5 mt-1.5 flex flex-1 items-center justify-center overflow-hidden rounded-[14px] border border-[rgba(var(--color-white-raw),0.08)] bg-[rgba(var(--color-black-raw),0.2)]',
+                    'file-card-preview mx-1.5 mt-1.5 flex flex-1 items-center justify-center overflow-hidden rounded-md border border-[rgba(var(--color-white-raw),0.08)] bg-[rgba(var(--color-black-raw),0.2)]',
                     isText && 'is-text items-start p-1.5 font-mono text-[0.6rem] leading-[1.35] text-muted'
                 )}
                 onClick={handleClick}

@@ -75,11 +75,7 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   overflow-y: auto;
   border: 1px solid transparent;
   padding: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-bg-surface-alt-raw), 0.8),
-    rgba(var(--color-bg-surface-raw), 0.6)
-  );
+  background: var(--color-bg-surface-alt);
   border-radius: calc(var(--input-area-border-radius) - 3px);
 
   transition: all var(--transition-normal), max-height var(--transition-normal),
@@ -96,11 +92,7 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   border-top: 1px solid rgba(var(--color-accent-raw), 0.2);
   border-bottom: 1px solid rgba(var(--color-accent-raw), 0.2);
   margin-top: calc(var(--spacing-unit) * 1.5);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-bg-surface-alt-raw), 0.9),
-    rgba(var(--color-bg-surface-raw), 0.7)
-  );
+  background: var(--color-bg-surface-alt);
 }
 
 .quote-preview-area:empty {
@@ -108,11 +100,7 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
 }
 
 .quote-item {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-bg-surface-raw), 0.9),
-    rgba(var(--color-bg-surface-alt-raw), 0.7)
-  );
+  background: var(--color-bg-surface);
   padding: calc(var(--spacing-unit) * 2.5) calc(var(--spacing-unit) * 3.5);
 
   padding-right: calc(var(--spacing-unit) * 8);
@@ -134,11 +122,7 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
 .quote-item:hover {
   transform: translateY(-2px);
   border-color: rgba(var(--color-accent-raw), 0.4);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-bg-surface-raw), 0.95),
-    rgba(var(--color-bg-surface-alt-raw), 0.8)
-  );
+  background: var(--color-bg-surface-alt);
 }
 
 .quote-item blockquote {

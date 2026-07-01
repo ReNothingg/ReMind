@@ -69,11 +69,7 @@
 }
 
 .audio-play-pause-btn {
-  background: linear-gradient(
-    135deg,
-    var(--color-bg-interactive),
-    rgba(var(--color-bg-surface-alt-raw), 0.8)
-  );
+  background: var(--color-bg-interactive);
   border: 1px solid rgba(var(--color-white-raw), 0.15);
   border-radius: 50%;
   width: 36px;
@@ -88,11 +84,7 @@
 }
 
 .audio-play-pause-btn:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-white-raw), 0.15),
-    rgba(var(--color-bg-surface-alt-raw), 0.9)
-  );
+  background: var(--color-bg-surface-alt);
   border-color: rgba(var(--color-white-raw), 0.25);
   transform: scale(1.05);
 }
@@ -151,7 +143,7 @@
   appearance: none;
   width: 12px;
   height: 48px;
-  background: linear-gradient(135deg, var(--color-accent), rgba(var(--color-accent-raw), 0.8));
+  background: var(--color-accent);
   border-radius: var(--radius-sm);
   border: 2px solid rgba(var(--color-white-raw), 0.2);
   cursor: pointer;
@@ -159,7 +151,7 @@
 }
 
 .audio-progress-bar::-webkit-slider-thumb:hover {
-  background: linear-gradient(135deg, var(--color-white), rgba(var(--color-white-raw), 0.9));
+  background: var(--color-white);
   transform: scale(1.1);
 }
 
@@ -170,7 +162,7 @@
 .audio-progress-bar::-moz-range-thumb {
   width: 12px;
   height: 48px;
-  background: linear-gradient(135deg, var(--color-accent), rgba(var(--color-accent-raw), 0.8));
+  background: var(--color-accent);
   border: 2px solid rgba(var(--color-white-raw), 0.2);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -178,7 +170,7 @@
 }
 
 .audio-progress-bar::-moz-range-thumb:hover {
-  background: linear-gradient(135deg, var(--color-white), rgba(var(--color-white-raw), 0.9));
+  background: var(--color-white);
   transform: scale(1.1);
 }
 

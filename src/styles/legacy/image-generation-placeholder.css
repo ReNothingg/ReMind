@@ -2,7 +2,7 @@
   width: 100%;
   max-width: 350px;
   margin: 8px 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background-color: var(--bg-color-tertiary);
   border: 1px solid var(--border-color);

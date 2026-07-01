@@ -96,7 +96,7 @@
     align-items: center;
     justify-content: center;
     background: rgba(255, 255, 255, 0.05) !important;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     color: var(--color-text-primary) !important;
     z-index: 10;
   }
@@ -155,7 +155,7 @@
 
   .new-chat-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
   }
 
   .new-chat-btn:active {
@@ -266,13 +266,13 @@
   .message-content {
     width: 100%;
     max-width: 100%;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 12px 16px;
     font-size: 1rem;
   }
 
   .user-message .message-content {
-    border-radius: 16px 16px 2px 16px;
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
     background: var(--color-accent);
     color: var(--color-text-on-accent-bg);
   }
@@ -386,7 +386,7 @@
   .main-input-area .attach-area {
     max-height: 120px;
     padding: 6px 6px 2px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
   }
 
   .main-input-area .preview-container {
@@ -397,12 +397,12 @@
   .main-input-area .file-card {
     width: 72px;
     height: 72px;
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
   }
 
   .main-input-area .file-card-preview {
     margin: 4px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 
   .main-input-area .file-card-footer {
@@ -438,7 +438,7 @@
 
   .main-input-area .quote-item {
     padding: 10px 36px 10px 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 
   .main-input-area .quote-item-dismiss {
@@ -472,7 +472,7 @@
   .code-block {
     margin: 16px 0 !important;
     width: 100%;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 
   .code-block-header {

@@ -1,5 +1,5 @@
 html[data-theme='light'] .translation-panel {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(229, 229, 234, 0.8));
+  background: var(--color-bg-surface);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -21,22 +21,22 @@ html[data-theme='light'] .translation-header .language-select:focus {
 }
 
 html[data-theme='light'] .text-column .text-content {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(229, 229, 234, 0.6));
+  background: var(--color-bg-surface-alt);
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 html[data-theme='light'] .text-column .text-content:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(229, 229, 234, 0.8));
+  background: var(--color-bg-surface);
   border-color: rgba(0, 0, 0, 0.08);
 }
 
 html[data-theme='light'] .text-column .text-content.original-text {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(229, 229, 234, 0.5));
+  background: var(--color-bg-surface-alt);
   border-color: rgba(0, 0, 0, 0.15);
 }
 
 html[data-theme='light'] .text-column .text-content.original-text:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(229, 229, 234, 0.7));
+  background: var(--color-bg-surface);
   border-color: rgba(0, 0, 0, 0.2);
 }
 
@@ -58,7 +58,7 @@ html[data-theme='light'] .text-column .text-content::-webkit-scrollbar-thumb:hov
 }
 
 html[data-theme='light'] .audio-player-container {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(229, 229, 234, 0.8));
+  background: var(--color-bg-surface);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -77,12 +77,12 @@ html[data-theme='light'] .audio-play-pause-btn:hover {
 }
 
 html[data-theme='light'] .audio-waveform-container {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(229, 229, 234, 0.6));
+  background: var(--color-bg-surface-alt);
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 html[data-theme='light'] .audio-waveform-container:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(229, 229, 234, 0.8));
+  background: var(--color-bg-surface);
   border-color: rgba(0, 0, 0, 0.1);
 }
 
@@ -118,4 +118,3 @@ html[data-theme='light'] .icon-wrapper svg {
   color: var(--color-text-primary);
   opacity: 0.7;
 }
-

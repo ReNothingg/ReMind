@@ -154,9 +154,7 @@
   overflow: hidden;
   border-radius: calc(var(--radius-lg) + 2px);
   border: 1px solid rgba(var(--color-white-raw), 0.12);
-  background:
-    linear-gradient(180deg, rgba(var(--color-white-raw), 0.03), rgba(var(--color-black-raw), 0.08)),
-    rgba(var(--color-black-raw), 0.18);
+  background: rgba(var(--color-black-raw), 0.18);
   box-shadow: var(--shadow-xs);
 }
 
@@ -170,9 +168,7 @@
   overflow: hidden;
   padding: 0;
   border: 0;
-  background:
-    radial-gradient(circle at top right, rgba(var(--color-white-raw), 0.09), transparent 42%),
-    rgba(var(--color-black-raw), 0.2);
+  background: rgba(var(--color-black-raw), 0.2);
   aspect-ratio: 16 / 11;
 }
 
@@ -213,9 +209,7 @@
 
 .message-image-loader {
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(var(--color-black-raw), 0.22), rgba(var(--color-white-raw), 0.05)),
-    rgba(var(--color-black-raw), 0.18);
+  background: rgba(var(--color-black-raw), 0.18);
 }
 
 .message-image-loader-shimmer {

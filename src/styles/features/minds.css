@@ -59,7 +59,7 @@
     gap: 8px;
     min-height: 40px;
     border: 1px solid var(--color-border-medium);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 0 14px;
     background: var(--color-accent);
     color: var(--color-text-on-accent-bg);
@@ -107,7 +107,7 @@
     gap: 10px;
     min-height: 46px;
     border: 1px solid var(--color-border-medium);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 0 14px;
     background: var(--color-bg-surface);
   }
@@ -154,7 +154,7 @@
   .mind-category-select-grid button,
   .mind-visibility-list button {
     border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface-alt);
     color: var(--color-text-secondary);
     min-height: 38px;
@@ -195,7 +195,7 @@
     flex-direction: column;
     gap: 16px;
     border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 16px;
     background: var(--color-bg-surface);
     box-shadow: var(--shadow-xs);
@@ -215,7 +215,7 @@
     height: 44px;
     flex: 0 0 auto;
     border: 1px solid rgba(var(--color-accent-raw), 0.26);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: rgba(var(--color-accent-raw), 0.12);
     color: var(--color-accent);
   }
@@ -276,7 +276,7 @@
   .mind-starters button {
     width: 100%;
     border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 10px;
     background: var(--color-bg-surface-alt);
     color: var(--color-text-secondary);
@@ -316,7 +316,7 @@
     height: 40px;
     flex: 0 0 auto;
     border: 1px solid var(--color-border-medium);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface-alt);
     color: var(--color-text-secondary);
     transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
@@ -359,7 +359,7 @@
     gap: 10px;
     min-height: 80px;
     border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface);
     color: var(--color-text-secondary);
     text-align: center;
@@ -386,7 +386,7 @@
   .mind-form-side,
   .mind-auth-required {
     border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface);
     box-shadow: var(--shadow-xs);
   }
@@ -428,7 +428,7 @@
   .mind-starter-row input {
     width: 100%;
     border: 1px solid var(--color-border-medium);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface-alt);
     color: var(--color-text-primary);
     font: inherit;
@@ -529,7 +529,7 @@
     flex-direction: column;
     gap: 12px;
     border: 1px solid var(--color-border-subtle);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 14px;
     background: var(--color-bg-surface);
   }
@@ -579,7 +579,7 @@
     height: 34px;
     flex: 0 0 auto;
     border: 1px solid var(--color-border-medium);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface-alt);
     color: var(--color-text-secondary);
   }
@@ -592,7 +592,7 @@
 
   .ui-landing-mind-starters button {
     border: 1px solid rgba(var(--color-accent-raw), 0.28);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: rgba(var(--color-accent-raw), 0.11);
     color: var(--color-text-primary);
     padding: 8px 10px;
@@ -613,7 +613,7 @@
     justify-content: space-between;
     gap: 14px;
     border: 1px solid rgba(var(--color-accent-raw), 0.28);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 10px 12px;
     background: color-mix(in srgb, var(--color-bg-surface) 90%, var(--color-accent) 10%);
     box-shadow: var(--shadow-sm);
@@ -634,7 +634,7 @@
     flex: 0 0 auto;
     place-items: center;
     border: 1px solid rgba(var(--color-accent-raw), 0.3);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: rgba(var(--color-accent-raw), 0.12);
     color: var(--color-accent);
   }
@@ -682,7 +682,7 @@
     align-items: center;
     justify-content: center;
     border: 1px solid var(--color-border-medium);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--color-bg-surface-alt);
     color: var(--color-text-secondary);
     transition: background 160ms ease, color 160ms ease, border-color 160ms ease;

@@ -1,9 +1,5 @@
 .translation-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.12),
-    rgba(var(--color-bg-surface-alt-raw), 0.08)
-  );
+  background: var(--color-bg-surface-alt);
   border: 1px solid rgba(var(--color-white-raw), 0.08);
   border-radius: var(--radius-lg);
   margin-top: calc(var(--spacing-unit) * 3);
@@ -31,11 +27,7 @@
 }
 
 .translation-header .language-select {
-  background: linear-gradient(
-    135deg,
-    var(--color-bg-interactive),
-    rgba(var(--color-bg-surface-alt-raw), 0.8)
-  );
+  background-color: var(--color-bg-interactive);
   color: var(--color-text-primary);
   border: 1px solid rgba(var(--color-white-raw), 0.12);
   border-radius: var(--radius-md);
@@ -103,11 +95,7 @@
   max-height: 200px;
   overflow-y: auto;
   padding: calc(var(--spacing-unit) * 2.5);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.2),
-    rgba(var(--color-bg-surface-alt-raw), 0.1)
-  );
+  background: var(--color-bg-surface-alt);
   border-radius: var(--radius-md);
   word-wrap: break-word;
   border: 1px solid rgba(var(--color-white-raw), 0.04);
@@ -116,30 +104,18 @@
 }
 
 .text-column .text-content:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.25),
-    rgba(var(--color-bg-surface-alt-raw), 0.15)
-  );
+  background: var(--color-bg-interactive);
   border-color: rgba(var(--color-white-raw), 0.08);
 }
 
 .text-column .text-content.original-text {
   color: var(--color-text-primary);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.15),
-    rgba(var(--color-bg-surface-alt-raw), 0.08)
-  );
+  background: rgba(var(--color-bg-surface-alt-raw), 0.58);
   border-color: rgba(var(--color-accent-raw), 0.2);
 }
 
 .text-column .text-content.original-text:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-black-raw), 0.2),
-    rgba(var(--color-bg-surface-alt-raw), 0.12)
-  );
+  background: var(--color-bg-interactive);
   border-color: rgba(var(--color-accent-raw), 0.3);
 }
 

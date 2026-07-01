@@ -71,12 +71,12 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
         <ModalShell
             ariaLabel={t('files.previewAlt', { name: file.name })}
             className="file-modal active px-3 py-4 sm:px-4 sm:py-6"
-            contentClassName="file-modal-content flex h-[min(90vh,820px)] w-full max-w-5xl flex-col rounded-[18px] border-border bg-surface text-foreground shadow-[var(--shadow-xl)]"
+            contentClassName="file-modal-content flex h-[min(90vh,820px)] w-full max-w-5xl flex-col rounded-xl border-border bg-surface text-foreground shadow-[var(--shadow-xl)]"
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
             <button
-                className="file-modal-close ui-icon-control absolute right-4 top-4 z-10 size-10 rounded-xl border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                className="file-modal-close ui-icon-control absolute right-4 top-4 z-10 size-10 rounded-md border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                 onClick={onClose}
                 title={t('common.closeEsc')}
                 aria-label={t('common.closeEsc')}
@@ -108,7 +108,7 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                         <img
                             src={content}
                             alt={t('files.previewAlt', { name: file.name })}
-                            className="block max-h-full max-w-full rounded-xl object-contain"
+                            className="block max-h-full max-w-full rounded-lg object-contain"
                         />
                     </div>
                 )}
@@ -118,7 +118,7 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                         <div className="preview-tabs flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5" role="tablist" aria-label={t('files.preview')}>
                             <button
                                 className={cn(
-                                    'tab rounded-xl px-4 py-2 text-sm font-medium transition duration-200 ease-out',
+                                    'tab rounded-md px-4 py-2 text-sm font-medium transition duration-200 ease-out',
                                     activeTab === 'preview'
                                         ? 'active bg-interactive text-foreground'
                                         : 'text-muted hover:bg-surface-alt hover:text-foreground'
@@ -133,7 +133,7 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                             </button>
                             <button
                                 className={cn(
-                                    'tab rounded-xl px-4 py-2 text-sm font-medium transition duration-200 ease-out',
+                                    'tab rounded-md px-4 py-2 text-sm font-medium transition duration-200 ease-out',
                                     activeTab === 'code'
                                         ? 'active bg-interactive text-foreground'
                                         : 'text-muted hover:bg-surface-alt hover:text-foreground'

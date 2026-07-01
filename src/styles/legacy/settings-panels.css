@@ -166,7 +166,7 @@ html[data-theme='light'] .settings-tabs {
   bottom: calc(var(--spacing-unit) * -1);
   height: 3px;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  background: var(--color-accent);
   opacity: 0;
   transform: translateY(4px);
   transition:
@@ -650,7 +650,7 @@ html[data-theme='light'] .settings-tabs {
   height: 26px;
   background-color: var(--color-bg-interactive);
   border: 1px solid var(--color-border-medium);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
   flex-shrink: 0;
@@ -704,10 +704,9 @@ html[data-theme='light'] .settings-tabs {
 
 .settings-pane::-webkit-scrollbar-thumb {
   background: rgba(var(--color-white-raw), 0.1);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .settings-pane::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--color-white-raw), 0.2);
 }
-

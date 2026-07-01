@@ -59,7 +59,7 @@
   justify-content: center;
   gap: 8px;
   border: 1px solid var(--color-border-medium);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0 14px;
   font-size: 0.9rem;
   font-weight: 700;
@@ -95,7 +95,7 @@
   gap: 10px;
   margin-bottom: 14px;
   border: 1px solid var(--color-border-medium);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
@@ -125,7 +125,7 @@
 .github-activity-panel,
 .github-result-panel {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-bg-surface);
   box-shadow: var(--shadow-xs);
 }
@@ -155,7 +155,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0 10px;
   background: var(--color-bg-surface-alt);
   color: var(--color-text-secondary);
@@ -189,7 +189,7 @@
   justify-content: space-between;
   gap: 12px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 11px 12px;
   background: var(--color-bg-surface-alt);
   color: var(--color-text-primary);
@@ -228,7 +228,7 @@
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-bg-interactive);
   color: var(--color-accent);
 }
@@ -246,7 +246,7 @@
   gap: 12px;
   min-height: 150px;
   border: 1px dashed var(--color-border-medium);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 18px;
   color: var(--color-text-secondary);
   text-align: center;
@@ -268,7 +268,7 @@
   min-height: 42px;
   margin: 16px 0 10px;
   border: 1px solid var(--color-border-medium);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0 12px;
   background: var(--color-bg-surface-alt);
 }
@@ -323,7 +323,7 @@
   grid-template-columns: 24px minmax(0, 1fr);
   gap: 10px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   background: var(--color-bg-surface-alt);
 }
@@ -380,7 +380,7 @@
 
 .github-activity-paths code {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 3px 6px;
   background: var(--code-block-bg);
   color: var(--code-token-plain);
@@ -394,7 +394,7 @@
   overflow: auto;
   margin: 10px 0 0;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 10px;
   background: var(--code-block-bg);
   color: var(--code-token-plain);
@@ -428,7 +428,7 @@
 .github-agent-controls input,
 .github-agent-controls textarea {
   border: 1px solid var(--color-border-medium);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-bg-surface-alt);
   padding: 11px 12px;
   resize: vertical;
@@ -481,7 +481,7 @@
   justify-content: space-between;
   gap: 10px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 9px 10px;
   background: var(--color-bg-surface-alt);
 }
@@ -508,7 +508,7 @@
 
 .github-risk-list span {
   border: 1px solid rgba(var(--color-warning-raw), 0.28);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 6px 9px;
   color: var(--color-warning);
   font-size: 0.8rem;
@@ -545,7 +545,7 @@
   overflow: auto;
   margin: 16px 0 0;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 14px;
   background: var(--code-block-bg);
   color: var(--code-token-plain);

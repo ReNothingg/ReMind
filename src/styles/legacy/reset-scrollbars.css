@@ -91,7 +91,7 @@ body.rail-open {
 
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   transition: background 0.2s;
 }
 
@@ -114,7 +114,7 @@ pre::-webkit-scrollbar,
 
 .rail-chat-list::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .rail-chat-list::-webkit-scrollbar-thumb:hover {
@@ -135,7 +135,7 @@ pre::-webkit-scrollbar,
 }
 .rail-chat-list::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 2px solid rgba(0, 0, 0, 0);
 }
 
@@ -149,7 +149,7 @@ pre::-webkit-scrollbar,
 
 .model-options::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .model-options::-webkit-scrollbar-thumb:hover {
@@ -166,7 +166,7 @@ pre::-webkit-scrollbar,
 
 .quote-preview-area::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .quote-preview-area::-webkit-scrollbar-thumb:hover {
@@ -183,7 +183,7 @@ pre::-webkit-scrollbar,
 
 .text-column .text-content::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .text-column .text-content::-webkit-scrollbar-thumb:hover {

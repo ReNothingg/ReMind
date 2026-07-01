@@ -173,7 +173,7 @@ const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
                     ))}
                 </select>
                 <button
-                    className="translation-close-btn ui-icon-control ui-icon-dismiss size-9 rounded-lg border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                    className="translation-close-btn ui-icon-control ui-icon-dismiss size-9 rounded-md border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                     onClick={onClose}
                     aria-label={t('translationPanel.close')}
                     type="button"

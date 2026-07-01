@@ -164,7 +164,7 @@
   cursor: pointer;
   padding: 6px 8px;
   transition: color 0.12s ease, transform 0.08s ease;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .hint-button:hover {

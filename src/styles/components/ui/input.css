@@ -96,7 +96,7 @@
 .attach-area::-webkit-scrollbar-thumb,
 .preview-container::-webkit-scrollbar-thumb {
   background: rgba(var(--color-accent-raw), 0.3);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: background 0.3s ease;
 }
 
@@ -198,7 +198,7 @@
   height: 92px;
   background: rgba(var(--color-black-raw), 0.25);
   border: 1px solid rgba(var(--color-white-raw), 0.12);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -227,7 +227,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   margin: 6px;
   border: 1px solid rgba(var(--color-white-raw), 0.08);
 }

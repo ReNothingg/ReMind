@@ -322,7 +322,7 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
                         </div>
 
                         <button
-                            className="lightbox-close-btn ui-icon-control rounded-xl border-transparent bg-transparent text-muted hover:bg-interactive hover:text-foreground"
+                            className="lightbox-close-btn ui-icon-control rounded-md border-transparent bg-transparent text-muted hover:bg-interactive hover:text-foreground"
                             onClick={onClose}
                             aria-label={translate('imageLightbox.close', 'Close')}
                             type="button"

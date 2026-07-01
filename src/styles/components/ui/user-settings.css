@@ -73,7 +73,7 @@ html[data-theme='light'] .user-settings-header {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-border-medium), transparent);
+  background: var(--color-border-medium);
 }
 
 .user-settings-header h3 {
@@ -260,7 +260,7 @@ html[data-theme='light'] .user-settings-header {
   height: 24px;
   background-color: var(--color-bg-interactive);
   border: 1px solid var(--color-border-medium);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
