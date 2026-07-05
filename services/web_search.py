@@ -101,8 +101,7 @@ def web_search_requested(value: Any) -> bool:
 def auto_web_search_requested(value: Any) -> bool:
     return WEB_SEARCH_ENABLED and is_truthy(value)
 
-
-# Router fallback rules for cases where the model decision is unavailable.
+# Перенаправление когда модель вернула неизвестный ответ
 AUTO_SEARCH_NEGATIVE_RE = re.compile(
     r"\b("
     r"без\s+(интернета|поиска|веб[-\s]?поиска)|"

@@ -6,7 +6,7 @@
       --load-soft: rgba(234, 234, 238, 0.12);
       --load-accent: #9bb7ff;
       --load-glow: rgba(155, 183, 255, 0.42);
-      --load-surface: rgba(17, 18, 20, 0.2);
+      /* --load-surface: rgba(17, 18, 20, 0.2); */
     }
 
     @media (prefers-color-scheme: light) {
@@ -15,7 +15,7 @@
         --load-soft: rgba(17, 24, 39, 0.1);
         --load-accent: #2563eb;
         --load-glow: rgba(37, 99, 235, 0.34);
-        --load-surface: rgba(255, 255, 255, 0.64);
+        /* --load-surface: rgba(255, 255, 255, 0.64); */
       }
     }
 

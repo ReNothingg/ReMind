@@ -3,6 +3,7 @@
 # ==========================
 .env
 .env.*
+.env.dev.example
 !.env.example
 !.env.*.example
 *.local
@@ -70,6 +71,7 @@ flask_session/
 logs/
 *.log
 database/
+test-results/
 upload/
 ssl/
 celerybeat-schedule
@@ -109,6 +111,7 @@ lerna-debug.log*
 *.swo
 *.sw?
 *~
+*.agents
 
 # ==========================
 # OS junk
@@ -124,3 +127,5 @@ tmp/
 temp/
 *.tmp
 *.bak
+
+search_results/

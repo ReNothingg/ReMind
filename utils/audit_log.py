@@ -13,8 +13,8 @@ audit_logger = logging.getLogger("remind.audit")
 audit_logger.setLevel(logging.INFO)
 _audit_handler = logging.handlers.RotatingFileHandler(
     str(LOGS_FOLDER / "audit.log"),
-    maxBytes=50 * 1024 * 1024,  # 50 MB
-    backupCount=30,  # Keep 30 files (about 1 month if daily rotation)
+    maxBytes=50 * 1024 * 1024,
+    backupCount=30,
 )
 _audit_handler.setFormatter(
     logging.Formatter("%(asctime)s - AUDIT - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")

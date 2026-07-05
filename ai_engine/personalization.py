@@ -4,14 +4,12 @@ import os
 import re
 from datetime import datetime
 from typing import Any, Dict, Optional
-
 from flask import request
 
 from ai_engine.tool_prompts import load_tool_prompt_section
 from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
-
 
 def _load_template_file(filename: str) -> Optional[str]:
     try:
@@ -26,7 +24,6 @@ def _load_template_file(filename: str) -> Optional[str]:
         logger.exception(f"Error loading template file {filename}: {e}")
         return None
 
-
 def get_user_settings_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     if not user_id:
         return {}
@@ -39,7 +36,6 @@ def get_user_settings_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     except Exception as e:
         logger.exception(f"Failed to load user settings for {user_id}: {e}")
         return {}
-
 
 def get_user_profile_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     if not user_id:
@@ -56,7 +52,6 @@ def get_user_profile_by_id(user_id: Optional[int]) -> Dict[str, Any]:
     except Exception as e:
         logger.exception(f"Failed to load user profile for {user_id}: {e}")
         return {}
-
 
 def build_interaction_metadata(user_data: dict, history: list) -> Dict[str, Any]:
     meta = {}
@@ -105,7 +100,6 @@ def build_interaction_metadata(user_data: dict, history: list) -> Dict[str, Any]
     }
 
     return metadata
-
 
 def _compute_avg_message_length(history: list) -> int:
     try:
@@ -180,7 +174,6 @@ def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
 
     return out
 
-
 def user_has_github_connection(user_id: Optional[int]) -> bool:
     if not user_id:
         return False
@@ -195,7 +188,6 @@ def user_has_github_connection(user_id: Optional[int]) -> bool:
         logger.exception(f"Failed to resolve GitHub tool connection for {user_id}: {e}")
         return False
 
-
 def render_github_tool_prompt(user_id: Optional[int]) -> str:
     if not user_has_github_connection(user_id):
         return ""
@@ -203,24 +195,18 @@ def render_github_tool_prompt(user_id: Optional[int]) -> str:
     tool_prompt = _load_template_file(os.path.join("tools", "github.md"))
     if not tool_prompt:
         return ""
-    return "CONNECTED TOOL: GITHUB\n" + tool_prompt.strip()
-
+    return tool_prompt.strip()
 
 def render_web_tool_prompt() -> str:
     tool_prompt = load_tool_prompt_section("web.md", "Assistant System Prompt")
     if not tool_prompt:
         return ""
-    return "TOOL: WEB SEARCH\n" + tool_prompt.strip()
+    return tool_prompt.strip()
 
-
-def render_canmore_tool_prompt(user_data: dict[str, Any]) -> str:
-    tool_prompt = _load_template_file(os.path.join("tools", "canmore.md"))
-    if not tool_prompt:
-        return ""
-
+def render_current_canvas_textdoc(user_data: dict[str, Any]) -> str:
     canvas = user_data.get("canvas_textdoc") if isinstance(user_data, dict) else None
     if not isinstance(canvas, dict):
-        return tool_prompt.strip()
+        return ""
 
     name = str(canvas.get("name") or "").strip()
     textdoc_type = str(canvas.get("type") or "").strip()
@@ -242,8 +228,7 @@ def render_canmore_tool_prompt(user_data: dict[str, Any]) -> str:
         f"{content}\n"
         "```"
     )
-    return tool_prompt.strip() + current_canvas
-
+    return current_canvas.strip()
 
 def render_beatbox_state_prompt(user_data: dict[str, Any]) -> str:
     beatbox_state = user_data.get("beatbox_state") if isinstance(user_data, dict) else None
@@ -265,7 +250,6 @@ def render_beatbox_state_prompt(user_data: dict[str, Any]) -> str:
         f"```json\n{serialized_state}\n```"
     )
 
-
 def _format_dimensions(dim: Optional[dict]) -> str:
     if not dim:
         return ""
@@ -276,14 +260,13 @@ def _format_dimensions(dim: Optional[dict]) -> str:
     except Exception:
         return ""
 
-
 def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     base = _load_template_file("prompt.md") or ""
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
     web_tool_prompt = render_web_tool_prompt()
-    canmore_tool_prompt = render_canmore_tool_prompt(user_data)
+    current_canvas_textdoc = render_current_canvas_textdoc(user_data)
     beatbox_state_prompt = render_beatbox_state_prompt(user_data)
     github_tool_prompt = render_github_tool_prompt(user_id)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
@@ -296,7 +279,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
 
     tool_prompts = [
         tool
-        for tool in [web_tool_prompt, canmore_tool_prompt, beatbox_state_prompt, github_tool_prompt]
+        for tool in [web_tool_prompt, current_canvas_textdoc, beatbox_state_prompt, github_tool_prompt]
         if tool
     ]
     if tool_prompts:
@@ -305,7 +288,6 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     if mind_prompt:
         return prompt + "\n\n" + mind_prompt
     return prompt
-
 
 def render_active_mind_prompt(active_mind: Any) -> str:
     if not isinstance(active_mind, dict):
@@ -319,11 +301,9 @@ def render_active_mind_prompt(active_mind: Any) -> str:
 
     return (
         "ACTIVE MIND PROFILE:\n"
-        "The user selected a custom Mind for this conversation. Follow this Mind profile "
-        "when answering, unless it conflicts with platform safety rules, privacy rules, "
-        "or higher-priority system requirements.\n"
-        f"Name: {name}\n"
-        f"Description: {description}\n"
-        "Mind instructions:\n"
+        "The user selected a custom Mind for this conversation. Follow this Mind profile when answering, unless it conflicts with platform safety rules, privacy rules, or higher-priority system requirements.\n"
+        f"Mind name: {name}\n"
+        f"Mind description: {description}\n"
+        "Current Mind instructions:\n"
         f"{instructions}"
     )

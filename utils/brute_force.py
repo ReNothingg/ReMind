@@ -9,9 +9,9 @@ from typing import DefaultDict
 from flask import request
 
 MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_DURATION = 900  # 15 minutes
-PROGRESSIVE_LOCKOUT = True  # Increase lockout time with each lockout
-MAX_LOCKOUT_DURATION = 3600  # 1 hour maximum
+LOCKOUT_DURATION = 900  # 15m
+PROGRESSIVE_LOCKOUT = True 
+MAX_LOCKOUT_DURATION = 3600  # 1h max.
 _attempt_store: DefaultDict[str, list[float]] = defaultdict(list)
 _lockout_store: dict[str, float | int] = {}
 _store_lock = RLock()

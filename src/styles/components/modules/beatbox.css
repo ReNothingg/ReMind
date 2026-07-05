@@ -8,7 +8,6 @@
   background-color: var(--color-bg-surface);
   position: relative;
   z-index: 0;
-  box-shadow: var(--shadow-lg);
 }
 
 .beatbox-instance-host .beatbox-app-container {

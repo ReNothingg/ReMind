@@ -271,7 +271,6 @@ def register_system_routes(api_bp):
                 ),
                 http_status,
             )
-
         return jsonify(detailed_payload), http_status
 
     @api_bp.route("/metrics", methods=["GET"])
@@ -291,7 +290,7 @@ def register_system_routes(api_bp):
     def security_txt():
         body = "\n".join(
             [
-                "Contact: mailto:security@synvexai.com",
+                "Contact: mailto:synvexai@gmail.com",
                 "Policy: https://synvexai.com/policies/privacy-policy/",
                 "Preferred-Languages: en, ru",
                 "Canonical: https://chat.synvexai.com/.well-known/security.txt",

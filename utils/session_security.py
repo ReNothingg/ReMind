@@ -131,13 +131,13 @@ def secure_session_required(check_fingerprint=True, max_inactive_seconds=3600):
 
 
 class SessionConfig:
-    COOKIE_SECURE = True  # Only send over HTTPS
-    COOKIE_HTTPONLY = True  # No JavaScript access
-    COOKIE_SAMESITE = "Lax"  # CSRF protection
-    PERMANENT_SESSION_LIFETIME = 7 * 24 * 3600  # 7 days
+    COOKIE_SECURE = True
+    COOKIE_HTTPONLY = True
+    COOKIE_SAMESITE = "Lax"  # CSRF
+    PERMANENT_SESSION_LIFETIME = 7 * 24 * 3600  # 7d
     SESSION_REFRESH_EACH_REQUEST = True
-    MAX_INACTIVE_SECONDS = 3600  # 1 hour
-    SESSION_KEY_BITS = 256  # Entropy for session ID
+    MAX_INACTIVE_SECONDS = 3600  # 1h
+    SESSION_KEY_BITS = 256
 
 
 def configure_session(app):

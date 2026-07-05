@@ -102,7 +102,7 @@ def handle_file_upload(file_storage, user_id):
     else:
         try:
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read(100000)  # Limit text reading to 100KB
+                text = f.read(100000)  # лимит чтления текста дло 100KB
             safe_display_name = InputValidator.sanitize_output(file_storage.filename)
             model_part = {"text": f"--- File: {safe_display_name} ---\n{text}\n--- End File ---"}
         except Exception:

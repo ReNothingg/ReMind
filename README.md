@@ -288,21 +288,6 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 
 <a id="repository-map"></a>
 
-## 📁 Карта репозитория
-
-```text
-.
-├── src/                 React + TypeScript frontend
-├── routes/features/     Flask feature routes
-├── services/            общие backend-сервисы
-├── ai_engine/           adapters к AI providers
-├── openapi/             API-схема
-├── tests/               backend-тесты
-├── public/              branding, images, manifest и static assets
-├── docs/                заметки по архитектуре и запуску
-└── .github/             CI, issue templates, PR template и CODEOWNERS
-```
-
 <a id="contributing"></a>
 
 ## 🤝 Участие в разработке
@@ -344,14 +329,12 @@ ReMind распространяется под лицензией **GNU AGPL-3.0
 
 Коммерческое использование разрешено только при соблюдении условий AGPL-3.0-only. В частности, если вы модифицируете ReMind и предоставляете к нему доступ по сети, пользователи такого сервиса должны получить доступ к Corresponding Source вашей версии на условиях AGPL.
 
-Если вы хотите использовать ReMind или его части в proprietary-продукте, closed-source сервисе, hosted commercial platform, или без AGPL source-disclosure obligations, нужна отдельная коммерческая лицензия от ReNothingg.
-
-Contact: [Telegram: @daich](https://t.me/daich)
-
-### Trademark and Branding
+Если вы хотите использовать ReMind или его части в proprietary-продукте, closed-source сервисе, hosted commercial platform, или без AGPL source-disclosure obligations, нужна отдельная коммерческая лицензия от ReNothingg (меня).
 
 Название **ReMind**, логотип ReMind, визуальная идентичность, домены, официальные аккаунты и иное официальное оформление проекта не лицензируются по AGPL-3.0-only.
 
-Вы не можете использовать название ReMind, логотип, брендинг или официальную идентичность для продвижения измененных версий, форков, коммерческих сервисов или производных продуктов без явного письменного разрешения ReNothingg.
+Вы не можете использовать название ReMind, логотип, брендинг или официальную идентичность для продвижения измененных версий, форков, коммерческих сервисов или производных продуктов без явного письменного разрешение ReNothingg.
 
 Дополнительные уведомления: [NOTICE.md](NOTICE.md).
+
+Contact: [Telegram: @daich](https://t.me/daich)

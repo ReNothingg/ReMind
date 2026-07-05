@@ -17,8 +17,7 @@
         <section class="health-card">
             <div class="health-head">
                 <div>
-                    <h1 class="health-title">Состояние сервиса ReMind</h1>
-                    <p class="health-subtitle">Страница обновляется автоматически каждые 30 секунд.</p>
+                    <h1 class="health-title">Состояние ReЖир</h1>
                 </div>
                 <span class="health-chip {{ payload.status if payload.status in ['ok', 'degraded', 'fail'] else 'unknown' }}">
                     {{ payload.status }}
@@ -76,7 +75,7 @@
         </section>
 
         <section class="health-card health-actions">
-            <p class="health-actions-text">Для мониторинга и интеграций доступен сырой JSON-ответ.</p>
+            <p class="health-actions-text">Для мониторинга, интеграций и пинтеста доступен JSON.</p>
             <a class="health-json-link" href="{{ raw_json_url }}">Открыть JSON</a>
         </section>
     </main>

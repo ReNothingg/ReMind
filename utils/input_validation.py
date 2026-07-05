@@ -135,7 +135,7 @@ class InputValidator:
         special_chars = sum(
             1 for c in text if not c.isalnum() and c not in " \n\t\r.,!?-()[]{}:;\"'"
         )
-        if special_chars > len(text) * 0.3:  # More than 30% special chars
+        if special_chars > len(text) * 0.3:
             raise ValidationError("Text contains too many special characters")
 
         if not allow_html and "<" in text and ">" in text:

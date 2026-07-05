@@ -65,7 +65,7 @@ def api_error_boundary(fallback_code: str) -> Callable:
         def wrapped(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except Exception as exc:  # Centralized exception mapping for API routes
+            except Exception as exc:
                 mapped = _map_exception(exc, fallback_code=fallback_code)
                 if mapped.status >= 500:
                     logger.exception("API error (%s): %s", fallback_code, exc)
