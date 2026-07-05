@@ -139,7 +139,7 @@ def _prepare_new_message(user_message_data: Dict[str, Any]) -> List[Union[str, I
                 exc_info=True,
             )
             content_parts.append(
-                "\n<error>Ошибка обработки файла</error>"
+                "\nОшибка обработки файла"
                 f"Не удалось обработать файл '{file_info.get('original_name')}'."
             )
 
@@ -161,13 +161,13 @@ def _is_unsupported_location_error(exc: google_exceptions.GoogleAPICallError) ->
 def _format_google_api_error(exc: google_exceptions.GoogleAPICallError) -> str:
     if _is_unsupported_location_error(exc):
         return (
-            "<error>Сервис недоступен</error>"
+            "Сервис недоступен"
             "Языковая модель сейчас недоступна из текущего региона. "
             "Обратитесь к администратору или попробуйте позже."
         )
 
     return (
-        "<error>Ошибка API</error>"
+        "Ошибка API"
         f"Произошла ошибка при обращении к API Google: {_google_api_error_message(exc)}"
     )
 
@@ -229,7 +229,7 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
                 exc_info=True,
             )
             yield (
-                "<error>Внутренняя ошибка</error>"
+                "Внутренняя ошибка"
                 "Произошла внутренняя ошибка при отправке вашего сообщения модели."
             )
             return
@@ -245,14 +245,14 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
                         block_reason,
                     )
                     yield (
-                        "<error>Запрос заблокирован</error>"
+                        "Запрос заблокирован"
                         "Модель не сгенерировала ответ. Ваш запрос или контекст диалога мог быть "
                         "заблокирован по соображениям безопасности. Попробуйте переформулировать его."
                     )
                 else:
                     logger.error("Ответ для '%s' пуст, причина блокировки не найдена.", user_id)
                     yield (
-                        "<error>Пустой ответ</error>"
+                        "Пустой ответ"
                         "Модель не сгенерировала ответ. Это могло произойти из-за внутренних правил "
                         "безопасности или временной ошибки. Пожалуйста, попробуйте еще раз."
                     )
@@ -264,7 +264,7 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
                     exc_info=True,
                 )
                 yield (
-                    "<error>Пустой ответ</error>"
+                    "Пустой ответлан "
                     "Модель вернула пустой ответ, и не удалось определить причину. "
                     "Попробуйте переформулировать запрос."
                 )
@@ -279,12 +279,12 @@ def gemini_stream(user_id: str, user_message_data: Dict[str, Any]) -> Generator[
         error_text = str(exc)
         if "API key not valid" in error_text:
             yield (
-                "<error>Недействительный API-ключ</error>"
+                "Недействительный API-ключ"
                 "Произошла критическая ошибка: API-ключ недействителен. Обратитесь к администратору."
             )
         else:
             yield (
-                "<error>Критическая ошибка</error>"
+                "Критическая ошибка"
                 "Произошла критическая системная ошибка при обращении к языковой модели. "
                 "Пожалуйста, попробуйте позже."
             )

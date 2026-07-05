@@ -49,10 +49,9 @@ def test_format_google_api_error_redacts_unsupported_location_details():
 
     formatted = _format_google_api_error(error)
 
-    assert formatted.startswith("<error>Сервис недоступен</error>")
+    assert formatted.startswith("Сервис недоступен")
     assert "Языковая модель сейчас недоступна из текущего региона" in formatted
     assert "User location is not supported" not in formatted
-
 
 def test_format_google_api_error_includes_generic_message():
     error = google_exceptions.ServiceUnavailable("upstream unavailable")
@@ -60,10 +59,9 @@ def test_format_google_api_error_includes_generic_message():
     formatted = _format_google_api_error(error)
 
     assert formatted == (
-        "<error>Ошибка API</error>"
+        "Ошибка API"
         "Произошла ошибка при обращении к API Google: upstream unavailable"
     )
-
 
 def test_gemini_stream_handles_unsupported_location_without_raw_provider_error(monkeypatch):
     class FakeChat:
@@ -87,6 +85,6 @@ def test_gemini_stream_handles_unsupported_location_without_raw_provider_error(m
 
     output = "".join(gemini.gemini_stream("1", {"message": "Привет"}))
 
-    assert output.startswith("<error>Сервис недоступен</error>")
+    assert output.startswith("Сервис недоступен")
     assert "Языковая модель сейчас недоступна из текущего региона" in output
     assert "User location is not supported" not in output
