@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatText, highlightCode, refreshCodeLineNumbers } from './formatting';
+import { formatText, formatUserMessageText, highlightCode, refreshCodeLineNumbers } from './formatting';
 
 describe('formatText', () => {
     it('renders fenced code blocks with language metadata', () => {
@@ -26,6 +26,23 @@ describe('formatText', () => {
         expect(html).toContain('language-madeup');
         expect(html).toContain('&lt;unsafe&gt;&amp; value');
         expect(html).not.toContain('token keyword');
+    });
+});
+
+describe('formatUserMessageText', () => {
+    it('renders a leading quoted block separately from the user message body', () => {
+        const html = formatUserMessageText('> Привет! Готов помочь\n\nА что это?');
+
+        expect(html).toContain('class="user-message-quote-display"');
+        expect(html).toContain('<blockquote>Привет! Готов помочь</blockquote>');
+        expect(html).toContain('А что это?');
+    });
+
+    it('keeps regular user messages unchanged when there is no leading quote', () => {
+        const html = formatUserMessageText('А что это?');
+
+        expect(html).not.toContain('user-message-quote-display');
+        expect(html).toBe('А что это?');
     });
 });
 

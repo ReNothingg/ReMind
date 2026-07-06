@@ -254,14 +254,7 @@
     "readOnly": "Só leitura"
   },
   "models": {
-    "choose": "Escolher um modelo",
-    "gemini": {
-      "desc": "Modelo de uso geral da Google",
-      "badge": "Beta"
-    },
-    "echo": {
-      "desc": "Bot eco para testes"
-    }
+    "choose": "Escolher um modelo"
   },
   "rail": {
     "newChat": "Novo chat",
@@ -841,18 +834,21 @@
         "commitCreated": "Created branch commit",
         "diffLoaded": "Loaded generated diff",
         "pullRequestOpened": "Opened pull request",
-        "geminiMissingKey": "Gemini API key is missing",
-        "geminiRequestFailed": "Gemini request failed",
-        "geminiInvalidJson": "Gemini returned invalid JSON",
-        "geminiJsonParsed": "Gemini JSON parsed",
+        "aiProviderMissingKey": "AI provider key is missing",
+        "aiProviderRequestFailed": "AI provider request failed",
+        "aiProviderTextRequestFailed": "AI provider text request failed",
+        "aiProviderTextEmpty": "AI provider returned empty text",
+        "aiProviderTextGenerated": "AI provider text generated",
+        "aiProviderInvalidJson": "AI provider returned invalid JSON",
+        "aiProviderJsonParsed": "AI provider JSON parsed",
         "editorFailed": "Editor output was rejected",
         "noChanges": "No safe file edits"
       },
       "details": {
         "repoMapLoaded": "{{files}} files · {{directories}} folders",
         "filesCount": "{{count}} files",
-        "geminiJsonParsed": "{{chars}} response characters",
-        "geminiInvalidJson": "{{chars}} response characters; preview below",
+        "aiProviderJsonParsed": "{{chars}} response characters",
+        "aiProviderInvalidJson": "{{chars}} response characters; preview below",
         "commitCreated": "Branch: {{branch}}",
         "diffLoaded": "{{files}} changed files",
         "pullRequestOpened": "Pull request #{{number}}"

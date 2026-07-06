@@ -11,10 +11,10 @@ from services.github_app import (
     GitHubAgentExecutionError,
     GitHubAgentService,
     GitHubAPIError,
-    call_gemini_json,
     github_app_configured,
     github_app_missing_fields,
 )
+from services.ai_provider import generate_json
 from utils.auth import GitHubAgentTask, GitHubInstallation, db
 
 TASK_ID_RE = re.compile(r"(?<![A-Za-z0-9_-])(gh_[A-Za-z0-9_-]{12,})(?![A-Za-z0-9_-])")
@@ -356,7 +356,7 @@ def _should_use_ai_router(text: str, history: list[Any]) -> bool:
 def _classify_github_chat_route(text: str, history: list[Any]) -> dict[str, Any] | None:
     if not _should_use_ai_router(text, history):
         return None
-    raw_route = call_gemini_json(_build_github_route_prompt(text, history))
+    raw_route = generate_json(_build_github_route_prompt(text, history))
     if not isinstance(raw_route, dict):
         return None
 

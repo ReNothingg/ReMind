@@ -372,47 +372,7 @@ const InputArea = ({
                     content={fileModal.content}
                 />
 
-                <div className="input-wrapper ui-composer-shell">
-                    {isAuthenticated && !isReadOnly ? (
-                        <button
-                            type="button"
-                            className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]"
-                            title={t('composer.attachFiles')}
-                            aria-label={t('composer.attachFiles')}
-                            onClick={() => fileInputRef.current?.click()}
-                        />
-                    ) : (
-                        <button
-                            type="button"
-                            className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)] cursor-not-allowed opacity-50"
-                            title={isReadOnly ? t('composer.attachUnavailableReadOnly') : t('composer.attachRequiresAccount')}
-                            aria-label={t('composer.attachUnavailable')}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                if (!isReadOnly && onOpenAuth) onOpenAuth();
-                            }}
-                        />
-                    )}
-
-                    {!automaticWebSearch && (
-                        <button
-                            type="button"
-                            className={cn('web-search-toggle', manualWebSearchEnabled && 'active')}
-                            title={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
-                            aria-label={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
-                            aria-pressed={manualWebSearchEnabled}
-                            disabled={isReadOnly}
-                            onClick={() => {
-                                if (!isReadOnly) {
-                                    setWebSearchEnabled((enabled) => !enabled);
-                                }
-                            }}
-                        >
-                            <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
-                            <span>{t('composer.webSearchLabel')}</span>
-                        </button>
-                    )}
-
+                <div className={cn('input-wrapper ui-composer-shell', hasQuotes && 'has-quotes')}>
                     {hasQuotes && (
                         <div
                             id="quotePreviewArea"
@@ -450,36 +410,78 @@ const InputArea = ({
                         </div>
                     )}
 
-                    <textarea
-                        id="promptInput"
-                        ref={textareaRef}
-                        className="ui-composer-textarea"
-                        placeholder={isReadOnly ? t('composer.placeholderReadOnly') : t('composer.placeholder')}
-                        aria-label={t('composer.ariaInput')}
-                        aria-describedby={showDynamicWarning && dynamicWarning ? 'dynamicWarningLabel' : undefined}
-                        rows={1}
-                        value={text}
-                        onChange={(event) => setText(event.target.value)}
-                        onKeyDown={handleKeyDown}
-                        disabled={isReadOnly}
-                    ></textarea>
-
-                    <button
-                        id="sendButton"
-                        type="button"
-                        className={cn(
-                            'send-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]',
-                            hasContent || isLoading
-                                ? 'bg-foreground text-white hover:brightness-110'
-                                : 'bg-surface-alt',
-                            sendButtonClass
+                    <div className="ui-composer-input-row">
+                        {isAuthenticated && !isReadOnly ? (
+                            <button
+                                type="button"
+                                className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]"
+                                title={t('composer.attachFiles')}
+                                aria-label={t('composer.attachFiles')}
+                                onClick={() => fileInputRef.current?.click()}
+                            />
+                        ) : (
+                            <button
+                                type="button"
+                                className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)] cursor-not-allowed opacity-50"
+                                title={isReadOnly ? t('composer.attachUnavailableReadOnly') : t('composer.attachRequiresAccount')}
+                                aria-label={t('composer.attachUnavailable')}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    if (!isReadOnly && onOpenAuth) onOpenAuth();
+                                }}
+                            />
                         )}
-                        title={isReadOnly ? t('chat.readOnly') : sendButtonTitle}
-                        aria-label={isLoading ? t('composer.stop') : sendButtonTitle}
-                        onClick={handleSend}
-                        disabled={isReadOnly}
-                    >
-                    </button>
+
+                        {!automaticWebSearch && (
+                            <button
+                                type="button"
+                                className={cn('web-search-toggle', manualWebSearchEnabled && 'active')}
+                                title={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
+                                aria-label={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
+                                aria-pressed={manualWebSearchEnabled}
+                                disabled={isReadOnly}
+                                onClick={() => {
+                                    if (!isReadOnly) {
+                                        setWebSearchEnabled((enabled) => !enabled);
+                                    }
+                                }}
+                            >
+                                <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
+                                <span>{t('composer.webSearchLabel')}</span>
+                            </button>
+                        )}
+
+                        <textarea
+                            id="promptInput"
+                            ref={textareaRef}
+                            className="ui-composer-textarea"
+                            placeholder={isReadOnly ? t('composer.placeholderReadOnly') : t('composer.placeholder')}
+                            aria-label={t('composer.ariaInput')}
+                            aria-describedby={showDynamicWarning && dynamicWarning ? 'dynamicWarningLabel' : undefined}
+                            rows={1}
+                            value={text}
+                            onChange={(event) => setText(event.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={isReadOnly}
+                        ></textarea>
+
+                        <button
+                            id="sendButton"
+                            type="button"
+                            className={cn(
+                                'send-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]',
+                                hasContent || isLoading
+                                    ? 'bg-foreground text-white hover:brightness-110'
+                                    : 'bg-surface-alt',
+                                sendButtonClass
+                            )}
+                            title={isReadOnly ? t('chat.readOnly') : sendButtonTitle}
+                            aria-label={isLoading ? t('composer.stop') : sendButtonTitle}
+                            onClick={handleSend}
+                            disabled={isReadOnly}
+                        >
+                        </button>
+                    </div>
                 </div>
             </footer>
         </>

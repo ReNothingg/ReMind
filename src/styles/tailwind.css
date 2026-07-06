@@ -931,9 +931,13 @@
   }
 
   .ui-composer-shell {
-    @apply relative flex min-h-[var(--input-area-height-base)] flex-grow shrink-0 items-center gap-1 rounded-[var(--input-area-border-radius)] border px-2 py-1 shadow-[var(--shadow-xs)] transition duration-200;
+    @apply relative flex min-h-[var(--input-area-height-base)] flex-grow shrink-0 flex-col items-stretch gap-1 rounded-[var(--input-area-border-radius)] border px-2 py-1 shadow-[var(--shadow-xs)] transition duration-200;
     background: var(--input-pill-bg);
     border-color: var(--color-border-subtle);
+  }
+
+  .ui-composer-input-row {
+    @apply flex w-full items-end gap-1;
   }
 
   .ui-composer-shell:focus-within {
@@ -950,28 +954,36 @@
   }
 
   .ui-composer-quote-stack {
-    @apply flex max-h-[200px] max-w-[280px] flex-col gap-1.5 self-stretch overflow-y-auto rounded-[calc(var(--input-area-border-radius)-3px)] border p-1.5;
-    background: var(--color-bg-surface-alt);
-    border-color: rgba(var(--color-white-raw), 0.08);
+    @apply flex max-h-[128px] w-full max-w-none flex-col gap-1.5 self-stretch overflow-x-hidden overflow-y-auto rounded-[calc(var(--input-area-border-radius)-8px)];
+    background: transparent;
+    border-color: transparent;
+    margin: 0;
+    padding: 0;
+  }
+
+  .ui-composer-shell .quote-preview-area:not(:empty) {
+    margin: 0;
+    padding: 0;
+    align-items: stretch;
+    min-height: 0;
+    background: transparent;
+    border-color: transparent;
   }
 
   .ui-composer-quote-card {
-    @apply relative overflow-hidden rounded-[var(--radius-lg)] border border-l-[3px] px-3.5 py-2.5 pr-8 text-[0.85em] text-foreground transition duration-150;
+    @apply relative flex min-h-11 w-full min-w-0 flex-none items-center overflow-hidden rounded-md border border-l-[3px] px-3 py-2 pr-11 text-[0.85em] text-foreground transition duration-150;
     background: var(--color-bg-surface);
     border-color: rgba(var(--color-white-raw), 0.06);
     border-left-color: var(--color-accent);
   }
 
-  .ui-composer-quote-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(var(--color-accent-raw), 0.4);
-  }
-
   .ui-composer-quote-dismiss {
-    @apply absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border text-base font-semibold leading-none text-subtle transition duration-150;
+    @apply absolute top-1/2 right-2 flex size-6 items-center justify-center rounded-full border text-base font-semibold leading-none text-subtle transition duration-150;
     background: rgba(var(--color-bg-surface-alt-raw), 0.8);
     border-color: rgba(var(--color-white-raw), 0.1);
     font-size: 0;
+    translate: none;
+    transform: translateY(-50%);
   }
 
   .ui-composer-quote-dismiss:hover {
@@ -979,6 +991,8 @@
     background: rgba(var(--color-error-raw), 0.2);
     border-color: rgba(var(--color-error-raw), 0.4);
     color: var(--color-text-error);
+    translate: none;
+    transform: translateY(-50%);
   }
 
   .ui-composer-quote-dismiss::before {

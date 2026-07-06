@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/api';
+import { fileService } from '../services/fileService';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
 import { useSettings } from '../context/SettingsContext';
 
@@ -80,11 +81,33 @@ const WEB_SEARCH_STATUS_FALLBACKS = {
     generating_text: 'Preparing answer...'
 };
 
+function appendModelIfSelected(formData, model) {
+    const selectedModel = typeof model === 'string' ? model.trim() : '';
+    if (selectedModel) {
+        formData.append('model', selectedModel);
+    }
+}
+
 function isWebSearchStreamStatus(status) {
     return typeof status === 'string' && (
         status.startsWith('web_search_') ||
         status === 'generating_text'
     );
+}
+
+function isLocalPreviewUrl(value) {
+    return typeof value === 'string' && (
+        value.startsWith('blob:') ||
+        value.startsWith('data:')
+    );
+}
+
+async function getImageUploadMime(file) {
+    const knownImageMime = fileService.getImageMimeType(file);
+    if (knownImageMime) {
+        return knownImageMime;
+    }
+    return fileService.detectImageMimeFromFile(file);
 }
 
 function getWebSearchStatus(data, t) {
@@ -326,6 +349,31 @@ export const useChat = () => {
     const beatboxStateRef = useRef(null);
     const activeMindIdRef = useRef(null);
     const temporaryChatRef = useRef(false);
+    const localPreviewUrlsRef = useRef(new Set<string>());
+
+    const revokeLocalPreviewUrls = useCallback((urls = []) => {
+        urls.forEach((url) => {
+            if (typeof url === 'string' && url.startsWith('blob:') && localPreviewUrlsRef.current.has(url)) {
+                URL.revokeObjectURL(url);
+                localPreviewUrlsRef.current.delete(url);
+            }
+        });
+    }, []);
+
+    const createLocalPreviewUrl = useCallback((file, mimeType = '') => new Promise((resolve) => {
+        if (typeof FileReader === 'undefined') {
+            resolve('');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            resolve(fileService.normalizeImageDataUrl(result, mimeType));
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+    }), []);
 
     const setCanvasTextdocState = useCallback((value) => {
         const normalized = normalizeCanvasTextdoc(value);
@@ -696,7 +744,8 @@ export const useChat = () => {
         sessionAbortControllersRef.current.forEach((controller) => controller.abort());
         sessionAbortControllersRef.current.clear();
         sessionRequestIdsRef.current.clear();
-    }, []);
+        revokeLocalPreviewUrls(Array.from(localPreviewUrlsRef.current));
+    }, [revokeLocalPreviewUrls]);
 
     const loadSession = useCallback(async (sessionIdOrSlug, options: LoadSessionOptions = {}) => {
         const { historyMode = 'replace', clearHistory = true } = options;
@@ -826,7 +875,7 @@ export const useChat = () => {
                 }
                 if (msg.files && Array.isArray(msg.files)) {
                     msg.files.forEach(fileInfo => {
-                        if (fileInfo?.file) {
+                        if (fileInfo?.file?.url_path && !isLocalPreviewUrl(fileInfo.file.url_path)) {
                             parts.push({
                                 file: {
                                     url_path: fileInfo.file.url_path,
@@ -839,11 +888,13 @@ export const useChat = () => {
                 }
                 if (msg.images && Array.isArray(msg.images)) {
                     msg.images.forEach(imgPath => {
-                        parts.push({
-                            image: {
-                                url_path: imgPath
-                            }
-                        });
+                        if (!isLocalPreviewUrl(imgPath)) {
+                            parts.push({
+                                image: {
+                                    url_path: imgPath
+                                }
+                            });
+                        }
                     });
                 }
                 if (msg.parts && Array.isArray(msg.parts) && msg.parts.length > 0) {
@@ -915,7 +966,7 @@ export const useChat = () => {
         }
         return historyArray;
     }, [history]);
-    const sendMessage = useCallback(async (text, files = [], model = 'gemini', options: SendMessageOptions = {}) => {
+    const sendMessage = useCallback(async (text, files = [], model = '', options: SendMessageOptions = {}) => {
         const {
             webSearch = false,
             autoWebSearch: requestedAutoWebSearch,
@@ -960,11 +1011,32 @@ export const useChat = () => {
         if (!temporaryChat) {
             upsertOptimisticSession(sessionId, text, files);
         }
+        const optimisticImageUrls = [];
+        const optimisticFiles = [];
+        for (const file of files) {
+            const imageMime = await getImageUploadMime(file);
+            if (imageMime) {
+                const previewUrl = await createLocalPreviewUrl(file, imageMime);
+                if (previewUrl) {
+                    optimisticImageUrls.push(previewUrl);
+                }
+                continue;
+            }
+
+            optimisticFiles.push({
+                file: {
+                    original_name: file.name,
+                    mime_type: file.type || 'application/octet-stream',
+                    size: file.size || 0
+                }
+            });
+        }
         const userMsg = {
             id: `user-${Date.now()}`,
             role: 'user',
             content: text,
-            files: files.map(f => ({ file: { original_name: f.name } })),
+            images: optimisticImageUrls,
+            files: optimisticFiles,
             timestamp: Date.now() / 1000
         };
         const aiMsgId = `ai-${Date.now()}`;
@@ -984,7 +1056,7 @@ export const useChat = () => {
 
         const formData = new FormData();
         formData.append('message', text);
-        formData.append('model', model);
+        appendModelIfSelected(formData, model);
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
         if (canvasTextdocRef.current) {
@@ -1204,10 +1276,27 @@ export const useChat = () => {
                     const finalContent = typeof finalData.reply === 'string' ? finalData.reply : fullReply;
                     const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
                     const finalCanvasTextdoc = normalizeCanvasTextdoc(finalData.canvas_textdoc || finalData.canvasTextdoc);
+                    const uploadedFiles = Array.isArray(finalData.uploaded_files)
+                        ? finalData.uploaded_files
+                        : [];
+                    const uploadedImages = uploadedFiles
+                        .filter((file) => typeof file?.mime_type === 'string' && file.mime_type.startsWith('image/') && file.url_path)
+                        .map((file) => file.url_path);
+                    const uploadedNonImageFiles = uploadedFiles
+                        .filter((file) => !(typeof file?.mime_type === 'string' && file.mime_type.startsWith('image/')))
+                        .map((file) => ({ file }));
                     if (finalCanvasTextdoc) {
                         setCanvasTextdocState(finalCanvasTextdoc);
                     }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
+                        if (msg.id === userMsg.id && uploadedFiles.length > 0) {
+                            revokeLocalPreviewUrls(msg.images || []);
+                            return {
+                                ...msg,
+                                images: uploadedImages,
+                                files: uploadedNonImageFiles
+                            };
+                        }
                         if (msg.id === aiMsgId) {
                             const firstVariant = {
                                 content: finalContent,
@@ -1274,6 +1363,7 @@ export const useChat = () => {
         beginSessionRequest,
         buildHistoryForAPI,
         completeSessionRequest,
+        createLocalPreviewUrl,
         history,
         isSessionRequestCurrent,
         isReadOnly,
@@ -1283,6 +1373,7 @@ export const useChat = () => {
         setCanvasTextdocState,
         setTemporaryChatMode,
         storeGuestSessionToken,
+        revokeLocalPreviewUrls,
         syncBrowserPath,
         syncPersistedCurrentSession,
         syncSessionIdentity,
@@ -1300,7 +1391,7 @@ export const useChat = () => {
             controller.abort();
         }
     }, []);
-    const regenerateMessage = useCallback(async (aiMessageId, model = 'gemini') => {
+    const regenerateMessage = useCallback(async (aiMessageId, model = '') => {
         if (isLoading || !aiMessageId) return;
 
         const aiIndex = history.findIndex(msg => msg.id === aiMessageId);
@@ -1331,7 +1422,7 @@ export const useChat = () => {
 
         const formData = new FormData();
         formData.append('message', userMessage.content);
-        formData.append('model', model);
+        appendModelIfSelected(formData, model);
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
         if (canvasTextdocRef.current) {
@@ -1508,7 +1599,7 @@ export const useChat = () => {
             });
         });
     }, []);
-    const editMessage = useCallback(async (userMessageId, newText, model = 'gemini') => {
+    const editMessage = useCallback(async (userMessageId, newText, model = '') => {
         if (isLoading || !userMessageId || !newText?.trim() || isReadOnly) return;
 
         const userIndex = history.findIndex(msg => msg.id === userMessageId);
@@ -1552,7 +1643,7 @@ export const useChat = () => {
         const historyBefore = buildHistoryForAPI(userIndex);
         const formData = new FormData();
         formData.append('message', newText);
-        formData.append('model', model);
+        appendModelIfSelected(formData, model);
         formData.append('session_id', sessionId);
         formData.append('history', JSON.stringify(historyBefore));
         if (canvasTextdocRef.current) {

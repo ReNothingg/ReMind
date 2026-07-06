@@ -39,7 +39,20 @@ describe('fileService', () => {
         expect(fileService.isTextFile({ name: '', type: 'application/octet-stream' })).toBe(false);
 
         expect(fileService.isImageFile({ type: 'image/png' })).toBe(true);
+        expect(fileService.isImageFile({ name: 'photo.jpg', type: 'application/octet-stream' })).toBe(true);
+        expect(fileService.isImageFile({ name: 'pasted-image.webp', type: '' })).toBe(true);
+        expect(fileService.isImageFile({ name: 'camera.png', mime_type: 'image/png' })).toBe(true);
         expect(fileService.isImageFile({ type: 'application/pdf' })).toBe(false);
+    });
+
+    it('detects image content when browser metadata is missing', async () => {
+        const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        const pngFile = new File([pngBytes], 'upload', { type: '' });
+
+        await expect(fileService.detectImageMimeFromFile(pngFile)).resolves.toBe('image/png');
+
+        expect(fileService.normalizeImageDataUrl('data:application/octet-stream;base64,AAAA', 'image/png'))
+            .toBe('data:image/png;base64,AAAA');
     });
 
     it('formats file sizes with clamped decimals', () => {

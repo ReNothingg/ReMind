@@ -81,7 +81,8 @@ docker compose up --build
 SECRET_KEY=replace-with-a-long-random-secret
 DB_PASSWORD=replace-with-a-strong-db-password
 REDIS_PASSWORD=replace-with-a-strong-redis-password
-GEMINI_API_KEY=your-gemini-api-key
+AI_PROVIDER_API_KEY=your-ai-provider-api-key
+AI_PROVIDER_MODEL_NAME=your-ai-provider-model
 BACKEND_URL=https://your-domain.example
 ```
 

@@ -13,7 +13,13 @@ import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
 import { ALLOW_GUEST_CHATS_SAVE } from './utils/constants';
 import GlobalHeader from './features/chat/components/GlobalHeader';
-import { getFallbackModelId, isModelAvailable } from './features/chat/modelCatalog';
+import {
+    FALLBACK_MODELS,
+    getFallbackModelId,
+    isModelAvailable,
+    normalizeModelOptions,
+    type ChatModel,
+} from './features/chat/modelSelection';
 import { useSessionList, type SessionSummary } from './features/sessions/hooks/useSessionList';
 
 type AuthModalState = false | 'login' | 'register';
@@ -106,7 +112,8 @@ const MainLayout = () => {
         return clampCanvasWidth(Number.isFinite(parsed) ? parsed : CANVAS_DEFAULT_WIDTH);
     });
     const [isCanvasResizing, setCanvasResizing] = useState(false);
-    const [currentModel, setCurrentModel] = useState('gemini');
+    const [currentModel, setCurrentModel] = useState('');
+    const [availableModels, setAvailableModels] = useState<ChatModel[]>(FALLBACK_MODELS);
     const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
     const [routePath, setRoutePath] = useState(() =>
         typeof window !== 'undefined' ? window.location.pathname : '/'
@@ -151,9 +158,9 @@ const MainLayout = () => {
     });
 
     const isRailExpanded = isMobileViewport ? isMobileRailOpen : isRailExpandedDesktop;
-    const selectedModel = isAuthLoading || isModelAvailable(currentModel, user)
+    const selectedModel = isAuthLoading || isModelAvailable(currentModel, availableModels)
         ? currentModel
-        : getFallbackModelId(user);
+        : getFallbackModelId(availableModels);
     const visibleSessions = useMemo<SessionSummary[]>(() => {
         const byId = new Map<string, SessionSummary>(sessions.map((session) => [session.session_id, session]));
         Object.values(optimisticSessions as Record<string, SessionSummary>).forEach((session) => {
@@ -180,6 +187,28 @@ const MainLayout = () => {
 
         return () => mediaQuery.removeEventListener('change', handleViewportChange);
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void apiService
+            .listModels()
+            .then((models) => {
+                if (!cancelled) {
+                    setAvailableModels(normalizeModelOptions(models));
+                }
+            })
+            .catch((error) => {
+                console.warn('Failed to load model catalog:', error);
+                if (!cancelled) {
+                    setAvailableModels(FALLBACK_MODELS);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, user?.id]);
 
     useEffect(() => {
         if (isMobileRailOpen && (!isMobileViewport || !isAuthenticated)) {
@@ -814,9 +843,9 @@ const MainLayout = () => {
                 <main className="ui-app-main-shell">
                     <GlobalHeader
                         isAuthenticated={isAuthenticated}
-                        currentUser={user}
                         onMenuToggle={handleRailToggle}
                         currentModel={selectedModel}
+                        models={availableModels}
                         onModelChange={setCurrentModel}
                         onOpenAuth={() => setAuthOpen('login')}
                         onShowRegister={() => setAuthOpen('register')}
@@ -979,13 +1008,13 @@ const MainLayout = () => {
                                     onRegenerate={(messageId) => {
                                         if (regenerateMessage) {
                                             notifyOnDoneRef.current = true;
-                                            regenerateMessage(messageId, currentModel);
+                                            regenerateMessage(messageId, selectedModel);
                                         }
                                     }}
                                     onEdit={(messageId, newText) => {
                                         if (editMessage) {
                                             notifyOnDoneRef.current = true;
-                                            editMessage(messageId, newText, currentModel);
+                                            editMessage(messageId, newText, selectedModel);
                                         }
                                     }}
                                     onSwitchVariant={(messageId, direction) => {
@@ -1108,7 +1137,7 @@ const MainLayout = () => {
                                 : null
                         }
                         onClose={() => setImageLightbox({ isOpen: false, imageSrc: null, messageId: null })}
-                        currentModel={currentModel}
+                        currentModel={selectedModel}
                         sessionId={currentSessionId}
                     />
                 </Suspense>

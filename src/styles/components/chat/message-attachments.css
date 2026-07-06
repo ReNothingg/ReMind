@@ -117,35 +117,34 @@
 }
 
 .user-message .message-content .user-message-quote-display {
-  margin-bottom: calc(var(--spacing-unit) * 2);
-
+  margin-bottom: calc(var(--spacing-unit) * 2.5);
   padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 3);
-
-  background-color: rgba(var(--color-black-raw), 0.15);
-
-  border-left: 3px solid var(--color-border-strong);
-
-  border-radius: var(--radius-sm);
+  background-color: rgba(var(--color-accent-raw), 0.12);
+  border: 1px solid rgba(var(--color-accent-raw), 0.24);
+  border-left: 3px solid rgba(var(--color-accent-raw), 0.8);
+  border-radius: var(--radius-md);
   font-size: 0.9em;
-  color: var(--color-text-secondary);
+  color: var(--user-message-text-color);
 }
 
 .user-message .message-content .user-message-quote-display blockquote {
   margin: 0;
   padding: 0;
   font-style: italic;
+  line-height: 1.5;
+  opacity: 0.82;
 }
 
 .message-image-grid {
-  margin-top: calc(var(--spacing-unit) * 2.5);
+  margin: calc(var(--spacing-unit) * 2.5) auto 0;
   display: grid;
   gap: calc(var(--spacing-unit) * 2);
-  width: min(100%, 720px);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  width: min(100%, 560px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 }
 
 .message-image-grid[data-count='1'] {
-  width: min(100%, 640px);
+  width: min(100%, 520px);
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -158,18 +157,23 @@
   box-shadow: var(--shadow-xs);
 }
 
+.message-image-card.is-error {
+  min-height: 180px;
+}
+
 .message-image-button {
   position: relative;
   display: flex;
-  min-height: 220px;
   width: 100%;
+  min-height: min(42vw, 292px);
+  max-height: min(58vh, 520px);
+  aspect-ratio: 16 / 9;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   padding: 0;
   border: 0;
   background: rgba(var(--color-black-raw), 0.2);
-  aspect-ratio: 16 / 11;
 }
 
 .message-image-button.is-interactive {
@@ -182,18 +186,28 @@
 
 .message-image-element {
   display: block;
-  width: 100%;
-  height: 100%;
-  max-height: none;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(58vh, 520px);
   object-fit: contain;
   background: transparent;
   transition:
     transform var(--transition-fast),
     opacity var(--transition-fast);
+  opacity: 0;
+}
+
+.message-image-card.is-loaded .message-image-button {
+  background: transparent;
 }
 
 .message-image-card.is-loaded .message-image-element {
   opacity: 1;
+}
+
+.message-image-card.is-error .message-image-button {
+  aspect-ratio: auto;
 }
 
 .message-image-button.is-interactive:hover .message-image-element {

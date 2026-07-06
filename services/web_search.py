@@ -16,8 +16,6 @@ from bs4 import BeautifulSoup
 
 from ai_engine.tool_prompts import load_tool_prompt_section
 from config import (
-    GEMINI_API_KEY,
-    GEMINI_MODEL_NAME,
     USER_AGENT,
     WEB_SEARCH_ENABLED,
     WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
@@ -25,6 +23,7 @@ from config import (
     WEB_SEARCH_MAX_RESULTS,
     WEB_SEARCH_PAGE_TEXT_CHARS,
 )
+from services.ai_provider import generate_text, is_ai_provider_configured
 
 SEARCH_HEADERS = {
     "User-Agent": USER_AGENT,
@@ -234,15 +233,7 @@ def _coerce_model_bool(value: Any) -> bool | None:
 
 
 def _call_search_decision_model(prompt: str) -> str:
-    import google.generativeai as genai
-
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-1.5-flash")
-    response = model.generate_content(
-        prompt,
-        generation_config={"temperature": 0, "max_output_tokens": 120},
-    )
-    return (getattr(response, "text", None) or "").strip()
+    return generate_text(prompt, temperature=0, max_output_tokens=120) or ""
 
 
 def decide_auto_web_search(query: str) -> dict[str, Any]:
@@ -264,7 +255,7 @@ def decide_auto_web_search(query: str) -> dict[str, Any]:
             "reason": "user asked not to search",
             "source": "rule",
         }
-    if not GEMINI_API_KEY:
+    if not is_ai_provider_configured():
         return fallback
 
     try:
@@ -299,7 +290,7 @@ def rewrite_web_search_query(query: str) -> dict[str, Any]:
     }
     if not WEB_SEARCH_ENABLED or not cleaned:
         return fallback
-    if not GEMINI_API_KEY:
+    if not is_ai_provider_configured():
         return fallback
 
     try:

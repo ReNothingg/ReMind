@@ -4,20 +4,11 @@ import logging
 from importlib import import_module
 from typing import Any, Callable
 
+from ai_engine.registry import get_model_definition
+
 logger = logging.getLogger(__name__)
 
 ModelFunction = Callable[..., Any]
-
-_MODEL_IMPORTS: dict[str, tuple[str, str]] = {
-    "demo_image": ("ai_engine.demo_image", "demo_image_stream"),
-    "echo": ("ai_engine.echo", "echo"),
-    "echo_stream": ("ai_engine.echo", "echo_stream"),
-    "gemini": ("ai_engine.gemini", "gemini_stream"),
-}
-
-_OPTIONAL_MODEL_IMPORTS: dict[str, tuple[str, str]] = {
-    "mindart": ("ai_engine.MindArt", "MindArt_stream"),
-}
 
 
 def _load_model_function(module_name: str, attr_name: str) -> ModelFunction | None:
@@ -32,15 +23,8 @@ def _load_model_function(module_name: str, attr_name: str) -> ModelFunction | No
 
 
 def get_model_function(model_name: str) -> ModelFunction | None:
-    model_name_lower = (model_name or "").strip().lower()
-    if not model_name_lower:
+    definition = get_model_definition(model_name)
+    if not definition:
         return None
 
-    registry_entry = _MODEL_IMPORTS.get(model_name_lower) or _OPTIONAL_MODEL_IMPORTS.get(
-        model_name_lower
-    )
-    if not registry_entry:
-        return None
-
-    module_name, attr_name = registry_entry
-    return _load_model_function(module_name, attr_name)
+    return _load_model_function(definition.module, definition.handler)

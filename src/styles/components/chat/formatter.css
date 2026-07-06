@@ -206,8 +206,12 @@
 
 .ai-message img.markdown-image,
 .user-message img.markdown-image {
-  max-width: 100%;
+  box-sizing: border-box;
+  width: auto;
+  max-width: min(100%, 520px);
+  max-height: min(58vh, 520px);
   height: auto;
+  object-fit: contain;
   border-radius: var(--radius-lg);
   margin: calc(var(--spacing-unit) * 3) auto;
   border: 1px solid var(--code-block-border);

@@ -87,7 +87,7 @@
 |---|---|
 | Frontend | React 19, TypeScript, Vite 7, i18next, Chart.js, D3, Mermaid, Nomnoml |
 | Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-Session, Authlib, Waitress, Gunicorn |
-| AI / Media | Gemini API, local `echo`, `demo_image`, Pillow, gTTS |
+| AI / Media | AI provider adapter, local `echo`, `demo_image`, Pillow, gTTS |
 | Storage / Queue | SQLite for local development, PostgreSQL for deployment, Redis, Celery |
 | Infra | Docker, Docker Compose, Nginx |
 | Quality | Ruff, Black, MyPy, Pytest, Vitest, Playwright, GitHub Actions |
@@ -102,7 +102,7 @@
 - Node.js `20+`
 - Redis `7+`
 - Git
-- `GEMINI_API_KEY` для основного Gemini-сценария
+- `AI_PROVIDER_API_KEY` для основного AI-сценария
 
 ### 1. Клонирование
 
@@ -143,10 +143,11 @@ DATABASE_URL=sqlite:///database/users.db
 REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/1
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
-GEMINI_API_KEY=
+AI_PROVIDER_API_KEY=
+AI_PROVIDER_MODEL_NAME=
 ```
 
-`GEMINI_API_KEY` нужен для основного AI provider. Для локальных smoke-тестов UI, SSE и истории можно использовать встроенные `echo` и `demo_image`.
+`AI_PROVIDER_API_KEY` нужен для основного AI provider. Для локальных smoke-тестов UI, SSE и истории можно использовать встроенные `echo` и `demo_image`.
 
 ### 4. Запуск frontend + backend
 
@@ -207,7 +208,7 @@ graph TD
   API --> SERVICES
   API --> AUTH[Auth + Session Layer]
   API --> FILES[Secure Upload Pipeline]
-  SERVICES --> AI[Gemini / Echo / Demo Image]
+  SERVICES --> AI[AI Provider / Echo / Demo Image]
   SERVICES --> DB[(SQLite / PostgreSQL)]
   API --> REDIS[(Redis)]
   REDIS --> CELERY[Celery Worker]
@@ -317,7 +318,7 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 ## 📌 Текущее состояние
 
 - `beta`: UX и внутренняя архитектура продолжают активно меняться.
-- Основной AI-флоу требует `GEMINI_API_KEY`.
+- Основной AI-флоу требует `AI_PROVIDER_API_KEY`.
 - SQLite удобен для локальной разработки.
 - Shared/public deployments лучше запускать на PostgreSQL + Redis.
 

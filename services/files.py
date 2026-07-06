@@ -61,8 +61,9 @@ def handle_file_upload(file_storage, user_id):
         safe_filename_result.rsplit(".", 1)[1].lower() if "." in safe_filename_result else ""
     )
     mimetype = file_storage.mimetype or "application/octet-stream"
-    is_image = mimetype.startswith("image/") and extension in ALLOWED_IMAGE_EXTENSIONS
-    if not is_image and extension not in ALLOWED_FILE_EXTENSIONS:
+    extension_is_image = extension in ALLOWED_IMAGE_EXTENSIONS
+    is_image = extension_is_image and mimetype.startswith("image/")
+    if not extension_is_image and extension not in ALLOWED_FILE_EXTENSIONS:
         return None
     final_filename = f"{uuid.uuid4().hex}.{extension}" if extension else uuid.uuid4().hex
     filepath = UPLOAD_FOLDER / final_filename
@@ -81,6 +82,7 @@ def handle_file_upload(file_storage, user_id):
         return None
     if detected_mime:
         mimetype = detected_mime
+    is_image = extension_is_image and mimetype.startswith("image/")
 
     model_part = {}
     if is_image and PIL_AVAILABLE:

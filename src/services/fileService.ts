@@ -1,8 +1,46 @@
-import { VALID_IMAGE_MIME_TYPES, TEXT_FILE_EXTENSIONS } from '../utils/constants';
+import { IMAGE_FILE_EXTENSIONS, VALID_IMAGE_MIME_TYPES, TEXT_FILE_EXTENSIONS } from '../utils/constants';
+
+const getFileExtension = (file) => {
+    const name = typeof file?.name === 'string' ? file.name : typeof file?.original_name === 'string' ? file.original_name : '';
+    return name.includes('.') ? name.split('.').pop()?.toLowerCase() || '' : '';
+};
+
+const IMAGE_EXTENSION_MIME_TYPES = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml'
+};
+
+const detectImageMimeFromBytes = (bytes) => {
+    if (!bytes || bytes.length < 4) return '';
+
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+        return 'image/png';
+    }
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+        return 'image/jpeg';
+    }
+    if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+        return 'image/gif';
+    }
+    if (
+        bytes.length >= 12 &&
+        bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+        bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+    ) {
+        return 'image/webp';
+    }
+
+    return '';
+};
 
 export const fileService = {
     MAX_FILES: 10,
     TEXT_EXTENSIONS: TEXT_FILE_EXTENSIONS,
+    IMAGE_EXTENSIONS: IMAGE_FILE_EXTENSIONS,
     VALID_IMAGE_MIME_TYPES,
 
     validateFile(file) {
@@ -32,12 +70,46 @@ export const fileService = {
 
     isTextFile(file) {
         if (!file?.name) return false;
-        const extension = file.name.split('.').pop()?.toLowerCase() || '';
-        return file.type.startsWith('text/') || this.TEXT_EXTENSIONS.includes(extension);
+        const extension = getFileExtension(file);
+        return file.type?.startsWith('text/') || this.TEXT_EXTENSIONS.includes(extension);
     },
 
     isImageFile(file) {
-        return this.VALID_IMAGE_MIME_TYPES.includes(file.type);
+        const extension = getFileExtension(file);
+
+        return (
+            Boolean(this.getImageMimeType(file)) ||
+            this.IMAGE_EXTENSIONS.includes(extension)
+        );
+    },
+
+    getImageMimeType(file) {
+        const mimeType = typeof file?.type === 'string'
+            ? file.type
+            : (typeof file?.mime_type === 'string' ? file.mime_type : '');
+        if (this.VALID_IMAGE_MIME_TYPES.includes(mimeType) || mimeType.startsWith('image/')) {
+            return mimeType;
+        }
+
+        const extension = getFileExtension(file);
+        return IMAGE_EXTENSION_MIME_TYPES[extension] || '';
+    },
+
+    async detectImageMimeFromFile(file) {
+        if (!file?.slice || typeof file.slice !== 'function') return '';
+        try {
+            const buffer = await file.slice(0, 12).arrayBuffer();
+            return detectImageMimeFromBytes(new Uint8Array(buffer));
+        } catch {
+            return '';
+        }
+    },
+
+    normalizeImageDataUrl(dataUrl, mimeType) {
+        if (!mimeType || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+            return dataUrl;
+        }
+        return dataUrl.replace(/^data:[^;]*;/, `data:${mimeType};`);
     },
 
     formatFileSize(bytes, decimals = 2) {

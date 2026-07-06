@@ -28,4 +28,4 @@ ReMind has iOS version. The project is located here: `IOS/`
 
 ## MacOS Rules
 
-ReMind has macos version. The project is located here: `macos/`.
+ReMind has macos version **by WebView**. The project is located here: `macos/`.

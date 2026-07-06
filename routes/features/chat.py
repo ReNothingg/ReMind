@@ -13,6 +13,7 @@ from flask import Flask, Response, current_app, request, send_file, send_from_di
 from werkzeug.utils import secure_filename
 
 from ai_engine import get_model_function
+from ai_engine.registry import DEFAULT_MODEL_ID
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
@@ -33,7 +34,8 @@ from services.chat_history import (
 )
 from services.files import handle_file_upload
 from services.github_chat import handle_github_chat_message
-from services.model_access import can_user_access_model, get_model_stage
+from services.ai_provider import generate_text, is_ai_provider_configured
+from services.model_access import can_user_access_model, get_model_stage, model_exists
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
     auto_web_search_requested,
@@ -151,7 +153,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
     if request.is_json:
         data: dict[str, Any] = request.get_json(silent=True) or {}
         session_id = resolve_session_id(_extract_session_identifier(data))
-        model_name = data.get("model", "gemini")
+        model_name = str(data.get("model") or "").strip() or DEFAULT_MODEL_ID
         data["session_id"] = session_id
         data["canvas_textdoc"] = normalize_canvas_textdoc(data.get("canvas_textdoc"))
         data["beatbox_state"] = normalize_beatbox_state(data.get("beatbox_state"))
@@ -170,7 +172,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
 
     user_data: dict[str, Any] = request.form.to_dict()
     session_id = resolve_session_id(_extract_session_identifier(user_data))
-    model_name = user_data.get("model", "gemini")
+    model_name = str(user_data.get("model") or "").strip() or DEFAULT_MODEL_ID
     user_data["session_id"] = session_id
     _validate_message_in_payload(user_data)
 
@@ -709,6 +711,7 @@ def _stream_chat_response(
 
                 final_data["reply"] = canvas_result.reply
                 final_data["sessionId"] = resolved_session_id
+                final_data["uploaded_files"] = user_data.get("files", [])
                 if allow_guest_file_persistence and not temporary_chat:
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
@@ -786,6 +789,10 @@ def register_chat_routes(api_bp):
             and not (db_user_id and share_entry.user_id == db_user_id)
         ):
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
+        if not model_exists(model_name):
+            raise ApiError(
+                f"Model '{model_name}' not supported.", status=400, code="model_not_supported"
+            )
         if not can_user_access_model(model_name, db_user_id):
             stage = get_model_stage(model_name).value
             raise ApiError(
@@ -842,6 +849,7 @@ def register_chat_routes(api_bp):
                 )
 
             response_data = {**github_chat_output, "sessionId": resolved_session_id}
+            response_data["uploaded_files"] = user_data.get("files", [])
             if allow_guest_file_persistence and not temporary_chat:
                 response_data["session_token"] = _generate_guest_session_token(
                     resolved_session_id, int(time.time())
@@ -939,6 +947,7 @@ def register_chat_routes(api_bp):
                 resolved_session_id, int(time.time())
             )
         response_data["sessionId"] = resolved_session_id
+        response_data["uploaded_files"] = user_data.get("files", [])
 
         return make_ok(response_data)
 
@@ -961,18 +970,10 @@ def register_chat_routes(api_bp):
         if not re.match(r"^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$", target_lang.strip()):
             raise ApiError("Invalid target_lang", status=400, code="invalid_target_lang")
 
-        from config import GEMINI_API_KEY, GEMINI_MODEL_NAME
-
-        if not GEMINI_API_KEY:
+        if not is_ai_provider_configured():
             raise ApiError(
                 "Translation is temporarily unavailable", status=503, code="translation_unavailable"
             )
-
-        import google.generativeai as genai
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model_name = GEMINI_MODEL_NAME or "gemini-1.5-flash"
-        model = genai.GenerativeModel(model_name)
 
         prompt = (
             "Translate the following text to the target language.\n"
@@ -981,8 +982,7 @@ def register_chat_routes(api_bp):
             f"{text}"
         )
 
-        response = model.generate_content(prompt, generation_config={"temperature": 0})
-        translated_text = (getattr(response, "text", None) or "").strip()
+        translated_text = (generate_text(prompt, temperature=0) or "").strip()
         if not translated_text:
             raise ApiError("Translation failed", status=500, code="translation_failed")
         return make_ok({"translated_text": translated_text})

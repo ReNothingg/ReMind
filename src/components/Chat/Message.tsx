@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
-import { formatText, formatPlainText, formatUserText, highlightCode, refreshCodeLineNumbers } from '../../utils/formatting';
+import { formatText, formatPlainText, formatUserMessageText, highlightCode, refreshCodeLineNumbers } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { fileService } from '../../services/fileService';
 import Quiz from '../Widgets/Quiz';
@@ -32,14 +32,12 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
     const [hasError, setHasError] = useState(false);
     const { t } = useTranslation();
 
-    useEffect(() => {
-        const frame = window.requestAnimationFrame(() => {
-            setIsLoaded(false);
-            setHasError(false);
-        });
-
-        return () => window.cancelAnimationFrame(frame);
+    useLayoutEffect(() => {
+        setIsLoaded(false);
+        setHasError(false);
     }, [src]);
+
+    const isLocalPreview = typeof src === 'string' && (src.startsWith('blob:') || src.startsWith('data:'));
 
     const imageContent = (
         <>
@@ -54,7 +52,7 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
                         className="attached-img message-image-element"
                         src={src}
                         alt={alt}
-                        loading="lazy"
+                        loading={isLocalPreview ? 'eager' : 'lazy'}
                         decoding="async"
                         onLoad={() => setIsLoaded(true)}
                         onError={() => {
@@ -108,6 +106,21 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
             )}
         </div>
     );
+};
+
+const resolveMediaUrl = (path) => {
+    if (typeof path !== 'string' || !path) {
+        return '';
+    }
+    if (
+        path.startsWith('http://') ||
+        path.startsWith('https://') ||
+        path.startsWith('blob:') ||
+        path.startsWith('data:')
+    ) {
+        return path;
+    }
+    return `${apiService.baseURL}${path}`;
 };
 
 function stripCanmoreToolMarkup(text) {
@@ -1084,9 +1097,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     const markdownEnabledForMessage = isUser ? !!settings.renderUserMarkdown : !!settings.renderMarkdown;
     const htmlContent = useMemo(() => {
         if (isUser) {
-            return markdownEnabledForMessage
-                ? formatUserText(content || '', { labels: formatLabels })
-                : formatPlainText(content || '');
+            return formatUserMessageText(content || '', {
+                labels: formatLabels,
+                renderMarkdown: markdownEnabledForMessage,
+            });
         }
         if (!markdownEnabledForMessage) {
             return formatPlainText(displayContent || '');
@@ -1238,7 +1252,18 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         if (!markdownEnabledForMessage || !contentRef.current) return;
 
         const handleClick = (e) => {
-            const target = e.target.closest('button');
+            const eventTarget = e.target instanceof Element ? e.target : null;
+            const markdownImage = eventTarget?.closest('img.markdown-image');
+            if (markdownImage instanceof HTMLImageElement) {
+                const imageSrc = markdownImage.currentSrc || markdownImage.src;
+                if (imageSrc && window.openImageLightbox) {
+                    e.preventDefault();
+                    window.openImageLightbox(imageSrc, message.id);
+                    return;
+                }
+            }
+
+            const target = eventTarget?.closest('button');
             if (!target) return;
 
             if (target.classList.contains('table-copy-btn')) {
@@ -1407,7 +1432,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 currentRef.removeEventListener('click', handleClick);
             };
         }
-    }, [displayContent, markdownEnabledForMessage, t]);
+    }, [displayContent, markdownEnabledForMessage, message.id, t]);
     const handleCopy = async () => {
         const contentToCopy = isUser ? content : displayContent;
         if (!contentToCopy) return;
@@ -1540,9 +1565,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                 return null;
                             }
 
-                            const fullSrc = imagePath.startsWith('http')
-                                ? imagePath
-                                : `${apiService.baseURL}${imagePath}`;
+                            const fullSrc = resolveMediaUrl(imagePath);
                             return (
                                 <MessageImageAttachment
                                     key={`${message.id}-image-${idx}`}
@@ -1570,13 +1593,16 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                             }
 
                             const fileName = file.original_name || file.name || t('files.fileFallback');
-                            const fileUrl = file.url_path || '';
-                            const fullUrl = fileUrl.startsWith('http') ? fileUrl : (fileUrl ? `${apiService.baseURL}${fileUrl}` : '');
+                            const fileUrl = file.local_preview_url || file.url_path || '';
+                            const fullUrl = resolveMediaUrl(fileUrl);
                             const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
                             const ext = fileName.split('.').pop()?.toLowerCase() || '';
                             const iconPath = fileService.getFileIconPath(ext);
-                            const isImage = file.mime_type && fileService.VALID_IMAGE_MIME_TYPES.includes(file.mime_type) ||
-                                          (ext && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext));
+                            const isImage = fileService.isImageFile({
+                                name: fileName,
+                                type: file.mime_type,
+                                mime_type: file.mime_type
+                            });
 
                             return (
                                 <div
@@ -1586,39 +1612,27 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                 >
                                     <div className="attachment-card-preview ui-attachment-preview">
                                         {isImage && fullUrl ? (
-                                            isUser ? (
+                                            <button
+                                                type="button"
+                                                className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
+                                                onClick={() => {
+                                                    if (window.openImageLightbox) {
+                                                        window.openImageLightbox(fullUrl, message.id);
+                                                    }
+                                                }}
+                                                aria-label={`${t('chatImage.open')}: ${fileName}`}
+                                            >
                                                 <img
                                                     src={fullUrl}
-                                                    alt={fileName}
+                                                    alt=""
+                                                    aria-hidden="true"
                                                     className="image-thumbnail h-full w-full object-cover"
                                                     onError={(e) => {
                                                         e.currentTarget.src = iconPath;
                                                         e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
                                                     }}
                                                 />
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
-                                                    onClick={() => {
-                                                        if (window.openImageLightbox) {
-                                                            window.openImageLightbox(fullUrl, message.id);
-                                                        }
-                                                    }}
-                                                    aria-label={`${t('chatImage.open')}: ${fileName}`}
-                                                >
-                                                    <img
-                                                        src={fullUrl}
-                                                        alt=""
-                                                        aria-hidden="true"
-                                                        className="image-thumbnail h-full w-full object-cover"
-                                                        onError={(e) => {
-                                                            e.currentTarget.src = iconPath;
-                                                            e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
-                                                        }}
-                                                    />
-                                                </button>
-                                            )
+                                            </button>
                                         ) : (
                                             <img
                                                 src={iconPath}
@@ -1641,7 +1655,19 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                             }}
                                         />
                                         <div className="attachment-card-footer-info">
-                                            {fullUrl ? (
+                                            {fullUrl && isImage ? (
+                                                <button
+                                                    type="button"
+                                                    className="file-card-name border-0 bg-transparent p-0 text-left"
+                                                    onClick={() => {
+                                                        if (window.openImageLightbox) {
+                                                            window.openImageLightbox(fullUrl, message.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    {fileName}
+                                                </button>
+                                            ) : fullUrl ? (
                                                 <a
                                                     href={fullUrl}
                                                     target="_blank"

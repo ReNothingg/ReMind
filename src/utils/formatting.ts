@@ -229,6 +229,10 @@ type FormatTextOptions = {
     }>;
 };
 
+type FormatUserMessageOptions = FormatTextOptions & {
+    renderMarkdown?: boolean;
+};
+
 const DEFAULT_FORMAT_LABELS: FormatLabels = {
     codeBlock: {
         codeSnippet: 'Code snippet',
@@ -564,6 +568,57 @@ export const formatText = (text, options: FormatTextOptions = {}) => {
 export const formatPlainText = (text) => {
     if (!text) return '';
     return linkifyEscapedText(escapeHtml(text)).replace(/\n/g, '<br>');
+};
+
+const extractLeadingUserQuote = (text) => {
+    const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+    if (!lines[0]?.trimStart().startsWith('>')) {
+        return null;
+    }
+
+    const quoteLines: string[] = [];
+    let index = 0;
+    while (index < lines.length && lines[index].trimStart().startsWith('>')) {
+        quoteLines.push(lines[index].replace(/^\s*>\s?/, ''));
+        index += 1;
+    }
+
+    while (index < lines.length && lines[index].trim() === '') {
+        index += 1;
+    }
+
+    const quote = quoteLines.join('\n').trim();
+    if (!quote) {
+        return null;
+    }
+
+    return {
+        quote,
+        body: lines.slice(index).join('\n'),
+    };
+};
+
+export const formatUserMessageText = (text, options: FormatUserMessageOptions = {}) => {
+    if (!text) return '';
+
+    const renderBody = (value) => (
+        options.renderMarkdown
+            ? formatUserText(value, { labels: options.labels })
+            : formatPlainText(value)
+    );
+    const leadingQuote = extractLeadingUserQuote(text);
+
+    if (!leadingQuote) {
+        return renderBody(text);
+    }
+
+    const quoteHtml = `
+        <div class="user-message-quote-display">
+            <blockquote>${formatPlainText(leadingQuote.quote)}</blockquote>
+        </div>
+    `;
+    const bodyHtml = leadingQuote.body.trim() ? renderBody(leadingQuote.body) : '';
+    return `${quoteHtml}${bodyHtml}`;
 };
 
 const userMd = new MarkdownIt({

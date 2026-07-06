@@ -18,8 +18,6 @@ from urllib3.util.retry import Retry
 
 from config import (
     BASE_PATH,
-    GEMINI_API_KEY,
-    GEMINI_MODEL_NAME,
     GITHUB_AGENT_MAX_FILE_CHARS,
     GITHUB_AGENT_MAX_PLAN_FILES,
     GITHUB_APP_CLIENT_ID,
@@ -30,6 +28,7 @@ from config import (
     GITHUB_APP_SLUG,
     GITHUB_BRANCH_PREFIX,
 )
+from services.ai_provider import generate_json_with_trace, generate_text_with_trace
 
 GITHUB_API_BASE = "https://api.github.com"
 GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -845,72 +844,6 @@ def read_file_contexts(
     return contexts
 
 
-def call_gemini_json_with_trace(prompt: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    if not GEMINI_API_KEY:
-        return None, _activity("geminiMissingKey", "warning")
-    try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-3.1-flash-lite")
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.2,
-                "response_mime_type": "application/json",
-            },
-        )
-        text = getattr(response, "text", "") or ""
-    except Exception as exc:
-        return None, _activity(
-            "geminiRequestFailed",
-            "error",
-            {"message": str(exc)[:500]},
-        )
-    parsed = _json_from_text(text)
-    if parsed is None:
-        return None, _activity(
-            "geminiInvalidJson",
-            "error",
-            {
-                "response_preview": _text_preview(text),
-                "response_chars": len(text),
-            },
-        )
-    return parsed, _activity("geminiJsonParsed", "done", {"response_chars": len(text)})
-
-
-def call_gemini_json(prompt: str) -> dict[str, Any] | None:
-    parsed, _trace = call_gemini_json_with_trace(prompt)
-    return parsed
-
-
-def call_gemini_text_with_trace(prompt: str) -> tuple[str | None, dict[str, Any]]:
-    if not GEMINI_API_KEY:
-        return None, _activity("geminiMissingKey", "warning")
-    try:
-        import google.generativeai as genai
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel(GEMINI_MODEL_NAME or "gemini-3.1-flash-lite")
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.2,
-            },
-        )
-        text = getattr(response, "text", "") or ""
-    except Exception as exc:
-        return None, _activity(
-            "geminiTextRequestFailed",
-            "error",
-            {"message": str(exc)[:500]},
-        )
-    if not text.strip():
-        return None, _activity("geminiTextEmpty", "error")
-    return text, _activity("geminiTextGenerated", "done", {"response_chars": len(text)})
-
-
 def _is_russian_text(value: str) -> bool:
     return bool(re.search(r"[а-яА-ЯёЁ]", str(value or "")))
 
@@ -1353,7 +1286,7 @@ def build_single_file_text_edit_payload(
     path = _normalize_path(str(file_context.get("path") or ""))
     original_content = str(file_context.get("content") or "")
     activity.append(_activity("textEditorFallbackStarted", "done", {"path": path}))
-    raw_text, trace = call_gemini_text_with_trace(
+    raw_text, trace = generate_text_with_trace(
         build_single_file_text_edit_prompt(task, repo_full_name, base_branch, plan, file_context)
     )
     activity.append(trace)
@@ -1694,7 +1627,7 @@ class GitHubAgentService:
             )
         )
         activity.append(_activity("plannerStarted", "done"))
-        raw_plan, planner_trace = call_gemini_json_with_trace(
+        raw_plan, planner_trace = generate_json_with_trace(
             build_plan_prompt(
                 task, repo_full_name, repo_map["base_branch"], repo_map, file_contexts
             )
@@ -1834,15 +1767,15 @@ class GitHubAgentService:
         edit_prompt = build_edit_prompt(
             task, repo_full_name, repo_map["base_branch"], plan, repo_map, file_contexts
         )
-        raw_edits, editor_trace = call_gemini_json_with_trace(edit_prompt)
+        raw_edits, editor_trace = generate_json_with_trace(edit_prompt)
         activity.append(editor_trace)
-        if raw_edits is None and editor_trace.get("code") == "geminiInvalidJson":
+        if raw_edits is None and editor_trace.get("code") == "aiProviderInvalidJson":
             activity.append(_activity("editorJsonRepairStarted", "done"))
-            raw_edits, repair_trace = call_gemini_json_with_trace(
+            raw_edits, repair_trace = generate_json_with_trace(
                 build_edit_repair_prompt(edit_prompt, editor_trace)
             )
             activity.append(repair_trace)
-        if raw_edits is None and editor_trace.get("code") == "geminiInvalidJson":
+        if raw_edits is None and editor_trace.get("code") == "aiProviderInvalidJson":
             text_payload, text_activity = build_single_file_text_edit_payload(
                 task,
                 repo_full_name,
@@ -1861,7 +1794,7 @@ class GitHubAgentService:
                 "findings": [],
                 "no_changes_reason": (
                     "AI editor did not return valid JSON edits after retry."
-                    if editor_trace.get("code") == "geminiInvalidJson"
+                    if editor_trace.get("code") == "aiProviderInvalidJson"
                     else "AI editor could not prepare safe file edits."
                 ),
             }

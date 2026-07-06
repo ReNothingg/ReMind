@@ -260,16 +260,7 @@
     "readOnly": "Только чтение"
   },
   "models": {
-    "choose": "Выберите модель",
-    "gemini": {
-      "desc": "Легкая модель gemini-3.1-flash-lite-lite"
-    },
-    "demoImage": {
-      "desc": "Модель генерации изображений в разработке"
-    },
-    "echo": {
-      "desc": "Эхо-бот для тестов. Только для разработчиков."
-    }
+    "choose": "Выберите модель"
   },
   "rail": {
     "newChat": "Новый чат",
@@ -893,18 +884,21 @@
         "commitCreated": "Создал commit в ветке",
         "diffLoaded": "Загрузил diff",
         "pullRequestOpened": "Открыл Pull Request",
-        "geminiMissingKey": "Нет Gemini API key",
-        "geminiRequestFailed": "Запрос к Gemini не удался",
-        "geminiInvalidJson": "Gemini вернул невалидный JSON",
-        "geminiJsonParsed": "JSON от Gemini распарсен",
+        "aiProviderMissingKey": "Нет ключа AI provider",
+        "aiProviderRequestFailed": "Запрос к AI provider не удался",
+        "aiProviderTextRequestFailed": "Запрос текста к AI provider не удался",
+        "aiProviderTextEmpty": "AI provider вернул пустой текст",
+        "aiProviderTextGenerated": "AI provider сгенерировал текст",
+        "aiProviderInvalidJson": "AI provider вернул невалидный JSON",
+        "aiProviderJsonParsed": "JSON от AI provider распарсен",
         "editorFailed": "Ответ editor отклонен",
         "noChanges": "Нет безопасных правок"
       },
       "details": {
         "repoMapLoaded": "{{files}} файлов · {{directories}} папок",
         "filesCount": "{{count}} файлов",
-        "geminiJsonParsed": "{{chars}} символов в ответе",
-        "geminiInvalidJson": "{{chars}} символов в ответе; preview ниже",
+        "aiProviderJsonParsed": "{{chars}} символов в ответе",
+        "aiProviderInvalidJson": "{{chars}} символов в ответе; preview ниже",
         "commitCreated": "Ветка: {{branch}}",
         "diffLoaded": "{{files}} измененных файлов",
         "pullRequestOpened": "Pull Request #{{number}}"

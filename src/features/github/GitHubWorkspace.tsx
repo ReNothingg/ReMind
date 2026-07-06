@@ -88,15 +88,16 @@ function activityDetail(t: ReturnType<typeof useTranslation>['t'], item: GitHubA
             return t('github.activity.details.filesCount', {
                 count: asNumber(meta.count) ?? 0,
             });
-        case 'geminiJsonParsed':
-            return t('github.activity.details.geminiJsonParsed', {
+        case 'aiProviderJsonParsed':
+            return t('github.activity.details.aiProviderJsonParsed', {
                 chars: formatCount(asNumber(meta.response_chars)),
             });
-        case 'geminiInvalidJson':
-            return t('github.activity.details.geminiInvalidJson', {
+        case 'aiProviderInvalidJson':
+            return t('github.activity.details.aiProviderInvalidJson', {
                 chars: formatCount(asNumber(meta.response_chars)),
             });
-        case 'geminiRequestFailed':
+        case 'aiProviderRequestFailed':
+        case 'aiProviderTextRequestFailed':
         case 'editorFailed':
             return asString(meta.message);
         case 'commitCreated':

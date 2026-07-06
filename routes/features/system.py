@@ -14,6 +14,7 @@ from flask import (
     request,
     send_file,
     send_from_directory,
+    session,
 )
 from sqlalchemy import text
 
@@ -24,7 +25,7 @@ from config import (
     PUBLIC_OPENAPI_ENABLED,
 )
 from routes.api_errors import ApiError, api_error_boundary
-from services.model_access import list_released_models
+from services.model_access import list_accessible_models
 from utils.auth import db
 from utils.observability import export_prometheus_metrics
 from utils.responses import logger, make_error
@@ -104,7 +105,12 @@ def _resolve_app_css_url() -> str | None:
 def register_system_routes(api_bp):
     @api_bp.route("/api/models", methods=["GET"])
     def api_models():
-        return jsonify({"models": list_released_models()}), 200
+        user_id = session.get("user_id")
+        try:
+            db_user_id = int(user_id) if user_id is not None else None
+        except (TypeError, ValueError):
+            db_user_id = None
+        return jsonify({"models": list_accessible_models(db_user_id)}), 200
 
     @api_bp.route("/voice/")
     @api_bp.route("/voice/index.html")

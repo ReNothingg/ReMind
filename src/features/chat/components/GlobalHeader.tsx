@@ -5,14 +5,13 @@ import { LockKeyhole } from 'lucide-react';
 import type { ShareInfo } from '../../share/components/ShareModal';
 import GuestButtons from './GuestButtons';
 import { cn } from '../../../utils/cn';
-import type { AuthUser } from '../../../services/auth';
-import { getAvailableModels, getModelStageLabel } from '../modelCatalog';
+import { getModelStageLabel, type ChatModel } from '../modelSelection';
 
 interface GlobalHeaderProps {
     isAuthenticated: boolean;
-    currentUser: AuthUser | null;
     onMenuToggle: () => void;
     currentModel: string;
+    models: ChatModel[];
     onModelChange: (modelId: string) => void;
     onOpenAuth: () => void;
     onShowRegister: () => void;
@@ -153,9 +152,11 @@ function ModelSelector({
                                     </span>
                                 )}
                             </div>
-                            <span className="model-option-desc ui-toolbar-option-description">
-                                {model.desc}
-                            </span>
+                            {model.desc && (
+                                <span className="model-option-desc ui-toolbar-option-description">
+                                    {model.desc}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -166,9 +167,9 @@ function ModelSelector({
 
 export default function GlobalHeader({
     isAuthenticated,
-    currentUser,
     onMenuToggle,
     currentModel,
+    models: availableChatModels,
     onModelChange,
     onOpenAuth,
     onShowRegister,
@@ -199,12 +200,12 @@ export default function GlobalHeader({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const models: ModelOption[] = getAvailableModels(currentUser).map((model) => {
+    const models: ModelOption[] = availableChatModels.map((model) => {
         const badge = getModelStageLabel(model.stage);
         return {
             id: model.id,
-            name: model.name,
-            desc: t(model.descKey, { defaultValue: model.descFallback }),
+            name: model.title,
+            desc: model.subtitle,
             ...(badge ? { badge } : {}),
         };
     });
@@ -251,7 +252,7 @@ export default function GlobalHeader({
                     </HeaderIconButton>
                 )}
 
-                {showChatControls && (
+                {showChatControls && models.length > 0 && (
                     <ModelSelector
                         activeModel={activeModel}
                         currentModel={currentModel}

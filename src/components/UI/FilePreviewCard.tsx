@@ -9,23 +9,53 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
     const [fileContent, setFileContent] = useState(null);
 
     useEffect(() => {
-        if (fileService.isImageFile(file)) {
+        let cancelled = false;
+        setPreview(null);
+        setFileContent(null);
+
+        const readAsDataUrl = (mimeType = '') => {
             const reader = new FileReader();
             reader.onload = (e) => {
+                if (cancelled) return;
                 const result = typeof e.target?.result === 'string' ? e.target.result : '';
-                setPreview(result);
-                setFileContent(result);
+                const normalized = fileService.normalizeImageDataUrl(result, mimeType);
+                setPreview(normalized);
+                setFileContent(normalized);
             };
             reader.readAsDataURL(file);
-        } else if (fileService.isTextFile(file)) {
+        };
+
+        const readAsText = () => {
             const reader = new FileReader();
             reader.onload = (e) => {
+                if (cancelled) return;
                 const text = typeof e.target?.result === 'string' ? e.target.result : '';
                 setPreview(`text:${text.substring(0, 200)}`);
                 setFileContent(text);
             };
             reader.readAsText(file);
-        }
+        };
+
+        const loadPreview = async () => {
+            const knownImageMime = fileService.getImageMimeType(file);
+            const detectedImageMime = knownImageMime || await fileService.detectImageMimeFromFile(file);
+
+            if (cancelled) return;
+            if (detectedImageMime) {
+                readAsDataUrl(detectedImageMime);
+                return;
+            }
+
+            if (fileService.isTextFile(file)) {
+                readAsText();
+            }
+        };
+
+        loadPreview();
+
+        return () => {
+            cancelled = true;
+        };
     }, [file]);
 
     const handleClick = () => {
@@ -34,7 +64,7 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
         }
     };
 
-    const isImage = fileService.isImageFile(file);
+    const isImage = fileService.isImageFile(file) || (typeof preview === 'string' && preview.startsWith('data:image/'));
     const isText = fileService.isTextFile(file);
     const previewClass = [
         'file-card-preview',

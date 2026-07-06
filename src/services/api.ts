@@ -467,6 +467,19 @@ export type AIResponseFeedbackPayload = {
     response_text: string;
 };
 
+export type ModelStage = 'release' | 'beta' | 'dev' | 'alpha';
+
+export type ModelOption = {
+    id: string;
+    title: string;
+    subtitle: string;
+    stage?: ModelStage | string | null;
+};
+
+type ModelListResponse = {
+    models?: ModelOption[];
+};
+
 type AdminUserUpdatePayload = {
     is_banned?: boolean;
     is_blocked?: boolean;
@@ -852,6 +865,11 @@ export const apiService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
+    },
+
+    async listModels(): Promise<ModelOption[]> {
+        const data = await fetchApi<ModelListResponse>('/api/models', { method: 'GET' });
+        return Array.isArray(data.models) ? data.models : [];
     },
 
     async listMindCategories(): Promise<MindCategory[]> {

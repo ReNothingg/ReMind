@@ -119,12 +119,6 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   transition: all var(--transition-fast);
 }
 
-.quote-item:hover {
-  transform: translateY(-2px);
-  border-color: rgba(var(--color-accent-raw), 0.4);
-  background: var(--color-bg-surface-alt);
-}
-
 .quote-item blockquote {
   margin: 0;
   padding: 0;
@@ -165,12 +159,6 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   justify-content: center;
 }
 
-.quote-item-dismiss:hover {
-  color: var(--color-text-error);
-  background: rgba(var(--color-error-raw), 0.2);
-  border-color: rgba(var(--color-error-raw), 0.4);
-  transform: translateY(-50%) scale(1.1);
-}
 
 .quote-item-dismiss:active {
   transform: translateY(-50%) scale(0.95);
