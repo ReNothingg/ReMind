@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 from flask import redirect, request, session, url_for
 
-from config import GITHUB_PUBLIC_BASE_URL
+from config import GITHUB_APP_SLUG, GITHUB_PUBLIC_BASE_URL
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
 from services.github_app import (
     GitHubAgentExecutionError,
@@ -18,16 +18,19 @@ from services.github_app import (
     exchange_github_oauth_code,
     github_app_configured,
     github_app_missing_fields,
-    load_github_app_metadata,
     verify_user_can_access_installation,
 )
+from services.github_oauth_flow import GitHubOAuthFlowError, GitHubOAuthFlowStore
 from utils.auth import GitHubAgentTask, GitHubInstallation, db
 from utils.responses import make_ok
 
-GITHUB_OAUTH_STATE_KEY = "github_oauth_state"
-GITHUB_OAUTH_AFTER_KEY = "github_oauth_after"
-GITHUB_USER_TOKEN_KEY = "github_user_token"
-GITHUB_PENDING_INSTALLATION_KEY = "github_pending_installation_id"
+GITHUB_OAUTH_FLOW_SESSION_KEY = "github_oauth_flow_id"
+_LEGACY_GITHUB_OAUTH_SESSION_KEYS = (
+    "github_oauth_state",
+    "github_oauth_after",
+    "github_user_token",
+    "github_pending_installation_id",
+)
 
 
 def _github_external_url(endpoint: str, **values) -> str:
@@ -38,10 +41,9 @@ def _github_external_url(endpoint: str, **values) -> str:
 
 def _github_frontend_redirect(**params):
     query = urlencode({key: value for key, value in params.items() if value})
-    target = "/"
+    target = "/github"
     if query:
         target = f"{target}?{query}"
-    target = f"{target}#settings/account"
     return redirect(target, code=303)
 
 
@@ -49,6 +51,11 @@ def _require_authenticated_redirect():
     if "user_id" not in session:
         return redirect("/?auth=login", code=303)
     return None
+
+
+def _clear_legacy_github_oauth_session() -> None:
+    for key in _LEGACY_GITHUB_OAUTH_SESSION_KEYS:
+        session.pop(key, None)
 
 
 def _github_api_error(exc: GitHubAPIError) -> ApiError:
@@ -112,7 +119,7 @@ def _new_task_public_id() -> str:
     return f"gh_{secrets.token_urlsafe(18)}"
 
 
-def _github_status_payload(user_id: int, selected_installation_id: int | None = None) -> dict:
+def _github_connection_payload(user_id: int, selected_installation_id: int | None = None) -> dict:
     missing = github_app_missing_fields()
     installations = (
         GitHubInstallation.query.filter_by(user_id=user_id)
@@ -132,24 +139,19 @@ def _github_status_payload(user_id: int, selected_installation_id: int | None = 
     if selected is None and installations:
         selected = installations[0]
 
-    repositories = []
-    connection_error = None
-    if selected and not missing:
-        try:
-            repositories = GitHubAgentService(int(selected.installation_id)).list_repositories()
-        except GitHubAPIError as exc:
-            connection_error = _github_api_error(exc).message
-        except Exception as exc:
-            connection_error = str(exc)
-
     return {
         "configured": not missing,
         "missing_config": missing,
-        "app": load_github_app_metadata(),
+        "app": {
+            "name": GITHUB_APP_SLUG or "GitHub App",
+            "slug": GITHUB_APP_SLUG,
+            "page_url": build_github_app_page_url(),
+            "install_url": build_github_app_install_url(),
+        },
         "installations": [installation.to_dict() for installation in installations],
         "selected_installation_id": int(selected.installation_id) if selected else None,
-        "repositories": repositories,
-        "connection_error": connection_error,
+        "repositories": [],
+        "connection_error": None,
         "urls": {
             "connect": url_for("api.github_oauth_login", after="install"),
             "install": url_for("api.github_install"),
@@ -162,6 +164,27 @@ def _github_status_payload(user_id: int, selected_installation_id: int | None = 
     }
 
 
+def _start_github_oauth(
+    user_id: int,
+    *,
+    after: str = "",
+    pending_installation_id: int | None = None,
+):
+    _clear_legacy_github_oauth_session()
+    try:
+        oauth_start = GitHubOAuthFlowStore.from_config().start(
+            user_id,
+            after=after,
+            pending_installation_id=pending_installation_id,
+        )
+    except GitHubOAuthFlowError:
+        return _github_frontend_redirect(github_error="oauth_storage")
+
+    session.pop(GITHUB_OAUTH_FLOW_SESSION_KEY, None)
+    callback_url = _github_external_url("api.github_oauth_callback")
+    return redirect(build_github_oauth_url(callback_url, oauth_start.state, after=after))
+
+
 def register_github_routes(api_bp):
     @api_bp.route("/auth/github/login", methods=["GET"])
     @api_error_boundary("github_oauth_login_failed")
@@ -172,14 +195,11 @@ def register_github_routes(api_bp):
         if not github_app_configured():
             return _github_frontend_redirect(github_error="config")
 
-        state = secrets.token_urlsafe(24)
-        session[GITHUB_OAUTH_STATE_KEY] = state
         after = (request.args.get("after") or "").strip()
-        if after:
-            session[GITHUB_OAUTH_AFTER_KEY] = after
-
-        callback_url = _github_external_url("api.github_oauth_callback")
-        return redirect(build_github_oauth_url(callback_url, state, after=after))
+        return _start_github_oauth(
+            require_authenticated_user_id(),
+            after="install" if after == "install" else "",
+        )
 
     @api_bp.route("/auth/github/callback", methods=["GET"])
     @api_error_boundary("github_oauth_callback_failed")
@@ -190,28 +210,36 @@ def register_github_routes(api_bp):
         if not github_app_configured():
             return _github_frontend_redirect(github_error="config")
 
-        expected_state = session.get(GITHUB_OAUTH_STATE_KEY)
         actual_state = (request.args.get("state") or "").strip()
         code = (request.args.get("code") or "").strip()
-        if not expected_state or not actual_state or actual_state != expected_state:
-            return _github_frontend_redirect(github_error="state")
         if not code:
             return _github_frontend_redirect(github_error="code")
+        db_user_id = require_authenticated_user_id()
+        _clear_legacy_github_oauth_session()
+        try:
+            oauth_store = GitHubOAuthFlowStore.from_config()
+            oauth_state = oauth_store.consume_state(actual_state, db_user_id)
+        except GitHubOAuthFlowError:
+            return _github_frontend_redirect(github_error="oauth_storage")
+        if not oauth_state:
+            return _github_frontend_redirect(github_error="state")
 
         callback_url = _github_external_url("api.github_oauth_callback")
         user_token = exchange_github_oauth_code(code, callback_url)
-        session[GITHUB_USER_TOKEN_KEY] = user_token
-        session.pop(GITHUB_OAUTH_STATE_KEY, None)
-
-        db_user_id = require_authenticated_user_id()
-        pending_installation_id = session.pop(GITHUB_PENDING_INSTALLATION_KEY, None)
-        if pending_installation_id:
-            shaped = verify_user_can_access_installation(user_token, int(pending_installation_id))
+        if oauth_state.pending_installation_id:
+            shaped = verify_user_can_access_installation(
+                user_token, oauth_state.pending_installation_id
+            )
             _save_installation(db_user_id, shaped)
+            session.pop(GITHUB_OAUTH_FLOW_SESSION_KEY, None)
             return _github_frontend_redirect(github="connected")
 
-        after = session.pop(GITHUB_OAUTH_AFTER_KEY, None)
-        if after == "install":
+        if oauth_state.after == "install":
+            try:
+                oauth_store.store_credential(oauth_state.flow_id, db_user_id, user_token)
+            except GitHubOAuthFlowError:
+                return _github_frontend_redirect(github_error="oauth_storage")
+            session[GITHUB_OAUTH_FLOW_SESSION_KEY] = oauth_state.flow_id
             return redirect(build_github_app_install_url())
 
         return _github_frontend_redirect(github="authorized")
@@ -224,8 +252,15 @@ def register_github_routes(api_bp):
             return redirect_response
         if not github_app_configured():
             return _github_frontend_redirect(github_error="config")
-        if not session.get(GITHUB_USER_TOKEN_KEY):
-            return redirect(url_for("api.github_oauth_login", after="install"))
+        db_user_id = require_authenticated_user_id()
+        _clear_legacy_github_oauth_session()
+        flow_id = session.get(GITHUB_OAUTH_FLOW_SESSION_KEY)
+        try:
+            has_credential = GitHubOAuthFlowStore.from_config().has_credential(flow_id, db_user_id)
+        except GitHubOAuthFlowError:
+            return _github_frontend_redirect(github_error="oauth_storage")
+        if not has_credential:
+            return _start_github_oauth(db_user_id, after="install")
         return redirect(build_github_app_install_url())
 
     @api_bp.route("/auth/github/setup", methods=["GET"])
@@ -241,22 +276,32 @@ def register_github_routes(api_bp):
         if not installation_id:
             return _github_frontend_redirect(github_error="installation")
 
-        user_token = session.get(GITHUB_USER_TOKEN_KEY)
-        if not user_token:
-            session[GITHUB_PENDING_INSTALLATION_KEY] = installation_id
-            return redirect(url_for("api.github_oauth_login", after="setup"))
-
         db_user_id = require_authenticated_user_id()
+        _clear_legacy_github_oauth_session()
+        flow_id = session.pop(GITHUB_OAUTH_FLOW_SESSION_KEY, None)
+        try:
+            user_token = GitHubOAuthFlowStore.from_config().consume_credential(flow_id, db_user_id)
+        except GitHubOAuthFlowError:
+            return _github_frontend_redirect(github_error="oauth_storage")
+        if not user_token:
+            return _start_github_oauth(
+                db_user_id,
+                after="setup",
+                pending_installation_id=installation_id,
+            )
+
         shaped = verify_user_can_access_installation(user_token, installation_id)
         _save_installation(db_user_id, shaped)
         return _github_frontend_redirect(github="connected")
 
+    @api_bp.route("/api/github/connection", methods=["GET"])
     @api_bp.route("/api/github/status", methods=["GET"])
-    @api_error_boundary("github_status_failed")
-    def github_status():
+    @api_error_boundary("github_connection_failed")
+    def github_connection():
+        _clear_legacy_github_oauth_session()
         db_user_id = require_authenticated_user_id()
         selected_installation_id = request.args.get("installation_id", type=int)
-        return make_ok(_github_status_payload(db_user_id, selected_installation_id))
+        return make_ok(_github_connection_payload(db_user_id, selected_installation_id))
 
     @api_bp.route("/api/github/disconnect", methods=["POST"])
     @api_error_boundary("github_disconnect_failed")
@@ -269,8 +314,12 @@ def register_github_routes(api_bp):
             query = query.filter_by(installation_id=int(installation_id))
         deleted = query.delete(synchronize_session=False)
         db.session.commit()
-        if installation_id is None:
-            session.pop(GITHUB_USER_TOKEN_KEY, None)
+        flow_id = session.pop(GITHUB_OAUTH_FLOW_SESSION_KEY, None)
+        _clear_legacy_github_oauth_session()
+        try:
+            GitHubOAuthFlowStore.from_config().discard_credential(flow_id)
+        except GitHubOAuthFlowError:
+            pass
         return make_ok({"deleted": deleted})
 
     @api_bp.route("/api/github/repositories", methods=["GET"])

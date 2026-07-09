@@ -46,11 +46,11 @@
   --color-border-strong: rgba(255, 255, 255, 0.22);
   --color-border-focus: rgba(var(--color-accent-raw), 0.45);
 
-  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-  --shadow-lg: 0 14px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-  --shadow-xl: 0 28px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
 
   --ring:
     0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 0 0 2px rgba(var(--color-accent-raw), 0.18),
@@ -645,31 +645,6 @@ html[data-theme='light'] ::selection {
   color: inherit;
 }
 
-html[data-theme='light'] body,
-html[data-theme='light'] main,
-html[data-theme='light'] p,
-html[data-theme='light'] h1,
-html[data-theme='light'] h2,
-html[data-theme='light'] h3,
-html[data-theme='light'] h4,
-html[data-theme='light'] h5,
-html[data-theme='light'] h6,
-html[data-theme='light'] span,
-html[data-theme='light'] div {
-  color: var(--color-text-primary);
-}
-
-html[data-theme='light'] input,
-html[data-theme='light'] textarea,
-html[data-theme='light'] select {
-  color: #111827 !important;
-  background-color: transparent;
-}
-html[data-theme='light'] textarea::placeholder,
-html[data-theme='light'] input::placeholder {
-  color: #6b7280 !important;
-}
-
 html[data-theme='light'] .file-card,
 html[data-theme='light'] .attachment-file-card,
 html[data-theme='light'] .badge,
@@ -696,10 +671,6 @@ html[data-theme='light'] a {
 html[data-theme='light'][data-accent-color='white'] {
   --color-text-link: #2563eb;
   --color-text-link-hover: #1d4ed8;
-}
-
-html[data-theme='light'] button:not(.active):not(.primary) {
-  color: #374151 !important;
 }
 
 :root {

@@ -49,6 +49,59 @@ IGNORED_PATH_PARTS = {
     "vendor",
 }
 
+SENSITIVE_PATH_PARTS = {
+    ".aws",
+    ".gnupg",
+    ".ssh",
+    "credentials",
+    "credential",
+    "keyring",
+    "keys",
+    "secrets",
+    "secret",
+}
+
+SENSITIVE_FILENAMES = {
+    "authorized_keys",
+    "id_dsa",
+    "id_ecdsa",
+    "id_ed25519",
+    "id_rsa",
+    "known_hosts",
+}
+
+SENSITIVE_FILE_SUFFIXES = {
+    ".cer",
+    ".crt",
+    ".der",
+    ".jks",
+    ".kdb",
+    ".key",
+    ".keystore",
+    ".p12",
+    ".pem",
+    ".pfx",
+}
+
+LOCKFILE_FILENAMES = {
+    "bun.lockb",
+    "cargo.lock",
+    "composer.lock",
+    "gemfile.lock",
+    "go.sum",
+    "package-lock.json",
+    "pipfile.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "uv.lock",
+    "yarn.lock",
+}
+
+_SENSITIVE_NAME_RE = re.compile(
+    r"(?:^|[._-])(?:access[_-]?token|api[_-]?key|credential|password|private[_-]?key|secret|token)(?:[._-]|$)",
+    re.IGNORECASE,
+)
+
 TEXT_EXTENSIONS = {
     ".css",
     ".env",
@@ -266,8 +319,28 @@ def _is_ignored_path(path: str) -> bool:
     return bool(parts & IGNORED_PATH_PARTS)
 
 
+def _is_sensitive_or_protected_path(path: str) -> bool:
+    normalized = str(path or "").strip().replace("\\", "/").strip("/")
+    if not normalized:
+        return True
+
+    parts = [part.lower() for part in normalized.split("/") if part]
+    if not parts or any(part in SENSITIVE_PATH_PARTS for part in parts):
+        return True
+
+    name = parts[-1]
+    stem = Path(name).stem
+    if name.startswith(".env") or name in SENSITIVE_FILENAMES:
+        return True
+    if name in LOCKFILE_FILENAMES or name.endswith(".lock"):
+        return True
+    if Path(name).suffix.lower() in SENSITIVE_FILE_SUFFIXES:
+        return True
+    return bool(_SENSITIVE_NAME_RE.search(stem))
+
+
 def _is_probably_text_path(path: str) -> bool:
-    if _is_ignored_path(path):
+    if _is_ignored_path(path) or _is_sensitive_or_protected_path(path):
         return False
     name = Path(path).name
     if name in TEXT_FILENAMES:

@@ -66,20 +66,6 @@ const DEFAULT_SETTINGS = {
     personalization_profession: '',
     personalization_more: ''
 };
-const ACCENT_PALETTES = {
-    blue: [120, 156, 255],
-    green: [46, 204, 113],
-    yellow: [241, 196, 15],
-    pink: [231, 84, 128],
-    orange: [230, 126, 34],
-    white: [220, 220, 220],
-    black: [28, 28, 30],
-    red: [239, 68, 68],
-    purple: [139, 92, 246],
-    teal: [20, 184, 166],
-    cyan: [6, 182, 212]
-};
-
 const DB_FIELD_MAP = {
     theme: 'theme',
     interface_language: 'language',
@@ -209,13 +195,6 @@ export const SettingsProvider = ({ children }) => {
             case 'accentColor': {
                 if (!value) return;
                 document.documentElement.setAttribute('data-accent-color', value);
-                const raw = ACCENT_PALETTES[value] || ACCENT_PALETTES['blue'];
-                if (Array.isArray(raw) && raw.length === 3) {
-                    const rawStr = raw.join(', ');
-                    document.documentElement.style.setProperty('--color-accent-raw', rawStr);
-                    document.documentElement.style.setProperty('--color-accent', `rgb(${rawStr})`);
-                    document.documentElement.style.setProperty('--color-border-focus', `rgba(${rawStr}, 0.45)`);
-                }
                 break;
             }
             case 'codeWrap':

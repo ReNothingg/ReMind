@@ -33,7 +33,6 @@ from services.chat_history import (
     resolve_session_identifier,
 )
 from services.files import handle_file_upload
-from services.github_chat import handle_github_chat_message
 from services.ai_provider import generate_text, is_ai_provider_configured
 from services.model_access import can_user_access_model, get_model_stage, model_exists
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
@@ -824,37 +823,6 @@ def register_chat_routes(api_bp):
             original_user_message, user_data.get("files", [])
         )
         user_message_for_history = normalize_message({"role": "user", "parts": user_message_parts})
-
-        github_chat_output = handle_github_chat_message(
-            db_user_id,
-            str(original_user_message or ""),
-            history,
-        )
-        if github_chat_output is not None:
-            reply_text = str(github_chat_output.get("reply") or "")
-            model_message_for_history = _build_model_message_for_history(
-                reply_text,
-                None,
-                None,
-                github_chat_output.get("github_tool"),
-            )
-            if not temporary_chat:
-                append_messages_to_history(
-                    resolved_session_id,
-                    [user_message_for_history, model_message_for_history],
-                    model_name,
-                    db_user_id,
-                    allow_guest_file_persistence=allow_guest_file_persistence,
-                    mind_id=mind_context.get("id") if mind_context else None,
-                )
-
-            response_data = {**github_chat_output, "sessionId": resolved_session_id}
-            response_data["uploaded_files"] = user_data.get("files", [])
-            if allow_guest_file_persistence and not temporary_chat:
-                response_data["session_token"] = _generate_guest_session_token(
-                    resolved_session_id, int(time.time())
-                )
-            return make_ok(response_data)
 
         model_func = get_model_function(model_name)
         if not model_func:

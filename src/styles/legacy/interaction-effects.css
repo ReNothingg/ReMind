@@ -15,24 +15,6 @@
   animation: lightboxLoaderSpin 1s linear infinite;
 }
 
-button,
-.action-btn,
-.rail-btn {
-  transition: all var(--transition-fast);
-}
-
-button:hover,
-.action-btn:hover,
-.rail-btn:hover {
-  transform: translateY(-1px);
-}
-
-button:active:not(.password-toggle),
-.action-btn:active,
-.rail-btn:active {
-  transform: translateY(0);
-}
-
 .main-input-area.drag-over {
   border-color: var(--color-accent);
 }
@@ -44,4 +26,3 @@ button:active:not(.password-toggle),
 .drop-zone:hover {
   transform: scale(1.02);
 }
-

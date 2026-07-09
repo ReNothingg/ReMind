@@ -5,22 +5,25 @@ import { cn } from '../../utils/cn';
 
 const FilePreviewCard = ({ file, onRemove, onPreview }) => {
     const { t } = useTranslation();
-    const [preview, setPreview] = useState(null);
-    const [fileContent, setFileContent] = useState(null);
+    const [previewData, setPreviewData] = useState(null);
+    const preview = previewData?.file === file ? previewData.preview : null;
+    const fileContent = previewData?.file === file ? previewData.fileContent : null;
 
     useEffect(() => {
         let cancelled = false;
-        setPreview(null);
-        setFileContent(null);
+
+        const savePreview = (nextPreview, nextFileContent) => {
+            if (!cancelled) {
+                setPreviewData({ file, preview: nextPreview, fileContent: nextFileContent });
+            }
+        };
 
         const readAsDataUrl = (mimeType = '') => {
             const reader = new FileReader();
             reader.onload = (e) => {
-                if (cancelled) return;
                 const result = typeof e.target?.result === 'string' ? e.target.result : '';
                 const normalized = fileService.normalizeImageDataUrl(result, mimeType);
-                setPreview(normalized);
-                setFileContent(normalized);
+                savePreview(normalized, normalized);
             };
             reader.readAsDataURL(file);
         };
@@ -28,10 +31,8 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
         const readAsText = () => {
             const reader = new FileReader();
             reader.onload = (e) => {
-                if (cancelled) return;
                 const text = typeof e.target?.result === 'string' ? e.target.result : '';
-                setPreview(`text:${text.substring(0, 200)}`);
-                setFileContent(text);
+                savePreview(`text:${text.substring(0, 200)}`, text);
             };
             reader.readAsText(file);
         };
@@ -102,7 +103,7 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
             <div className="file-card-footer flex h-7 items-center gap-1.5 border-t border-[rgba(var(--color-white-raw),0.08)] bg-[rgba(var(--color-black-raw),0.2)] px-2 py-[5px]">
                 <img
                     src={fileService.getFileIconPath(file.name.split('.').pop()?.toLowerCase())}
-                    alt="icon"
+                    alt=""
                     className="file-card-footer-icon size-3.5 shrink-0 opacity-85"
                     onError={(e) => {
                         e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
@@ -117,6 +118,7 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                     </span>
                 </div>
                 <button
+                    type="button"
                     className="file-card-remove-btn absolute top-1 right-1 z-[1] flex size-6 items-center justify-center rounded-full border border-[rgba(var(--color-white-raw),0.2)] bg-[rgba(var(--color-black-raw),0.65)] text-base font-bold leading-none text-white opacity-0 transition duration-200 hover:bg-[rgba(var(--color-accent-raw),0.9)] group-hover:opacity-100"
                     onClick={() => onRemove()}
                     title={t('files.removeFile')}

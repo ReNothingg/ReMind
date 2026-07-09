@@ -653,6 +653,12 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                 : 'is-disconnected';
 
     const handleGitHubConnect = () => {
+        if (isGitHubConnected) {
+            onClose();
+            window.history.pushState({}, '', '/github');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+            return;
+        }
         const connectUrl = githubStatus?.urls?.connect || '/auth/github/login?after=install';
         window.location.assign(connectUrl);
     };
@@ -675,7 +681,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                 <div className="account-connected-app-copy">
                     <strong>{t('settings.account.connectedApps.github.name')}</strong>
                     <p>{t('settings.account.connectedApps.github.description')}</p>
-                    {isGitHubConnected && (
+                    {isGitHubConnected && githubRepositoryCount > 0 && (
                         <span className="account-connected-app-meta">
                             {t('settings.account.connectedApps.github.repoCount', {
                                 count: githubRepositoryCount

@@ -44,6 +44,8 @@ sequenceDiagram
 | `services/files.py` | File-related service behavior |
 | `services/model_access.py` | Model access и selection rules |
 | `services/voice.py` | Speech synthesis behavior |
+| `routes/features/github.py` | Явный GitHub connection, repository и PR workflow |
+| `services/github_oauth_flow.py` | Одноразовый encrypted OAuth credential flow в Redis |
 | `ai_engine/gemini.py` | Gemini provider integration |
 | `ai_engine/echo.py` | Local smoke-test provider |
 | `ai_engine/demo_image.py` | Local image-flow smoke-test provider |
@@ -79,3 +81,14 @@ Production-like Compose запускает:
 - Redis для sessions, queue broker и runtime cache.
 
 Локальная разработка может использовать SQLite и локальный Redis, либо полный dev Compose stack.
+
+## GitHub workflow
+
+GitHub — отдельный workspace, а не скрытый перехват обычного сообщения в чате. Сначала клиент
+запрашивает только connection snapshot из БД, затем по явному выбору installation загружает
+репозитории и только после review плана запускает создание ветки и PR.
+
+OAuth state хранится в Redis 10 минут, а короткоживущий GitHub access token — в зашифрованном
+Redis record максимум 15 минут. В browser cookie хранится только непрозрачный flow ID. Для
+production задайте отдельный `GITHUB_OAUTH_ENCRYPTION_KEY` в формате Fernet key; без него ключ
+детерминированно выводится из `SECRET_KEY` как совместимый переходный вариант.

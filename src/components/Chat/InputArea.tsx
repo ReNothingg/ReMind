@@ -74,7 +74,10 @@ const InputArea = ({
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+            const nextHeight = text.trim()
+                ? Math.min(textareaRef.current.scrollHeight, 200)
+                : 44;
+            textareaRef.current.style.height = `${nextHeight}px`;
         }
     }, [text, quotes]);
 

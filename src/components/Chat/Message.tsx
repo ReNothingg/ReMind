@@ -27,15 +27,10 @@ const MessageActionButton = ({ className, title, onClick, children, disabled = f
     </button>
 );
 
-const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
+const MessageImageAttachmentContent = ({ src, alt, messageId, isInteractive }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
     const { t } = useTranslation();
-
-    useLayoutEffect(() => {
-        setIsLoaded(false);
-        setHasError(false);
-    }, [src]);
 
     const isLocalPreview = typeof src === 'string' && (src.startsWith('blob:') || src.startsWith('data:'));
 
@@ -107,6 +102,10 @@ const MessageImageAttachment = ({ src, alt, messageId, isInteractive }) => {
         </div>
     );
 };
+
+const MessageImageAttachment = (props) => (
+    <MessageImageAttachmentContent key={props.src} {...props} />
+);
 
 const resolveMediaUrl = (path) => {
     if (typeof path !== 'string' || !path) {

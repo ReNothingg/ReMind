@@ -235,6 +235,19 @@ GITHUB_APP_PRIVATE_KEY = os.getenv("GITHUB_APP_PRIVATE_KEY", "").strip()
 GITHUB_APP_PRIVATE_KEY_PATH = os.getenv("GITHUB_APP_PRIVATE_KEY_PATH", "").strip()
 GITHUB_PUBLIC_BASE_URL = os.getenv("GITHUB_PUBLIC_BASE_URL", "").strip().rstrip("/")
 GITHUB_BRANCH_PREFIX = os.getenv("GITHUB_BRANCH_PREFIX", "remind").strip() or "remind"
+GITHUB_OAUTH_ENCRYPTION_KEY = os.getenv("GITHUB_OAUTH_ENCRYPTION_KEY", "").strip()
+try:
+    GITHUB_OAUTH_STATE_TTL_SECONDS = max(
+        60, int(os.getenv("GITHUB_OAUTH_STATE_TTL_SECONDS", "600"))
+    )
+except ValueError:
+    GITHUB_OAUTH_STATE_TTL_SECONDS = 600
+try:
+    GITHUB_OAUTH_CREDENTIAL_TTL_SECONDS = max(
+        60, int(os.getenv("GITHUB_OAUTH_CREDENTIAL_TTL_SECONDS", "900"))
+    )
+except ValueError:
+    GITHUB_OAUTH_CREDENTIAL_TTL_SECONDS = 900
 try:
     GITHUB_AGENT_MAX_FILE_CHARS = int(os.getenv("GITHUB_AGENT_MAX_FILE_CHARS", "80000"))
 except ValueError:
