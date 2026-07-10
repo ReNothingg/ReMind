@@ -89,16 +89,6 @@
   }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--color-accent-raw), 0);
-  }
-  50% {
-    box-shadow: 0 0 15px 0 rgba(var(--color-accent-raw), 0.3);
-  }
-}
-
 @keyframes shake-x {
   0%,
   100% {
@@ -154,15 +144,6 @@
   }
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes shimmer-flow {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
   }
 }
 
@@ -253,14 +234,7 @@
 .skeleton-line,
 .skeleton-avatar,
 .ai-message img.markdown-image:not([src]) {
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-interactive) 25%,
-    var(--color-bg-surface-alt) 50%,
-    var(--color-bg-interactive) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer-flow 2s infinite linear;
+  background: var(--color-bg-interactive);
 }
 
 button:active:not(.password-toggle),

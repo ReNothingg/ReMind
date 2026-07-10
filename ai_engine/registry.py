@@ -31,7 +31,7 @@ MODEL_ALIASES: dict[str, str] = {
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
         id=DEFAULT_MODEL_ID,
-        title="Gemini 3.1 flash lite ",
+        title="Gemini 3.1 Flash-Lite",
         subtitle="Модель от Google, использующая инструменты ReMind",
         stage=ModelStage.RELEASE,
         module="ai_engine.base",

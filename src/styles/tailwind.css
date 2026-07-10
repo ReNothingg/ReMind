@@ -205,7 +205,7 @@
 
   .ui-input {
     @apply w-full rounded-lg border border-border-strong bg-surface-alt px-3 py-2 text-sm text-foreground outline-none transition duration-200 ease-out placeholder:text-subtle focus:border-accent-brand;
-    box-shadow: 0 0 0 0 transparent;
+    box-shadow: none;
   }
   
   .ui-field-label {
@@ -222,7 +222,7 @@
 
   .ui-modal-card {
     @apply w-full rounded-[var(--radius-xl)] border border-border bg-surface text-foreground;
-    box-shadow: var(--shadow-xl);
+    box-shadow: none;
   }
 
   .ui-inline-panel {
@@ -302,7 +302,7 @@
     background: transparent !important;
     border-color: transparent !important;
     border-width: 0 !important;
-    box-shadow: none !important;
+    box-shadow: none;
   }
 
   html[data-theme='light'] .user-message.is-editing-user-message .message-content,
@@ -310,7 +310,7 @@
     background: transparent !important;
     border-color: transparent !important;
     border-width: 0 !important;
-    box-shadow: none !important;
+    box-shadow: none;
   }
 
   .ui-message-bubble-ai {
@@ -589,7 +589,7 @@
 
   .ui-rail-action-button-active {
     @apply bg-interactive text-foreground;
-    box-shadow: inset 0 0 0 1px var(--color-border-subtle);
+    box-shadow: none;
   }
 
   .ui-rail-action-button-collapsed {
@@ -616,7 +616,7 @@
 
   .ui-rail-search-input:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(var(--color-accent-raw), 0.12);
+    box-shadow: none;
   }
 
   .ui-rail-search-input-hint {
@@ -736,14 +736,14 @@
   .ui-rail-status-complete::before {
     @apply size-2 rounded-full;
     background: var(--color-success);
-    box-shadow: 0 0 0 3px rgba(var(--color-success-raw), 0.13), 0 0 10px rgba(var(--color-success-raw), 0.65);
+    box-shadow: none;
     animation: rail-status-glow 1.6s ease-in-out infinite;
   }
 
   .ui-rail-status-error::before {
     @apply size-2 rounded-full;
     background: var(--color-error);
-    box-shadow: 0 0 0 3px rgba(var(--color-error-raw), 0.12), 0 0 9px rgba(var(--color-error-raw), 0.45);
+    box-shadow: none;
   }
 
   .ui-rail-item-details {
@@ -773,7 +773,7 @@
   .ui-rail-menu {
     @apply absolute top-[calc(100%+8px)] right-0 z-[10000] min-w-[200px] max-w-[280px] rounded-md border bg-surface p-1.5;
     border-color: var(--color-border-medium);
-    box-shadow: var(--shadow-lg);
+    box-shadow: none;
   }
 
   .ui-rail-menu::before {
@@ -842,11 +842,11 @@
   .ui-rail-rename-input {
     @apply w-full rounded-md border bg-interactive px-2 py-1 text-sm text-foreground outline-none transition duration-150 ease-out;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px transparent;
+    box-shadow: none;
   }
 
   .ui-rail-rename-input:focus {
-    box-shadow: 0 0 0 3px rgba(var(--color-accent-raw), 0.1);
+    box-shadow: none;
   }
 
   .ui-landing-shell {
@@ -942,7 +942,7 @@
 
   .ui-composer-shell:focus-within {
     border-color: rgba(var(--color-accent-raw), 0.6);
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
   }
 
   .ui-composer-attachments {
@@ -1026,7 +1026,7 @@
   .ui-composer-icon-button:focus-visible {
     outline: 2px solid rgba(var(--color-accent-raw), 0.82);
     outline-offset: 3px;
-    box-shadow: 0 0 0 3px rgba(var(--color-accent-raw), 0.16);
+    box-shadow: none;
   }
 
   .ui-hint-pill {

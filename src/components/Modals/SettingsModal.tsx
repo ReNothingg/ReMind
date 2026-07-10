@@ -1375,9 +1375,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                                 max={FONT_SIZE_MAX_PX}
                                                 step={FONT_SIZE_STEP_PX}
                                                 value={currentFontSizePx}
-                                                style={{
-                                                    background: `linear-gradient(90deg, var(--color-accent) ${fontSizePercent}%, var(--color-bg-interactive) ${fontSizePercent}%)`
-                                                }}
                                                 onChange={(e) => updateSetting('fontSize', `${e.target.value}px`)}
                                                 aria-label={t('settings.accessibility.fontSizeLabel')}
                                             />

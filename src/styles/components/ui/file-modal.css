@@ -214,15 +214,15 @@
 
 @keyframes dropZoneGlow {
   0% {
-    box-shadow: 0 0 0 rgba(var(--color-accent-raw), 0);
+    box-shadow: none;
     border-color: var(--color-border-medium);
   }
   50% {
-    box-shadow: 0 0 26px rgba(var(--color-accent-raw), 0.25);
+    box-shadow: none;
     border-color: var(--color-accent);
   }
   100% {
-    box-shadow: 0 0 0 rgba(var(--color-accent-raw), 0);
+    box-shadow: none;
     border-color: var(--color-border-medium);
   }
 }

@@ -213,7 +213,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   left: 3px;
   width: 3px;
   background: rgba(var(--color-accent-raw), 0.72);
-  box-shadow: 0 0 18px rgba(var(--color-accent-raw), 0.28);
+  box-shadow: none;
 }
 
 .chat-canvas-dock-trigger {
@@ -493,12 +493,12 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 
 .chat-canvas-editor:focus {
   border-color: rgba(var(--color-accent-raw), 0.46);
-  box-shadow: 0 0 0 2px rgba(var(--color-accent-raw), 0.10);
+  box-shadow: none;
 }
 
 .chat-canvas-code-editor:focus-within {
   border-color: rgba(var(--color-accent-raw), 0.46);
-  box-shadow: 0 0 0 2px rgba(var(--color-accent-raw), 0.10);
+  box-shadow: none;
 }
 
 .chat-canvas-comments {
@@ -646,7 +646,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
     border-bottom: 0;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     background: var(--color-bg-surface);
-    box-shadow: var(--shadow-xl);
+    box-shadow: none;
     z-index: 1300;
     animation: chat-canvas-sheet-in var(--transition-normal) var(--transition-timing-function);
   }
@@ -669,7 +669,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
     border: 0;
     border-radius: var(--radius-xl);
     background: transparent;
-    box-shadow: var(--shadow-lg);
+    box-shadow: none;
   }
 
   .chat-canvas-dock-trigger {
@@ -682,7 +682,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
     border-radius: var(--radius-lg);
     padding: 6px 10px;
     background: var(--color-bg-surface);
-    box-shadow: var(--shadow-md);
+    box-shadow: none;
     backdrop-filter: blur(18px);
   }
 

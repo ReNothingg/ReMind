@@ -63,4 +63,5 @@ if __name__ == "__main__":
 
     app = create_app()
     seed_e2e_user(app, generate_password_hash, User, UserSettings, db)
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    port = int(os.environ.get("E2E_PORT", "5000"))
+    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)

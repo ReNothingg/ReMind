@@ -50,7 +50,7 @@ html[data-theme='light'] .ui-selection-quote-button {
   color: var(--color-text-primary) !important;
   background: rgba(255, 255, 255, 0.96) !important;
   border-color: rgba(17, 24, 39, 0.14) !important;
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: none;
 }
 
 html[data-theme='light'] .quote-action-button:hover,

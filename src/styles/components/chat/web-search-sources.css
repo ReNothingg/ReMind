@@ -140,7 +140,7 @@
   border: 0;
   border-radius: var(--radius-pill);
   background: rgba(var(--color-bg-interactive-raw), 0.86);
-  box-shadow: 0 1px 0 rgba(var(--color-white-raw), 0.05) inset;
+  box-shadow: none;
   color: var(--color-text-primary);
   text-decoration: none;
   transition:
@@ -195,7 +195,7 @@
   border: 1px solid rgba(var(--color-white-raw), 0.12);
   border-radius: var(--radius-md);
   background: var(--color-bg-surface);
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
   color: var(--color-text-secondary);
   font-size: 0.78rem;
   line-height: 1.45;
@@ -271,7 +271,7 @@
   border: 0;
   border-radius: var(--radius-md);
   background: rgba(12, 12, 14, 0.92);
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
   color: var(--color-text-secondary);
   font-size: 0.78rem;
   font-weight: 500;

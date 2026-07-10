@@ -165,7 +165,7 @@
   width: 76px;
   min-height: 88px;
   border-right: 1px solid var(--color-border-medium);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .beatbox-instance-host .steps-container {
@@ -235,7 +235,7 @@
   gap: calc(var(--spacing-unit) * 2);
   width: 320px;
   max-width: calc(100% - 16px);
-  box-shadow: var(--shadow-xl);
+  box-shadow: none;
   animation: fadeInPanel var(--animation-duration-fast) var(--animation-timing-smooth);
   pointer-events: none;
 }
@@ -377,7 +377,7 @@
   display: none;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: calc(var(--spacing-unit) * 3);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .beatbox-instance-host .adsr-panel.visible {
@@ -443,7 +443,7 @@
   cursor: pointer;
   border-radius: 50%;
   border: 2px solid var(--color-bg-surface);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
 .beatbox-instance-host input[type='range']::-moz-range-thumb {
@@ -453,7 +453,7 @@
   cursor: pointer;
   border-radius: 50%;
   border: 2px solid var(--color-bg-surface);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
 .beatbox-instance-host input[type='range']::-moz-range-track {

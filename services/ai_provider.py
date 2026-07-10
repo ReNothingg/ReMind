@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 from config import AI_PROVIDER_API_KEY, AI_PROVIDER_MODEL_NAME
 
@@ -71,7 +71,10 @@ def _generate_content(
         generation_config["response_mime_type"] = response_mime_type
 
     model = genai.GenerativeModel(DEFAULT_PROVIDER_MODEL)
-    response = model.generate_content(prompt, generation_config=generation_config)
+    response = model.generate_content(
+        prompt,
+        generation_config=cast(Any, generation_config),
+    )
     return (getattr(response, "text", None) or "").strip()
 
 

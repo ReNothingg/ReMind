@@ -45,8 +45,6 @@
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
-  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
 
 .user-message .attachment-card-preview img.image-thumbnail,

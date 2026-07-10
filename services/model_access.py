@@ -10,7 +10,6 @@ from ai_engine.registry import (
 )
 from utils.auth import User, db, is_admin_user
 
-
 BETA_PERCENT = 50
 
 

@@ -86,7 +86,7 @@ const FilePreviewCard = ({ file, onRemove, onPreview }) => {
                 {isImage && preview ? (
                     <img src={preview} alt={file.name} className="image-thumbnail" />
                 ) : isText && preview ? (
-                    <pre className="max-h-[60px] overflow-hidden whitespace-pre-wrap break-all [mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)]">
+                    <pre className="max-h-[60px] overflow-hidden whitespace-pre-wrap break-all">
                         {preview.substring(5)}
                     </pre>
                 ) : (

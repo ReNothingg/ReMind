@@ -10,7 +10,6 @@
   border-radius: 50%;
   background-color: var(--skeleton-bg);
   flex-shrink: 0;
-  animation: shimmer 1.5s infinite linear;
 }
 
 .skeleton-content {
@@ -23,22 +22,18 @@
   border-radius: var(--radius-sm);
   background-color: var(--skeleton-bg);
   margin-bottom: calc(var(--spacing-unit) * 2.5);
-  animation: shimmer 1.5s infinite linear;
 }
 
 .skeleton-line:nth-child(1) {
   width: 80%;
-  animation-delay: 0.05s;
 }
 
 .skeleton-line:nth-child(2) {
   width: 95%;
-  animation-delay: 0.1s;
 }
 
 .skeleton-line:nth-child(3) {
   width: 60%;
-  animation-delay: 0.15s;
 }
 
 .skeleton-line:last-child {

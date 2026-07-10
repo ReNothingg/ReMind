@@ -46,8 +46,6 @@
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
-  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
 
 .message-attachments .attachment-card-preview img.image-thumbnail,
@@ -154,7 +152,7 @@
   border-radius: calc(var(--radius-lg) + 2px);
   border: 1px solid rgba(var(--color-white-raw), 0.12);
   background: rgba(var(--color-black-raw), 0.18);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
 .message-image-card.is-error {
@@ -229,16 +227,7 @@
 .message-image-loader-shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    110deg,
-    transparent 0%,
-    rgba(var(--color-white-raw), 0.08) 32%,
-    rgba(var(--color-white-raw), 0.18) 48%,
-    rgba(var(--color-white-raw), 0.08) 64%,
-    transparent 100%
-  );
-  background-size: 220% 100%;
-  animation: shimmer-flow 1.8s linear infinite;
+  background: var(--color-bg-interactive);
 }
 
 .message-image-overlay {

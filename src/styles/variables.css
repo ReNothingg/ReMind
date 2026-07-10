@@ -652,7 +652,7 @@ html[data-theme='light'] .tag {
   color: #1f2937 !important;
   border-color: #d1d5db !important;
   background: #f3f4f6 !important;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 html[data-theme='light'] .file-card span,
 html[data-theme='light'] .attachment-file-card span {

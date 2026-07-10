@@ -250,7 +250,7 @@
   background: transparent !important;
   border-color: transparent !important;
   border-width: 0 !important;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 html[data-theme='light'] .user-message.is-editing-user-message .message-content,
@@ -258,7 +258,7 @@ html[data-theme='light'] .user-message.is-editing-user-message .ui-message-bubbl
   background: transparent !important;
   border-color: transparent !important;
   border-width: 0 !important;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .user-message-edit-panel {

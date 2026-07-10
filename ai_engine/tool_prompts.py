@@ -38,6 +38,7 @@ def markdown_section(markdown: str, heading: str) -> str:
 
     return "\n".join(section_lines).strip()
 
+
 def load_tool_prompt_section(filename: str, heading: str) -> str:
     prompt = load_tool_prompt(filename)
     if not prompt:

@@ -9,6 +9,7 @@ from routes.features.privacy import register_privacy_routes
 from routes.features.sessions import register_session_routes
 from routes.features.share import register_share_routes
 from routes.features.system import register_system_routes
+from routes.features.user_state import register_user_state_routes
 
 api_bp = Blueprint("api", __name__)
 
@@ -21,3 +22,4 @@ register_session_routes(api_bp)
 register_share_routes(api_bp)
 register_privacy_routes(api_bp)
 register_system_routes(api_bp)
+register_user_state_routes(api_bp)

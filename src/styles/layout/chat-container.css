@@ -341,7 +341,7 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-surface-alt);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .ai-feedback-panel-head {

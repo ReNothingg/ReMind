@@ -150,7 +150,7 @@
     border-radius: var(--radius-md);
     padding: 12px;
     background: var(--color-bg-surface);
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
   }
 
   .admin-command-strip > div {
@@ -190,7 +190,7 @@
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-md);
     background: var(--color-bg-surface);
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
   }
 
   .admin-metric-tile {
@@ -275,7 +275,7 @@
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-md);
     background: var(--color-bg-surface);
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
   }
 
   .admin-table {
@@ -444,7 +444,7 @@
     border-radius: var(--radius-md);
     padding: 16px;
     background: var(--color-bg-surface);
-    box-shadow: var(--shadow-xs);
+    box-shadow: none;
   }
 
   .admin-restriction-editor-header,
@@ -552,10 +552,8 @@
     width: 112px;
     height: 112px;
     border-radius: 50%;
-    background:
-      radial-gradient(circle at center, var(--color-bg-surface) 0 58%, transparent 59%),
-      conic-gradient(var(--color-accent) var(--admin-health, 0%), var(--color-bg-surface-alt) 0);
-    box-shadow: inset 0 0 0 1px var(--color-border-subtle);
+    background: var(--color-bg-interactive);
+    box-shadow: none;
   }
 
   .admin-ops-panel {

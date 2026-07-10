@@ -17,6 +17,7 @@ from ai_engine.registry import DEFAULT_MODEL_ID
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
+from services.ai_provider import generate_text, is_ai_provider_configured
 from services.beatbox_tools import normalize_beatbox_state
 from services.canvas_tools import (
     find_canmore_marker,
@@ -33,7 +34,6 @@ from services.chat_history import (
     resolve_session_identifier,
 )
 from services.files import handle_file_upload
-from services.ai_provider import generate_text, is_ai_provider_configured
 from services.model_access import can_user_access_model, get_model_stage, model_exists
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
