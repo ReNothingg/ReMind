@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
 import { formatText, formatPlainText, formatUserMessageText, highlightCode, refreshCodeLineNumbers } from '../../utils/formatting';
 import { apiService } from '../../services/api';
+import { stripCanmoreToolMarkup } from '../../utils/canmore';
 import { fileService } from '../../services/fileService';
 import Quiz from '../Widgets/Quiz';
 import Spinwheel from '../Widgets/Spinwheel';
@@ -121,18 +122,6 @@ const resolveMediaUrl = (path) => {
     }
     return `${apiService.baseURL}${path}`;
 };
-
-function stripCanmoreToolMarkup(text) {
-    const cleaned = String(text || '')
-        .replace(/```[^\n`]*\n?[\s\S]*?canmore\.(?:create_textdoc|update_textdoc|comment_textdoc)[\s\S]*?```/gi, '')
-        .replace(/<canmore(?:\s[^>]*)?>[\s\S]*?<\/canmore>/gi, '')
-        .trim();
-    return cleaned
-        .split(/\n{2,}/)
-        .filter((paragraph) => !paragraph.toLowerCase().includes('canmore.'))
-        .join('\n\n')
-        .trim();
-}
 
 const sourceFallbackIcon = '/icons/ui/web.svg';
 

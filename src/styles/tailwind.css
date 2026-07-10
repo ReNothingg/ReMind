@@ -13,7 +13,6 @@
 @import "./components/ui/custom-select-settings.css" layer(components);
 @import "./components/ui/table.css" layer(components);
 @import "./components/ui/file-modal.css" layer(components);
-@import "./components/ui/html-preview-modal.css" layer(components);
 @import "./components/ui/image-lightbox.css" layer(components);
 @import "./components/ui/toast-notifications.css" layer(components);
 @import "./components/ui/skeleton-loader.css" layer(components);

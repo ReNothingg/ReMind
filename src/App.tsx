@@ -30,17 +30,9 @@ type ChatSessionActivity = {
 };
 
 type WindowWithLayoutModals = Window & {
-    openHtmlPreviewModal?: (urlOrHtml: string, isHtml?: boolean) => void;
-    closeHtmlPreviewModal?: () => void;
     openImageLightbox?: (imageSrc: string, messageId?: string) => void;
     closeImageLightbox?: () => void;
 };
-
-interface HtmlPreviewState {
-    isOpen: boolean;
-    urlOrHtml: string | null;
-    isHtml: boolean;
-}
 
 interface ImageLightboxState {
     isOpen: boolean;
@@ -57,13 +49,13 @@ const AppRail = lazy(() => import('./components/Layout/AppRail'));
 const ChatContainer = lazy(() => import('./components/Chat/ChatContainer'));
 const SettingsModal = lazy(() => import('./components/Modals/SettingsModal'));
 const AuthModal = lazy(() => import('./components/Modals/AuthModal'));
-const HtmlPreviewModal = lazy(() => import('./components/Modals/HtmlPreviewModal'));
 const ImageLightbox = lazy(() => import('./components/Modals/ImageLightbox'));
 const ShareModal = lazy(() => import('./features/share/components/ShareModal'));
 const MindsPage = lazy(() => import('./features/minds/MindsPage'));
 const MindEditorPage = lazy(() => import('./features/minds/MindEditorPage'));
 const AdminPanel = lazy(() => import('./features/admin/AdminPanel'));
 const CanvasPanel = lazy(() => import('./features/canvas/CanvasPanel'));
+const CanvasHtmlPreview = lazy(() => import('./features/canvas/CanvasHtmlPreview'));
 
 function clampCanvasWidth(width: number): number {
     if (typeof window === 'undefined') {
@@ -98,10 +90,10 @@ const MainLayout = () => {
     );
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [isAuthOpen, setAuthOpen] = useState<AuthModalState>(false);
-    const [htmlPreview, setHtmlPreview] = useState<HtmlPreviewState>({ isOpen: false, urlOrHtml: null, isHtml: false });
     const [imageLightbox, setImageLightbox] = useState<ImageLightboxState>({ isOpen: false, imageSrc: null, messageId: null });
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [isCanvasVisible, setCanvasVisible] = useState(false);
+    const [isCanvasPreviewVisible, setCanvasPreviewVisible] = useState(false);
     const [selectedCanvasTextdoc, setSelectedCanvasTextdoc] = useState<CanvasTextdoc | null>(null);
     const [canvasWidth, setCanvasWidth] = useState(() => {
         if (typeof window === 'undefined') {
@@ -239,12 +231,6 @@ const MainLayout = () => {
     useEffect(() => {
         const appWindow = window as WindowWithLayoutModals;
 
-        appWindow.openHtmlPreviewModal = (urlOrHtml, isHtml = false) => {
-            setHtmlPreview({ isOpen: true, urlOrHtml, isHtml });
-        };
-        appWindow.closeHtmlPreviewModal = () => {
-            setHtmlPreview({ isOpen: false, urlOrHtml: null, isHtml: false });
-        };
         appWindow.openImageLightbox = (imageSrc, messageId) => {
             setImageLightbox({ isOpen: true, imageSrc, messageId: messageId ?? null });
         };
@@ -253,8 +239,6 @@ const MainLayout = () => {
         };
 
         return () => {
-            delete appWindow.openHtmlPreviewModal;
-            delete appWindow.closeHtmlPreviewModal;
             delete appWindow.openImageLightbox;
             delete appWindow.closeImageLightbox;
         };
@@ -679,6 +663,7 @@ const MainLayout = () => {
         const frame = window.requestAnimationFrame(() => {
             if (!canvasTextdoc) {
                 setCanvasVisible(false);
+                setCanvasPreviewVisible(false);
                 setSelectedCanvasTextdoc(null);
                 return;
             }
@@ -698,10 +683,28 @@ const MainLayout = () => {
 
     const activeCanvasTextdoc = selectedCanvasTextdoc || canvasTextdoc;
     const canvasDockTextdoc = activeCanvasTextdoc || canvasTextdoc;
+    const isCanvasHtmlPreviewActive = Boolean(
+        isCanvasPreviewVisible
+        && isCanvasVisible
+        && canvasDockTextdoc?.type === 'code/html'
+    );
 
     const handleOpenCanvas = useCallback((textdoc: CanvasTextdoc) => {
         setSelectedCanvasTextdoc(textdoc);
+        if (textdoc.type !== 'code/html') {
+            setCanvasPreviewVisible(false);
+        }
         setCanvasVisible(true);
+    }, []);
+
+    const handleCanvasPreviewToggle = useCallback(() => {
+        if (canvasDockTextdoc?.type !== 'code/html') return;
+        setCanvasPreviewVisible((current) => !current);
+    }, [canvasDockTextdoc?.type]);
+
+    const handleCloseCanvas = useCallback(() => {
+        setCanvasPreviewVisible(false);
+        setCanvasVisible(false);
     }, []);
 
     const handleCanvasContentChange = useCallback((content: string) => {
@@ -775,9 +778,11 @@ const MainLayout = () => {
         const shouldShowCanvasDock = Boolean(canvasDockTextdoc && isChatSurface);
         document.documentElement.classList.toggle('has-canvas-dock', shouldShowCanvasDock);
         document.documentElement.classList.toggle('canvas-open', shouldShowCanvasDock && isCanvasVisible);
+        document.documentElement.classList.toggle('canvas-preview-open', isCanvasHtmlPreviewActive);
         document.documentElement.classList.toggle('canvas-resizing', isCanvasResizing);
         document.body.classList.toggle('has-canvas-dock', shouldShowCanvasDock);
         document.body.classList.toggle('canvas-open', shouldShowCanvasDock && isCanvasVisible);
+        document.body.classList.toggle('canvas-preview-open', isCanvasHtmlPreviewActive);
         document.body.classList.toggle('canvas-resizing', isCanvasResizing);
         if (shouldShowCanvasDock) {
             document.body.style.setProperty('--canvas-panel-width', `${canvasWidth}px`);
@@ -787,13 +792,15 @@ const MainLayout = () => {
         return () => {
             document.documentElement.classList.remove('has-canvas-dock');
             document.documentElement.classList.remove('canvas-open');
+            document.documentElement.classList.remove('canvas-preview-open');
             document.documentElement.classList.remove('canvas-resizing');
             document.body.classList.remove('has-canvas-dock');
             document.body.classList.remove('canvas-open');
+            document.body.classList.remove('canvas-preview-open');
             document.body.classList.remove('canvas-resizing');
             document.body.style.removeProperty('--canvas-panel-width');
         };
-    }, [canvasDockTextdoc, canvasWidth, isCanvasResizing, isCanvasVisible, isChatSurface]);
+    }, [canvasDockTextdoc, canvasWidth, isCanvasHtmlPreviewActive, isCanvasResizing, isCanvasVisible, isChatSurface]);
 
     const canvasDockIsCode = canvasDockTextdoc?.type?.startsWith('code/') ?? false;
     const canvasDockLanguage = canvasDockIsCode ? canvasDockTextdoc?.type.slice('code/'.length) : '';
@@ -840,8 +847,14 @@ const MainLayout = () => {
             )}
 
             <div className="ui-app-canvas-stage">
-                <main className="ui-app-main-shell">
-                    <GlobalHeader
+                <main className={`ui-app-main-shell${isCanvasHtmlPreviewActive ? ' canvas-site-preview-mode' : ''}`}>
+                    {isCanvasHtmlPreviewActive && canvasDockTextdoc ? (
+                        <Suspense fallback={null}>
+                            <CanvasHtmlPreview html={canvasDockTextdoc.content || ''} />
+                        </Suspense>
+                    ) : (
+                        <>
+                            <GlobalHeader
                         isAuthenticated={isAuthenticated}
                         onMenuToggle={handleRailToggle}
                         currentModel={selectedModel}
@@ -1039,6 +1052,8 @@ const MainLayout = () => {
                                 />
                             </>
                         </Suspense>
+                            )}
+                        </>
                     )}
                 </main>
 
@@ -1062,8 +1077,10 @@ const MainLayout = () => {
                                 <Suspense fallback={null}>
                                     <CanvasPanel
                                         textdoc={canvasDockTextdoc}
-                                        onClose={() => setCanvasVisible(false)}
+                                        onClose={handleCloseCanvas}
                                         onContentChange={handleCanvasContentChange}
+                                        isPreviewActive={isCanvasHtmlPreviewActive}
+                                        onPreviewToggle={handleCanvasPreviewToggle}
                                     />
                                 </Suspense>
                             </>
@@ -1111,17 +1128,6 @@ const MainLayout = () => {
                     <AuthModal
                         onClose={() => setAuthOpen(false)}
                         initialView={isAuthOpen === 'register' ? 'register' : 'login'}
-                    />
-                </Suspense>
-            )}
-
-            {htmlPreview.isOpen && (
-                <Suspense fallback={null}>
-                    <HtmlPreviewModal
-                        isOpen={htmlPreview.isOpen}
-                        onClose={() => setHtmlPreview({ isOpen: false, urlOrHtml: null, isHtml: false })}
-                        urlOrHtml={htmlPreview.urlOrHtml}
-                        isHtml={htmlPreview.isHtml}
                     />
                 </Suspense>
             )}

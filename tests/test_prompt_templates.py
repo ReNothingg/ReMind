@@ -49,3 +49,11 @@ def test_system_prompt_keeps_markdown_sections_separated() -> None:
 
     assert rendered.startswith(f"{base_prompt}\n\nThe user provided")
     assert "{{" not in user_prompt
+
+
+def test_canmore_prompt_requires_self_contained_html_for_websites() -> None:
+    base_prompt = load_prompt("prompt.md")
+
+    assert "self-contained `code/html`" in base_prompt
+    assert "Do not use React imports, JSX, npm packages, bundlers" in base_prompt
+    assert "MUST contain both `function` and `arguments`" in base_prompt

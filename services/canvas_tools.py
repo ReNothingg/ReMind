@@ -352,13 +352,27 @@ def _normalize_call_object(value: Any) -> dict[str, Any] | None:
     function_name = _normalize_function_name(
         value.get("function") or value.get("name") or value.get("tool")
     )
+    if function_name not in ALLOWED_CANMORE_FUNCTIONS:
+        if all(key in value for key in ("name", "type", "content")):
+            function_name = "create_textdoc"
+        elif isinstance(value.get("updates"), list):
+            function_name = "update_textdoc"
+        elif isinstance(value.get("comments"), list):
+            function_name = "comment_textdoc"
     arguments = _normalize_arguments(
-        value.get("arguments")
-        if "arguments" in value
+        value
+        if function_name in ALLOWED_CANMORE_FUNCTIONS
+        and "arguments" not in value
+        and "args" not in value
+        and "payload" not in value
         else (
-            value.get("args")
-            if "args" in value
-            else value.get("payload") if "payload" in value else value
+            value.get("arguments")
+            if "arguments" in value
+            else (
+                value.get("args")
+                if "args" in value
+                else value.get("payload") if "payload" in value else value
+            )
         )
     )
     if function_name not in ALLOWED_CANMORE_FUNCTIONS or not isinstance(arguments, dict):
@@ -408,9 +422,15 @@ def _remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
 
 def _strip_canmore_tool_text(text: str) -> str:
     cleaned = re.sub(
-        r"```[^\n`]*\n?[\s\S]*?canmore\.(?:create_textdoc|update_textdoc|comment_textdoc)[\s\S]*?```",
+        r"```canmore\s*[\s\S]*?```",
         "",
         str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"```[^\n`]*\n?[\s\S]*?canmore\.(?:create_textdoc|update_textdoc|comment_textdoc)[\s\S]*?```",
+        "",
+        cleaned,
         flags=re.IGNORECASE,
     )
     cleaned = re.sub(r"<canmore(?:\s[^>]*)?>[\s\S]*?</canmore>", "", cleaned, flags=re.IGNORECASE)

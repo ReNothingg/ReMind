@@ -491,8 +491,7 @@
   }
 
   .user-settings-content,
-  .file-modal-content,
-  .html-preview-content {
+  .file-modal-content {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
@@ -505,8 +504,7 @@
   }
 
   .user-settings-modal.active,
-  .file-modal.active,
-  .html-preview-modal.active {
+  .file-modal.active {
     padding: 0;
     z-index: 10000;
   }
@@ -556,8 +554,7 @@
   }
 
   .user-settings-close,
-  .file-modal-close,
-  .html-preview-close-btn {
+  .file-modal-close {
     width: 44px;
     height: 44px;
     background: rgba(255, 255, 255, 0.1);

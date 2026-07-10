@@ -301,7 +301,6 @@
 }
 
 .file-modal,
-.image-lightbox,
-.html-preview-modal {
+.image-lightbox {
   will-change: opacity;
 }

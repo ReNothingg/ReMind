@@ -31,10 +31,8 @@ type CanvasPanelProps = {
     textdoc: CanvasTextdoc;
     onClose: () => void;
     onContentChange?: (content: string) => void;
-};
-
-type CanvasPreviewWindow = Window & {
-    openHtmlPreviewModal?: (urlOrHtml: string, isHtml?: boolean) => void;
+    isPreviewActive?: boolean;
+    onPreviewToggle?: () => void;
 };
 
 const codeTypePrefix = 'code/';
@@ -101,7 +99,13 @@ function buildDownloadName(textdoc: CanvasTextdoc): string {
     return `${safeName}.${extension}`;
 }
 
-const CanvasPanel = ({ textdoc, onClose, onContentChange }: CanvasPanelProps) => {
+const CanvasPanel = ({
+    textdoc,
+    onClose,
+    onContentChange,
+    isPreviewActive = false,
+    onPreviewToggle,
+}: CanvasPanelProps) => {
     const { t } = useTranslation();
     const [copyState, setCopyState] = useState<'idle' | 'done'>('idle');
     const [draft, setDraft] = useState(textdoc.content || '');
@@ -162,13 +166,6 @@ const CanvasPanel = ({ textdoc, onClose, onContentChange }: CanvasPanelProps) =>
         URL.revokeObjectURL(url);
     };
 
-    const handlePreview = () => {
-        const previewWindow = window as CanvasPreviewWindow;
-        if (canPreviewHtml && previewWindow.openHtmlPreviewModal) {
-            previewWindow.openHtmlPreviewModal(draft || '', true);
-        }
-    };
-
     const handleDraftChange = (content: string) => {
         setDraft(content);
         lastSyncedDraftRef.current = content;
@@ -216,8 +213,9 @@ const CanvasPanel = ({ textdoc, onClose, onContentChange }: CanvasPanelProps) =>
                     {canPreviewHtml && (
                         <button
                             type="button"
-                            className="chat-canvas-icon-button"
-                            onClick={handlePreview}
+                            className={`chat-canvas-icon-button${isPreviewActive ? ' is-active' : ''}`}
+                            onClick={onPreviewToggle}
+                            aria-pressed={isPreviewActive}
                             aria-label={t('canvas.preview')}
                             title={t('canvas.preview')}
                         >

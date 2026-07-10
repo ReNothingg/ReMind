@@ -1,5 +1,6 @@
 # Product Rules
 
+Every new capability must undergo a cybersecurity review before it is considered complete. Do not claim that a capability is complete until its security review has been performed and identified issues have been fixed or explicitly reported.
 Every new end-user-visible capability must be adapted for the mobile web interface.
 
 New UI must match the existing visual style of the website.

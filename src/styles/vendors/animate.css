@@ -180,8 +180,7 @@
 }
 
 .file-modal.active .file-modal-content,
-.user-settings-modal.active .user-settings-content,
-.html-preview-modal.active .html-preview-content {
+.user-settings-modal.active .user-settings-content {
   animation: fade-in-scale var(--duration-normal) var(--ease-out-expo) forwards;
 }
 
@@ -263,17 +262,6 @@ button:active:not(.password-toggle),
 .file-card.removing {
   animation: fade-out-scale 0.25s var(--ease-out-expo) forwards;
   pointer-events: none;
-}
-
-@keyframes htmlPreviewOpen {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.9) translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1) translateY(0);
-  }
 }
 
 @keyframes fadeIn {

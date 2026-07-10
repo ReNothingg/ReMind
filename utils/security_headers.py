@@ -5,6 +5,7 @@ from flask import g, has_request_context, request
 from config import BACKEND_URL, CORS_ORIGINS, ENABLE_STRICT_HTTPS
 
 JSON_LD_SCRIPT_HASH = "'sha256-eOo7R2QxzL/n0WXjk+i1Gj3T+BbZVyQd3/ZhRDi4nig='"
+HTML_PREVIEW_PATH = "/html-preview.html"
 
 
 def _origin_from_url(raw_url: str | None) -> str | None:
@@ -58,6 +59,23 @@ def get_csp_header():
     return "; ".join(d for d in directives if d)
 
 
+def get_html_preview_csp_header():
+    return "; ".join([
+        "default-src 'none'",
+        "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:",
+        "style-src 'unsafe-inline' data: blob: http: https:",
+        "img-src data: blob: http: https:",
+        "font-src data: blob: http: https:",
+        "media-src data: blob: http: https:",
+        "connect-src http: https:",
+        "frame-src 'self' data: blob: http: https:",
+        "worker-src blob:",
+        "form-action http: https:",
+        "base-uri 'none'",
+        "frame-ancestors 'self'",
+    ])
+
+
 def get_permissions_policy():
     policies = [
         "accelerometer=()",
@@ -87,6 +105,17 @@ def get_permissions_policy():
 
 
 def apply_security_headers(response):
+    is_html_preview = bool(has_request_context() and request.path == HTML_PREVIEW_PATH)
+    if is_html_preview:
+        response.headers["Content-Security-Policy"] = get_html_preview_csp_header()
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Permissions-Policy"] = get_permissions_policy()
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        return response
+
     response.headers["Content-Security-Policy"] = get_csp_header()
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"

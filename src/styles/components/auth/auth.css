@@ -160,7 +160,6 @@
 .profile-card,
 .file-modal-content,
 .user-settings-content,
-.html-preview-modal__content,
 .translation-panel,
 .settings-tabs {
   background: var(--color-bg-surface);
@@ -174,7 +173,6 @@ html[data-theme='light'] .auth-card,
 html[data-theme='light'] .profile-card,
 html[data-theme='light'] .file-modal-content,
 html[data-theme='light'] .user-settings-content,
-html[data-theme='light'] .html-preview-modal__content,
 html[data-theme='light'] .translation-panel,
 html[data-theme='light'] .settings-tabs {
   background-color: var(--color-bg-surface);
@@ -185,7 +183,6 @@ html:not([data-theme='light']) .auth-card,
 html:not([data-theme='light']) .profile-card,
 html:not([data-theme='light']) .file-modal-content,
 html:not([data-theme='light']) .user-settings-content,
-html:not([data-theme='light']) .html-preview-modal__content,
 html:not([data-theme='light']) .translation-panel,
 html:not([data-theme='light']) .settings-tabs {
   background-color: rgba(var(--color-black-raw), 0.95);
