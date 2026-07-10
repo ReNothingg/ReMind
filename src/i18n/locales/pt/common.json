@@ -333,7 +333,7 @@
       "signOut": "Terminar sessão",
       "profileUpdated": "Perfil atualizado",
       "updateError": "Falha na atualização",
-      "nameHint": "Usado na personalização de IA quando não existe uma alcunha definida.",
+      "nameHint": "Usado na personalização de IA.",
       "usernameHint": "3-50 caracteres: letras, números, underscore e hífen.",
       "delete": {
         "title": "Eliminar conta",
@@ -416,7 +416,6 @@
       "description": "Estes dados são adicionados ao prompt do sistema.",
       "instructionsLabel": "Instruções personalizadas",
       "instructionsPlaceholder": "Por exemplo: Quero que sejas conciso...",
-      "nicknameLabel": "Alcunha",
       "professionLabel": "Profissão",
       "moreLabel": "Informação adicional",
       "morePlaceholder": "Qualquer informação adicional sobre si...",

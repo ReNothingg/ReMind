@@ -62,7 +62,6 @@ const DEFAULT_SETTINGS = {
     automaticWebSearch: false,
     service_improvement_opt_in: false,
     personalization_instructions: '',
-    personalization_nickname: '',
     personalization_profession: '',
     personalization_more: ''
 };
@@ -89,6 +88,10 @@ export const SettingsProvider = ({ children }) => {
             }
         });
         const merged = { ...DEFAULT_SETTINGS, ...saved };
+
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('settings_personalization_nickname');
+        }
 
         const normalizedInterfaceLanguage = normalizeLanguage(merged.interface_language);
         merged.interface_language = normalizedInterfaceLanguage;

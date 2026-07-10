@@ -333,7 +333,7 @@
       "signOut": "Se déconnecter",
       "profileUpdated": "Profil mis à jour",
       "updateError": "Échec de la mise à jour",
-      "nameHint": "Utilisé pour la personnalisation de l'IA lorsqu'aucun surnom n'est défini.",
+      "nameHint": "Utilisé pour la personnalisation de l'IA.",
       "usernameHint": "3 à 50 caractères : lettres, chiffres, tiret bas et trait d'union.",
       "delete": {
         "title": "Supprimer le compte",
@@ -416,7 +416,6 @@
       "description": "Ces détails sont ajoutés au prompt système.",
       "instructionsLabel": "Instructions personnalisées",
       "instructionsPlaceholder": "Par exemple : je veux que tu sois concis...",
-      "nicknameLabel": "Surnom",
       "professionLabel": "Profession",
       "moreLabel": "Informations supplémentaires",
       "morePlaceholder": "Toute information supplémentaire sur vous...",

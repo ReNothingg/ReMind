@@ -333,7 +333,7 @@
       "signOut": "Cerrar sesión",
       "profileUpdated": "Perfil actualizado",
       "updateError": "Error al actualizar",
-      "nameHint": "Se usa en la personalización de IA cuando no hay un apodo definido.",
+      "nameHint": "Se usa en la personalización de IA.",
       "usernameHint": "3-50 caracteres: letras, números, guion bajo y guion.",
       "delete": {
         "title": "Eliminar cuenta",
@@ -416,7 +416,6 @@
       "description": "Estos datos se añaden al prompt del sistema.",
       "instructionsLabel": "Instrucciones personalizadas",
       "instructionsPlaceholder": "Por ejemplo: Quiero que seas conciso...",
-      "nicknameLabel": "Apodo",
       "professionLabel": "Profesión",
       "moreLabel": "Información adicional",
       "morePlaceholder": "Cualquier información adicional sobre ti...",

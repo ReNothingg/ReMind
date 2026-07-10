@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, quote_plus, unquote, urlencode, urljoin, urlp
 import requests
 from bs4 import BeautifulSoup
 
-from ai_engine.tool_prompts import load_tool_prompt_section
+from ai_engine.prompt_templates import render_prompt_section
 from config import (
     USER_AGENT,
     WEB_SEARCH_ENABLED,
@@ -58,10 +58,7 @@ HIGH_SIGNAL_HOSTS = {
 
 
 def _render_web_tool_prompt_section(section: str, **replacements: str) -> str:
-    prompt = load_tool_prompt_section("web.md", section)
-    for key, value in replacements.items():
-        prompt = prompt.replace("{{" + key + "}}", value)
-    return prompt
+    return render_prompt_section("tools/web.md", section, replacements)
 
 
 @dataclass(frozen=True)

@@ -1095,7 +1095,7 @@ export const useChat = () => {
             const avg_message_length = history.length > 0
                 ? Math.floor(history.reduce((sum, msg) => sum + (msg.content?.length || 0), 0) / history.length)
                 : 0;
-            const personalizationFields = ['personalization_instructions', 'personalization_nickname', 'personalization_profession', 'personalization_more'];
+            const personalizationFields = ['personalization_instructions', 'personalization_profession', 'personalization_more'];
             const personalizationData = {};
             personalizationFields.forEach(key => {
                 try {

@@ -1,12 +1,18 @@
-from functools import lru_cache
+import re
 from pathlib import Path
+from typing import Mapping
 
-_TOOLS_DIR = Path(__file__).with_name("tools")
+_PROMPT_ROOT = Path(__file__).parent.resolve()
+_PLACEHOLDER_RE = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
 
 
-@lru_cache(maxsize=16)
-def load_tool_prompt(filename: str) -> str:
-    path = _TOOLS_DIR / filename
+def load_prompt(relative_path: str) -> str:
+    path = (_PROMPT_ROOT / relative_path).resolve()
+    try:
+        path.relative_to(_PROMPT_ROOT)
+    except ValueError:
+        return ""
+
     try:
         return path.read_text(encoding="utf-8").strip()
     except OSError:
@@ -39,8 +45,28 @@ def markdown_section(markdown: str, heading: str) -> str:
     return "\n".join(section_lines).strip()
 
 
-def load_tool_prompt_section(filename: str, heading: str) -> str:
-    prompt = load_tool_prompt(filename)
+def load_prompt_section(relative_path: str, heading: str) -> str:
+    prompt = load_prompt(relative_path)
     if not prompt:
         return ""
     return markdown_section(prompt, heading)
+
+
+def render_prompt(relative_path: str, replacements: Mapping[str, object]) -> str:
+    return _render(load_prompt(relative_path), replacements)
+
+
+def render_prompt_section(
+    relative_path: str, heading: str, replacements: Mapping[str, object]
+) -> str:
+    return _render(load_prompt_section(relative_path, heading), replacements)
+
+
+def _render(template: str, replacements: Mapping[str, object]) -> str:
+    def replace_placeholder(match: re.Match[str]) -> str:
+        key = match.group(1)
+        if key not in replacements:
+            return match.group(0)
+        return str(replacements[key])
+
+    return _PLACEHOLDER_RE.sub(replace_placeholder, template)

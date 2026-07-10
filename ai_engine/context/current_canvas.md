@@ -1,0 +1,7 @@
+CURRENT CANVAS TEXTDOC
+Name: {{NAME}}
+Type: {{TYPE}}
+Content:
+```{{FENCE_LANGUAGE}}
+{{CONTENT}}
+```

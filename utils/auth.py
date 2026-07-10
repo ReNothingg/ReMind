@@ -27,6 +27,17 @@ OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 180
 ROOT_ADMIN_USER_ID = 1
+REMOVED_SETTINGS_DATA_KEYS = frozenset({"personalization_nickname"})
+
+
+def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
+    if not isinstance(raw_settings, dict):
+        return {}
+    return {
+        key: value
+        for key, value in raw_settings.items()
+        if key not in REMOVED_SETTINGS_DATA_KEYS
+    }
 
 
 class User(db.Model):
@@ -147,9 +158,10 @@ class UserSettings(db.Model):
 
     def get_settings(self):
         try:
-            return json.loads(self.settings_data) if self.settings_data else {}
+            parsed = json.loads(self.settings_data) if self.settings_data else {}
         except (TypeError, ValueError, json.JSONDecodeError):
             return {}
+        return sanitize_settings_data(parsed)
 
     def to_dict(self):
         return {
@@ -1623,11 +1635,12 @@ def register_auth_routes(app):
             if "automatic_web_search" in data:
                 settings.automatic_web_search = bool(data["automatic_web_search"])
             if "settings_data" in data:
-                settings.settings_data = json.dumps(data["settings_data"], ensure_ascii=False)
+                sanitized_settings = sanitize_settings_data(data["settings_data"])
+                settings.settings_data = json.dumps(sanitized_settings, ensure_ascii=False)
             elif data:
                 current_settings = settings.get_settings()
                 for key, value in data.items():
-                    if key not in ["theme", "language", "automatic_web_search"]:
+                    if key not in ["theme", "language", "automatic_web_search"] and key not in REMOVED_SETTINGS_DATA_KEYS:
                         current_settings[key] = value
                 settings.settings_data = json.dumps(current_settings, ensure_ascii=False)
 

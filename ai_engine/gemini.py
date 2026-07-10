@@ -1,7 +1,6 @@
 import base64
 import io
 import logging
-from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Union
 
 import google.generativeai as genai
@@ -9,11 +8,11 @@ from google.api_core import exceptions as google_exceptions
 from PIL import Image
 
 from ai_engine.personalization import build_system_prompt
+from ai_engine.prompt_templates import load_prompt
 from config import GEMINI_API_KEY, GEMINI_MODEL_NAME
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT_PATH = Path(__file__).with_name("prompt.md")
 _gemini_configured = False
 _UNSUPPORTED_LOCATION_ERROR_FRAGMENT = "user location is not supported"
 
@@ -35,27 +34,11 @@ def _ensure_gemini_configured() -> None:
 
 
 def _load_system_prompt() -> Optional[str]:
-    try:
-        logger.debug("Попытка загрузить системный промпт из: %s", _SYSTEM_PROMPT_PATH)
-        if not _SYSTEM_PROMPT_PATH.exists():
-            logger.error(
-                "Файл системного промпта '%s' не найден. Модель будет инициализирована без него.",
-                _SYSTEM_PROMPT_PATH,
-            )
-            return None
+    prompt_content = load_prompt("prompt.md")
+    if prompt_content:
+        return prompt_content
 
-        prompt_content = _SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
-        if prompt_content:
-            logger.info(
-                "Системный промпт успешно загружен из файла '%s'.",
-                _SYSTEM_PROMPT_PATH,
-            )
-            return prompt_content
-
-        logger.error("Файл системного промпта '%s' пуст.", _SYSTEM_PROMPT_PATH)
-    except Exception as exc:
-        logger.error("Ошибка при чтении файла системного промпта: %s", exc, exc_info=True)
-
+    logger.error("Файл системного промпта prompt.md не найден или пуст.")
     return None
 
 

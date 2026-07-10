@@ -1,30 +1,15 @@
 import json
 import logging
-import os
 import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 from flask import request
 
-from ai_engine.tool_prompts import load_tool_prompt_section
+from ai_engine.prompt_templates import load_prompt, load_prompt_section, render_prompt
 from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
-
-
-def _load_template_file(filename: str) -> Optional[str]:
-    try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(script_dir, filename)
-        if not os.path.exists(path):
-            logger.debug(f"Template file not found: {path}")
-            return None
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception as e:
-        logger.exception(f"Error loading template file {filename}: {e}")
-        return None
 
 
 def get_user_settings_by_id(user_id: Optional[int]) -> Dict[str, Any]:
@@ -131,18 +116,11 @@ def _compute_avg_message_length(history: list) -> int:
 
 
 def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
-    template = _load_template_file("user.md")
-    if not template:
-        return ""
-
     settings = get_user_settings_by_id(user_id)
     user_profile = get_user_profile_by_id(user_id)
     account_name = user_profile.get("name") or user_profile.get("username") or ""
     mapping = {
-        "PREFERRED_NAME": settings.get("personalization_nickname")
-        or metadata.get("personalization_nickname")
-        or account_name
-        or "",
+        "PREFERRED_NAME": account_name or "",
         "ROLE": settings.get("personalization_profession")
         or metadata.get("personalization_profession")
         or "",
@@ -168,17 +146,10 @@ def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
         "NUMBER": str(metadata.get("avg_conversation_depth") or 0),
         "COUNTRY": metadata.get("country") or "",
         "PLAN_TYPE": metadata.get("plan_type") or "",
-        "ACCOUNT_NAME": account_name
-        or metadata.get("personalization_nickname")
-        or settings.get("personalization_nickname")
-        or "",
+        "ACCOUNT_NAME": account_name or "",
     }
 
-    out = template
-    for key, val in mapping.items():
-        out = out.replace(f"{{{{{key}}}}}", str(val))
-
-    return out
+    return render_prompt("user.md", mapping)
 
 
 def user_has_github_connection(user_id: Optional[int]) -> bool:
@@ -200,14 +171,14 @@ def render_github_tool_prompt(user_id: Optional[int]) -> str:
     if not user_has_github_connection(user_id):
         return ""
 
-    tool_prompt = _load_template_file(os.path.join("tools", "github.md"))
+    tool_prompt = load_prompt("tools/github.md")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
 
 
 def render_web_tool_prompt() -> str:
-    tool_prompt = load_tool_prompt_section("web.md", "Assistant System Prompt")
+    tool_prompt = load_prompt_section("tools/web.md", "Assistant System Prompt")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
@@ -226,19 +197,17 @@ def render_current_canvas_textdoc(user_data: dict[str, Any]) -> str:
         raw_language = textdoc_type.split("/", 1)[1].strip().lower()
         if re.match(r"^[a-z0-9_-]{1,32}$", raw_language):
             fence_language = raw_language
-    if len(content) > 24_000:
-        content = content[:24_000] + "\n[Current canvas content truncated]"
+    content = _truncate_prompt_value(content, 24_000)
 
-    current_canvas = (
-        "\n\nCURRENT CANVAS TEXTDOC\n"
-        f"Name: {name}\n"
-        f"Type: {textdoc_type}\n"
-        "Content:\n"
-        f"```{fence_language}\n"
-        f"{content}\n"
-        "```"
+    return render_prompt(
+        "context/current_canvas.md",
+        {
+            "NAME": name,
+            "TYPE": textdoc_type,
+            "FENCE_LANGUAGE": fence_language,
+            "CONTENT": content,
+        },
     )
-    return current_canvas.strip()
 
 
 def render_beatbox_state_prompt(user_data: dict[str, Any]) -> str:
@@ -251,15 +220,20 @@ def render_beatbox_state_prompt(user_data: dict[str, Any]) -> str:
     except (TypeError, ValueError):
         return ""
 
-    if len(serialized_state) > 24_000:
-        serialized_state = serialized_state[:24_000] + "...[Current BeatBox state truncated]"
+    serialized_state = _truncate_prompt_value(serialized_state, 24_000)
 
-    return (
-        "CURRENT BEATBOX STATE\n"
-        "The user may have edited the BeatBox widget after it was created. Treat this JSON as the current beat, "
-        "including added tracks and toggled steps, when answering or generating the next <beatbox> block.\n"
-        f"```json\n{serialized_state}\n```"
+    return render_prompt(
+        "context/beatbox_state.md",
+        {"BEATBOX_STATE_JSON": serialized_state},
     )
+
+
+def _truncate_prompt_value(value: str, max_chars: int) -> str:
+    if len(value) <= max_chars:
+        return value
+
+    marker = load_prompt("context/truncation_marker.md")
+    return value[:max_chars] + (f"\n{marker}" if marker else "")
 
 
 def _format_dimensions(dim: Optional[dict]) -> str:
@@ -274,7 +248,7 @@ def _format_dimensions(dim: Optional[dict]) -> str:
 
 
 def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
-    base = _load_template_file("prompt.md") or ""
+    base = load_prompt("prompt.md")
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
@@ -283,12 +257,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     beatbox_state_prompt = render_beatbox_state_prompt(user_data)
     github_tool_prompt = render_github_tool_prompt(user_id)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
-    if base and user_md:
-        prompt = base + user_md
-    elif user_md:
-        prompt = user_md
-    else:
-        prompt = base
+    prompt = "\n\n".join(section for section in (base, user_md) if section)
 
     tool_prompts = [
         tool
@@ -318,11 +287,11 @@ def render_active_mind_prompt(active_mind: Any) -> str:
     if not name or not instructions:
         return ""
 
-    return (
-        "ACTIVE MIND PROFILE:\n"
-        "The user selected a custom Mind for this conversation. Follow this Mind profile when answering, unless it conflicts with platform safety rules, privacy rules, or higher-priority system requirements.\n"
-        f"Mind name: {name}\n"
-        f"Mind description: {description}\n"
-        "Current Mind instructions:\n"
-        f"{instructions}"
+    return render_prompt(
+        "context/active_mind.md",
+        {
+            "MIND_NAME": name,
+            "MIND_DESCRIPTION": description,
+            "MIND_INSTRUCTIONS": instructions,
+        },
     )

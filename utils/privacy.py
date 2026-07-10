@@ -145,7 +145,6 @@ def export_user_data(user_id):
             bool(settings_data.get(key))
             for key in (
                 "personalization_instructions",
-                "personalization_nickname",
                 "personalization_profession",
                 "personalization_more",
             )

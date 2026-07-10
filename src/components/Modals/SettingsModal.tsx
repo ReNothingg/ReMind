@@ -1025,15 +1025,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         placeholder={t('settings.personalization.instructionsPlaceholder')}
                                     />
                                 </SettingField>
-                                <SettingField label={t('settings.personalization.nicknameLabel')} withDivider>
-                                    <input
-                                        type="text"
-                                        className={settingsInputClass}
-                                        aria-label={t('settings.personalization.nicknameLabel')}
-                                        value={settings.personalization_nickname || ''}
-                                        onChange={(e) => updateSetting('personalization_nickname', e.target.value)}
-                                    />
-                                </SettingField>
                                 <SettingField label={t('settings.personalization.professionLabel')} withDivider>
                                     <input
                                         type="text"
