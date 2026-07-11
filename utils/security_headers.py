@@ -62,15 +62,15 @@ def get_csp_header():
 def get_html_preview_csp_header():
     return "; ".join([
         "default-src 'none'",
-        "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:",
-        "style-src 'unsafe-inline' data: blob: http: https:",
-        "img-src data: blob: http: https:",
-        "font-src data: blob: http: https:",
-        "media-src data: blob: http: https:",
-        "connect-src http: https:",
-        "frame-src 'self' data: blob: http: https:",
+        "script-src 'unsafe-inline' 'unsafe-eval' data: blob:",
+        "style-src 'unsafe-inline' data: blob:",
+        "img-src data: blob:",
+        "font-src data: blob:",
+        "media-src data: blob:",
+        "connect-src 'none'",
+        "frame-src 'self' data: blob:",
         "worker-src blob:",
-        "form-action http: https:",
+        "form-action 'none'",
         "base-uri 'none'",
         "frame-ancestors 'self'",
     ])

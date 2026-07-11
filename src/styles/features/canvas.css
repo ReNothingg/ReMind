@@ -69,6 +69,7 @@ html.has-canvas-dock #root {
 }
 
 .chat-canvas-panel {
+  container-type: inline-size;
   position: static;
   display: flex;
   width: 100%;
@@ -244,7 +245,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   display: grid;
   width: 52px;
   min-height: 188px;
-  grid-template-rows: 38px minmax(0, 1fr) 28px;
+  grid-template-rows: 38px minmax(0, 1fr);
   align-items: center;
   justify-items: center;
   gap: 10px;
@@ -329,11 +330,8 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 }
 
 .chat-canvas-title-block {
-  display: grid;
+  display: block;
   min-width: 0;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
 }
 
 .chat-canvas-title-block span:not(.chat-canvas-icon) {
@@ -439,6 +437,22 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   outline-offset: 2px;
 }
 
+.chat-canvas-close-button {
+  position: relative;
+  z-index: 2;
+}
+
+@media (min-width: 1025px) {
+  .ui-app-canvas-stage.is-canvas-open .global-controls,
+  .ui-app-canvas-stage.is-canvas-open .ui-toolbar-shell {
+    right: calc(
+      var(--canvas-visible-width, var(--canvas-panel-width)) +
+      var(--spacing-unit) * 3 +
+      env(safe-area-inset-right)
+    ) !important;
+  }
+}
+
 .chat-canvas-body {
   min-height: 0;
   flex: 1;
@@ -502,6 +516,11 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 
 .chat-canvas-code-editor .chat-canvas-editor::selection {
   background: rgba(var(--color-accent-raw), 0.28);
+}
+
+.chat-canvas-code-editor.is-plain .chat-canvas-editor {
+  color: var(--color-text-primary);
+  -webkit-text-fill-color: currentColor;
 }
 
 .chat-canvas-highlight {
@@ -588,7 +607,33 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   line-height: 1.45;
 }
 
-@media (max-width: 760px) {
+@container (max-width: 420px) {
+  .chat-canvas-header,
+  .chat-canvas-toolbar {
+    gap: 8px;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .chat-canvas-toolbar {
+    align-items: flex-start;
+  }
+
+  .chat-canvas-meta {
+    gap: 4px;
+  }
+
+  .chat-canvas-meta span {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .chat-canvas-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 1024px) {
   body.has-canvas-dock {
     --canvas-mobile-sheet-side: max(10px, env(safe-area-inset-left));
     --canvas-mobile-sheet-bottom: env(safe-area-inset-bottom);
@@ -722,7 +767,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   .chat-canvas-dock-trigger {
     width: 100%;
     min-height: 48px;
-    grid-template-columns: 30px minmax(0, 1fr) 20px;
+    grid-template-columns: 30px minmax(0, 1fr);
     grid-template-rows: none;
     justify-items: stretch;
     gap: 8px;

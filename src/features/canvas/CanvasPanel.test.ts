@@ -15,11 +15,14 @@ describe('CanvasPanel preview toggle', () => {
         container?.remove();
         root = null;
         container = null;
+        vi.useRealTimers();
     });
 
     it('uses the preview button as an active toggle for HTML documents', () => {
+        vi.useFakeTimers();
         const onPreviewToggle = vi.fn();
         const onContentChange = vi.fn();
+        const onDraftChange = vi.fn();
         container = document.createElement('div');
         document.body.appendChild(container);
         root = createRoot(container);
@@ -36,6 +39,7 @@ describe('CanvasPanel preview toggle', () => {
                 },
                 onClose: vi.fn(),
                 onContentChange,
+                onDraftChange,
                 isPreviewActive: true,
                 onPreviewToggle,
             }));
@@ -43,6 +47,7 @@ describe('CanvasPanel preview toggle', () => {
 
         const previewButton = container.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
         expect(previewButton?.classList.contains('is-active')).toBe(true);
+        expect(container.querySelectorAll('.chat-canvas-close-button')).toHaveLength(1);
 
         act(() => previewButton?.click());
         expect(onPreviewToggle).toHaveBeenCalledOnce();
@@ -56,6 +61,9 @@ describe('CanvasPanel preview toggle', () => {
             setValue?.call(editor, '<main>Updated live</main>');
             editor?.dispatchEvent(new Event('input', { bubbles: true }));
         });
+        expect(onDraftChange).toHaveBeenLastCalledWith('<main>Updated live</main>');
+
+        act(() => vi.advanceTimersByTime(180));
         expect(onContentChange).toHaveBeenLastCalledWith('<main>Updated live</main>');
     });
 });

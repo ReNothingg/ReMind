@@ -157,6 +157,61 @@
         }
       }
     },
+    "/sessions/{session_id}/canvas": {
+      "put": {
+        "summary": "Save the latest Canvas document for a session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CanvasSaveRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Canvas document saved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CanvasSaveResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Canvas document",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Session or Canvas document not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/translate": {
       "post": {
         "summary": "Translate text",
@@ -505,6 +560,38 @@
           "read_only": { "type": "boolean" }
         },
         "additionalProperties": true
+      },
+      "CanvasTextdoc": {
+        "type": "object",
+        "required": ["name", "type", "content"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string", "maxLength": 140 },
+          "type": { "type": "string", "maxLength": 64 },
+          "content": { "type": "string", "maxLength": 240000 },
+          "comments": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "updated_at": { "type": "integer" }
+        },
+        "additionalProperties": false
+      },
+      "CanvasSaveRequest": {
+        "type": "object",
+        "required": ["textdoc"],
+        "properties": {
+          "textdoc": { "$ref": "#/components/schemas/CanvasTextdoc" }
+        },
+        "additionalProperties": false
+      },
+      "CanvasSaveResponse": {
+        "type": "object",
+        "required": ["ok", "session_id", "textdoc"],
+        "properties": {
+          "ok": { "type": "boolean", "const": true },
+          "request_id": { "type": ["string", "null"] },
+          "session_id": { "type": "string" },
+          "textdoc": { "$ref": "#/components/schemas/CanvasTextdoc" }
+        },
+        "additionalProperties": false
       },
       "TranslateRequest": {
         "type": "object",

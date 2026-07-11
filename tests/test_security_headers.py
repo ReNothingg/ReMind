@@ -10,8 +10,10 @@ def test_html_preview_uses_its_isolated_csp_and_can_be_framed_by_the_app():
         response = apply_security_headers(app.make_response(""))
 
     csp = response.headers["Content-Security-Policy"]
-    assert "script-src 'unsafe-inline' 'unsafe-eval' data: blob: http: https:" in csp
-    assert "frame-src 'self' data: blob: http: https:" in csp
+    assert "script-src 'unsafe-inline' 'unsafe-eval' data: blob:" in csp
+    assert "frame-src 'self' data: blob:" in csp
+    assert "connect-src 'none'" in csp
+    assert "form-action 'none'" in csp
     assert "frame-ancestors 'self'" in csp
     assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
     assert response.headers["Referrer-Policy"] == "no-referrer"

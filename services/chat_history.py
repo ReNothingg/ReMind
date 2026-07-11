@@ -15,6 +15,7 @@ from flask import has_request_context, request, session
 from werkzeug.utils import secure_filename
 
 from config import ALLOW_GUEST_CHATS_SAVE, ALLOWED_HOSTS, BACKEND_URL, CHATS_FOLDER, SECRET_KEY
+from services.canvas_tools import normalize_canvas_textdoc
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.responses import logger
 
@@ -185,6 +186,126 @@ def write_chat_file(safe_session_id: str, data: dict) -> None:
                 os.remove(tmp_path)
             except Exception:
                 pass
+
+
+def replace_canvas_textdoc_in_messages(messages: list, value: Any) -> tuple[list, dict | None]:
+    """Replace the newest matching Canvas document without rewriting older versions."""
+    textdoc = normalize_canvas_textdoc(value)
+    if not textdoc or not isinstance(messages, list):
+        return messages, None
+
+    target_id = textdoc.get("id")
+    target_name = textdoc.get("name")
+    target_type = textdoc.get("type")
+
+    def matches(candidate: Any) -> bool:
+        if not isinstance(candidate, dict):
+            return False
+        candidate_id = candidate.get("id")
+        if target_id and candidate_id:
+            return candidate_id == target_id
+        return candidate.get("name") == target_name and candidate.get("type") == target_type
+
+    updated_messages = list(messages)
+    for message_index in range(len(updated_messages) - 1, -1, -1):
+        raw_message = updated_messages[message_index]
+        if not isinstance(raw_message, dict):
+            continue
+        message = dict(raw_message)
+        changed = False
+
+        direct_key = "canvas_textdoc" if "canvas_textdoc" in message else "canvasTextdoc"
+        if matches(message.get(direct_key)):
+            message[direct_key] = textdoc
+            changed = True
+
+        variants = message.get("variants")
+        if isinstance(variants, list):
+            next_variants = list(variants)
+            for variant_index in range(len(next_variants) - 1, -1, -1):
+                raw_variant = next_variants[variant_index]
+                if not isinstance(raw_variant, dict):
+                    continue
+                variant = dict(raw_variant)
+                variant_key = (
+                    "canvas_textdoc" if "canvas_textdoc" in variant else "canvasTextdoc"
+                )
+                if matches(variant.get(variant_key)):
+                    variant[variant_key] = textdoc
+                    next_variants[variant_index] = variant
+                    changed = True
+                    break
+            if changed:
+                message["variants"] = next_variants
+
+        updates_key = "canvas_updates" if "canvas_updates" in message else "canvasUpdates"
+        updates = message.get(updates_key)
+        if isinstance(updates, list):
+            next_updates = list(updates)
+            for update_index in range(len(next_updates) - 1, -1, -1):
+                raw_update = next_updates[update_index]
+                if not isinstance(raw_update, dict) or not matches(raw_update.get("textdoc")):
+                    continue
+                update = dict(raw_update)
+                update["textdoc"] = textdoc
+                next_updates[update_index] = update
+                changed = True
+                break
+            if changed:
+                message[updates_key] = next_updates
+
+        if changed:
+            updated_messages[message_index] = message
+            return updated_messages, textdoc
+
+    return messages, None
+
+
+def save_canvas_textdoc_to_history(
+    session_id: str,
+    value: Any,
+    *,
+    user_id: int | None = None,
+    guest_file: bool = False,
+) -> dict | None:
+    """Persist one Canvas edit after the route has authorized the caller."""
+    safe_session_id = secure_filename(str(session_id))
+    if not safe_session_id:
+        return None
+
+    lock = _acquire_session_lock(safe_session_id)
+    with lock:
+        if user_id is not None:
+            chat = UserChatHistory.query.filter_by(
+                user_id=user_id, session_id=session_id
+            ).first()
+            if not chat:
+                return None
+            messages, textdoc = replace_canvas_textdoc_in_messages(chat.get_messages(), value)
+            if not textdoc:
+                return None
+            chat.set_messages(messages)
+            chat.updated_at = datetime.utcnow()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                raise
+            return textdoc
+
+        if not guest_file:
+            return None
+        data = read_chat_file(safe_session_id)
+        if not data:
+            return None
+        messages, textdoc = replace_canvas_textdoc_in_messages(data.get("history", []), value)
+        if not textdoc:
+            return None
+        next_data = dict(data)
+        next_data["history"] = messages
+        next_data["last_updated"] = time.time()
+        write_chat_file(safe_session_id, next_data)
+        return textdoc
 
 
 def _new_message_id() -> str:

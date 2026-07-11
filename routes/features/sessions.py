@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
 from routes.features.minds import get_mind_for_session_binding, serialize_mind_for_session
+from services.canvas_tools import MAX_TEXTDOC_CONTENT_LENGTH
 from services.chat_history import (
     _verify_guest_session_token,
     build_share_url,
@@ -19,6 +20,7 @@ from services.chat_history import (
     read_chat_file,
     read_chat_file_secure,
     resolve_session_identifier,
+    save_canvas_textdoc_to_history,
 )
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.input_validation import InputValidator, ValidationError
@@ -65,6 +67,52 @@ def _parse_guest_tokens_header() -> dict[str, str]:
 
 
 def register_session_routes(api_bp):
+    @api_bp.route("/sessions/<session_id>/canvas", methods=["PUT"])
+    @api_error_boundary("canvas_save_failed")
+    def save_session_canvas(session_id):
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or not isinstance(payload.get("textdoc"), dict):
+            raise ApiError("Invalid Canvas document", status=400, code="invalid_canvas_textdoc")
+        raw_content = payload["textdoc"].get("content")
+        if not isinstance(raw_content, str) or len(raw_content) > MAX_TEXTDOC_CONTENT_LENGTH:
+            raise ApiError("Invalid Canvas document", status=400, code="invalid_canvas_textdoc")
+        resolved_session_id, share_entry = resolve_session_identifier(session_id)
+
+        db_user_id = None
+        try:
+            if "user_id" in session:
+                db_user_id = int(session.get("user_id"))
+        except (TypeError, ValueError) as exc:
+            raise ApiError("Invalid user session", status=401, code="auth_required") from exc
+
+        if db_user_id is not None:
+            if share_entry and share_entry.user_id != db_user_id:
+                raise ApiError("Chat not found", status=404, code="not_found")
+            textdoc = save_canvas_textdoc_to_history(
+                resolved_session_id,
+                payload["textdoc"],
+                user_id=db_user_id,
+            )
+        else:
+            safe_session_id = secure_filename(str(resolved_session_id))
+            if (
+                not ALLOW_GUEST_CHATS_SAVE
+                or not safe_session_id
+                or not chat_file_exists(safe_session_id)
+            ):
+                raise ApiError("Chat not found", status=404, code="not_found")
+            if not has_valid_guest_session_token(safe_session_id):
+                raise ApiError("Authentication required", status=401, code="auth_required")
+            textdoc = save_canvas_textdoc_to_history(
+                safe_session_id,
+                payload["textdoc"],
+                guest_file=True,
+            )
+
+        if not textdoc:
+            raise ApiError("Canvas document not found", status=404, code="not_found")
+        return make_ok({"session_id": resolved_session_id, "textdoc": textdoc})
+
     @api_bp.route("/sessions/<session_id>/history", methods=["GET"])
     @api_error_boundary("session_history_failed")
     def get_session_history(session_id):

@@ -101,6 +101,11 @@ type SessionRenameResponse = {
     [key: string]: unknown;
 };
 
+type CanvasSaveResponse = {
+    session_id?: string;
+    textdoc: CanvasTextdoc;
+};
+
 export type MindVisibility = 'private' | 'link' | 'store';
 
 export type MindCategory = {
@@ -804,6 +809,23 @@ export const apiService = {
             ? { Authorization: `Bearer ${token}` }
             : undefined;
         return apiGetSessionHistory(sessionId, headers) as Promise<SessionHistoryWithMind>;
+    },
+
+    async saveCanvasTextdoc(sessionId: string, textdoc: CanvasTextdoc): Promise<CanvasTextdoc> {
+        const token = getGuestSessionToken(sessionId);
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+        const response = await fetchApi<CanvasSaveResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/canvas`,
+            {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ textdoc }),
+            }
+        );
+        return response.textdoc;
     },
 
     async toggleShare(

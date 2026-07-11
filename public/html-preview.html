@@ -24,15 +24,30 @@
     </style>
 </head>
 <body>
-    <iframe id="preview" sandbox="allow-forms allow-scripts"></iframe>
+    <iframe id="preview" sandbox="allow-scripts"></iframe>
     <script>
+        const withResponsiveViewport = (html) => {
+            const source = typeof html === 'string' ? html : '';
+            if (/<meta\s+[^>]*name=["']viewport["'][^>]*>/i.test(source)) {
+                return source;
+            }
+
+            const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1">';
+            if (/<head(?:\s[^>]*)?>/i.test(source)) {
+                return source.replace(/<head(\s[^>]*)?>/i, (head) => `${head}${viewport}`);
+            }
+            if (/<html(?:\s[^>]*)?>/i.test(source)) {
+                return source.replace(/<html(\s[^>]*)?>/i, (htmlTag) => `${htmlTag}<head>${viewport}</head>`);
+            }
+            return `<!doctype html><html><head>${viewport}</head><body>${source}</body></html>`;
+        };
+
         window.addEventListener('message', (event) => {
-            if (event.data?.type !== 'remind:html-preview') {
+            if (event.source !== window.parent || event.data?.type !== 'remind:html-preview') {
                 return;
             }
 
-            document.getElementById('preview').srcdoc =
-                typeof event.data.html === 'string' ? event.data.html : '';
+            document.getElementById('preview').srcdoc = withResponsiveViewport(event.data.html);
         });
     </script>
 </body>

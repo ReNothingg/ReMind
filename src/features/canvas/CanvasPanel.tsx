@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Download, Eye, MessageSquare, PanelRightClose } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -31,11 +31,15 @@ type CanvasPanelProps = {
     textdoc: CanvasTextdoc;
     onClose: () => void;
     onContentChange?: (content: string) => void;
+    onDraftChange?: (content: string) => void;
     isPreviewActive?: boolean;
     onPreviewToggle?: () => void;
 };
 
 const codeTypePrefix = 'code/';
+const CANVAS_COMMIT_DELAY_MS = 180;
+const MAX_HIGHLIGHTED_CODE_LENGTH = 50_000;
+const MAX_HIGHLIGHTED_CODE_LINES = 1_500;
 
 const canvasLanguageAliases: Record<string, string> = {
     'c++': 'cpp',
@@ -103,13 +107,16 @@ const CanvasPanel = ({
     textdoc,
     onClose,
     onContentChange,
+    onDraftChange,
     isPreviewActive = false,
     onPreviewToggle,
 }: CanvasPanelProps) => {
     const { t } = useTranslation();
     const [copyState, setCopyState] = useState<'idle' | 'done'>('idle');
     const [draft, setDraft] = useState(textdoc.content || '');
-    const lastSyncedDraftRef = useRef(textdoc.content || '');
+    const pendingDraftRef = useRef(textdoc.content || '');
+    const lastCommittedDraftRef = useRef(textdoc.content || '');
+    const commitTimerRef = useRef<number | null>(null);
     const highlightRef = useRef<HTMLPreElement | null>(null);
     const isCode = textdoc.type.startsWith(codeTypePrefix);
     const language = isCode ? textdoc.type.slice(codeTypePrefix.length) : '';
@@ -117,11 +124,14 @@ const CanvasPanel = ({
     const canPreviewHtml = textdoc.type === 'code/html';
     const comments = Array.isArray(textdoc.comments) ? textdoc.comments : [];
     const lineCount = useMemo(() => (draft || '').split(/\r\n|\r|\n/).length, [draft]);
+    const shouldHighlightCode = isCode
+        && draft.length <= MAX_HIGHLIGHTED_CODE_LENGTH
+        && lineCount <= MAX_HIGHLIGHTED_CODE_LINES;
     const typeLabel = isCode
         ? t('canvas.type.code', { language })
         : t('canvas.type.document');
     const highlightedCode = useMemo(() => {
-        if (!isCode) {
+        if (!shouldHighlightCode) {
             return '';
         }
 
@@ -132,17 +142,42 @@ const CanvasPanel = ({
             : escapeHtml(displayCode);
 
         return DOMPurify.sanitize(highlighted);
-    }, [draft, isCode, prismLanguage]);
+    }, [draft, prismLanguage, shouldHighlightCode]);
+
+    const commitDraft = useCallback(() => {
+        if (commitTimerRef.current !== null) {
+            window.clearTimeout(commitTimerRef.current);
+            commitTimerRef.current = null;
+        }
+        const content = pendingDraftRef.current;
+        if (content === lastCommittedDraftRef.current) return;
+        lastCommittedDraftRef.current = content;
+        onContentChange?.(content);
+    }, [onContentChange]);
 
     useEffect(() => {
         const nextContent = textdoc.content || '';
+        if (commitTimerRef.current !== null) {
+            window.clearTimeout(commitTimerRef.current);
+            commitTimerRef.current = null;
+        }
+        if (nextContent === pendingDraftRef.current) {
+            lastCommittedDraftRef.current = nextContent;
+            return;
+        }
         const frame = window.requestAnimationFrame(() => {
             setDraft(nextContent);
-            lastSyncedDraftRef.current = nextContent;
+            pendingDraftRef.current = nextContent;
+            lastCommittedDraftRef.current = nextContent;
         });
-
         return () => window.cancelAnimationFrame(frame);
     }, [textdoc.id, textdoc.updated_at, textdoc.content]);
+
+    useEffect(() => () => {
+        if (commitTimerRef.current !== null) {
+            window.clearTimeout(commitTimerRef.current);
+        }
+    }, []);
 
     const handleCopy = async () => {
         try {
@@ -168,8 +203,17 @@ const CanvasPanel = ({
 
     const handleDraftChange = (content: string) => {
         setDraft(content);
-        lastSyncedDraftRef.current = content;
-        onContentChange?.(content);
+        pendingDraftRef.current = content;
+        onDraftChange?.(content);
+        if (commitTimerRef.current !== null) {
+            window.clearTimeout(commitTimerRef.current);
+        }
+        commitTimerRef.current = window.setTimeout(commitDraft, CANVAS_COMMIT_DELAY_MS);
+    };
+
+    const handleClose = () => {
+        commitDraft();
+        onClose();
     };
 
     const handleEditorScroll = (event: UIEvent<HTMLTextAreaElement>) => {
@@ -195,8 +239,8 @@ const CanvasPanel = ({
                 </div>
                 <button
                     type="button"
-                    className="chat-canvas-icon-button"
-                    onClick={onClose}
+                    className="chat-canvas-icon-button chat-canvas-close-button"
+                    onClick={handleClose}
                     aria-label={t('canvas.close')}
                     title={t('canvas.close')}
                 >
@@ -245,17 +289,20 @@ const CanvasPanel = ({
 
             <div className="chat-canvas-body ui-scrollbar-thin">
                 {isCode ? (
-                    <div className="chat-canvas-code-editor">
-                        <pre
-                            ref={highlightRef}
-                            className={`chat-canvas-highlight language-${prismLanguage}`}
-                            aria-hidden="true"
-                            dangerouslySetInnerHTML={{ __html: highlightedCode }}
-                        />
+                    <div className={`chat-canvas-code-editor${shouldHighlightCode ? '' : ' is-plain'}`}>
+                        {shouldHighlightCode && (
+                            <pre
+                                ref={highlightRef}
+                                className={`chat-canvas-highlight language-${prismLanguage}`}
+                                aria-hidden="true"
+                                dangerouslySetInnerHTML={{ __html: highlightedCode }}
+                            />
+                        )}
                         <textarea
                             className="chat-canvas-editor is-code"
                             value={draft}
                             onChange={(event) => handleDraftChange(event.target.value)}
+                            onBlur={commitDraft}
                             onScroll={handleEditorScroll}
                             placeholder={t('canvas.empty')}
                             aria-label={t('canvas.editorLabel')}
@@ -269,6 +316,7 @@ const CanvasPanel = ({
                         className="chat-canvas-editor"
                         value={draft}
                         onChange={(event) => handleDraftChange(event.target.value)}
+                        onBlur={commitDraft}
                         placeholder={t('canvas.empty')}
                         aria-label={t('canvas.editorLabel')}
                         spellCheck

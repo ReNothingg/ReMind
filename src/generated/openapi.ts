@@ -19,6 +19,23 @@ export interface components {
       message: string;
       user: components["schemas"]["User"];
     };
+    CanvasSaveRequest: {
+      textdoc: components["schemas"]["CanvasTextdoc"];
+    };
+    CanvasSaveResponse: {
+      ok: boolean;
+      request_id?: string | null;
+      session_id: string;
+      textdoc: components["schemas"]["CanvasTextdoc"];
+    };
+    CanvasTextdoc: {
+      comments?: Record<string, unknown>[];
+      content: string;
+      id?: string;
+      name: string;
+      type: string;
+      updated_at?: number;
+    };
     ChatMessage: {
       id?: string | null;
       parts: components["schemas"]["MessagePart"][];
@@ -288,6 +305,42 @@ export interface paths {
         "200": {
           content: {
             "application/json": components["schemas"]["SessionListResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/sessions/{session_id}/canvas": {
+    put: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CanvasSaveRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["CanvasSaveResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
           };
         };
       };
