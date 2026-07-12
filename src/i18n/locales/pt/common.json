@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"Offline · as mensagens serão enfileiradas","reconnecting":"Restaurando conexão…","queued":"Mensagens na fila: {{count}}","draftSyncing":"Sincronizando rascunho…","draftSynced":"Rascunho sincronizado","draftLocal":"Rascunho salvo localmente","queueFull":"A fila offline está cheia. Reconecte antes de enviar mais arquivos.","temporaryOffline":"Chats temporários exigem conexão e nunca são salvos na fila offline.","interrupted":"A geração foi interrompida. Você pode gerar esta versão novamente."},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -123,10 +124,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "Não foi possível gerar a resposta.",
+    "generationStopped": "Geração interrompida",
+    "variantLimitReached": "Este turno atingiu o limite de versões.",
+    "versionConflict": "A conversa mudou em outro dispositivo. Tente novamente.",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "Versão anterior",
+      "next": "Próxima versão",
+      "counter": "Versão {{current}} de {{total}}"
     },
     "audio": {
       "speak": "Read aloud",

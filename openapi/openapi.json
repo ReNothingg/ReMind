@@ -75,6 +75,71 @@
         }
       }
     },
+    "/api/user/draft": {
+      "get": {
+        "summary": "Load the authenticated user's synchronized chat draft",
+        "responses": {"200":{"description":"Draft state","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftResponse"}}}}}
+      },
+      "put": {
+        "summary": "Save a synchronized chat draft with optimistic concurrency",
+        "requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftRequest"}}}},
+        "responses": {
+          "200":{"description":"Saved draft","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftResponse"}}}},
+          "409":{"description":"Draft revision conflict","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftResponse"}}}}
+        }
+      },
+      "delete": {
+        "summary": "Delete the synchronized chat draft",
+        "responses":{"200":{"description":"Draft deleted","content":{"application/json":{"schema":{"type":"object","required":["deleted"],"properties":{"deleted":{"type":"boolean"}},"additionalProperties":false}}}}}
+      }
+    },
+    "/chat": {
+      "post": {
+        "summary": "Send, regenerate, or edit a chat turn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChatOperationRequest" }
+            },
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/ChatOperationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Streaming events or an idempotently recovered result",
+            "content": {
+              "text/event-stream": { "schema": { "type": "string" } },
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ChatOperationResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid operation or message identifier",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Model or chat access denied",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "404": {
+            "description": "Target message not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "409": {
+            "description": "Message identifier conflict or version limit reached",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "429": {
+            "description": "Chat rate limit exceeded",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
     "/sessions": {
       "get": {
         "summary": "List user/guest sessions",
@@ -210,6 +275,14 @@
             }
           }
         }
+      }
+    },
+    "/sessions/{session_id}/branch": {
+      "put": {
+        "summary": "Select an active conversation branch",
+        "parameters": [{"name":"session_id","in":"path","required":true,"schema":{"type":"string"}}],
+        "requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["message_id"],"properties":{"message_id":{"type":"string","maxLength":120}},"additionalProperties":false}}}},
+        "responses":{"200":{"description":"Selected branch history","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SessionHistoryResponse"}}}}}
       }
     },
     "/translate": {
@@ -455,6 +528,61 @@
           }
         ]
       },
+      "ChatOperationRequest": {
+        "type": "object",
+        "required": ["session_id", "assistant_message_id", "request_id"],
+        "properties": {
+          "session_id": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "message": { "type": "string" },
+          "model": { "type": "string" },
+          "operation": {
+            "type": "string",
+            "enum": ["send", "regenerate", "edit"],
+            "default": "send"
+          },
+          "target_message_id": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Za-z0-9_-]{1,120}$"
+          },
+          "user_message_id": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Za-z0-9_-]{1,120}$"
+          },
+          "assistant_message_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,120}$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,100}$"
+          },
+          "history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChatMessage" }
+          },
+          "temporary_chat": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": true
+      },
+      "ChatOperationResponse": {
+        "type": "object",
+        "required": ["ok", "sessionId", "request_id", "history"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "sessionId": { "type": "string" },
+          "request_id": { "type": "string" },
+          "reply": { "type": "string" },
+          "delivery_status": {
+            "type": "string",
+            "enum": ["complete", "interrupted"]
+          },
+          "history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChatMessage" }
+          }
+        },
+        "additionalProperties": true
+      },
       "ChatMessage": {
         "type": "object",
         "required": ["role", "parts"],
@@ -466,8 +594,31 @@
             "items": { "$ref": "#/components/schemas/MessagePart" }
           },
           "timestamp": { "type": ["integer", "null"] }
+          ,"request_id": { "type": ["string", "null"] }
+          ,"delivery_status": { "type": ["string", "null"], "enum": ["complete", "interrupted", null] }
+          ,"parent_id": { "type": ["string", "null"] }
+          ,"is_active": { "type": "boolean" }
+          ,"variants": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChatMessageVariant" }
+          }
+          ,"current_variant_index": { "type": "integer", "minimum": 0 }
         },
         "additionalProperties": true
+      },
+      "ChatMessageVariant": {
+        "type":"object",
+        "required":["id","role","parts"],
+        "properties":{
+          "id":{"type":"string"},
+          "variant_id":{"type":"string"},
+          "role":{"type":"string"},
+          "parts":{"type":"array","items":{"$ref":"#/components/schemas/MessagePart"}},
+          "timestamp":{"type":["integer","null"]},
+          "request_id":{"type":["string","null"]},
+          "delivery_status":{"type":["string","null"],"enum":["complete","interrupted",null]}
+        },
+        "additionalProperties":true
       },
       "SessionSummary": {
         "type": "object",
@@ -719,6 +870,37 @@
           }
         },
         "additionalProperties": false
+      },
+      "ChatDraft": {
+        "type":"object",
+        "required":["content","device_id","revision","updated_at"],
+        "properties":{
+          "content":{"type":"string","maxLength":20000},
+          "session_id":{"type":["string","null"],"maxLength":100,"pattern":"^[A-Za-z0-9_-]{1,100}$"},
+          "device_id":{"type":"string","maxLength":100},
+          "revision":{"type":"integer","minimum":1},
+          "updated_at":{"type":"integer"}
+        },
+        "additionalProperties":false
+      },
+      "ChatDraftRequest": {
+        "type":"object",
+        "required":["content","device_id"],
+        "properties":{
+          "content":{"type":"string","maxLength":20000},
+          "session_id":{"type":["string","null"],"maxLength":100,"pattern":"^[A-Za-z0-9_-]{1,100}$"},
+          "device_id":{"type":"string","maxLength":100},
+          "base_revision":{"type":["integer","null"],"minimum":0}
+        },
+        "additionalProperties":false
+      },
+      "ChatDraftResponse": {
+        "type":"object",
+        "properties":{
+          "draft":{"oneOf":[{"$ref":"#/components/schemas/ChatDraft"},{"type":"null"}]},
+          "error":{"type":"string"}
+        },
+        "additionalProperties":true
       },
       "ErrorResponse": {
         "type": "object",

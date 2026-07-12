@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"Offline · messages will be queued","reconnecting":"Restoring connection…","queued":"{{count}} message(s) queued","draftSyncing":"Syncing draft…","draftSynced":"Draft synced","draftLocal":"Draft saved locally","queueFull":"The offline queue is full. Reconnect before sending more files.","temporaryOffline":"Temporary chats require a network connection and are never stored in the offline queue.","interrupted":"Generation was interrupted. You can regenerate this version."},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -124,10 +125,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "The response could not be generated.",
+    "generationStopped": "Generation stopped",
+    "variantLimitReached": "This turn has reached its version limit.",
+    "versionConflict": "The conversation changed on another device. Try again.",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "Previous version",
+      "next": "Next version",
+      "counter": "Version {{current}} of {{total}}"
     },
     "audio": {
       "speak": "Read aloud",

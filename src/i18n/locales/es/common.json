@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"Sin conexión · los mensajes se pondrán en cola","reconnecting":"Restableciendo la conexión…","queued":"Mensajes en cola: {{count}}","draftSyncing":"Sincronizando borrador…","draftSynced":"Borrador sincronizado","draftLocal":"Borrador guardado localmente","queueFull":"La cola sin conexión está llena. Conéctate antes de enviar más archivos.","temporaryOffline":"Los chats temporales requieren conexión y nunca se guardan en la cola sin conexión.","interrupted":"La generación se interrumpió. Puedes regenerar esta versión."},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -123,10 +124,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "No se pudo generar la respuesta.",
+    "generationStopped": "Generación detenida",
+    "variantLimitReached": "Este turno alcanzó el límite de versiones.",
+    "versionConflict": "La conversación cambió en otro dispositivo. Inténtalo de nuevo.",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "Versión anterior",
+      "next": "Versión siguiente",
+      "counter": "Versión {{current}} de {{total}}"
     },
     "audio": {
       "speak": "Read aloud",

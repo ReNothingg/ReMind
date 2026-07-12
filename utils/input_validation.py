@@ -192,7 +192,7 @@ class InputValidator:
 
         if not session_id or not isinstance(session_id, str):
             raise ValidationError("Invalid session ID")
-        if not re.match(r"^[a-zA-Z0-9_-]{20,200}$", session_id):
+        if not re.match(r"^[a-zA-Z0-9_-]{20,100}$", session_id):
             raise ValidationError("Invalid session ID format")
 
         return session_id

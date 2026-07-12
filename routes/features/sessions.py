@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 
 from flask import request, session
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from config import ALLOW_GUEST_CHATS_SAVE
@@ -15,16 +17,22 @@ from services.chat_history import (
     _verify_guest_session_token,
     build_share_url,
     chat_file_exists,
+    delete_guest_chat_file,
     has_valid_guest_session_token,
     load_chat_history,
+    materialize_conversation_history,
     read_chat_file,
     read_chat_file_secure,
     resolve_session_identifier,
     save_canvas_textdoc_to_history,
+    select_conversation_variant,
+    write_chat_file,
 )
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.input_validation import InputValidator, ValidationError
 from utils.responses import make_ok
+
+MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 
 
 def _safe_session_preview(messages: list) -> str:
@@ -49,6 +57,21 @@ def _session_mind_payload(chat: UserChatHistory | None, viewer_id: int | None) -
     if not chat:
         return None
     return serialize_mind_for_session(chat.mind_id, viewer_id)
+
+
+def _public_history(history: list[dict]) -> list[dict]:
+    hidden_fields = {
+        "variants",
+        "current_variant_index",
+        "parent_id",
+        "is_active",
+        "request_id",
+        "delivery_status",
+    }
+    return [
+        {key: value for key, value in message.items() if key not in hidden_fields}
+        for message in history
+    ]
 
 
 def _parse_guest_tokens_header() -> dict[str, str]:
@@ -129,11 +152,20 @@ def register_session_routes(api_bp):
 
         if is_public:
             chat = (
-                UserChatHistory.query.filter_by(session_id=resolved_session_id).first()
+                UserChatHistory.query.filter_by(
+                    user_id=share_entry.user_id,
+                    session_id=resolved_session_id,
+                ).first()
                 if resolved_session_id
                 else None
             )
-            history = chat.get_messages() if chat else load_chat_history(resolved_session_id)
+            history = (
+                materialize_conversation_history(chat.get_messages())
+                if chat
+                else load_chat_history(resolved_session_id)
+            )
+            if not is_owner:
+                history = _public_history(history)
             title = chat.title if chat else None
             return make_ok(
                 {
@@ -157,7 +189,7 @@ def register_session_routes(api_bp):
                 return make_ok(
                     {
                         "session_id": resolved_session_id,
-                        "history": chat.get_messages(),
+                        "history": materialize_conversation_history(chat.get_messages()),
                         "title": chat.title,
                         "mind": _session_mind_payload(chat, db_user_id),
                         "is_public": False,
@@ -178,7 +210,9 @@ def register_session_routes(api_bp):
             raise ApiError("Authentication required", status=401, code="auth_required")
 
         data = read_chat_file_secure(safe_session_id, require_auth=True)
-        history = data.get("history", []) if isinstance(data, dict) else []
+        history = materialize_conversation_history(
+            data.get("history", []) if isinstance(data, dict) else []
+        )
         title = data.get("title") if isinstance(data, dict) else None
         return make_ok(
             {
@@ -228,13 +262,19 @@ def register_session_routes(api_bp):
                 .limit(page_size)
                 .all()
             )
+            seen_session_ids: set[str] = set()
             for chat, public_id, is_public in rows:
+                if chat.session_id in seen_session_ids:
+                    continue
+                seen_session_ids.add(chat.session_id)
                 sessions.append(
                     {
                         "session_id": chat.session_id,
                         "last_updated": _session_timestamp(chat),
                         "title": chat.title or "Новый чат",
-                        "last_message": _safe_session_preview(chat.get_messages()),
+                        "last_message": _safe_session_preview(
+                            materialize_conversation_history(chat.get_messages())
+                        ),
                         "is_public": bool(is_public),
                         "public_id": public_id,
                         "mind": _session_mind_payload(chat, db_user_id),
@@ -258,7 +298,7 @@ def register_session_routes(api_bp):
                 if not data:
                     continue
 
-                history = data.get("history", [])
+                history = materialize_conversation_history(data.get("history", []))
                 sessions.append(
                     {
                         "session_id": safe_sid,
@@ -286,6 +326,45 @@ def register_session_routes(api_bp):
             }
         )
 
+    @api_bp.route("/sessions/<session_id>/branch", methods=["PUT"])
+    @api_error_boundary("session_branch_failed")
+    def select_session_branch(session_id):
+        payload = request.get_json(silent=True) or {}
+        message_id = payload.get("message_id")
+        if not isinstance(message_id, str) or not MESSAGE_ID_RE.fullmatch(message_id):
+            raise ApiError("Invalid message ID", status=400, code="invalid_message_id")
+
+        resolved_session_id, share_entry = resolve_session_identifier(session_id)
+        raw_user_id = session.get("user_id")
+        db_user_id = int(raw_user_id) if isinstance(raw_user_id, int) else None
+        if share_entry and (db_user_id is None or share_entry.user_id != db_user_id):
+            raise ApiError("Chat not found", status=404, code="not_found")
+
+        try:
+            if db_user_id is not None:
+                history = select_conversation_variant(
+                    resolved_session_id,
+                    message_id,
+                    user_id=db_user_id,
+                )
+            else:
+                safe_session_id = secure_filename(str(resolved_session_id))
+                if (
+                    not ALLOW_GUEST_CHATS_SAVE
+                    or not safe_session_id
+                    or not has_valid_guest_session_token(safe_session_id)
+                ):
+                    raise ApiError("Authentication required", status=401, code="auth_required")
+                history = select_conversation_variant(
+                    safe_session_id,
+                    message_id,
+                    allow_guest_file_persistence=True,
+                )
+        except ValueError as exc:
+            raise ApiError("Chat branch not found", status=404, code=str(exc)) from exc
+
+        return make_ok({"session_id": resolved_session_id, "history": history})
+
     @api_bp.route("/sessions", methods=["POST"])
     @api_error_boundary("session_create_failed")
     def create_session():
@@ -308,9 +387,23 @@ def register_session_routes(api_bp):
         if not title:
             title = "Новый чат"
 
+        existing = UserChatHistory.query.filter_by(
+            user_id=db_user_id, session_id=session_id
+        ).first()
+        if existing:
+            return make_ok({"session_id": existing.session_id})
         chat = UserChatHistory(user_id=db_user_id, session_id=session_id, title=title)
         db.session.add(chat)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            existing = UserChatHistory.query.filter_by(
+                user_id=db_user_id, session_id=session_id
+            ).first()
+            if existing:
+                return make_ok({"session_id": existing.session_id})
+            raise
         return make_ok({"session_id": session_id})
 
     @api_bp.route("/sessions/<session_id>/mind", methods=["PUT", "DELETE"])
@@ -355,14 +448,7 @@ def register_session_routes(api_bp):
     @api_bp.route("/sessions/<session_id>/rename", methods=["POST"])
     @api_error_boundary("session_rename_failed")
     def rename_session(session_id):
-        db_user_id = require_authenticated_user_id()
         resolved_session_id, _share_entry = resolve_session_identifier(session_id)
-        chat = UserChatHistory.query.filter_by(
-            user_id=db_user_id, session_id=resolved_session_id
-        ).first()
-        if not chat:
-            raise ApiError("Chat not found", status=404, code="not_found")
-
         data = request.get_json(silent=True) or {}
         if not isinstance(data, dict):
             raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
@@ -371,8 +457,27 @@ def register_session_routes(api_bp):
         if not title:
             raise ApiError("Title is required", status=400, code="invalid_title")
 
-        chat.title = title
-        db.session.commit()
+        raw_user_id = session.get("user_id")
+        if isinstance(raw_user_id, int):
+            updated = UserChatHistory.query.filter_by(
+                user_id=raw_user_id, session_id=resolved_session_id
+            ).update({"title": title}, synchronize_session=False)
+            if not updated:
+                raise ApiError("Chat not found", status=404, code="not_found")
+            db.session.commit()
+        else:
+            safe_session_id = secure_filename(str(resolved_session_id))
+            if (
+                not ALLOW_GUEST_CHATS_SAVE
+                or not safe_session_id
+                or not has_valid_guest_session_token(safe_session_id)
+            ):
+                raise ApiError("Authentication required", status=401, code="auth_required")
+            chat_data = read_chat_file_secure(safe_session_id, require_auth=True)
+            if not chat_data:
+                raise ApiError("Chat not found", status=404, code="not_found")
+            chat_data["title"] = title
+            write_chat_file(safe_session_id, chat_data)
         return make_ok({"session_id": resolved_session_id, "title": title})
 
     @api_bp.route("/sessions/<session_id>", methods=["DELETE"])
@@ -380,12 +485,27 @@ def register_session_routes(api_bp):
     def delete_session(session_id):
         from utils.audit_log import AuditEvents, log_audit_event
 
-        db_user_id = require_authenticated_user_id()
-        chat = UserChatHistory.query.filter_by(user_id=db_user_id, session_id=session_id).first()
-        if not chat:
-            raise ApiError("Chat not found", status=404, code="not_found")
+        raw_user_id = session.get("user_id")
+        if isinstance(raw_user_id, int):
+            deleted = UserChatHistory.query.filter_by(
+                user_id=raw_user_id, session_id=session_id
+            ).delete(synchronize_session=False)
+            if not deleted:
+                raise ApiError("Chat not found", status=404, code="not_found")
+            ChatShare.query.filter_by(user_id=raw_user_id, session_id=session_id).delete(
+                synchronize_session=False
+            )
+            db.session.commit()
+            log_audit_event(AuditEvents.DELETE_CHAT, {"session_id": session_id}, raw_user_id)
+            return "", 204
 
-        db.session.delete(chat)
-        db.session.commit()
-        log_audit_event(AuditEvents.DELETE_CHAT, {"session_id": session_id}, db_user_id)
+        safe_session_id = secure_filename(str(session_id))
+        if (
+            not ALLOW_GUEST_CHATS_SAVE
+            or not safe_session_id
+            or not has_valid_guest_session_token(safe_session_id)
+        ):
+            raise ApiError("Authentication required", status=401, code="auth_required")
+        if not delete_guest_chat_file(safe_session_id):
+            raise ApiError("Chat not found", status=404, code="not_found")
         return "", 204

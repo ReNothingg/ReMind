@@ -1059,6 +1059,7 @@ const MainLayout = () => {
                       initialPrompt={initialPrompt}
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
                       onOpenAuth={() => setAuthOpen('login')}
+                      currentSessionId={currentSessionId}
                     />
                   </LandingHero>
                 </div>
@@ -1143,6 +1144,7 @@ const MainLayout = () => {
                       initialPrompt={initialPrompt}
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
                       onOpenAuth={() => setAuthOpen('login')}
+                      currentSessionId={currentSessionId}
                     />
                   </>
                 </Suspense>

@@ -1,6 +1,7 @@
 import { apiAuthCheck, apiAuthLogin } from './openapiClient';
 import { ApiClientError, extractApiErrorMessage, requestJson } from './http';
 import type { AccountFieldName } from '../utils/accountValidation';
+import { clearLocalReliabilityData } from './reliability';
 
 export type AuthUser = {
     id: number;
@@ -234,6 +235,7 @@ export const authService = {
             await requestAuthJson<unknown>('/api/auth/logout', {
                 method: 'POST',
             });
+            await clearLocalReliabilityData();
             return { success: true, message: 'Успешный выход' };
         } catch (error) {
             logFailure('Logout', error);
@@ -250,6 +252,7 @@ export const authService = {
             });
 
             if (data.deleted) {
+                await clearLocalReliabilityData();
                 return { success: true, deleted: data.deleted };
             }
 

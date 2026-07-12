@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"Hors ligne · les messages seront mis en attente","reconnecting":"Rétablissement de la connexion…","queued":"Messages en attente : {{count}}","draftSyncing":"Synchronisation du brouillon…","draftSynced":"Brouillon synchronisé","draftLocal":"Brouillon enregistré localement","queueFull":"La file hors ligne est pleine. Reconnectez-vous avant d’envoyer d’autres fichiers.","temporaryOffline":"Les chats temporaires nécessitent une connexion et ne sont jamais enregistrés dans la file hors ligne.","interrupted":"La génération a été interrompue. Vous pouvez régénérer cette version."},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -123,10 +124,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "La réponse n’a pas pu être générée.",
+    "generationStopped": "Génération arrêtée",
+    "variantLimitReached": "Ce tour a atteint sa limite de versions.",
+    "versionConflict": "La conversation a changé sur un autre appareil. Réessayez.",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "Version précédente",
+      "next": "Version suivante",
+      "counter": "Version {{current}} sur {{total}}"
     },
     "audio": {
       "speak": "Read aloud",

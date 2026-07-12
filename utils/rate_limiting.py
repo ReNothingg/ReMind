@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -65,9 +66,11 @@ end
 return {1, limit, remaining, math.floor(reset_at)}
 """
 
-    def __init__(self, max_requests=100, time_window=3600, use_redis=None):
+    def __init__(self, max_requests=100, time_window=3600, use_redis=None, namespace=None):
         self.max_requests = max_requests
         self.time_window = time_window
+        raw_namespace = str(namespace or f"limit_{max_requests}_{time_window}")
+        self.namespace = re.sub(r"[^a-zA-Z0-9_-]", "_", raw_namespace)[:80]
         if use_redis is None:
             use_redis = bool(os.getenv("REDIS_URL"))
 
@@ -92,10 +95,10 @@ return {1, limit, remaining, math.floor(reset_at)}
     def get_identifier(self, request_obj):
         try:
             if session and "user_id" in session:
-                return f"user_{session.get('user_id')}"
+                return f"{self.namespace}:user_{session.get('user_id')}"
         except RuntimeError:
             pass
-        return f"ip_{request_obj.remote_addr}"
+        return f"{self.namespace}:ip_{request_obj.remote_addr}"
 
     def evaluate(self, identifier):
         now = int(time.time())
@@ -165,10 +168,12 @@ return {1, limit, remaining, math.floor(reset_at)}
         return self.evaluate(identifier).remaining
 
 
-login_limiter = RateLimiter(max_requests=5, time_window=300)
-password_reset_limiter = RateLimiter(max_requests=3, time_window=3600)
-api_limiter = RateLimiter(max_requests=100, time_window=3600)
-upload_limiter = RateLimiter(max_requests=20, time_window=3600)
+login_limiter = RateLimiter(max_requests=5, time_window=300, namespace="login")
+password_reset_limiter = RateLimiter(
+    max_requests=3, time_window=3600, namespace="password_reset"
+)
+api_limiter = RateLimiter(max_requests=100, time_window=3600, namespace="api")
+upload_limiter = RateLimiter(max_requests=20, time_window=3600, namespace="upload")
 
 
 def _headers_from_state(state):

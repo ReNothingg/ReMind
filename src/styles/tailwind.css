@@ -39,6 +39,7 @@
 @import "./features/admin.css" layer(components);
 @import "./features/github.css" layer(components);
 @import "./features/reminders.css" layer(components);
+@import "./features/reliability.css" layer(components);
 @import "./features/canvas.css" layer(components);
 
 @source "../../index.html";
@@ -345,6 +346,10 @@
     @apply ml-auto flex items-center gap-1.5;
   }
 
+  .ui-message-bubble-user .ui-message-variants {
+    @apply mt-1 border-0 bg-transparent p-0;
+  }
+
   .ui-message-variant-button {
     @apply inline-flex size-8 items-center justify-center rounded-full border border-transparent bg-transparent p-0 text-muted transition duration-150 ease-out disabled:cursor-default disabled:opacity-40;
   }
@@ -355,6 +360,12 @@
 
   .ui-message-variant-button > img {
     @apply size-3.5 opacity-80 transition duration-150 ease-out;
+  }
+
+  @media (pointer: coarse), screen and (max-width: 640px) {
+    .ui-message-variant-button {
+      @apply size-11;
+    }
   }
 
   .ui-message-variant-button:not(:disabled):hover > img {

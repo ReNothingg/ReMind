@@ -12,7 +12,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import BadData, URLSafeTimedSerializer
-from sqlalchemy import func, inspect, text
+from sqlalchemy import bindparam, func, inspect, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .input_validation import InputValidator, ValidationError
@@ -28,6 +28,7 @@ OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 180
 ROOT_ADMIN_USER_ID = 1
 REMOVED_SETTINGS_DATA_KEYS = frozenset({"personalization_nickname"})
+CHAT_SESSION_UNIQUE_INDEX = "uq_user_chat_history_user_session"
 
 
 def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
@@ -38,6 +39,89 @@ def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
         for key, value in raw_settings.items()
         if key not in REMOVED_SETTINGS_DATA_KEYS
     }
+
+
+def ensure_chat_session_uniqueness(engine) -> None:
+    """Repair legacy duplicate chat rows before enforcing the canonical key."""
+    inspector = inspect(engine)
+    if "user_chat_history" not in inspector.get_table_names():
+        return
+
+    unique_columns = {"user_id", "session_id"}
+    constraint_exists = any(
+        set(constraint.get("column_names") or []) == unique_columns
+        for constraint in inspector.get_unique_constraints("user_chat_history")
+    )
+    index_exists = any(
+        bool(index.get("unique"))
+        and set(index.get("column_names") or []) == unique_columns
+        for index in inspector.get_indexes("user_chat_history")
+    )
+    if constraint_exists or index_exists:
+        return
+
+    from migrations.versions.dedupe_chat_sessions import _merged_messages
+
+    with engine.begin() as connection:
+        duplicate_keys = connection.execute(
+            text(
+                "SELECT user_id, session_id FROM user_chat_history "
+                "GROUP BY user_id, session_id HAVING COUNT(*) > 1"
+            )
+        ).mappings().all()
+        for key in duplicate_keys:
+            duplicates = [
+                dict(row)
+                for row in connection.execute(
+                    text(
+                        "SELECT id, user_id, session_id, title, messages_data, mind_id, "
+                        "created_at, updated_at FROM user_chat_history "
+                        "WHERE user_id=:user_id AND session_id=:session_id "
+                        "ORDER BY updated_at DESC, id DESC"
+                    ),
+                    {"user_id": key["user_id"], "session_id": key["session_id"]},
+                ).mappings().all()
+            ]
+            keeper = duplicates[0]
+            best_title = next(
+                (
+                    row.get("title")
+                    for row in duplicates
+                    if row.get("title") and row.get("title") != "Новый чат"
+                ),
+                keeper.get("title") or "Новый чат",
+            )
+            mind_id = next(
+                (row.get("mind_id") for row in duplicates if row.get("mind_id")),
+                None,
+            )
+            connection.execute(
+                text(
+                    "UPDATE user_chat_history SET title=:title, messages_data=:messages_data, "
+                    "mind_id=:mind_id WHERE id=:keeper_id"
+                ),
+                {
+                    "title": best_title,
+                    "messages_data": _merged_messages(duplicates),
+                    "mind_id": mind_id,
+                    "keeper_id": keeper["id"],
+                },
+            )
+            duplicate_ids = [row["id"] for row in duplicates[1:]]
+            connection.execute(
+                text("DELETE FROM user_chat_history WHERE id IN :ids").bindparams(
+                    bindparam("ids", expanding=True)
+                ),
+                {"ids": duplicate_ids},
+            )
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                f"CREATE UNIQUE INDEX IF NOT EXISTS {CHAT_SESSION_UNIQUE_INDEX} "
+                "ON user_chat_history (user_id, session_id)"
+            )
+        )
 
 
 class User(db.Model):
@@ -175,6 +259,10 @@ class UserSettings(db.Model):
 
 
 class UserChatHistory(db.Model):
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "session_id", name="uq_user_chat_history_user_session"),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     session_id = db.Column(db.String(100), nullable=False)
@@ -1787,5 +1875,6 @@ def setup_auth(app):
                         )
                     )
                 app.logger.info("Added missing user_chat_history.mind_id column")
+            ensure_chat_session_uniqueness(db.engine)
         app.logger.info("Database tables created successfully")
     register_auth_routes(app)

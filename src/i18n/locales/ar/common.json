@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"غير متصل · ستتم إضافة الرسائل إلى قائمة الانتظار","reconnecting":"جارٍ استعادة الاتصال…","queued":"الرسائل في قائمة الانتظار: {{count}}","draftSyncing":"جارٍ مزامنة المسودة…","draftSynced":"تمت مزامنة المسودة","draftLocal":"تم حفظ المسودة محليًا","queueFull":"قائمة الانتظار دون اتصال ممتلئة. أعد الاتصال قبل إرسال ملفات إضافية.","temporaryOffline":"تتطلب المحادثات المؤقتة اتصالًا ولا تُحفظ أبدًا في قائمة الانتظار دون اتصال.","interrupted":"توقّف إنشاء الرد. يمكنك إعادة إنشاء هذا الإصدار."},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -123,10 +124,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "تعذّر إنشاء الرد.",
+    "generationStopped": "تم إيقاف الإنشاء",
+    "variantLimitReached": "بلغت هذه الرسالة الحد الأقصى للإصدارات.",
+    "versionConflict": "تغيّرت المحادثة على جهاز آخر. حاول مرة أخرى.",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "الإصدار السابق",
+      "next": "الإصدار التالي",
+      "counter": "الإصدار {{current}} من {{total}}"
     },
     "audio": {
       "speak": "Read aloud",

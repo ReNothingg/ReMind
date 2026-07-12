@@ -1,0 +1,6 @@
+.ui-message-delivery-state {
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}

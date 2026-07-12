@@ -7,6 +7,12 @@ import { Utils } from '../../utils/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
+import {
+    deleteRemoteDraft,
+    getDeviceId,
+    getRemoteDraft,
+    saveRemoteDraft,
+} from '../../services/reliability';
 
 const InputArea = ({
     onSendMessage,
@@ -18,6 +24,7 @@ const InputArea = ({
     isReadOnly = false,
     variant = 'default',
     showDynamicWarning = false,
+    currentSessionId = null,
 }) => {
     const [text, setText] = useState(initialPrompt || '');
     const [quotes, setQuotes] = useState([]);
@@ -27,6 +34,8 @@ const InputArea = ({
 
     const textareaRef = useRef(null);
     const quoteButtonRef = useRef(null);
+    const draftRevisionRef = useRef<number | null>(null);
+    const draftLoadedRef = useRef(false);
 
     const { isAuthenticated } = useAuth();
     const { settings } = useSettings();
@@ -36,6 +45,70 @@ const InputArea = ({
     const automaticWebSearch = !!settings.automaticWebSearch;
 
     const manualWebSearchEnabled = !automaticWebSearch && webSearchEnabled;
+    const draftStorageKey = `remind_chat_draft_v2:${currentSessionId || 'new'}`;
+
+    useEffect(() => {
+        let cancelled = false;
+        draftLoadedRef.current = false;
+        draftRevisionRef.current = null;
+        const localRaw = localStorage.getItem(draftStorageKey);
+        const local = localRaw ? (() => {
+            try { return JSON.parse(localRaw); } catch { return null; }
+        })() : null;
+        if (!initialPrompt && settings.autoSave && typeof local?.content === 'string') {
+            queueMicrotask(() => {
+                if (!cancelled) setText(local.content);
+            });
+        }
+        if (!isAuthenticated || !settings.autoSave || !navigator.onLine) {
+            draftLoadedRef.current = true;
+            return () => { cancelled = true; };
+        }
+        void getRemoteDraft().then((remote) => {
+            if (cancelled) return;
+            draftRevisionRef.current = remote?.revision ?? 0;
+            if (
+                !initialPrompt && remote?.session_id === currentSessionId &&
+                typeof remote.content === 'string' &&
+                Number(remote.updated_at || 0) > Number(local?.updatedAt || 0)
+            ) {
+                setText(remote.content);
+            }
+        }).catch(() => undefined).finally(() => {
+            if (!cancelled) draftLoadedRef.current = true;
+        });
+        return () => { cancelled = true; };
+    }, [currentSessionId, draftStorageKey, initialPrompt, isAuthenticated, settings.autoSave]);
+
+    useEffect(() => {
+        if (!settings.autoSave || !draftLoadedRef.current) return;
+        let cancelled = false;
+        const updatedAt = Date.now();
+        localStorage.setItem(draftStorageKey, JSON.stringify({ content: text, updatedAt }));
+        if (!isAuthenticated || !navigator.onLine) return;
+        const timer = window.setTimeout(() => {
+            void saveRemoteDraft(text, currentSessionId, draftRevisionRef.current)
+                .then(async (draft) => {
+                    if (cancelled) return;
+                    if (draft.device_id !== getDeviceId() && draft.content !== text) {
+                        const resolved = await saveRemoteDraft(
+                            text,
+                            currentSessionId,
+                            draft.revision
+                        );
+                        if (cancelled) return;
+                        draftRevisionRef.current = resolved.revision;
+                    } else {
+                        draftRevisionRef.current = draft.revision;
+                    }
+                })
+                .catch(() => undefined);
+        }, 700);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [currentSessionId, draftStorageKey, isAuthenticated, settings.autoSave, text]);
 
     useEffect(() => {
         if (!initialPrompt) {
@@ -137,6 +210,8 @@ const InputArea = ({
         onInitialPromptConsumed?.();
 
         setText('');
+        localStorage.removeItem(draftStorageKey);
+        if (isAuthenticated && navigator.onLine) void deleteRemoteDraft().catch(() => undefined);
         setQuotes([]);
         clearFiles();
     };

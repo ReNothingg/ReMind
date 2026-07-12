@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"অফলাইন · বার্তা সারিতে রাখা হবে","reconnecting":"সংযোগ পুনরুদ্ধার করা হচ্ছে…","queued":"সারিতে বার্তা: {{count}}","draftSyncing":"খসড়া সিঙ্ক হচ্ছে…","draftSynced":"খসড়া সিঙ্ক হয়েছে","draftLocal":"খসড়া স্থানীয়ভাবে সংরক্ষিত","queueFull":"অফলাইন সারি পূর্ণ। আরও ফাইল পাঠানোর আগে সংযোগ করুন।","temporaryOffline":"অস্থায়ী চ্যাটের জন্য নেটওয়ার্ক দরকার এবং এগুলো অফলাইন সারিতে সংরক্ষিত হয় না।","interrupted":"উত্তর তৈরি বাধাগ্রস্ত হয়েছে। এই সংস্করণটি আবার তৈরি করা যাবে।"},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -123,10 +124,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "উত্তর তৈরি করা যায়নি।",
+    "generationStopped": "উত্তর তৈরি বন্ধ হয়েছে",
+    "variantLimitReached": "এই বার্তায় সংস্করণের সীমা পূর্ণ হয়েছে।",
+    "versionConflict": "অন্য ডিভাইসে কথোপকথন বদলেছে। আবার চেষ্টা করুন।",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "আগের সংস্করণ",
+      "next": "পরের সংস্করণ",
+      "counter": "{{total}}টির মধ্যে সংস্করণ {{current}}"
     },
     "audio": {
       "speak": "Read aloud",

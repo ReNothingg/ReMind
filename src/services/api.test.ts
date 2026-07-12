@@ -52,4 +52,47 @@ describe('apiService', () => {
         const headers = options.headers as Headers;
         expect(headers.get('Authorization')).toBe('Bearer jwt-token');
     });
+
+    it('keeps guest authentication for chat turns and branch selection', async () => {
+        localStorage.setItem('guest_chat_tokens', JSON.stringify({ abc: 'jwt-token' }));
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => ({ ok: true, session_id: 'abc', history: [] }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const formData = new FormData();
+        formData.append('session_id', 'abc');
+        await apiService.chat(formData);
+        await apiService.selectSessionBranch('abc', 'a_1');
+
+        const chatHeaders = fetchMock.mock.calls[0][1].headers as Headers;
+        const branchHeaders = fetchMock.mock.calls[1][1].headers as Headers;
+        expect(chatHeaders.get('Authorization')).toBe('Bearer jwt-token');
+        expect(branchHeaders.get('Authorization')).toBe('Bearer jwt-token');
+    });
+
+    it('preserves structured chat API errors instead of stringifying the payload', async () => {
+        const onError = vi.fn();
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            status: 409,
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => ({
+                ok: false,
+                error: { code: 'message_id_conflict', message: 'Message ID already exists' },
+            }),
+        }));
+        const formData = new FormData();
+        formData.append('session_id', 'abc');
+
+        await apiService.chat(formData, undefined, { onError });
+
+        expect(onError).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Message ID already exists',
+            status: 409,
+        }));
+    });
 });

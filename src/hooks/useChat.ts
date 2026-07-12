@@ -4,6 +4,13 @@ import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/a
 import { fileService } from '../services/fileService';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
 import { useSettings } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
+import {
+    enqueueChatMessage,
+    listQueuedChatMessages,
+    reconcileQueuedChatOwner,
+    removeQueuedChatMessage,
+} from '../services/reliability';
 
 const DEFAULT_SESSION_ACCESS = {
     isPublic: false,
@@ -12,6 +19,7 @@ const DEFAULT_SESSION_ACCESS = {
     shareUrl: null,
     readOnly: false
 };
+const MAX_TEMPORARY_CHAT_VARIANTS = 50;
 
 const SLUG_INDEX_KEY = 'session_slug_index';
 const SESSION_ID_KEY = 'session_id';
@@ -44,6 +52,10 @@ type SendMessageOptions = {
     censorship?: boolean;
     mindId?: string | null;
     temporaryChat?: boolean;
+    _fromQueue?: boolean;
+    _forcedSessionId?: string;
+    _queueId?: string;
+    _queuedHistory?: unknown[];
     [key: string]: unknown;
 };
 
@@ -146,7 +158,44 @@ function slugify(text) {
         .replace(/^-+|-+$/g, '');
 }
 
-function normalizeHistoryMessage(msg) {
+function normalizeHistoryVariant(value) {
+    if (!value || typeof value !== 'object') return null;
+    const parts = Array.isArray(value.parts) ? value.parts : [];
+    const content = typeof value.content === 'string'
+        ? value.content
+        : (parts.find((part) => typeof part?.text === 'string')?.text || '');
+    return {
+        id: value.variant_id || value.id || crypto.randomUUID(),
+        variantId: value.variant_id || value.id || null,
+        content,
+        images: parts.filter((part) => part?.image).map((part) => part.image.url_path || part.image),
+        files: parts.filter((part) => part?.file).map((part) => ({ file: part.file })),
+        sources: Array.isArray(value.sources) ? value.sources : [],
+        githubTool: value.github_tool || value.githubTool || null,
+        canvasTextdoc: normalizeCanvasTextdoc(value.canvas_textdoc || value.canvasTextdoc),
+        canvasUpdates: Array.isArray(value.canvas_updates || value.canvasUpdates)
+            ? (value.canvas_updates || value.canvasUpdates)
+            : [],
+        thinkingTime: value.thinkingTime,
+        timestamp: value.timestamp,
+        deliveryState: value.delivery_status === 'interrupted' ? 'interrupted' : undefined,
+        parts
+    };
+}
+
+function patchMessageVariant(message, variantId, patch) {
+    if (!Array.isArray(message?.variants) || !variantId) return message;
+    return {
+        ...message,
+        variants: message.variants.map((variant) => (
+            (variant.variantId || variant.id) === variantId
+                ? { ...variant, ...patch }
+                : variant
+        )),
+    };
+}
+
+export function normalizeHistoryMessage(msg) {
     const parts = msg.parts || [];
     let text = parts.find((part) => part.text)?.text || '';
 
@@ -173,20 +222,35 @@ function normalizeHistoryMessage(msg) {
         }
     })) || [];
 
+    const variants = Array.isArray(msg.variants)
+        ? msg.variants.map(normalizeHistoryVariant).filter(Boolean)
+        : [];
+    const requestedVariantIndex = Number(msg.current_variant_index ?? msg.currentVariantIndex ?? 0);
+    const currentVariantIndex = variants.length
+        ? Math.max(0, Math.min(Number.isFinite(requestedVariantIndex) ? requestedVariantIndex : 0, variants.length - 1))
+        : undefined;
+    const currentVariant = currentVariantIndex !== undefined ? variants[currentVariantIndex] : null;
+
     return {
         id: msg.id || Math.random().toString(36).substr(2, 9),
         role: msg.role,
-        content: text.trim(),
-        images,
-        files,
-        sources: Array.isArray(msg.sources) ? msg.sources : [],
-        githubTool: msg.github_tool || msg.githubTool || null,
-        canvasTextdoc: normalizeCanvasTextdoc(msg.canvas_textdoc || msg.canvasTextdoc),
-        canvasUpdates: Array.isArray(msg.canvas_updates || msg.canvasUpdates)
-            ? (msg.canvas_updates || msg.canvasUpdates)
-            : [],
-        timestamp: msg.timestamp,
-        parts
+        content: currentVariant?.content ?? text.trim(),
+        images: currentVariant?.images ?? images,
+        files: currentVariant?.files?.length ? currentVariant.files : files,
+        sources: currentVariant?.sources ?? (Array.isArray(msg.sources) ? msg.sources : []),
+        githubTool: currentVariant?.githubTool || msg.github_tool || msg.githubTool || null,
+        canvasTextdoc: currentVariant?.canvasTextdoc || normalizeCanvasTextdoc(msg.canvas_textdoc || msg.canvasTextdoc),
+        canvasUpdates: currentVariant?.canvasUpdates ?? (
+            Array.isArray(msg.canvas_updates || msg.canvasUpdates)
+                ? (msg.canvas_updates || msg.canvasUpdates)
+                : []
+        ),
+        timestamp: currentVariant?.timestamp ?? msg.timestamp,
+        deliveryState: currentVariant?.deliveryState
+            ?? (msg.delivery_status === 'interrupted' ? 'interrupted' : undefined),
+        parts: currentVariant?.parts ?? parts,
+        variants,
+        currentVariantIndex
     };
 }
 
@@ -324,6 +388,8 @@ function extractLatestBeatboxState(messages) {
 export const useChat = () => {
     const { t } = useTranslation();
     const { settings } = useSettings();
+    const { isAuthenticated, user, loading: authLoading, checkAuth } = useAuth();
+    const reliabilityOwnerKey = isAuthenticated && user?.id ? `user:${user.id}` : 'guest';
     const [history, setHistory] = useState([]);
     const [canvasTextdoc, setCanvasTextdoc] = useState<CanvasTextdoc | null>(null);
     const [beatboxState, setBeatboxState] = useState(null);
@@ -335,12 +401,16 @@ export const useChat = () => {
     const [isTemporaryChat, setIsTemporaryChat] = useState(false);
     const [sessionActivity, setSessionActivity] = useState<Record<string, SessionActivity>>({});
     const [optimisticSessions, setOptimisticSessions] = useState({});
+    const [connectionState, setConnectionState] = useState<'online' | 'offline' | 'reconnecting'> (
+        typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'online'
+    );
+    const [queuedMessageCount, setQueuedMessageCount] = useState(0);
     const sessionActivityRef = useRef<Record<string, SessionActivity>>({});
     const sessionHistoryCacheRef = useRef(new Map());
     const sessionAbortControllersRef = useRef(new Map());
     const sessionRequestIdsRef = useRef(new Map());
     const nextChatRequestIdRef = useRef(0);
-    const messageVariantsRef = useRef(new Map());
+    const temporaryBranchTailsRef = useRef(new Map<string, unknown[]>());
     const slugIndexCacheRef = useRef({});
     const sessionLoadRequestIdRef = useRef(0);
     const currentSessionIdRef = useRef(null);
@@ -350,6 +420,41 @@ export const useChat = () => {
     const activeMindIdRef = useRef(null);
     const temporaryChatRef = useRef(false);
     const localPreviewUrlsRef = useRef(new Set<string>());
+    const flushingQueueRef = useRef(false);
+    const switchingVariantRef = useRef(false);
+    const checkAuthRef = useRef(checkAuth);
+
+    useEffect(() => {
+        checkAuthRef.current = checkAuth;
+    }, [checkAuth]);
+
+    useEffect(() => {
+        if (authLoading) return;
+        let active = true;
+        const refreshCount = () => reconcileQueuedChatOwner(reliabilityOwnerKey)
+            .then(() => listQueuedChatMessages(reliabilityOwnerKey))
+            .then((items) => {
+                if (!active) return;
+                setQueuedMessageCount(items.length);
+                if (items.length > 0 && navigator.onLine) {
+                    setConnectionState('reconnecting');
+                }
+            })
+            .catch(() => undefined);
+        const handleOffline = () => setConnectionState('offline');
+        const handleOnline = () => {
+            setConnectionState('reconnecting');
+            void checkAuthRef.current();
+        };
+        refreshCount();
+        window.addEventListener('offline', handleOffline);
+        window.addEventListener('online', handleOnline);
+        return () => {
+            active = false;
+            window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, [authLoading, reliabilityOwnerKey]);
 
     const revokeLocalPreviewUrls = useCallback((urls = []) => {
         urls.forEach((url) => {
@@ -557,7 +662,7 @@ export const useChat = () => {
         const filePreview = files.length > 0
             ? files.map((file) => file?.name).filter(Boolean).join(', ')
             : '';
-        const preview = (String(text || '').trim() || filePreview || 'New chat').slice(0, 80);
+        const preview = (String(text || '').trim() || filePreview || t('rail.newChat')).slice(0, 80);
 
         setOptimisticSessions((previous) => ({
             ...previous,
@@ -568,7 +673,7 @@ export const useChat = () => {
                 last_updated: Date.now() / 1000
             }
         }));
-    }, []);
+    }, [t]);
 
     const syncBrowserPath = useCallback((path, historyMode = 'replace') => {
         if (historyMode === 'none' || !path) return;
@@ -694,6 +799,7 @@ export const useChat = () => {
     }, [currentSessionId, history]);
 
     const resetConversationState = useCallback(() => {
+        revokeLocalPreviewUrls(Array.from(localPreviewUrlsRef.current));
         setHistory([]);
         setCanvasTextdocState(null);
         updateBeatboxState(null);
@@ -701,8 +807,8 @@ export const useChat = () => {
         setSessionAccess(createDefaultSessionAccess());
         setIsReadOnly(false);
         activeMindIdRef.current = null;
-        messageVariantsRef.current.clear();
-    }, [setCanvasTextdocState, updateBeatboxState, updateSessionIdentity]);
+        temporaryBranchTailsRef.current.clear();
+    }, [revokeLocalPreviewUrls, setCanvasTextdocState, updateBeatboxState, updateSessionIdentity]);
 
     const syncSessionIdentity = useCallback((sessionId, slug, options: SyncSessionOptions = {}) => {
         if (!sessionId) return;
@@ -762,7 +868,7 @@ export const useChat = () => {
             updateBeatboxState(extractLatestBeatboxState(cachedHistory));
             setSessionAccess(createDefaultSessionAccess());
             setIsReadOnly(false);
-            messageVariantsRef.current.clear();
+            temporaryBranchTailsRef.current.clear();
         }
         setIsLoading(cachedActivity?.status === 'generating');
 
@@ -973,20 +1079,24 @@ export const useChat = () => {
             censorship = false,
             mindId = undefined,
             temporaryChat: requestedTemporaryChat,
+            _fromQueue = false,
+            _forcedSessionId,
+            _queueId,
+            _queuedHistory,
             ...metadata
         } = options;
         const autoWebSearch = requestedAutoWebSearch ?? !!settings?.automaticWebSearch;
         const temporaryChat = requestedTemporaryChat ?? temporaryChatRef.current;
         if ((!text || !text.trim()) && files.length === 0) return;
-        if (isReadOnly) {
+        if (isReadOnly && !_fromQueue) {
             console.warn('Attempt to send message in read-only chat is blocked.');
             return;
         }
 
         sessionLoadRequestIdRef.current += 1;
-        let sessionId = currentSessionIdRef.current;
+        let sessionId = _forcedSessionId || currentSessionIdRef.current;
         const path = window.location.pathname;
-        const isNewChat = path === '/' || !path.startsWith('/c/');
+        const isNewChat = !_forcedSessionId && (path === '/' || !path.startsWith('/c/'));
 
         if (!sessionId || isNewChat) {
             sessionId = temporaryChat ? generateTemporarySessionId() : generateSessionId();
@@ -1005,6 +1115,63 @@ export const useChat = () => {
             if (isNewChat && !temporaryChat) {
                 syncBrowserPath(`/c/${encodeURIComponent(slug)}`, 'push');
             }
+        }
+        if (!navigator.onLine && !_fromQueue) {
+            const queueId = crypto.randomUUID();
+            if (temporaryChat) {
+                updateSessionHistory(sessionId, (previous) => [...previous, {
+                    id: `temporary-offline-${queueId}`,
+                    role: 'model',
+                    content: t('reliability.temporaryOffline'),
+                    isError: true,
+                    timestamp: Date.now() / 1000,
+                }]);
+                setConnectionState('offline');
+                return { queued: false };
+            }
+            const queuedHistory = buildHistoryForAPI(history.length);
+            try {
+                await enqueueChatMessage({
+                    id: queueId,
+                    createdAt: Date.now(),
+                    sessionId,
+                    text,
+                    model,
+                    options: { webSearch, autoWebSearch, censorship, mindId, temporaryChat, ...metadata },
+                    files,
+                    apiHistory: queuedHistory,
+                    ownerKey: reliabilityOwnerKey,
+                });
+            } catch {
+                updateSessionHistory(sessionId, (previous) => [...previous, {
+                    id: `queue-error-${queueId}`,
+                    role: 'model',
+                    content: t('reliability.queueFull'),
+                    isError: true,
+                    timestamp: Date.now() / 1000,
+                }]);
+                return { queued: false };
+            }
+            const pendingMessage = {
+                id: `queued-${queueId}`,
+                role: 'user',
+                content: text,
+                files: files.map((file) => ({
+                    file: {
+                        original_name: file.name,
+                        mime_type: file.type || 'application/octet-stream',
+                        size: file.size || 0,
+                    },
+                })),
+                timestamp: Date.now() / 1000,
+                deliveryState: 'queued',
+                queueId,
+            };
+            updateSessionHistory(sessionId, (previous) => [...previous, pendingMessage]);
+            setQueuedMessageCount((count) => count + 1);
+            setConnectionState('offline');
+            if (!temporaryChat) upsertOptimisticSession(sessionId, text, files);
+            return { queued: true, queueId };
         }
         sessionHistoryCacheRef.current.set(sessionId, history);
         const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
@@ -1031,15 +1198,18 @@ export const useChat = () => {
                 }
             });
         }
+        const userMessageId = `u_${crypto.randomUUID()}`;
+        const assistantMessageId = `a_${crypto.randomUUID()}`;
         const userMsg = {
-            id: `user-${Date.now()}`,
+            id: userMessageId,
             role: 'user',
             content: text,
             images: optimisticImageUrls,
             files: optimisticFiles,
+            localAttachments: temporaryChat ? files : [],
             timestamp: Date.now() / 1000
         };
-        const aiMsgId = `ai-${Date.now()}`;
+        const aiMsgId = assistantMessageId;
         const aiMsg = {
             id: aiMsgId,
             role: 'model',
@@ -1052,13 +1222,25 @@ export const useChat = () => {
             timestamp: Date.now() / 1000
         };
 
-        updateSessionHistory(sessionId, prev => [...prev, userMsg, aiMsg]);
+        updateSessionHistory(sessionId, prev => [
+            ...prev.filter((message) => !_queueId || message.queueId !== _queueId),
+            userMsg,
+            aiMsg,
+        ]);
 
         const formData = new FormData();
         formData.append('message', text);
         appendModelIfSelected(formData, model);
         formData.append('session_id', sessionId);
-        formData.append('history', JSON.stringify(buildHistoryForAPI(history.length)));
+        formData.append('operation', 'send');
+        formData.append('user_message_id', userMessageId);
+        formData.append('assistant_message_id', assistantMessageId);
+        const apiHistoryForDelivery = Array.isArray(_queuedHistory)
+            ? _queuedHistory
+            : buildHistoryForAPI(history.length);
+        formData.append('history', JSON.stringify(apiHistoryForDelivery));
+        const deliveryRequestId = _queueId || crypto.randomUUID();
+        formData.append('request_id', deliveryRequestId);
         if (canvasTextdocRef.current) {
             formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
         }
@@ -1128,6 +1310,7 @@ export const useChat = () => {
         }
         let fullReply = '';
         let firstChunk = true;
+        let deliverySucceeded = false;
 
         try {
             await apiService.chat(formData, controller.signal, {
@@ -1215,6 +1398,12 @@ export const useChat = () => {
                         }));
                     }
                 },
+                onOpen: ({ sessionToken }) => {
+                    if (sessionToken) {
+                        storeGuestSessionToken(sessionId, sessionToken);
+                    }
+                    setConnectionState('online');
+                },
                 onWidgetUpdate: (widgetData) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId) || !widgetData?.tag) {
                         return;
@@ -1236,7 +1425,9 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    applyCanvasUpdate(canvasUpdate);
+                    if (currentSessionIdRef.current === sessionId) {
+                        applyCanvasUpdate(canvasUpdate);
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -1252,11 +1443,14 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    deliverySucceeded = !finalData?.aborted;
                     if (finalData?.aborted) {
-                        fullReply += '\n\n_[Генерация остановлена]_';
+                        fullReply += `\n\n_${t('chat.generationStopped')}_`;
                     }
 
                     const resolvedSessionId = finalData?.sessionId || sessionId;
+                    const isActiveSession = currentSessionIdRef.current === sessionId
+                        || currentSessionIdRef.current === resolvedSessionId;
                     const resolvedSlug = finalData?.sessionSlug
                         || (resolvedSessionId === currentSessionIdRef.current ? currentSessionSlugRef.current : null)
                         || sessionIdToSlug(resolvedSessionId);
@@ -1285,8 +1479,24 @@ export const useChat = () => {
                     const uploadedNonImageFiles = uploadedFiles
                         .filter((file) => !(typeof file?.mime_type === 'string' && file.mime_type.startsWith('image/')))
                         .map((file) => ({ file }));
-                    if (finalCanvasTextdoc) {
+                    if (finalCanvasTextdoc && isActiveSession) {
                         setCanvasTextdocState(finalCanvasTextdoc);
+                    }
+                    if (!temporaryChat && Array.isArray(finalData.history) && finalData.history.length > 0) {
+                        revokeLocalPreviewUrls(optimisticImageUrls);
+                        const canonicalHistory = finalData.history.map(normalizeHistoryMessage);
+                        updateSessionHistory(sessionId, canonicalHistory);
+                        if (isActiveSession) {
+                            setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                            updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        }
+                        completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
+                        if (_queueId && deliverySucceeded) {
+                            void removeQueuedChatMessage(_queueId).then(() => {
+                                setQueuedMessageCount((count) => Math.max(0, count - 1));
+                            });
+                        }
+                        return;
                     }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === userMsg.id && uploadedFiles.length > 0) {
@@ -1304,7 +1514,8 @@ export const useChat = () => {
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
-                                thinkingTime: finalData.thinkingTime
+                                thinkingTime: finalData.thinkingTime,
+                                deliveryState: finalData?.aborted ? 'interrupted' : undefined
                             };
                             return {
                                 ...msg,
@@ -1320,6 +1531,7 @@ export const useChat = () => {
                                     ? finalData.canvas_updates
                                     : msg.canvasUpdates || [],
                                 thinkingTime: finalData.thinkingTime,
+                                deliveryState: firstVariant.deliveryState,
                                 variants: [firstVariant],
                                 currentVariantIndex: 0
                             };
@@ -1327,12 +1539,22 @@ export const useChat = () => {
                         return msg;
                     }));
                     completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
+                    if (_queueId && deliverySucceeded) {
+                        void removeQueuedChatMessage(_queueId).then(() => {
+                            setQueuedMessageCount((count) => Math.max(0, count - 1));
+                        });
+                    }
                 },
                 onError: (err) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
                     console.error('Chat error', err);
+                    const errorStatus = Number((err as Error & { status?: number })?.status || 0);
+                    const isNetworkFailure = !navigator.onLine
+                        || errorStatus >= 500
+                        || /fetch|network|connection|offline|stream_interrupted/i.test(err?.message || '');
+                    if (isNetworkFailure) setConnectionState(navigator.onLine ? 'reconnecting' : 'offline');
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -1340,22 +1562,95 @@ export const useChat = () => {
                                 isLoading: false,
                                 isGeneratingImage: false,
                                 webSearchStatus: null,
-                                isError: true,
-                                content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
+                                isError: !isNetworkFailure,
+                                deliveryState: isNetworkFailure ? 'interrupted' : 'error',
+                                content: fullReply || msg.content
                             };
                         }
                         return msg;
                     }));
-                    completeSessionRequest(sessionId, chatRequestId, 'error', err?.message || 'Generation failed');
+                    completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                    if (isNetworkFailure) {
+                        const recover = async () => {
+                            const enqueueForRetry = async () => {
+                                if (temporaryChat || _queueId) return false;
+                                try {
+                                    await enqueueChatMessage({
+                                        id: deliveryRequestId,
+                                        createdAt: Date.now(),
+                                        sessionId,
+                                        text,
+                                        model,
+                                        options: {
+                                            webSearch,
+                                            autoWebSearch,
+                                            censorship,
+                                            mindId,
+                                            temporaryChat,
+                                            ...metadata,
+                                        },
+                                        files,
+                                        apiHistory: apiHistoryForDelivery,
+                                        ownerKey: reliabilityOwnerKey,
+                                    });
+                                    setQueuedMessageCount((count) => count + 1);
+                                    setConnectionState(navigator.onLine ? 'reconnecting' : 'offline');
+                                    return true;
+                                } catch {
+                                    updateSessionHistory(sessionId, (previous) => previous.map((message) => (
+                                        message.id === aiMsgId
+                                            ? { ...message, isError: true, content: t('reliability.queueFull') }
+                                            : message
+                                    )));
+                                    return false;
+                                }
+                            };
+                            if (!navigator.onLine) {
+                                await enqueueForRetry();
+                                return;
+                            }
+                            for (let attempt = 0; attempt < 4; attempt += 1) {
+                                try {
+                                    const recovered = await apiService.getSessionHistory(sessionId);
+                                    if (Array.isArray(recovered.history)) {
+                                        const deliveryWasPersisted = recovered.history.some((message) => (
+                                            message?.request_id === deliveryRequestId
+                                        ));
+                                        if (deliveryWasPersisted) {
+                                            const normalized = recovered.history.map(normalizeHistoryMessage);
+                                            sessionHistoryCacheRef.current.set(sessionId, normalized);
+                                            if (currentSessionIdRef.current === sessionId) setHistory(normalized);
+                                            setConnectionState('online');
+                                            return;
+                                        }
+                                    }
+                                } catch {
+                                }
+                                if (attempt < 3) {
+                                    await new Promise((resolve) => window.setTimeout(
+                                        resolve,
+                                        750 * (attempt + 1)
+                                    ));
+                                }
+                            }
+                            const queued = await enqueueForRetry();
+                            if (!queued) {
+                                setConnectionState(navigator.onLine ? 'online' : 'offline');
+                            }
+                        };
+                        void recover();
+                    }
                 }
             });
+            return { queued: false, delivered: deliverySucceeded };
         } catch (e) {
             if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                 return;
             }
             if (e.name !== 'AbortError') {
-                completeSessionRequest(sessionId, chatRequestId, 'error', e?.message || 'Generation failed');
+                completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
             }
+            return { queued: false, delivered: false };
         }
     }, [
         addGuestSession,
@@ -1368,6 +1663,7 @@ export const useChat = () => {
         isSessionRequestCurrent,
         isReadOnly,
         registerSessionSlug,
+        reliabilityOwnerKey,
         sessionIdToSlug,
         settings?.automaticWebSearch,
         setCanvasTextdocState,
@@ -1378,10 +1674,35 @@ export const useChat = () => {
         syncPersistedCurrentSession,
         syncSessionIdentity,
         t,
+        updateBeatboxState,
         updateSessionHistory,
         upsertOptimisticSession,
         updateSessionIdentity
     ]);
+
+    useEffect(() => {
+        if (connectionState !== 'reconnecting' || flushingQueueRef.current) return;
+        flushingQueueRef.current = true;
+        void (async () => {
+            try {
+                const queued = await listQueuedChatMessages(reliabilityOwnerKey);
+                for (const item of queued) {
+                    if (!navigator.onLine) break;
+                    const result = await sendMessage(item.text, item.files || [], item.model, {
+                        ...item.options,
+                        _fromQueue: true,
+                        _forcedSessionId: item.sessionId,
+                        _queueId: item.id,
+                        _queuedHistory: item.apiHistory || [],
+                    });
+                    if (!result?.delivered) break;
+                }
+                setConnectionState(navigator.onLine ? 'online' : 'offline');
+            } finally {
+                flushingQueueRef.current = false;
+            }
+        })();
+    }, [connectionState, reliabilityOwnerKey, sendMessage]);
 
     const stopGeneration = useCallback(() => {
         const sessionId = currentSessionIdRef.current;
@@ -1401,9 +1722,30 @@ export const useChat = () => {
         if (userIndex < 0 || history[userIndex].role !== 'user') return;
 
         const userMessage = history[userIndex];
+        const repeatWebSearch = Array.isArray(history[aiIndex].sources)
+            && history[aiIndex].sources.length > 0;
         const historyBefore = buildHistoryForAPI(userIndex);
         const sessionId = currentSessionIdRef.current || generateSessionId();
         const temporaryChat = temporaryChatRef.current;
+        if (
+            temporaryChat &&
+            Math.max(1, history[aiIndex].variants?.length || 0) >= MAX_TEMPORARY_CHAT_VARIANTS
+        ) {
+            setSessionActivityState(sessionId, 'error', t('chat.variantLimitReached'));
+            return;
+        }
+        if (temporaryChat) {
+            const currentVariant = Array.isArray(history[aiIndex].variants)
+                ? history[aiIndex].variants[history[aiIndex].currentVariantIndex || 0]
+                : null;
+            const currentVariantId = currentVariant?.variantId || currentVariant?.id || aiMessageId;
+            temporaryBranchTailsRef.current.set(
+                currentVariantId,
+                history.slice(aiIndex + 1)
+            );
+        }
+        const assistantMessageId = `a_${crypto.randomUUID()}`;
+        const deliveryRequestId = crypto.randomUUID();
 
         sessionLoadRequestIdRef.current += 1;
         sessionHistoryCacheRef.current.set(sessionId, history);
@@ -1412,18 +1754,51 @@ export const useChat = () => {
             upsertOptimisticSession(sessionId, userMessage.content, []);
         }
 
-        updateSessionHistory(sessionId, prev => prev.map(msg => {
+        updateSessionHistory(sessionId, prev => (
+            temporaryChat ? prev.slice(0, aiIndex + 1) : prev
+        ).map(msg => {
             if (msg.id === aiMessageId) {
-                return { ...msg, isLoading: true, isError: false };
+                const baselineVariants = Array.isArray(msg.variants) && msg.variants.length
+                    ? msg.variants
+                    : [{
+                        id: msg.id,
+                        variantId: msg.id,
+                        content: msg.content,
+                        images: msg.images || [],
+                        files: msg.files || [],
+                        sources: msg.sources || [],
+                        githubTool: msg.githubTool || null,
+                        canvasTextdoc: msg.canvasTextdoc || null,
+                        thinkingTime: msg.thinkingTime,
+                    }];
+                const pendingVariant = {
+                    id: assistantMessageId,
+                    variantId: assistantMessageId,
+                    content: '',
+                    images: [],
+                    sources: [],
+                };
+                return {
+                    ...msg,
+                    content: '',
+                    images: [],
+                    sources: [],
+                    variants: [...baselineVariants, pendingVariant],
+                    currentVariantIndex: baselineVariants.length,
+                    isLoading: true,
+                    isError: false,
+                };
             }
             return msg;
         }));
-        updateSessionHistory(sessionId, prev => prev.slice(0, aiIndex + 1));
-
         const formData = new FormData();
         formData.append('message', userMessage.content);
         appendModelIfSelected(formData, model);
         formData.append('session_id', sessionId);
+        formData.append('operation', 'regenerate');
+        formData.append('target_message_id', aiMessageId);
+        formData.append('assistant_message_id', assistantMessageId);
+        formData.append('request_id', deliveryRequestId);
         formData.append('history', JSON.stringify(historyBefore));
         if (canvasTextdocRef.current) {
             formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
@@ -1432,15 +1807,24 @@ export const useChat = () => {
             formData.append('beatbox_state', JSON.stringify(beatboxStateRef.current));
         }
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
+        formData.append('webSearch', String(repeatWebSearch));
         formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
             formData.append('mind_id', activeMindIdRef.current);
+        }
+        if (temporaryChat && Array.isArray(userMessage.localAttachments)) {
+            userMessage.localAttachments.forEach((file, index) => {
+                formData.append(`file${index}`, file, file.name);
+            });
         }
 
         let fullReply = '';
 
         try {
             await apiService.chat(formData, controller.signal, {
+                onOpen: ({ sessionToken }) => {
+                    if (sessionToken) storeGuestSessionToken(sessionId, sessionToken);
+                },
                 onPart: (data) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data?.reply_part) {
                         return;
@@ -1448,7 +1832,11 @@ export const useChat = () => {
                     fullReply += data.reply_part;
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
-                            return { ...msg, content: fullReply, isLoading: true };
+                            return patchMessageVariant(
+                                { ...msg, content: fullReply, isLoading: true },
+                                assistantMessageId,
+                                { content: fullReply }
+                            );
                         }
                         return msg;
                     }));
@@ -1459,13 +1847,18 @@ export const useChat = () => {
                     }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
-                            return {
+                            return patchMessageVariant({
                                 ...msg,
                                 widgetUpdate: {
                                     tag: widgetData.tag,
                                     state: widgetData.state
                                 }
-                            };
+                            }, assistantMessageId, {
+                                widgetUpdate: {
+                                    tag: widgetData.tag,
+                                    state: widgetData.state
+                                }
+                            });
                         }
                         return msg;
                     }));
@@ -1477,11 +1870,15 @@ export const useChat = () => {
                     applyCanvasUpdate(canvasUpdate);
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
-                            return {
+                            const nextCanvasUpdates = [...(msg.canvasUpdates || []), canvasUpdate];
+                            return patchMessageVariant({
                                 ...msg,
                                 canvasTextdoc: normalizeCanvasTextdoc(canvasUpdate?.textdoc),
-                                canvasUpdates: [...(msg.canvasUpdates || []), canvasUpdate]
-                            };
+                                canvasUpdates: nextCanvasUpdates
+                            }, assistantMessageId, {
+                                canvasTextdoc: normalizeCanvasTextdoc(canvasUpdate?.textdoc),
+                                canvasUpdates: nextCanvasUpdates
+                            });
                         }
                         return msg;
                     }));
@@ -1495,22 +1892,43 @@ export const useChat = () => {
                     if (finalCanvasTextdoc) {
                         setCanvasTextdocState(finalCanvasTextdoc);
                     }
+                    if (!temporaryChat && Array.isArray(finalData.history) && finalData.history.length > 0) {
+                        const canonicalHistory = finalData.history.map(normalizeHistoryMessage);
+                        updateSessionHistory(sessionId, canonicalHistory);
+                        setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                        updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
+                        return;
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             const newVariant = {
+                                id: assistantMessageId,
+                                variantId: assistantMessageId,
                                 content: typeof finalData.reply === 'string' ? finalData.reply : fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
-                                thinkingTime: finalData.thinkingTime
+                                thinkingTime: finalData.thinkingTime,
+                                deliveryState: finalData?.aborted ? 'interrupted' : undefined
                             };
                             const existingVariants = msg.variants || [];
-                            const newVariants = [...existingVariants, newVariant];
-                            const newCurrentIndex = newVariants.length - 1;
+                            const pendingIndex = existingVariants.findIndex((variant) => (
+                                (variant.variantId || variant.id) === assistantMessageId
+                            ));
+                            const newVariants = pendingIndex >= 0
+                                ? existingVariants.map((variant, index) => (
+                                    index === pendingIndex ? { ...variant, ...newVariant } : variant
+                                ))
+                                : [...existingVariants, newVariant];
+                            const newCurrentIndex = pendingIndex >= 0
+                                ? pendingIndex
+                                : newVariants.length - 1;
 
                             return {
                                 ...msg,
+                                id: assistantMessageId,
                                 isLoading: false,
                                 content: newVariant.content,
                                 images: newVariant.images,
@@ -1521,6 +1939,7 @@ export const useChat = () => {
                                     ? finalData.canvas_updates
                                     : msg.canvasUpdates || [],
                                 thinkingTime: newVariant.thinkingTime,
+                                deliveryState: newVariant.deliveryState,
                                 variants: newVariants,
                                 currentVariantIndex: newCurrentIndex
                             };
@@ -1533,18 +1952,33 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    if (!temporaryChat) {
+                        updateSessionHistory(sessionId, history);
+                        completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                        return;
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
-                            return {
+                            const errorCode = (err as Error & {
+                                data?: { error?: { code?: string } };
+                            })?.data?.error?.code;
+                            const errorContent = fullReply || (
+                                errorCode === 'chat_variant_limit_reached'
+                                    ? t('chat.variantLimitReached')
+                                    : errorCode === 'message_id_conflict'
+                                        ? t('chat.versionConflict')
+                                        : t('chat.generationFailed')
+                            );
+                            return patchMessageVariant({
                                 ...msg,
                                 isLoading: false,
                                 isError: true,
-                                content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
-                            };
+                                content: errorContent
+                            }, assistantMessageId, { content: errorContent });
                         }
                         return msg;
                     }));
-                    completeSessionRequest(sessionId, chatRequestId, 'error', err?.message || 'Generation failed');
+                    completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
                 }
             });
         } catch (e) {
@@ -1552,7 +1986,7 @@ export const useChat = () => {
                 return;
             }
             if (e.name !== 'AbortError') {
-                completeSessionRequest(sessionId, chatRequestId, 'error', e?.message || 'Generation failed');
+                completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
             }
         }
     }, [
@@ -1565,40 +1999,81 @@ export const useChat = () => {
         isSessionRequestCurrent,
         settings?.automaticWebSearch,
         setCanvasTextdocState,
+        setSessionActivityState,
+        storeGuestSessionToken,
+        t,
+        updateBeatboxState,
         updateSessionHistory,
         upsertOptimisticSession
     ]);
-    const switchVariant = useCallback((aiMessageId, direction) => {
-        setHistory(prev => {
-            const aiIndex = prev.findIndex(msg => msg.id === aiMessageId);
-            if (aiIndex === -1) return prev;
+    const switchVariant = useCallback(async (messageId, direction) => {
+        if (isLoading || switchingVariantRef.current) return;
+        const messageIndex = history.findIndex((message) => message.id === messageId);
+        if (messageIndex < 0) return;
+        const message = history[messageIndex];
+        if (!Array.isArray(message.variants) || message.variants.length <= 1) return;
+        const currentIndex = message.currentVariantIndex || 0;
+        const newIndex = currentIndex + direction;
+        if (newIndex < 0 || newIndex >= message.variants.length) return;
+        const selectedVariant = message.variants[newIndex];
+        const selectedMessageId = selectedVariant.variantId || selectedVariant.id;
+        const sessionId = currentSessionIdRef.current;
 
-            const msg = prev[aiIndex];
-            if (!msg.variants || msg.variants.length <= 1) return prev;
-
-            const currentIndex = msg.currentVariantIndex || 0;
-            const newIndex = currentIndex + direction;
-
-            if (newIndex < 0 || newIndex >= msg.variants.length) return prev;
-
-            const newVariant = msg.variants[newIndex];
-            const newHistory = prev.slice(0, aiIndex + 1);
-            return newHistory.map((m, idx) => {
-                if (idx === aiIndex) {
-                    return {
-                        ...m,
-                        content: newVariant.content,
-                        images: newVariant.images || [],
-                        sources: newVariant.sources || [],
-                        githubTool: newVariant.githubTool || null,
-                        thinkingTime: newVariant.thinkingTime,
-                        currentVariantIndex: newIndex
-                    };
+        if (sessionId && !temporaryChatRef.current && !isReadOnly && selectedMessageId) {
+            switchingVariantRef.current = true;
+            try {
+                const response = await apiService.selectSessionBranch(sessionId, selectedMessageId);
+                if (Array.isArray(response.history)) {
+                    const canonicalHistory = response.history.map(normalizeHistoryMessage);
+                    updateSessionHistory(sessionId, canonicalHistory);
+                    setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                    updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                    return;
                 }
-                return m;
-            });
-        });
-    }, []);
+            } catch (error) {
+                console.error('Failed to switch conversation branch', error);
+                return;
+            } finally {
+                switchingVariantRef.current = false;
+            }
+        }
+
+        const currentVariant = message.variants[currentIndex];
+        const currentVariantId = currentVariant?.variantId || currentVariant?.id || message.id;
+        temporaryBranchTailsRef.current.set(
+            currentVariantId,
+            history.slice(messageIndex + 1)
+        );
+        const selectedTail = (temporaryBranchTailsRef.current.get(selectedMessageId) || []) as typeof history;
+        const localHistory = history.slice(0, messageIndex + 1).map((item, index) => {
+            if (index !== messageIndex) return item;
+            return {
+                ...item,
+                id: selectedMessageId || item.id,
+                content: selectedVariant.content,
+                images: selectedVariant.images || [],
+                files: selectedVariant.files || item.files || [],
+                sources: selectedVariant.sources || [],
+                githubTool: selectedVariant.githubTool || null,
+                canvasTextdoc: selectedVariant.canvasTextdoc || null,
+                canvasUpdates: selectedVariant.canvasUpdates || [],
+                thinkingTime: selectedVariant.thinkingTime,
+                currentVariantIndex: newIndex,
+                parts: selectedVariant.parts || item.parts,
+            };
+        }).concat(selectedTail);
+        if (sessionId) updateSessionHistory(sessionId, localHistory);
+        else setHistory(localHistory);
+        setCanvasTextdocState(extractLatestCanvasTextdoc(localHistory));
+        updateBeatboxState(extractLatestBeatboxState(localHistory));
+    }, [
+        history,
+        isLoading,
+        isReadOnly,
+        setCanvasTextdocState,
+        updateBeatboxState,
+        updateSessionHistory,
+    ]);
     const editMessage = useCallback(async (userMessageId, newText, model = '') => {
         if (isLoading || !userMessageId || !newText?.trim() || isReadOnly) return;
 
@@ -1606,6 +2081,28 @@ export const useChat = () => {
         if (userIndex === -1 || history[userIndex].role !== 'user') return;
         const sessionId = currentSessionIdRef.current || generateSessionId();
         const temporaryChat = temporaryChatRef.current;
+        if (
+            temporaryChat &&
+            Math.max(1, history[userIndex].variants?.length || 0) >= MAX_TEMPORARY_CHAT_VARIANTS
+        ) {
+            setSessionActivityState(sessionId, 'error', t('chat.variantLimitReached'));
+            return;
+        }
+        if (temporaryChat) {
+            const currentVariant = Array.isArray(history[userIndex].variants)
+                ? history[userIndex].variants[history[userIndex].currentVariantIndex || 0]
+                : null;
+            const currentVariantId = currentVariant?.variantId || currentVariant?.id || userMessageId;
+            temporaryBranchTailsRef.current.set(
+                currentVariantId,
+                history.slice(userIndex + 1)
+            );
+        }
+        const repeatWebSearch = Array.isArray(history[userIndex + 1]?.sources)
+            && history[userIndex + 1].sources.length > 0;
+        const editedUserMessageId = `u_${crypto.randomUUID()}`;
+        const assistantMessageId = `a_${crypto.randomUUID()}`;
+        const deliveryRequestId = crypto.randomUUID();
 
         sessionLoadRequestIdRef.current += 1;
         sessionHistoryCacheRef.current.set(sessionId, history);
@@ -1616,7 +2113,30 @@ export const useChat = () => {
 
         updateSessionHistory(sessionId, prev => prev.map(msg => {
             if (msg.id === userMessageId) {
-                return { ...msg, content: newText };
+                const baselineVariants = Array.isArray(msg.variants) && msg.variants.length
+                    ? msg.variants
+                    : [{
+                        id: msg.id,
+                        variantId: msg.id,
+                        content: msg.content,
+                        images: msg.images || [],
+                        files: msg.files || [],
+                        sources: [],
+                    }];
+                const editedVariant = {
+                    id: editedUserMessageId,
+                    variantId: editedUserMessageId,
+                    content: newText,
+                    images: msg.images || [],
+                    files: msg.files || [],
+                    sources: [],
+                };
+                return {
+                    ...msg,
+                    content: newText,
+                    variants: [...baselineVariants, editedVariant],
+                    currentVariantIndex: baselineVariants.length,
+                };
             }
             return msg;
         }));
@@ -1629,7 +2149,7 @@ export const useChat = () => {
             }
             return newHistory;
         });
-        const aiMsgId = `ai-${Date.now()}`;
+        const aiMsgId = assistantMessageId;
         const aiMsg = {
             id: aiMsgId,
             role: 'model',
@@ -1645,6 +2165,11 @@ export const useChat = () => {
         formData.append('message', newText);
         appendModelIfSelected(formData, model);
         formData.append('session_id', sessionId);
+        formData.append('operation', 'edit');
+        formData.append('target_message_id', userMessageId);
+        formData.append('user_message_id', editedUserMessageId);
+        formData.append('assistant_message_id', assistantMessageId);
+        formData.append('request_id', deliveryRequestId);
         formData.append('history', JSON.stringify(historyBefore));
         if (canvasTextdocRef.current) {
             formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
@@ -1653,15 +2178,25 @@ export const useChat = () => {
             formData.append('beatbox_state', JSON.stringify(beatboxStateRef.current));
         }
         formData.append('autoWebSearch', String(!!settings?.automaticWebSearch));
+        formData.append('webSearch', String(repeatWebSearch));
         formData.append('temporary_chat', String(temporaryChat));
         if (activeMindIdRef.current) {
             formData.append('mind_id', activeMindIdRef.current);
+        }
+        const editedMessageAttachments = history[userIndex].localAttachments;
+        if (temporaryChat && Array.isArray(editedMessageAttachments)) {
+            editedMessageAttachments.forEach((file, index) => {
+                formData.append(`file${index}`, file, file.name);
+            });
         }
 
         let fullReply = '';
 
         try {
             await apiService.chat(formData, controller.signal, {
+                onOpen: ({ sessionToken }) => {
+                    if (sessionToken) storeGuestSessionToken(sessionId, sessionToken);
+                },
                 onPart: (data) => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data?.reply_part) {
                         return;
@@ -1716,6 +2251,14 @@ export const useChat = () => {
                     if (finalCanvasTextdoc) {
                         setCanvasTextdocState(finalCanvasTextdoc);
                     }
+                    if (!temporaryChat && Array.isArray(finalData.history) && finalData.history.length > 0) {
+                        const canonicalHistory = finalData.history.map(normalizeHistoryMessage);
+                        updateSessionHistory(sessionId, canonicalHistory);
+                        setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                        updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
+                        return;
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -1728,7 +2271,8 @@ export const useChat = () => {
                                 canvasTextdoc: finalCanvasTextdoc,
                                 canvasUpdates: Array.isArray(finalData.canvas_updates)
                                     ? finalData.canvas_updates
-                                    : msg.canvasUpdates || []
+                                    : msg.canvasUpdates || [],
+                                deliveryState: finalData?.aborted ? 'interrupted' : undefined
                             };
                         }
                         return msg;
@@ -1739,18 +2283,32 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    if (!temporaryChat) {
+                        updateSessionHistory(sessionId, history);
+                        completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                        return;
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
+                            const errorCode = (err as Error & {
+                                data?: { error?: { code?: string } };
+                            })?.data?.error?.code;
                             return {
                                 ...msg,
                                 isLoading: false,
                                 isError: true,
-                                content: `${fullReply}\n\n[Error: ${err?.message || 'unknown error'}]`
+                                content: fullReply || (
+                                    errorCode === 'chat_variant_limit_reached'
+                                        ? t('chat.variantLimitReached')
+                                        : errorCode === 'message_id_conflict'
+                                            ? t('chat.versionConflict')
+                                            : t('chat.generationFailed')
+                                )
                             };
                         }
                         return msg;
                     }));
-                    completeSessionRequest(sessionId, chatRequestId, 'error', err?.message || 'Generation failed');
+                    completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
                 }
             });
         } catch (e) {
@@ -1758,7 +2316,7 @@ export const useChat = () => {
                 return;
             }
             if (e.name !== 'AbortError') {
-                completeSessionRequest(sessionId, chatRequestId, 'error', e?.message || 'Generation failed');
+                completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
             }
         }
     }, [
@@ -1772,6 +2330,10 @@ export const useChat = () => {
         isSessionRequestCurrent,
         settings?.automaticWebSearch,
         setCanvasTextdocState,
+        setSessionActivityState,
+        storeGuestSessionToken,
+        t,
+        updateBeatboxState,
         updateSessionHistory,
         upsertOptimisticSession
     ]);
@@ -1836,6 +2398,8 @@ export const useChat = () => {
         isTemporaryChat,
         sessionActivity,
         optimisticSessions,
+        connectionState,
+        queuedMessageCount,
         loadSession,
         clearChat,
         startTemporaryChat,

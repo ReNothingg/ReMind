@@ -36,11 +36,67 @@ export interface components {
       type: string;
       updated_at?: number;
     };
+    ChatDraft: {
+      content: string;
+      device_id: string;
+      revision: number;
+      session_id?: string | null;
+      updated_at: number;
+    };
+    ChatDraftRequest: {
+      base_revision?: number | null;
+      content: string;
+      device_id: string;
+      session_id?: string | null;
+    };
+    ChatDraftResponse: {
+      draft?: components["schemas"]["ChatDraft"] | null;
+      error?: string;
+      [key: string]: unknown;
+    };
     ChatMessage: {
+      current_variant_index?: number;
+      delivery_status?: "complete" | "interrupted" | null;
       id?: string | null;
+      is_active?: boolean;
+      parent_id?: string | null;
       parts: components["schemas"]["MessagePart"][];
+      request_id?: string | null;
       role: string;
       timestamp?: number | null;
+      variants?: components["schemas"]["ChatMessageVariant"][];
+      [key: string]: unknown;
+    };
+    ChatMessageVariant: {
+      delivery_status?: "complete" | "interrupted" | null;
+      id: string;
+      parts: components["schemas"]["MessagePart"][];
+      request_id?: string | null;
+      role: string;
+      timestamp?: number | null;
+      variant_id?: string;
+      [key: string]: unknown;
+    };
+    ChatOperationRequest: {
+      assistant_message_id: string;
+      history?: components["schemas"]["ChatMessage"][];
+      message?: string;
+      model?: string;
+      operation?: "send" | "regenerate" | "edit";
+      request_id: string;
+      session_id: string;
+      target_message_id?: string | null;
+      temporary_chat?: boolean;
+      user_message_id?: string | null;
+      [key: string]: unknown;
+    };
+    ChatOperationResponse: {
+      delivery_status?: "complete" | "interrupted";
+      history: components["schemas"]["ChatMessage"][];
+      ok: boolean;
+      reply?: string;
+      request_id: string;
+      sessionId: string;
       [key: string]: unknown;
     };
     ErrorResponse: {
@@ -276,6 +332,90 @@ export interface paths {
       };
     };
   };
+  "/api/user/draft": {
+    delete: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              deleted: boolean;
+            };
+          };
+        };
+      };
+    };
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatDraftResponse"];
+          };
+        };
+      };
+    };
+    put: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ChatDraftRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatDraftResponse"];
+          };
+        };
+        "409": {
+          content: {
+            "application/json": components["schemas"]["ChatDraftResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/chat": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ChatOperationRequest"];
+          "multipart/form-data": components["schemas"]["ChatOperationRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatOperationResponse"];
+            "text/event-stream": string;
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "403": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "409": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/health": {
     get: {
       responses: {
@@ -305,6 +445,29 @@ export interface paths {
         "200": {
           content: {
             "application/json": components["schemas"]["SessionListResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/sessions/{session_id}/branch": {
+    put: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            message_id: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["SessionHistoryResponse"];
           };
         };
       };

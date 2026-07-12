@@ -1,5 +1,7 @@
 import base64
+import re
 import uuid
+from pathlib import Path
 
 from PIL import Image
 
@@ -37,6 +39,8 @@ ALLOWED_FILE_EXTENSIONS = {
     "yaml",
     "yml",
 }
+STORED_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})?$")
+MODEL_TEXT_FILE_MAX_CHARS = 100000
 
 
 def _safe_unlink(filepath):
@@ -119,5 +123,62 @@ def handle_file_upload(file_storage, user_id):
         "url_path": f"/uploads/{final_filename}",
         "mime_type": mimetype,
         "original_name": InputValidator.sanitize_output(file_storage.filename),
+        "model_part": model_part,
+    }
+
+
+def restore_stored_file_for_model(
+    file_info: dict,
+    *,
+    max_bytes: int | None = None,
+) -> dict | None:
+    """Rebuild a provider payload for an already-authorized stored attachment."""
+    if not isinstance(file_info, dict):
+        return None
+    url_path = str(file_info.get("url_path") or "").split("?", 1)[0]
+    if not url_path.startswith("/uploads/"):
+        return None
+    filename = url_path.removeprefix("/uploads/")
+    if not STORED_UPLOAD_NAME_RE.fullmatch(filename):
+        return None
+
+    upload_root = Path(UPLOAD_FOLDER).resolve()
+    filepath = (upload_root / filename).resolve()
+    if filepath.parent != upload_root or not filepath.is_file() or not is_safe_to_serve(filepath):
+        return None
+    is_valid, _error = validate_file_content(str(filepath))
+    if not is_valid:
+        return None
+    file_size = filepath.stat().st_size
+    if max_bytes is not None and file_size > max(0, max_bytes):
+        return None
+    is_valid, detected_mime = validate_mime_type(str(filepath))
+    if not is_valid or not detected_mime:
+        return None
+
+    original_name = InputValidator.sanitize_output(
+        str(file_info.get("original_name") or filename)
+    )[:255]
+    try:
+        if detected_mime.startswith("image/"):
+            encoded = base64.b64encode(filepath.read_bytes()).decode("utf-8")
+            model_part = {
+                "inline_data": {"mime_type": detected_mime, "data": encoded}
+            }
+        else:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as file_obj:
+                text = file_obj.read(MODEL_TEXT_FILE_MAX_CHARS)
+            model_part = {
+                "text": f"--- File: {original_name} ---\n{text}\n--- End File ---"
+            }
+    except (OSError, UnicodeError):
+        return None
+
+    return {
+        "path": str(filepath),
+        "url_path": f"/uploads/{filename}",
+        "mime_type": detected_mime,
+        "original_name": original_name,
+        "size": file_size,
         "model_part": model_part,
     }

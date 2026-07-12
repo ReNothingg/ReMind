@@ -9,12 +9,21 @@ import uuid
 from pathlib import Path
 from typing import Any, cast
 
-from flask import Flask, Response, current_app, request, send_file, send_from_directory, session
+from flask import (
+    Flask,
+    Response,
+    after_this_request,
+    current_app,
+    request,
+    send_file,
+    send_from_directory,
+    session,
+)
 from werkzeug.utils import secure_filename
 
 from ai_engine import get_model_function
 from ai_engine.registry import DEFAULT_MODEL_ID
-from config import ALLOW_GUEST_CHATS_SAVE
+from config import ALLOW_GUEST_CHATS_SAVE, CHAT_MAX_VARIANTS_PER_TURN, UPLOAD_FOLDER
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
 from services.ai_provider import generate_text, is_ai_provider_configured
@@ -26,14 +35,16 @@ from services.canvas_tools import (
 )
 from services.chat_history import (
     _generate_guest_session_token,
-    append_messages_to_history,
     chat_file_exists,
     has_valid_guest_session_token,
     load_chat_history,
+    load_chat_graph,
+    conversation_context_for_operation,
+    persist_chat_operation,
     normalize_message,
     resolve_session_identifier,
 )
-from services.files import handle_file_upload
+from services.files import handle_file_upload, restore_stored_file_for_model
 from services.model_access import can_user_access_model, get_model_stage, model_exists
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
@@ -55,12 +66,18 @@ from utils.responses import logger, make_ok
 from utils.url_security import UnsafeUrlError, validate_public_http_url
 
 PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
-chat_limiter = RateLimiter(max_requests=60, time_window=3600)
-translation_limiter = RateLimiter(max_requests=60, time_window=3600)
-anonymous_translation_limiter = RateLimiter(max_requests=10, time_window=3600)
-synthesize_limiter = RateLimiter(max_requests=30, time_window=3600)
-anonymous_synthesize_limiter = RateLimiter(max_requests=5, time_window=3600)
+chat_limiter = RateLimiter(max_requests=60, time_window=3600, namespace="chat")
+translation_limiter = RateLimiter(max_requests=60, time_window=3600, namespace="translation")
+anonymous_translation_limiter = RateLimiter(
+    max_requests=10, time_window=3600, namespace="anonymous_translation"
+)
+synthesize_limiter = RateLimiter(max_requests=30, time_window=3600, namespace="synthesize")
+anonymous_synthesize_limiter = RateLimiter(
+    max_requests=5, time_window=3600, namespace="anonymous_synthesize"
+)
 ANONYMOUS_TRANSLATION_MAX_CHARS = 2000
+CHAT_OPERATIONS = {"send", "regenerate", "edit"}
+CHAT_MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 
 
 def _resolve_db_user_id() -> int | None:
@@ -131,6 +148,50 @@ def _coerce_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _validated_message_id(value: Any, *, required: bool = False) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        if required:
+            raise ApiError("Message ID is required", status=400, code="missing_message_id")
+        return None
+    if not CHAT_MESSAGE_ID_RE.fullmatch(text):
+        raise ApiError("Invalid message ID", status=400, code="invalid_message_id")
+    return text
+
+
+def _stored_message_text(message: dict[str, Any] | None) -> str:
+    if not isinstance(message, dict):
+        return ""
+    return "\n".join(
+        str(part.get("text") or "")
+        for part in message.get("parts", [])
+        if isinstance(part, dict) and part.get("text")
+    ).strip()
+
+
+def _stored_attachment_parts(message: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(message, dict):
+        return []
+    return [
+        dict(part)
+        for part in message.get("parts", [])
+        if isinstance(part, dict) and ("image" in part or "file" in part)
+    ]
+
+
+def _cleanup_temporary_uploads(user_data: dict[str, Any]) -> None:
+    upload_root = Path(UPLOAD_FOLDER).resolve()
+    for file_info in user_data.get("files", []):
+        if not isinstance(file_info, dict) or not file_info.get("path"):
+            continue
+        try:
+            path = Path(str(file_info["path"])).resolve()
+            if path.parent == upload_root and path.is_file():
+                path.unlink()
+        except OSError:
+            logger.warning("Could not remove a temporary chat upload", exc_info=True)
+
+
 def process_request_data() -> tuple[str, dict[str, Any], str]:
     auth_user_id = session.get("user_id")
 
@@ -144,13 +205,20 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
                 )
             return f"guest_{uuid.uuid4().hex}"
 
-        safe_identifier = secure_filename(str(raw_identifier))[:200]
-        if not safe_identifier:
+        safe_identifier = str(raw_identifier).strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", safe_identifier):
             raise ApiError("Invalid session ID", status=400, code="invalid_session_id")
         return safe_identifier
 
     if request.is_json:
-        data: dict[str, Any] = request.get_json(silent=True) or {}
+        raw_data = request.get_json(silent=True)
+        if raw_data is not None and not isinstance(raw_data, dict):
+            raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
+        data: dict[str, Any] = raw_data or {}
+        operation = str(data.get("operation") or "send").strip().lower()
+        if operation not in CHAT_OPERATIONS:
+            raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
+        data["operation"] = operation
         session_id = resolve_session_id(_extract_session_identifier(data))
         model_name = str(data.get("model") or "").strip() or DEFAULT_MODEL_ID
         data["session_id"] = session_id
@@ -170,12 +238,22 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         raise ApiError("Empty request", status=400, code="empty_request")
 
     user_data: dict[str, Any] = request.form.to_dict()
+    operation = str(user_data.get("operation") or "send").strip().lower()
+    if operation not in CHAT_OPERATIONS:
+        raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
+    user_data["operation"] = operation
     session_id = resolve_session_id(_extract_session_identifier(user_data))
     model_name = str(user_data.get("model") or "").strip() or DEFAULT_MODEL_ID
     user_data["session_id"] = session_id
     _validate_message_in_payload(user_data)
 
     uploaded_files = _extract_uploaded_files()
+    if operation == "regenerate" and uploaded_files:
+        raise ApiError(
+            "Regeneration reuses the original attachments",
+            status=400,
+            code="regenerate_attachments_not_allowed",
+        )
     if auth_user_id is None and uploaded_files:
         raise ApiError(
             "File uploads are unavailable in guest mode.",
@@ -284,8 +362,12 @@ def _build_model_message_for_history(
     github_tool: Any = None,
     canvas_textdoc: Any = None,
     canvas_updates: Any = None,
+    request_id: str | None = None,
+    delivery_status: str | None = None,
+    message_id: str | None = None,
 ) -> dict:
     message: dict[str, Any] = {
+        "id": message_id or f"a_{uuid.uuid4().hex}",
         "role": "model",
         "parts": _build_model_message_parts(reply_text, images),
     }
@@ -298,7 +380,34 @@ def _build_model_message_for_history(
         message["canvas_textdoc"] = normalized_canvas
     if isinstance(canvas_updates, list) and canvas_updates:
         message["canvas_updates"] = canvas_updates
+    if request_id:
+        message["request_id"] = request_id
+    if delivery_status in {"complete", "interrupted"}:
+        message["delivery_status"] = delivery_status
     return message
+
+
+def _find_previous_delivery(history: list, request_id: str) -> dict[str, Any] | None:
+    for message in reversed(history):
+        if not isinstance(message, dict) or message.get("role") != "model":
+            continue
+        if message.get("request_id") != request_id:
+            continue
+        reply = "\n".join(
+            str(part.get("text") or "")
+            for part in message.get("parts", [])
+            if isinstance(part, dict) and part.get("text")
+        )
+        return {
+            "reply": reply,
+            "request_id": request_id,
+            "delivery_status": message.get("delivery_status") or "complete",
+            "sources": message.get("sources") or [],
+            "canvas_textdoc": message.get("canvas_textdoc"),
+            "canvas_updates": message.get("canvas_updates") or [],
+            "recovered": True,
+        }
+    return None
 
 
 def _run_and_attach_web_search(
@@ -498,7 +607,7 @@ def _stream_chat_response(
     user_data: dict,
     resolved_session_id: str,
     original_user_message: str,
-    user_message_for_history: dict,
+    user_message_for_history: dict | None,
     allow_guest_file_persistence: bool,
     temporary_chat: bool,
     mind_context: dict[str, Any] | None,
@@ -513,6 +622,8 @@ def _stream_chat_response(
             suppress_canmore_output = False
             final_data: dict[str, Any] = {}
             current_canvas_textdoc = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
+            stream_completed = False
+            persisted = False
 
             def stream_reply_text(chunk_text: str):
                 nonlocal pending_reply_buffer, streamed_response, suppress_canmore_output
@@ -542,122 +653,42 @@ def _stream_chat_response(
                 streamed_response += visible_text
                 yield _stream_event({"reply_part": visible_text})
 
+            def persist_delivery(delivery_status: str) -> list[dict]:
+                nonlocal persisted
+                if temporary_chat or persisted:
+                    return []
+                reply_text = (
+                    str(final_data["reply"])
+                    if "reply" in final_data
+                    else str(full_response or streamed_response or "")
+                )
+                model_message = _build_model_message_for_history(
+                    reply_text,
+                    final_data.get("images"),
+                    final_data.get("sources"),
+                    github_tool=final_data.get("github_tool"),
+                    canvas_textdoc=final_data.get("canvas_textdoc"),
+                    canvas_updates=final_data.get("canvas_updates"),
+                    request_id=user_data.get("request_id"),
+                    delivery_status=delivery_status,
+                    message_id=user_data.get("assistant_message_id"),
+                )
+                history = persist_chat_operation(
+                    resolved_session_id,
+                    operation=str(user_data.get("operation") or "send"),
+                    target_message_id=user_data.get("target_message_id"),
+                    parent_message_id=user_data.get("parent_message_id"),
+                    user_message=user_message_for_history,
+                    model_message=model_message,
+                    model_name=model_name,
+                    user_id=db_user_id,
+                    allow_guest_file_persistence=allow_guest_file_persistence,
+                    mind_id=mind_context.get("id") if mind_context else None,
+                )
+                persisted = True
+                return history
+
             try:
-                message_for_search = str(original_user_message or "")
-                manual_search = _manual_web_search_requested(user_data, message_for_search)
-                auto_search_enabled = (
-                    bool(message_for_search.strip())
-                    and not manual_search
-                    and _auto_web_search_enabled(user_data, db_user_id)
-                )
-                auto_search_strategy = (
-                    classify_auto_web_search_intent(message_for_search)
-                    if auto_search_enabled
-                    else None
-                )
-                if manual_search and message_for_search.strip():
-                    yield _stream_event(
-                        {
-                            "status": "web_search_querying",
-                            "message": "Preparing search query...",
-                            "mode": "manual",
-                        }
-                    )
-                elif auto_search_enabled and auto_search_strategy == "search":
-                    yield _stream_event(
-                        {
-                            "status": "web_search_querying",
-                            "message": "Preparing search query...",
-                            "mode": "auto",
-                        }
-                    )
-                elif auto_search_enabled and auto_search_strategy == "model":
-                    yield _stream_event(
-                        {
-                            "status": "web_search_deciding",
-                            "message": "Deciding whether web search is needed...",
-                            "mode": "auto",
-                        }
-                    )
-
-                web_search_plan = _resolve_web_search_plan(
-                    user_data,
-                    message_for_search,
-                    db_user_id,
-                    auto_enabled=auto_search_enabled,
-                    auto_strategy=auto_search_strategy,
-                )
-                web_search_mode = web_search_plan.get("mode")
-                search_query = str(web_search_plan.get("query") or message_for_search)
-                if web_search_mode:
-                    yield _stream_event(
-                        {
-                            "status": "web_search_started",
-                            "message": "Ищу источники в интернете...",
-                            "query": search_query,
-                            "mode": web_search_mode,
-                            "decision": web_search_plan.get("decision"),
-                            "rewrite": web_search_plan.get("rewrite"),
-                        }
-                    )
-                    yield _stream_event(
-                        {
-                            "status": "web_search_fetching",
-                            "query": search_query,
-                            "message": "Открываю и читаю найденные страницы...",
-                        }
-                    )
-                    try:
-                        web_sources = _execute_and_attach_web_search(
-                            user_data,
-                            message_for_search,
-                            search_query=search_query,
-                            decision=web_search_plan.get("decision"),
-                        )
-                    except Exception as exc:
-                        logger.warning("Web search failed: %s", exc, exc_info=True)
-                        web_sources = []
-                        yield _stream_event(
-                            {
-                                "status": "web_search_failed",
-                                "query": search_query,
-                                "message": "Поиск не удался, отвечаю без источников.",
-                            }
-                        )
-                    else:
-                        if web_sources:
-                            final_data["sources"] = web_sources
-                            yield _stream_event(
-                                {
-                                    "status": "web_search_done",
-                                    "query": search_query,
-                                    "message": "Источники найдены.",
-                                    "sources": web_sources,
-                                }
-                            )
-                        else:
-                            yield _stream_event(
-                                {
-                                    "status": "web_search_no_results",
-                                    "query": search_query,
-                                    "message": "Подходящие источники не найдены.",
-                                }
-                            )
-                else:
-                    if auto_search_enabled and auto_search_strategy == "model":
-                        yield _stream_event(
-                            {
-                                "status": "web_search_skipped",
-                                "message": "Web search is not needed for this answer.",
-                                "mode": "auto",
-                                "decision": web_search_plan.get("decision"),
-                            }
-                        )
-                    web_sources = _extract_web_sources(user_data)
-                    if web_sources:
-                        final_data["sources"] = web_sources
-                        yield _stream_event({"sources": web_sources})
-
                 yield _stream_event({"status": "generating_text", "message": "Готовлю ответ..."})
 
                 for chunk in model_func(db_user_id, user_data):
@@ -709,58 +740,41 @@ def _stream_chat_response(
                         yield _stream_event({"canvas_update": canvas_update})
 
                 final_data["reply"] = canvas_result.reply
+                final_data["request_id"] = user_data.get("request_id")
+                final_data["delivery_status"] = "complete"
                 final_data["sessionId"] = resolved_session_id
-                final_data["uploaded_files"] = user_data.get("files", [])
+                final_data["uploaded_files"] = (
+                    [] if temporary_chat else user_data.get("files", [])
+                )
+                stream_completed = True
+                final_data["history"] = persist_delivery("complete")
                 if allow_guest_file_persistence and not temporary_chat:
                     final_data["session_token"] = _generate_guest_session_token(
                         resolved_session_id, int(time.time())
                     )
                 yield _stream_event(final_data)
 
-            except RuntimeError as exc:
-                logger.error("Stream runtime error for '%s': %s", model_name, exc, exc_info=True)
+            except Exception as exc:
+                logger.error("Stream error for '%s': %s", model_name, exc, exc_info=True)
                 yield _stream_event({"error": "stream_failed"})
 
             finally:
-                reply_text = (
-                    str(final_data["reply"])
-                    if "reply" in final_data
-                    else str(full_response or streamed_response or "")
-                )
-                new_messages_batch = [
-                    user_message_for_history,
-                    _build_model_message_for_history(
-                        reply_text,
-                        final_data.get("images"),
-                        final_data.get("sources"),
-                        canvas_textdoc=final_data.get("canvas_textdoc"),
-                        canvas_updates=final_data.get("canvas_updates"),
-                    ),
-                ]
-                if not temporary_chat:
+                if not temporary_chat and not persisted:
                     try:
-                        append_messages_to_history(
-                            resolved_session_id,
-                            new_messages_batch,
-                            model_name,
-                            db_user_id,
-                            allow_guest_file_persistence=allow_guest_file_persistence,
-                            mind_id=mind_context.get("id") if mind_context else None,
-                        )
-                    except OSError as exc:
-                        logger.warning("Failed to persist stream messages: %s", exc)
-                        append_messages_to_history(
-                            resolved_session_id,
-                            [user_message_for_history],
-                            model_name,
-                            db_user_id,
-                            allow_guest_file_persistence=allow_guest_file_persistence,
-                            mind_id=mind_context.get("id") if mind_context else None,
-                        )
+                        persist_delivery("complete" if stream_completed else "interrupted")
+                    except Exception as exc:
+                        logger.exception("Failed to persist chat operation: %s", exc)
+                if temporary_chat:
+                    _cleanup_temporary_uploads(user_data)
 
     response = Response(stream_generator(), mimetype="text/event-stream")
     response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Accel-Buffering"] = "no"
+    response.headers["X-Chat-Request-Id"] = str(user_data.get("request_id") or "")
+    if allow_guest_file_persistence and not temporary_chat:
+        response.headers["X-Chat-Session-Token"] = _generate_guest_session_token(
+            resolved_session_id, int(time.time())
+        )
     return response
 
 
@@ -780,13 +794,15 @@ def register_chat_routes(api_bp):
     def chat():
         session_identifier, user_data, model_name = process_request_data()
         db_user_id = _resolve_db_user_id()
+        raw_request_id = str(user_data.get("request_id") or uuid.uuid4().hex).strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", raw_request_id):
+            raise ApiError("Invalid request ID", status=400, code="invalid_request_id")
+        user_data["request_id"] = raw_request_id
 
         resolved_session_id, share_entry = resolve_session_identifier(session_identifier)
-        if (
-            share_entry
-            and share_entry.is_public
-            and not (db_user_id and share_entry.user_id == db_user_id)
-        ):
+        if share_entry and not (db_user_id and share_entry.user_id == db_user_id):
+            if not share_entry.is_public:
+                raise ApiError("Chat not found", status=404, code="not_found")
             raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
         if not model_exists(model_name):
             raise ApiError(
@@ -801,7 +817,93 @@ def register_chat_routes(api_bp):
                 extra={"model": model_name, "stage": stage},
             )
 
-        history = _resolve_history(user_data, resolved_session_id, db_user_id)
+        operation = str(user_data.get("operation") or "send").strip().lower()
+        if operation not in CHAT_OPERATIONS:
+            raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
+        target_message_id = _validated_message_id(
+            user_data.get("target_message_id"), required=operation != "send"
+        )
+        user_message_id = _validated_message_id(user_data.get("user_message_id")) or (
+            f"u_{uuid.uuid4().hex}"
+        )
+        assistant_message_id = _validated_message_id(
+            user_data.get("assistant_message_id")
+        ) or f"a_{uuid.uuid4().hex}"
+        temporary_chat = _coerce_bool(user_data.get("temporary_chat"))
+        allow_guest_file_persistence = _allow_guest_file_persistence(
+            resolved_session_id, db_user_id
+        )
+
+        persisted_graph = load_chat_graph(
+            resolved_session_id,
+            db_user_id,
+            allow_file_fallback=db_user_id is None and has_valid_guest_session_token(resolved_session_id),
+            require_guest_token=db_user_id is None,
+        )
+        previous_delivery = _find_previous_delivery(persisted_graph, raw_request_id)
+        if previous_delivery:
+            previous_delivery["sessionId"] = resolved_session_id
+            previous_delivery["history"] = load_chat_history(
+                resolved_session_id,
+                db_user_id,
+                allow_file_fallback=allow_guest_file_persistence,
+                require_guest_token=db_user_id is None,
+            )
+            if allow_guest_file_persistence:
+                previous_delivery["session_token"] = _generate_guest_session_token(
+                    resolved_session_id, int(time.time())
+                )
+            return make_ok(previous_delivery)
+
+        if not temporary_chat:
+            existing_message_ids = {
+                str(message.get("id"))
+                for message in persisted_graph
+                if isinstance(message, dict) and message.get("id")
+            }
+            incoming_message_ids = [assistant_message_id]
+            if operation in {"send", "edit"}:
+                incoming_message_ids.append(user_message_id)
+            if (
+                len(set(incoming_message_ids)) != len(incoming_message_ids)
+                or any(message_id in existing_message_ids for message_id in incoming_message_ids)
+            ):
+                raise ApiError(
+                    "Message ID already exists",
+                    status=409,
+                    code="message_id_conflict",
+                )
+
+        parent_message_id: str | None = None
+        target_message = next(
+            (message for message in persisted_graph if message.get("id") == target_message_id),
+            None,
+        )
+        if operation in {"regenerate", "edit"} and target_message:
+            sibling_count = sum(
+                1
+                for message in persisted_graph
+                if message.get("parent_id") == target_message.get("parent_id")
+            )
+            if sibling_count >= CHAT_MAX_VARIANTS_PER_TURN:
+                raise ApiError(
+                    "Conversation version limit reached",
+                    status=409,
+                    code="chat_variant_limit_reached",
+                )
+        if temporary_chat:
+            history = _resolve_history(user_data, resolved_session_id, db_user_id)
+        else:
+            try:
+                history, parent_message_id = conversation_context_for_operation(
+                    persisted_graph, operation, target_message_id
+                )
+            except ValueError as exc:
+                raise ApiError(
+                    "Chat message not found",
+                    status=404,
+                    code=str(exc),
+                ) from exc
         mind_context = _resolve_chat_mind_context(
             user_data.get("mind_id"),
             resolved_session_id,
@@ -810,19 +912,71 @@ def register_chat_routes(api_bp):
         if mind_context:
             user_data["active_mind"] = mind_context
             user_data["mind_id"] = mind_context["public_id"]
-        allow_guest_file_persistence = _allow_guest_file_persistence(
-            resolved_session_id, db_user_id
-        )
-        original_user_message = user_data.get("message", "")
-        temporary_chat = _coerce_bool(user_data.get("temporary_chat"))
+        original_user_message = str(user_data.get("message") or "")
+        uploaded_files_for_history = list(user_data.get("files") or [])
+        inherited_attachment_parts: list[dict[str, Any]] = []
+        if operation == "regenerate" and not temporary_chat:
+            parent_user = next(
+                (
+                    message
+                    for message in persisted_graph
+                    if message.get("id") == (target_message or {}).get("parent_id")
+                ),
+                None,
+            )
+            if not parent_user:
+                raise ApiError(
+                    "Regeneration source not found",
+                    status=404,
+                    code="invalid_regenerate_target",
+                )
+            original_user_message = _stored_message_text(parent_user)
+            inherited_attachment_parts = _stored_attachment_parts(parent_user)
+        elif operation == "edit" and not temporary_chat:
+            inherited_attachment_parts = _stored_attachment_parts(target_message)
+
+        if operation in {"regenerate", "edit"} and not temporary_chat:
+            restored_inherited_files = [
+                restored
+                for part in inherited_attachment_parts
+                if isinstance(part.get("image") or part.get("file"), dict)
+                and (
+                    restored := restore_stored_file_for_model(
+                        part.get("image") or part.get("file")
+                    )
+                )
+            ]
+            user_data["files"] = (
+                [*uploaded_files_for_history, *restored_inherited_files]
+                if operation == "edit"
+                else restored_inherited_files
+            )
+        user_data["message"] = original_user_message
+
         user_data["history"] = history
+        user_data["history_is_canonical"] = not temporary_chat
         user_data["privacy"] = _load_privacy_controls(db_user_id)
         user_data["temporary_chat"] = temporary_chat
 
         user_message_parts = _build_user_message_parts(
-            original_user_message, user_data.get("files", [])
+            original_user_message, uploaded_files_for_history
+        ) + inherited_attachment_parts
+        user_message_for_history = (
+            normalize_message(
+                {
+                    "id": user_message_id,
+                    "role": "user",
+                    "parts": user_message_parts,
+                    "request_id": raw_request_id,
+                }
+            )
+            if operation in {"send", "edit"}
+            else None
         )
-        user_message_for_history = normalize_message({"role": "user", "parts": user_message_parts})
+        user_data["operation"] = operation
+        user_data["target_message_id"] = target_message_id
+        user_data["parent_message_id"] = parent_message_id
+        user_data["assistant_message_id"] = assistant_message_id
 
         model_func = get_model_function(model_name)
         if not model_func:
@@ -845,6 +999,12 @@ def register_chat_routes(api_bp):
                 temporary_chat=temporary_chat,
                 mind_context=mind_context,
             )
+
+        if temporary_chat:
+            @after_this_request
+            def cleanup_temporary_uploads(response):
+                _cleanup_temporary_uploads(user_data)
+                return response
 
         _attach_web_search_context(user_data, str(original_user_message or ""), db_user_id)
         model_output = model_func(db_user_id, user_data)
@@ -870,6 +1030,9 @@ def register_chat_routes(api_bp):
                 model_output.get("sources"),
                 canvas_textdoc=model_output.get("canvas_textdoc"),
                 canvas_updates=model_output.get("canvas_updates"),
+                request_id=raw_request_id,
+                delivery_status="complete",
+                message_id=assistant_message_id,
             )
         else:
             canvas_result = process_canmore_calls(str(model_output), canvas_textdoc)
@@ -882,16 +1045,23 @@ def register_chat_routes(api_bp):
                 web_sources,
                 canvas_textdoc=canvas_result.textdoc if canvas_result.updates else None,
                 canvas_updates=canvas_result.updates,
+                request_id=raw_request_id,
+                delivery_status="complete",
+                message_id=assistant_message_id,
             )
             model_output = canvas_result.reply
 
-        new_messages_batch = [user_message_for_history, model_message_for_history]
+        canonical_history: list[dict] = []
         if not temporary_chat:
-            append_messages_to_history(
+            canonical_history = persist_chat_operation(
                 resolved_session_id,
-                new_messages_batch,
-                model_name,
-                db_user_id,
+                operation=operation,
+                target_message_id=target_message_id,
+                parent_message_id=parent_message_id,
+                user_message=user_message_for_history,
+                model_message=model_message_for_history,
+                model_name=model_name,
+                user_id=db_user_id,
                 allow_guest_file_persistence=allow_guest_file_persistence,
                 mind_id=mind_context.get("id") if mind_context else None,
             )
@@ -915,7 +1085,10 @@ def register_chat_routes(api_bp):
                 resolved_session_id, int(time.time())
             )
         response_data["sessionId"] = resolved_session_id
-        response_data["uploaded_files"] = user_data.get("files", [])
+        response_data["uploaded_files"] = [] if temporary_chat else user_data.get("files", [])
+        response_data["request_id"] = raw_request_id
+        response_data["delivery_status"] = "complete"
+        response_data["history"] = canonical_history
 
         return make_ok(response_data)
 

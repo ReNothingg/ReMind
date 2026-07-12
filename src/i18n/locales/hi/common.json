@@ -1,4 +1,5 @@
 {
+  "reliability": {"offline":"ऑफ़लाइन · संदेश कतार में रखे जाएंगे","reconnecting":"कनेक्शन बहाल किया जा रहा है…","queued":"कतार में संदेश: {{count}}","draftSyncing":"ड्राफ़्ट सिंक हो रहा है…","draftSynced":"ड्राफ़्ट सिंक हो गया","draftLocal":"ड्राफ़्ट स्थानीय रूप से सहेजा गया","queueFull":"ऑफ़लाइन कतार भर गई है। और फ़ाइलें भेजने से पहले कनेक्ट करें।","temporaryOffline":"अस्थायी चैट के लिए नेटवर्क चाहिए और उन्हें ऑफ़लाइन कतार में सहेजा नहीं जाता।","interrupted":"उत्तर बनना रुक गया। आप इस संस्करण को फिर से बना सकते हैं।"},
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -123,10 +124,14 @@
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
+    "generationFailed": "उत्तर तैयार नहीं किया जा सका।",
+    "generationStopped": "उत्तर बनाना रोक दिया गया",
+    "variantLimitReached": "इस संदेश की संस्करण सीमा पूरी हो गई है।",
+    "versionConflict": "बातचीत किसी दूसरे डिवाइस पर बदल गई है। फिर कोशिश करें।",
     "variants": {
-      "previous": "Previous response",
-      "next": "Next response",
-      "counter": "Response {{current}} of {{total}}"
+      "previous": "पिछला संस्करण",
+      "next": "अगला संस्करण",
+      "counter": "{{total}} में से संस्करण {{current}}"
     },
     "audio": {
       "speak": "Read aloud",

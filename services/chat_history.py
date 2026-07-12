@@ -7,19 +7,31 @@ import re
 import threading
 import time
 import uuid
+import weakref
 from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import urlparse
 
 from flask import has_request_context, request, session
+from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
-from config import ALLOW_GUEST_CHATS_SAVE, ALLOWED_HOSTS, BACKEND_URL, CHATS_FOLDER, SECRET_KEY
+from config import (
+    ALLOW_GUEST_CHATS_SAVE,
+    ALLOWED_HOSTS,
+    BACKEND_URL,
+    CHATS_FOLDER,
+    CHAT_MAX_VARIANTS_PER_TURN,
+    SECRET_KEY,
+)
 from services.canvas_tools import normalize_canvas_textdoc
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.responses import logger
 
-SESSION_LOCKS: dict[str, threading.Lock] = {}
+SESSION_LOCKS: weakref.WeakValueDictionary[str, threading.Lock] = (
+    weakref.WeakValueDictionary()
+)
+SESSION_LOCKS_GUARD = threading.Lock()
 
 
 def _is_allowed_hostname(hostname: Optional[str]) -> bool:
@@ -56,11 +68,12 @@ def _get_public_base_url() -> str:
 
 
 def _acquire_session_lock(safe_session_id: str) -> threading.Lock:
-    lock = SESSION_LOCKS.get(safe_session_id)
-    if lock is None:
-        lock = threading.Lock()
-        SESSION_LOCKS[safe_session_id] = lock
-    return lock
+    with SESSION_LOCKS_GUARD:
+        lock = SESSION_LOCKS.get(safe_session_id)
+        if lock is None:
+            lock = threading.Lock()
+            SESSION_LOCKS[safe_session_id] = lock
+        return lock
 
 
 def read_chat_file(safe_session_id: str) -> dict:
@@ -78,6 +91,19 @@ def read_chat_file(safe_session_id: str) -> dict:
 def chat_file_exists(session_id: str) -> bool:
     safe_session_id = secure_filename(str(session_id))
     return bool(safe_session_id and (CHATS_FOLDER / f"{safe_session_id}.json").is_file())
+
+
+def delete_guest_chat_file(session_id: str) -> bool:
+    safe_session_id = secure_filename(str(session_id))
+    if not safe_session_id:
+        return False
+    path = CHATS_FOLDER / f"{safe_session_id}.json"
+    lock = _acquire_session_lock(safe_session_id)
+    with lock:
+        if not path.exists():
+            return False
+        path.unlink()
+        return True
 
 
 def _generate_guest_session_token(session_id: str, timestamp: int) -> str:
@@ -276,22 +302,39 @@ def save_canvas_textdoc_to_history(
     lock = _acquire_session_lock(safe_session_id)
     with lock:
         if user_id is not None:
-            chat = UserChatHistory.query.filter_by(
-                user_id=user_id, session_id=session_id
-            ).first()
-            if not chat:
-                return None
-            messages, textdoc = replace_canvas_textdoc_in_messages(chat.get_messages(), value)
-            if not textdoc:
-                return None
-            chat.set_messages(messages)
-            chat.updated_at = datetime.utcnow()
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                raise
-            return textdoc
+            for _attempt in range(3):
+                chat = UserChatHistory.query.filter_by(
+                    user_id=user_id, session_id=session_id
+                ).first()
+                if not chat:
+                    return None
+                previous_messages_data = chat.messages_data
+                messages, textdoc = replace_canvas_textdoc_in_messages(
+                    chat.get_messages(), value
+                )
+                if not textdoc:
+                    return None
+                updated = (
+                    UserChatHistory.query.filter_by(id=chat.id)
+                    .filter(UserChatHistory.messages_data == previous_messages_data)
+                    .update(
+                        {
+                            "messages_data": json.dumps(messages, ensure_ascii=False),
+                            "updated_at": datetime.utcnow(),
+                        },
+                        synchronize_session=False,
+                    )
+                )
+                if updated != 1:
+                    db.session.rollback()
+                    continue
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    raise
+                return textdoc
+            raise RuntimeError("chat_concurrent_update")
 
         if not guest_file:
             return None
@@ -344,6 +387,16 @@ def normalize_message(msg: Any) -> dict:
         canvas_updates = msg.get("canvas_updates") or msg.get("canvasUpdates")
         if isinstance(canvas_updates, list) and canvas_updates:
             normalized["canvas_updates"] = canvas_updates
+        request_id = msg.get("request_id")
+        if isinstance(request_id, str) and request_id:
+            normalized["request_id"] = request_id[:100]
+        delivery_status = msg.get("delivery_status")
+        if delivery_status in {"complete", "interrupted"}:
+            normalized["delivery_status"] = delivery_status
+        parent_id = msg.get("parent_id")
+        if parent_id is None or isinstance(parent_id, str):
+            normalized["parent_id"] = parent_id
+        normalized["is_active"] = bool(msg.get("is_active", True))
         return normalized
     except Exception:
         return {
@@ -352,6 +405,142 @@ def normalize_message(msg: Any) -> dict:
             "parts": [{"text": ""}],
             "timestamp": int(time.time()),
         }
+
+
+def ensure_conversation_graph(messages: list[Any]) -> list[dict]:
+    """Normalize legacy flat histories into a branch-aware message graph.
+
+    Consecutive messages with the same role are treated as historical alternatives.
+    This repairs the legacy regeneration bug that appended model replies as new turns.
+    """
+    raw_messages = []
+    for index, message in enumerate(messages):
+        if not isinstance(message, dict):
+            continue
+        candidate = dict(message)
+        if not candidate.get("id"):
+            fingerprint = hashlib.sha256(
+                f"{index}:{_message_signature(candidate)}".encode("utf-8")
+            ).hexdigest()[:20]
+            candidate["id"] = f"legacy_{fingerprint}"
+        raw_messages.append(candidate)
+    graph_already_present = any("parent_id" in message for message in raw_messages)
+    normalized = [normalize_message(message) for message in raw_messages]
+    if not normalized:
+        return []
+
+    if graph_already_present:
+        valid_ids = {message["id"] for message in normalized}
+        for message in normalized:
+            parent_id = message.get("parent_id")
+            if parent_id is not None and parent_id not in valid_ids:
+                message["parent_id"] = None
+        _ensure_single_active_sibling(normalized)
+        return normalized
+
+    previous: dict | None = None
+    for message in normalized:
+        if previous is None:
+            message["parent_id"] = None
+        elif message.get("role") == previous.get("role"):
+            message["parent_id"] = previous.get("parent_id")
+            previous["is_active"] = False
+        else:
+            message["parent_id"] = previous.get("id")
+        message["is_active"] = True
+        previous = message
+
+    _ensure_single_active_sibling(normalized)
+    return normalized
+
+
+def _ensure_single_active_sibling(messages: list[dict]) -> None:
+    sibling_groups: dict[str | None, list[dict]] = {}
+    for message in messages:
+        sibling_groups.setdefault(message.get("parent_id"), []).append(message)
+    for siblings in sibling_groups.values():
+        active = [message for message in siblings if message.get("is_active")]
+        selected = active[-1] if active else siblings[-1]
+        for message in siblings:
+            message["is_active"] = message is selected
+
+
+def _variant_payload(message: dict) -> dict:
+    payload = {
+        key: value
+        for key, value in message.items()
+        if key not in {"parent_id", "is_active"}
+    }
+    payload["variant_id"] = message.get("id")
+    return payload
+
+
+def materialize_conversation_history(messages: list[Any]) -> list[dict]:
+    graph = ensure_conversation_graph(messages)
+    if not graph:
+        return []
+
+    sibling_groups: dict[str | None, list[dict]] = {}
+    for message in graph:
+        sibling_groups.setdefault(message.get("parent_id"), []).append(message)
+
+    history: list[dict] = []
+    parent_id: str | None = None
+    visited: set[str] = set()
+    while parent_id in sibling_groups:
+        siblings = sibling_groups[parent_id]
+        current_index = next(
+            (index for index in range(len(siblings) - 1, -1, -1) if siblings[index].get("is_active")),
+            len(siblings) - 1,
+        )
+        selected = siblings[current_index]
+        message_id = str(selected.get("id") or "")
+        if not message_id or message_id in visited:
+            break
+        visited.add(message_id)
+        materialized = dict(selected)
+        if len(siblings) > 1:
+            materialized["variants"] = [_variant_payload(sibling) for sibling in siblings]
+            materialized["current_variant_index"] = current_index
+        history.append(materialized)
+        parent_id = message_id
+    return history
+
+
+def _active_path_graph(messages: list[Any]) -> list[dict]:
+    return [dict(message) for message in materialize_conversation_history(messages)]
+
+
+def conversation_context_for_operation(
+    messages: list[Any], operation: str, target_message_id: str | None
+) -> tuple[list[dict], str | None]:
+    """Return canonical model context and the parent anchor for a chat operation."""
+    path = _active_path_graph(messages)
+    if operation == "send":
+        return [normalize_message(message) for message in path], path[-1]["id"] if path else None
+
+    target_index = next(
+        (index for index, message in enumerate(path) if message.get("id") == target_message_id),
+        -1,
+    )
+    if target_index < 0:
+        raise ValueError("target_message_not_found")
+
+    target = path[target_index]
+    if operation == "regenerate":
+        if target.get("role") != "model" or target_index == 0:
+            raise ValueError("invalid_regenerate_target")
+        user_message = path[target_index - 1]
+        if user_message.get("role") != "user":
+            raise ValueError("invalid_regenerate_target")
+        return [normalize_message(message) for message in path[: target_index - 1]], user_message["id"]
+
+    if operation == "edit":
+        if target.get("role") != "user":
+            raise ValueError("invalid_edit_target")
+        return [normalize_message(message) for message in path[:target_index]], target.get("parent_id")
+
+    raise ValueError("invalid_chat_operation")
 
 
 def _message_signature(msg: dict) -> str:
@@ -430,23 +619,324 @@ def load_chat_history(
     allow_file_fallback: bool = False,
     require_guest_token: bool = False,
 ) -> list:
+    return materialize_conversation_history(
+        load_chat_graph(
+            session_id,
+            user_id,
+            allow_file_fallback=allow_file_fallback,
+            require_guest_token=require_guest_token,
+        )
+    )
+
+
+def load_chat_graph(
+    session_id: str,
+    user_id: int | None = None,
+    *,
+    allow_file_fallback: bool = False,
+    require_guest_token: bool = False,
+) -> list[dict]:
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
         return []
 
     if user_id and isinstance(user_id, int):
-        try:
-            chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id).first()
-            if chat:
-                return [normalize_message(message) for message in chat.get_messages()]
-        except Exception as exc:
-            logger.debug("Could not load from DB: %s", exc)
+        chat = UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id).first()
+        if chat:
+            return ensure_conversation_graph(chat.get_messages())
 
     if not allow_file_fallback:
         return []
 
     data = read_chat_file_secure(safe_session_id, require_auth=require_guest_token)
-    return _normalize_history_from_data(data)
+    return ensure_conversation_graph(data.get("history", []) if isinstance(data, dict) else [])
+
+
+def _deactivate_siblings(graph: list[dict], parent_id: str | None) -> None:
+    for message in graph:
+        if message.get("parent_id") == parent_id:
+            message["is_active"] = False
+
+
+def _activate_ancestry(graph: list[dict], message_id: str | None) -> None:
+    by_id = {message.get("id"): message for message in graph}
+    current = by_id.get(message_id)
+    visited: set[str] = set()
+    while current and current.get("id") not in visited:
+        current_id = str(current.get("id"))
+        visited.add(current_id)
+        parent_id = current.get("parent_id")
+        _deactivate_siblings(graph, parent_id)
+        current["is_active"] = True
+        current = by_id.get(parent_id)
+
+
+def _apply_chat_operation(
+    messages: list[Any],
+    *,
+    operation: str,
+    target_message_id: str | None,
+    parent_message_id: str | None,
+    user_message: dict | None,
+    model_message: dict,
+) -> list[dict]:
+    graph = ensure_conversation_graph(messages)
+    request_id = model_message.get("request_id")
+    if request_id and any(message.get("request_id") == request_id for message in graph):
+        return graph
+
+    by_id = {message.get("id"): message for message in graph}
+    model_node = normalize_message(model_message)
+    user_node = normalize_message(user_message) if user_message else None
+    incoming_ids = [model_node.get("id")]
+    if user_node:
+        incoming_ids.append(user_node.get("id"))
+    if len(set(incoming_ids)) != len(incoming_ids) or any(
+        message_id in by_id for message_id in incoming_ids
+    ):
+        raise ValueError("message_id_conflict")
+
+    if operation == "send":
+        parent_id = parent_message_id if parent_message_id in by_id else None
+        if parent_id is None:
+            active_path = materialize_conversation_history(graph)
+            parent_id = active_path[-1]["id"] if active_path else None
+        _activate_ancestry(graph, parent_id)
+        if not user_node:
+            raise ValueError("missing_user_message")
+        user_node["parent_id"] = parent_id
+        user_node["is_active"] = True
+        _deactivate_siblings(graph, parent_id)
+        graph.append(user_node)
+        model_node["parent_id"] = user_node["id"]
+        model_node["is_active"] = True
+        graph.append(model_node)
+        return graph
+
+    target = by_id.get(target_message_id)
+    if not target:
+        raise ValueError("target_message_not_found")
+
+    if operation == "regenerate":
+        if target.get("role") != "model":
+            raise ValueError("invalid_regenerate_target")
+        parent_id = target.get("parent_id")
+        if sum(1 for message in graph if message.get("parent_id") == parent_id) >= (
+            CHAT_MAX_VARIANTS_PER_TURN
+        ):
+            raise ValueError("chat_variant_limit_reached")
+        _activate_ancestry(graph, parent_id)
+        _deactivate_siblings(graph, parent_id)
+        model_node["parent_id"] = parent_id
+        model_node["is_active"] = True
+        graph.append(model_node)
+        return graph
+
+    if operation == "edit":
+        if target.get("role") != "user" or not user_node:
+            raise ValueError("invalid_edit_target")
+        parent_id = target.get("parent_id")
+        if sum(1 for message in graph if message.get("parent_id") == parent_id) >= (
+            CHAT_MAX_VARIANTS_PER_TURN
+        ):
+            raise ValueError("chat_variant_limit_reached")
+        _activate_ancestry(graph, parent_id)
+        _deactivate_siblings(graph, parent_id)
+        user_node["parent_id"] = parent_id
+        user_node["is_active"] = True
+        graph.append(user_node)
+        model_node["parent_id"] = user_node["id"]
+        model_node["is_active"] = True
+        graph.append(model_node)
+        return graph
+
+    raise ValueError("invalid_chat_operation")
+
+
+def persist_chat_operation(
+    session_id: str,
+    *,
+    operation: str,
+    target_message_id: str | None,
+    parent_message_id: str | None,
+    user_message: dict | None,
+    model_message: dict,
+    model_name: str,
+    user_id: int | None = None,
+    allow_guest_file_persistence: bool = False,
+    mind_id: int | None = None,
+) -> list[dict]:
+    safe_session_id = secure_filename(str(session_id))
+    if not safe_session_id:
+        raise ValueError("invalid_session_id")
+
+    lock = _acquire_session_lock(safe_session_id)
+    with lock:
+        result_graph: list[dict] = []
+        if allow_guest_file_persistence:
+            current_data = read_chat_file(safe_session_id)
+            file_graph = _apply_chat_operation(
+                current_data.get("history", []) if isinstance(current_data, dict) else [],
+                operation=operation,
+                target_message_id=target_message_id,
+                parent_message_id=parent_message_id,
+                user_message=user_message,
+                model_message=model_message,
+            )
+            write_chat_file(
+                safe_session_id,
+                {
+                    "session_id": session_id,
+                    "last_updated": time.time(),
+                    "model_used_in_last_message": model_name,
+                    "history": file_graph,
+                    "title": (current_data.get("title") if isinstance(current_data, dict) else None)
+                    or _generate_title_from_history(materialize_conversation_history(file_graph)),
+                },
+            )
+            result_graph = file_graph
+
+        if user_id is not None and isinstance(user_id, int):
+            # Compare-and-swap the JSON graph so two web workers cannot silently
+            # overwrite one another's branches. The unique constraint handles
+            # the equivalent race while creating a brand-new session.
+            for attempt in range(3):
+                try:
+                    chat = UserChatHistory.query.filter_by(
+                        user_id=user_id, session_id=session_id
+                    ).first()
+                    if not chat:
+                        seed = [user_message, model_message] if user_message else [model_message]
+                        db_graph = _apply_chat_operation(
+                            [],
+                            operation=operation,
+                            target_message_id=target_message_id,
+                            parent_message_id=parent_message_id,
+                            user_message=user_message,
+                            model_message=model_message,
+                        )
+                        chat = UserChatHistory(
+                            user_id=user_id,
+                            session_id=session_id,
+                            title=_generate_title_from_history(
+                                [item for item in seed if item]
+                            ),
+                            mind_id=mind_id,
+                        )
+                        chat.set_messages(db_graph)
+                        db.session.add(chat)
+                        db.session.commit()
+                        result_graph = db_graph
+                        break
+
+                    previous_messages_data = chat.messages_data
+                    db_graph = _apply_chat_operation(
+                        chat.get_messages(),
+                        operation=operation,
+                        target_message_id=target_message_id,
+                        parent_message_id=parent_message_id,
+                        user_message=user_message,
+                        model_message=model_message,
+                    )
+                    next_title = chat.title
+                    if not next_title or next_title == "Новый чат":
+                        next_title = _generate_title_from_history(
+                            materialize_conversation_history(db_graph)
+                        )
+                    values: dict[str, Any] = {
+                        "messages_data": json.dumps(db_graph, ensure_ascii=False),
+                        "title": next_title,
+                        "updated_at": datetime.utcnow(),
+                    }
+                    if mind_id is not None:
+                        values["mind_id"] = mind_id
+                    updated = (
+                        UserChatHistory.query.filter_by(id=chat.id)
+                        .filter(UserChatHistory.messages_data == previous_messages_data)
+                        .update(values, synchronize_session=False)
+                    )
+                    if updated != 1:
+                        db.session.rollback()
+                        continue
+                    db.session.commit()
+                    result_graph = db_graph
+                    break
+                except IntegrityError:
+                    db.session.rollback()
+                    if attempt == 2:
+                        raise
+                except Exception:
+                    db.session.rollback()
+                    raise
+            else:
+                raise RuntimeError("chat_concurrent_update")
+
+        return materialize_conversation_history(result_graph)
+
+
+def _select_variant_in_graph(messages: list[Any], message_id: str) -> list[dict]:
+    graph = ensure_conversation_graph(messages)
+    target = next((message for message in graph if message.get("id") == message_id), None)
+    if not target:
+        raise ValueError("target_message_not_found")
+    _activate_ancestry(graph, message_id)
+    return graph
+
+
+def select_conversation_variant(
+    session_id: str,
+    message_id: str,
+    *,
+    user_id: int | None = None,
+    allow_guest_file_persistence: bool = False,
+) -> list[dict]:
+    safe_session_id = secure_filename(str(session_id))
+    if not safe_session_id:
+        raise ValueError("invalid_session_id")
+    lock = _acquire_session_lock(safe_session_id)
+    with lock:
+        if user_id is not None:
+            for _attempt in range(3):
+                chat = UserChatHistory.query.filter_by(
+                    user_id=user_id, session_id=session_id
+                ).first()
+                if not chat:
+                    raise ValueError("session_not_found")
+                previous_messages_data = chat.messages_data
+                graph = _select_variant_in_graph(chat.get_messages(), message_id)
+                updated = (
+                    UserChatHistory.query.filter_by(id=chat.id)
+                    .filter(UserChatHistory.messages_data == previous_messages_data)
+                    .update(
+                        {
+                            "messages_data": json.dumps(graph, ensure_ascii=False),
+                            "updated_at": datetime.utcnow(),
+                        },
+                        synchronize_session=False,
+                    )
+                )
+                if updated != 1:
+                    db.session.rollback()
+                    continue
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    raise
+                return materialize_conversation_history(graph)
+            raise RuntimeError("chat_concurrent_update")
+        if allow_guest_file_persistence:
+            current_data = read_chat_file_secure(safe_session_id, require_auth=True)
+            graph = _select_variant_in_graph(
+                current_data.get("history", []) if isinstance(current_data, dict) else [],
+                message_id,
+            )
+            next_data = dict(current_data)
+            next_data["history"] = graph
+            next_data["last_updated"] = time.time()
+            write_chat_file(safe_session_id, next_data)
+            return materialize_conversation_history(graph)
+    raise ValueError("session_not_found")
 
 
 def append_messages_to_history(

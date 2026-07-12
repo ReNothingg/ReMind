@@ -753,15 +753,19 @@ const GitHubDiffCard = ({ payload, t }) => {
 };
 
 const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, onBeatboxStateChange }) => {
-    const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus } = message;
+    const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus, deliveryState } = message;
     const isUser = role === 'user';
     const { settings } = useSettings();
     const { t } = useTranslation();
     const [isEditingUserMessage, setIsEditingUserMessage] = useState(false);
     const [editedContent, setEditedContent] = useState(content);
+    useEffect(() => {
+        if (!isEditingUserMessage) setEditedContent(content || '');
+    }, [content, isEditingUserMessage]);
     const currentVariant = variants && variants.length > 0 && currentVariantIndex !== undefined
         ? variants[currentVariantIndex]
         : null;
+    const displayDeliveryState = currentVariant?.deliveryState || deliveryState;
     const githubTool = getGitHubToolPayload(message, currentVariant);
     const githubDiffPayload = useMemo(() => getGitHubDiffPayload(githubTool), [githubTool]);
     const filesFromParts = useMemo(() => {
@@ -795,7 +799,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     }
 
     const displayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
-    const displayFiles = filesFromParts;
+    const displayFiles = currentVariant ? (currentVariant.files || []) : filesFromParts;
     const displaySources = useMemo(
         () => (currentVariant ? (currentVariant.sources || []) : (sources || [])),
         [currentVariant, sources]
@@ -1737,7 +1741,13 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     />
                 )}
 
-                {!isUser && hasMultipleVariants && (
+                {!isLoading && displayDeliveryState === 'interrupted' && (
+                    <div className="ui-message-delivery-state" role="status">
+                        {t('reliability.interrupted')}
+                    </div>
+                )}
+
+                {hasMultipleVariants && (
                     <div className="variants-nav ui-message-variants">
                         <button
                             type="button"
@@ -1902,7 +1912,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 )}
                 {!isUser && showTranslation && (
                     <TranslationPanel
-                        originalText={content || ''}
+                        originalText={displayContent || ''}
                         onClose={() => setShowTranslation(false)}
                     />
                 )}

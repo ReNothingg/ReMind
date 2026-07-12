@@ -76,6 +76,7 @@ type ChatCallbacks = {
     onCanvasUpdate?: (data: CanvasUpdate) => void;
     onPart?: (data: ChatStreamResult) => void;
     onWidgetUpdate?: (widgetData: ChatWidgetUpdate) => void;
+    onOpen?: (data: { requestId: string; sessionToken: string }) => void;
 };
 
 type ListSessionsOptions =
@@ -602,15 +603,18 @@ export const apiService = {
         signal?: AbortSignal,
         callbacks: ChatCallbacks = {}
     ): Promise<void> {
-        const { onPart, onComplete, onError, onWidgetUpdate, onCanvasUpdate } = callbacks;
+        const { onPart, onComplete, onError, onWidgetUpdate, onCanvasUpdate, onOpen } = callbacks;
 
         try {
+            const sessionId = String(formData.get('session_id') || '');
+            const guestToken = getGuestSessionToken(sessionId);
             const response = await fetch(
                 buildApiUrl('/chat'),
                 withCsrfHeaders({
                     method: 'POST',
                     body: formData,
                     credentials: 'include',
+                    ...(guestToken ? { headers: { Authorization: `Bearer ${guestToken}` } } : {}),
                     ...(signal ? { signal } : {}),
                 })
             );
@@ -619,9 +623,22 @@ export const apiService = {
                 const fallbackMessage = `HTTP error! status: ${response.status}`;
                 const errorData = (await response
                     .json()
-                    .catch(() => ({ error: fallbackMessage }))) as { error?: string };
-                throw new Error(errorData.error || fallbackMessage);
+                    .catch(() => ({ error: fallbackMessage }))) as {
+                        error?: string | { message?: string; code?: string };
+                    };
+                const apiMessage = typeof errorData.error === 'string'
+                    ? errorData.error
+                    : errorData.error?.message;
+                const chatError = new Error(apiMessage || fallbackMessage) as ApiServiceError;
+                chatError.status = response.status;
+                chatError.data = errorData;
+                throw chatError;
             }
+
+            onOpen?.({
+                requestId: response.headers.get('X-Chat-Request-Id') || '',
+                sessionToken: response.headers.get('X-Chat-Session-Token') || '',
+            });
 
             const contentType = response.headers.get('content-type');
             if (contentType?.includes('text/event-stream')) {
@@ -633,6 +650,7 @@ export const apiService = {
                 const decoder = new TextDecoder();
                 let buffer = '';
                 let finalData: ChatStreamResult = {};
+                let receivedTerminalEvent = false;
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -694,6 +712,7 @@ export const apiService = {
 
                             if ('reply' in data || data.end_of_stream) {
                                 finalData = { ...finalData, ...data };
+                                receivedTerminalEvent = true;
                             }
 
                             if ('sources' in data) finalData.sources = data.sources;
@@ -750,6 +769,10 @@ export const apiService = {
                             );
                         }
                     }
+                }
+
+                if (!receivedTerminalEvent) {
+                    throw new Error('stream_interrupted');
                 }
 
                 onComplete?.(finalData);
@@ -811,6 +834,22 @@ export const apiService = {
         return apiGetSessionHistory(sessionId, headers) as Promise<SessionHistoryWithMind>;
     },
 
+    async selectSessionBranch(sessionId: string, messageId: string): Promise<SessionHistoryWithMind> {
+        const token = getGuestSessionToken(sessionId);
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+        return fetchApi<SessionHistoryWithMind>(
+            `/sessions/${encodeURIComponent(sessionId)}/branch`,
+            {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ message_id: messageId }),
+            }
+        );
+    },
+
     async saveCanvasTextdoc(sessionId: string, textdoc: CanvasTextdoc): Promise<CanvasTextdoc> {
         const token = getGuestSessionToken(sessionId);
         const headers: HeadersInit = {
@@ -857,11 +896,15 @@ export const apiService = {
         sessionId: string,
         newTitle: string
     ): Promise<SessionRenameResponse> {
+        const token = getGuestSessionToken(sessionId);
         return fetchApi<SessionRenameResponse>(
             `/sessions/${encodeURIComponent(sessionId)}/rename`,
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ title: newTitle }),
             }
         );

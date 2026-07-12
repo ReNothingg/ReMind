@@ -252,7 +252,14 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
-    web_tool_prompt = render_web_tool_prompt()
+    web_tool_prompt = (
+        render_web_tool_prompt()
+        if str(user_data.get("webSearch") or user_data.get("autoWebSearch") or "")
+        .strip()
+        .lower()
+        in {"1", "true", "yes", "on"}
+        else ""
+    )
     current_canvas_textdoc = render_current_canvas_textdoc(user_data)
     beatbox_state_prompt = render_beatbox_state_prompt(user_data)
     github_tool_prompt = render_github_tool_prompt(user_id)

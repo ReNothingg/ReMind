@@ -27,6 +27,13 @@ try:
 except ValueError:
     MAX_CONTENT_LENGTH: int = 10 * 1024 * 1024
 
+try:
+    CHAT_MAX_VARIANTS_PER_TURN: int = max(
+        2, min(200, int(os.getenv("CHAT_MAX_VARIANTS_PER_TURN", "50")))
+    )
+except ValueError:
+    CHAT_MAX_VARIANTS_PER_TURN: int = 50
+
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 DEFAULT_LANGUAGE: str = "ru"
 
@@ -129,6 +136,8 @@ CORS_EXPOSE_HEADERS = [
     "X-Request-Id",
     "X-Total-Count",
     "X-Page-Number",
+    "X-Chat-Request-Id",
+    "X-Chat-Session-Token",
 ]
 
 CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
