@@ -1229,13 +1229,16 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         const barWidth = width / audio.waveformPoints.length;
         const progressRatio = audio.totalDuration > 0 ? audio.currentTime / audio.totalDuration : 0;
         const progressPx = progressRatio * width;
+        const rootStyles = getComputedStyle(document.documentElement);
+        const playedColor = rootStyles.getPropertyValue('--color-accent').trim() || '#789cff';
+        const remainingColor = rootStyles.getPropertyValue('--color-text-tertiary').trim() || 'rgba(128, 128, 128, 0.45)';
 
         audio.waveformPoints.forEach((point, index) => {
             const x = index * barWidth;
-            ctx.fillStyle = x < progressPx ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.4)';
+            ctx.fillStyle = x < progressPx ? playedColor : remainingColor;
             ctx.fillRect(x, (height - point * height) / 2, Math.max(1, barWidth * 0.8), point * height);
         });
-    }, [audio.isVisible, audio.currentTime, audio.totalDuration, audio.waveformPoints]);
+    }, [audio.isVisible, audio.currentTime, audio.totalDuration, audio.waveformPoints, settings.theme]);
     useEffect(() => {
         if (!markdownEnabledForMessage || !contentRef.current) return;
 
@@ -1920,7 +1923,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                 <div className="audio-player-loader" role="status">{t('chat.audio.loading')}</div>
                             )}
                         </div>
-                        {!audio.isLoading && (
+                        {!audio.isLoading && !audio.isError && audio.isReady && (
                             <div className="audio-player-controls ui-audio-player-controls">
                                 <button
                                     type="button"
@@ -1928,6 +1931,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                     title={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
                                     aria-label={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
                                     onClick={audio.togglePlayback}
+                                    disabled={!audio.isReady}
                                 >
                                     <svg className="play-pause-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                                         {audio.isPlaying ? (
@@ -1943,11 +1947,12 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                         type="range"
                                         className="audio-progress-bar"
                                         min="0"
-                                        max={audio.totalDuration || 1}
-                                        value={audio.currentTime}
+                                        max={audio.totalDuration}
+                                        value={Math.min(Math.max(Number.isFinite(audio.currentTime) ? audio.currentTime : 0, 0), audio.totalDuration)}
                                         step="0.1"
                                         onChange={(e) => audio.seekAudio(parseFloat(e.target.value))}
                                         aria-label={t('chat.audio.progress')}
+                                        disabled={!audio.isReady}
                                     />
                                 </div>
                                 <div className="audio-time ui-audio-time">

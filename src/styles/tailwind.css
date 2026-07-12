@@ -231,20 +231,24 @@
   }
 
   .ui-action-button {
-    @apply inline-flex size-8 items-center justify-center rounded-full text-muted transition duration-150 ease-out;
-    @apply hover:-translate-y-px hover:scale-[1.08] hover:text-foreground;
+    @apply inline-flex size-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-muted transition duration-150 ease-out;
+    @apply hover:-translate-y-px hover:text-foreground;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--color-accent-raw),0.7)] focus-visible:ring-offset-2 focus-visible:ring-offset-page;
     @apply disabled:cursor-not-allowed disabled:opacity-40;
   }
 
+  .ui-action-button:hover {
+    background: var(--color-bg-interactive);
+  }
+
   .ui-action-button > img,
   .ui-action-button > svg {
-    @apply size-[18px] opacity-75 transition duration-150 ease-out;
+    @apply size-[18px] opacity-80 transition duration-150 ease-out;
   }
 
   .ui-action-button:hover > img,
   .ui-action-button:hover > svg {
-    @apply scale-[1.08] opacity-100;
+    @apply scale-[1.04] opacity-100;
   }
 
   .ui-attachment-card {
@@ -334,7 +338,7 @@
   }
 
   .ui-user-message-actions {
-    @apply absolute right-[calc(var(--spacing-unit)*2)] bottom-[calc(-1*var(--spacing-unit)*7)] z-[2] mt-0 w-max gap-1.5;
+    @apply static z-[2] mt-2 ml-auto w-max gap-0.5;
   }
 
   .ui-message-variants {
@@ -389,7 +393,7 @@
   }
 
   .ui-audio-player-header {
-    @apply mb-2 flex min-h-6 items-center justify-between border-b px-3.5 pt-3.5 pb-2;
+    @apply mb-2 flex min-h-6 items-center justify-between border-b pb-2;
     border-color: rgba(var(--color-white-raw), 0.06);
   }
 
@@ -402,11 +406,11 @@
   }
 
   .ui-audio-player-controls {
-    @apply flex items-center gap-3 px-3.5 pb-3.5;
+    @apply flex items-center gap-2.5;
   }
 
   .ui-audio-play-button {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-full border text-foreground transition duration-150 ease-out;
+    @apply flex size-[34px] shrink-0 items-center justify-center rounded-full border text-foreground transition duration-150 ease-out;
     background: var(--color-bg-interactive);
     border-color: rgba(var(--color-white-raw), 0.15);
   }

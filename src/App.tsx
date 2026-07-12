@@ -1193,7 +1193,7 @@ const MainLayout = () => {
                   {canvasDockIsCode ? <FileCode2 size={18} /> : <FileText size={18} />}
                 </span>
                 <span className="chat-canvas-dock-copy">
-                  <strong>{canvasDockTextdoc.name}</strong>
+                  \ <strong>{canvasDockTextdoc.name}</strong>
                   <small>
                     {canvasDockTypeLabel} / {t('canvas.lines', { count: canvasDockLineCount })}
                   </small>

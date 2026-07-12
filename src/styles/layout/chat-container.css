@@ -50,7 +50,7 @@
 }
 
 .user-message.has-user-actions {
-  padding-bottom: calc(var(--spacing-unit) * 9);
+  padding-bottom: 0;
 }
 
 .ai-message {
@@ -235,22 +235,32 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
   font-weight: 500;
 }
 
-.user-message.has-user-actions .actions-bar {
-  position: absolute;
-  right: calc(var(--spacing-unit) * 2);
-  bottom: calc(-1 * var(--spacing-unit) * 7);
-  margin-top: 0;
+.actions-bar.ui-message-actions {
   width: max-content;
-  gap: calc(var(--spacing-unit) * 1.5);
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: calc(var(--radius-md) + 2px);
+  background: var(--color-bg-surface-alt);
+}
+
+.user-message.has-user-actions .actions-bar {
+  position: static;
+  margin: calc(var(--spacing-unit) * 2) 0 0 auto;
+  width: max-content;
+  gap: 2px;
+  padding: 3px;
   z-index: 2;
+  border-color: rgba(var(--color-accent-raw), 0.24);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .action-btn {
   background: transparent;
-  border: none;
-  border-radius: 999px;
-  width: 32px;
-  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,9 +271,9 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .action-btn:hover {
-  background: transparent;
+  background: var(--color-bg-interactive);
   color: var(--color-text-primary);
-  transform: translateY(-1px) scale(1.08);
+  transform: translateY(-1px);
 }
 
 .action-btn:active {
@@ -284,7 +294,18 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 .action-btn:hover img,
 .action-btn:hover svg {
   opacity: 1;
-  transform: scale(1.08);
+  transform: scale(1.04);
+}
+
+.user-message .action-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.user-message .action-btn img,
+.user-message .action-btn svg {
+  width: 17px;
+  height: 17px;
 }
 
 .action-btn:focus-visible {
@@ -297,7 +318,8 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .action-btn.speak-btn.active {
-  background: transparent;
+  background: rgba(var(--color-accent-raw), 0.12);
+  border-color: rgba(var(--color-accent-raw), 0.34);
   color: var(--color-text-primary);
 }
 
@@ -307,7 +329,8 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .action-btn.speak-btn.error {
-  background: transparent;
+  background: rgba(var(--color-error-raw), 0.08);
+  border-color: rgba(var(--color-error-raw), 0.28);
   color: var(--color-text-error);
 }
 
@@ -323,7 +346,8 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .action-btn.feedback-btn.active {
-  background: transparent;
+  background: rgba(var(--color-accent-raw), 0.12);
+  border-color: rgba(var(--color-accent-raw), 0.34);
   color: var(--color-text-primary);
 }
 

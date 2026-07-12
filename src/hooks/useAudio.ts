@@ -3,6 +3,7 @@ import { apiService } from '../services/api';
 
 type AudioSegmentPayload = {
     audio_base64: string;
+    original_text?: string;
 };
 
 const isAudioSegmentPayload = (value: unknown): value is AudioSegmentPayload => (
@@ -20,6 +21,13 @@ const getSynthesizeError = (data: unknown) => {
     return 'Нет валидных аудио сегментов.';
 };
 
+const estimateSpeechDuration = (segment: AudioSegmentPayload) => {
+    const text = typeof segment.original_text === 'string' ? segment.original_text.trim() : '';
+    const wordCount = text ? text.split(/\s+/u).filter(Boolean).length : 0;
+    const estimatedSeconds = wordCount > 0 ? wordCount / 2.4 : Math.max(text.length / 14, 1);
+    return Math.min(Math.max(estimatedSeconds, 1), 300);
+};
+
 export const useAudio = (_messageId) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +40,11 @@ export const useAudio = (_messageId) => {
     const currentSegmentIndexRef = useRef(0);
     const durationsRef = useRef([]);
     const updateIntervalRef = useRef(null);
+    const isPlayingRef = useRef(false);
+    const isVisibleRef = useRef(false);
+    const isErrorRef = useRef(false);
+    const isLoadingRef = useRef(false);
+    const requestIdRef = useRef(0);
 
     const generateWaveformPoints = useCallback((text) => {
         const numPoints = 100;
@@ -49,12 +62,13 @@ export const useAudio = (_messageId) => {
         return points;
     }, []);
 
-    const calculateDurations = useCallback(async (segments) => {
-        const metadataPromises = segments.map((audio) => new Promise(resolve => {
+    const calculateDurations = useCallback(async (segments, fallbackDurations) => {
+        const metadataPromises = segments.map((audio, index) => new Promise(resolve => {
             if (audio.readyState >= 1 && isFinite(audio.duration)) return resolve(audio.duration);
-            const timeoutId = setTimeout(() => resolve(0), 5000);
-            audio.onloadedmetadata = () => { clearTimeout(timeoutId); resolve(isFinite(audio.duration) ? audio.duration : 0); };
-            audio.onerror = () => { clearTimeout(timeoutId); resolve(0); };
+            const fallback = fallbackDurations[index] || 1;
+            const timeoutId = setTimeout(() => resolve(fallback), 1500);
+            audio.onloadedmetadata = () => { clearTimeout(timeoutId); resolve(isFinite(audio.duration) && audio.duration > 0 ? audio.duration : fallback); };
+            audio.onerror = () => { clearTimeout(timeoutId); resolve(fallback); };
         }));
         const segmentDurations = await Promise.all(metadataPromises);
         durationsRef.current = segmentDurations;
@@ -64,14 +78,14 @@ export const useAudio = (_messageId) => {
     }, []);
 
     const updatePlayerUI = useCallback(() => {
-        if (!isVisible) return;
+        if (!isVisibleRef.current) return;
         let currentTimeOverall = durationsRef.current.slice(0, currentSegmentIndexRef.current).reduce((acc, d) => acc + d, 0);
         const currentAudio = audioSegmentsRef.current[currentSegmentIndexRef.current];
         if (currentAudio) {
             currentTimeOverall += currentAudio.currentTime || 0;
         }
         setCurrentTime(currentTimeOverall);
-    }, [isVisible]);
+    }, []);
 
     const clearUpdateInterval = useCallback(() => {
         if (updateIntervalRef.current) {
@@ -81,6 +95,7 @@ export const useAudio = (_messageId) => {
     }, []);
 
     const pauseAudio = useCallback((fullStop = false) => {
+        isPlayingRef.current = false;
         setIsPlaying(false);
         audioSegmentsRef.current[currentSegmentIndexRef.current]?.pause();
         if (fullStop) {
@@ -96,64 +111,93 @@ export const useAudio = (_messageId) => {
     const handlePlaybackEnd = useCallback(() => {
         clearUpdateInterval();
         pauseAudio(true);
-        setIsVisible(false);
     }, [clearUpdateInterval, pauseAudio]);
 
     const playAudio = useCallback(() => {
-        if (isError || currentSegmentIndexRef.current >= audioSegmentsRef.current.length) {
+        if (isErrorRef.current || currentSegmentIndexRef.current >= audioSegmentsRef.current.length) {
             handlePlaybackEnd();
             return;
         }
+        isPlayingRef.current = true;
         setIsPlaying(true);
         const audio = audioSegmentsRef.current[currentSegmentIndexRef.current];
         if (audio) {
             audio.play().catch(error => {
                 if (error.name !== 'AbortError' && !error.message.includes('interrupted')) {
+                    clearUpdateInterval();
+                    pauseAudio();
                     setIsError(true);
+                    isErrorRef.current = true;
+                    isPlayingRef.current = false;
                     setIsPlaying(false);
                 }
             });
         }
-    }, [handlePlaybackEnd, isError]);
+    }, [clearUpdateInterval, handlePlaybackEnd, pauseAudio]);
 
     const seekAudio = useCallback((targetTime) => {
-        const wasPlaying = isPlaying;
+        const duration = durationsRef.current.reduce((acc, value) => acc + value, 0);
+        if (!Number.isFinite(targetTime) || duration <= 0) return;
+        const clampedTarget = Math.min(Math.max(targetTime, 0), duration);
+        const wasPlaying = isPlayingRef.current;
         if (wasPlaying) pauseAudio();
         let accumulatedTime = 0;
         let newSegmentIndex = durationsRef.current.findIndex((duration) => {
-            if (targetTime <= accumulatedTime + duration) return true;
+            if (clampedTarget <= accumulatedTime + duration) return true;
             accumulatedTime += duration;
             return false;
         });
         if (newSegmentIndex === -1) newSegmentIndex = 0;
         currentSegmentIndexRef.current = newSegmentIndex;
-        const timeInTargetSegment = targetTime - accumulatedTime;
+        const timeInTargetSegment = Math.max(0, clampedTarget - accumulatedTime);
         audioSegmentsRef.current.forEach((audio, index) => {
             audio.currentTime = (index === newSegmentIndex) ? timeInTargetSegment : 0;
         });
-        setCurrentTime(targetTime);
+        setCurrentTime(clampedTarget);
         if (wasPlaying) playAudio();
-    }, [isPlaying, pauseAudio, playAudio]);
+    }, [pauseAudio, playAudio]);
 
     const speak = useCallback(async (text) => {
-        if (isVisible && isPlaying) {
+        if (isLoadingRef.current) return;
+        if (isVisibleRef.current && isErrorRef.current) {
+            isVisibleRef.current = false;
+            setIsVisible(false);
+        }
+        if (isVisibleRef.current && isPlayingRef.current) {
+            requestIdRef.current += 1;
+            isVisibleRef.current = false;
             setIsVisible(false);
             pauseAudio(true);
             return;
         }
-        if (isVisible) {
+        if (isVisibleRef.current) {
             playAudio();
             return;
         }
 
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
+        clearUpdateInterval();
+        audioSegmentsRef.current.forEach((audio) => {
+            audio.pause();
+            audio.currentTime = 0;
+        });
+        audioSegmentsRef.current = [];
+        durationsRef.current = [];
+        setCurrentTime(0);
+        setTotalDuration(0);
+        setWaveformPoints(null);
+        isLoadingRef.current = true;
         setIsLoading(true);
+        isErrorRef.current = false;
         setIsError(false);
+        isVisibleRef.current = true;
         setIsVisible(true);
         currentSegmentIndexRef.current = 0;
 
         try {
             const data = await apiService.synthesize(text);
-            setIsLoading(false);
+            if (requestId !== requestIdRef.current) return;
             const validSegments = Array.isArray(data?.segments)
                 ? data.segments.filter(isAudioSegmentPayload)
                 : [];
@@ -163,7 +207,7 @@ export const useAudio = (_messageId) => {
             }
 
             const segments = validSegments.map((segment) => (
-                new Audio(`data:audio/mp3;base64,${segment.audio_base64}`)
+                new Audio(`data:audio/mpeg;base64,${segment.audio_base64}`)
             ));
 
             if (segments.length === 0) {
@@ -174,11 +218,20 @@ export const useAudio = (_messageId) => {
             const points = generateWaveformPoints(text);
             setWaveformPoints(points);
 
-            await calculateDurations(segments);
+            await calculateDurations(
+                segments,
+                validSegments.map(estimateSpeechDuration)
+            );
+            if (requestId !== requestIdRef.current) return;
 
             segments.forEach((audio, index) => {
+                audio.ondurationchange = () => {
+                    if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+                    durationsRef.current[index] = audio.duration;
+                    setTotalDuration(durationsRef.current.reduce((acc, value) => acc + value, 0));
+                };
                 audio.onended = () => {
-                    if (isPlaying && index < segments.length - 1) {
+                    if (isPlayingRef.current && index < segments.length - 1) {
                         currentSegmentIndexRef.current = index + 1;
                         setTimeout(() => playAudio(), 0);
                     } else {
@@ -186,35 +239,50 @@ export const useAudio = (_messageId) => {
                     }
                 };
                 audio.onerror = () => {
+                    clearUpdateInterval();
+                    pauseAudio();
+                    isErrorRef.current = true;
+                    isPlayingRef.current = false;
                     setIsError(true);
                     setIsPlaying(false);
                 };
                 audio.ontimeupdate = () => {
-                    if (isPlaying && currentSegmentIndexRef.current === index) {
+                    if (isPlayingRef.current && currentSegmentIndexRef.current === index) {
                         updatePlayerUI();
                     }
                 };
             });
 
+            isLoadingRef.current = false;
+            setIsLoading(false);
             clearUpdateInterval();
             updateIntervalRef.current = setInterval(updatePlayerUI, 100);
             playAudio();
         } catch (error) {
+            if (requestId !== requestIdRef.current) return;
             console.error("Speech error", error);
             clearUpdateInterval();
+            isErrorRef.current = true;
+            isLoadingRef.current = false;
+            isPlayingRef.current = false;
             setIsError(true);
             setIsLoading(false);
             setIsPlaying(false);
         }
-    }, [isVisible, isPlaying, pauseAudio, playAudio, generateWaveformPoints, calculateDurations, clearUpdateInterval, handlePlaybackEnd, updatePlayerUI]);
+    }, [pauseAudio, playAudio, generateWaveformPoints, calculateDurations, clearUpdateInterval, handlePlaybackEnd, updatePlayerUI]);
 
     const stop = useCallback(() => {
+        requestIdRef.current += 1;
         clearUpdateInterval();
         pauseAudio(true);
+        isLoadingRef.current = false;
+        isVisibleRef.current = false;
+        setIsLoading(false);
         setIsVisible(false);
     }, [clearUpdateInterval, pauseAudio]);
 
     useEffect(() => () => {
+        requestIdRef.current += 1;
         clearUpdateInterval();
         audioSegmentsRef.current.forEach((audio) => {
             audio.pause();
@@ -223,8 +291,9 @@ export const useAudio = (_messageId) => {
     }, [clearUpdateInterval]);
 
     const formatTime = useCallback((seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
+        const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+        const mins = Math.floor(safeSeconds / 60);
+        const secs = Math.floor(safeSeconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }, []);
 
@@ -237,6 +306,7 @@ export const useAudio = (_messageId) => {
         isVisible,
         currentTime,
         totalDuration,
+        isReady: totalDuration > 0 && audioSegmentsRef.current.length > 0,
         formatTime,
         seekAudio,
         waveformPoints,

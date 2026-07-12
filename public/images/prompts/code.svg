@@ -1,10 +1,3 @@
-<svg viewBox="0 0 24 24" fill="none"
-    xmlns="http://www.w3.org/2000/svg">
-    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-    <g id="SVGRepo_iconCarrier">
-        <path d="M10.5 16.5L13.5 7.5" stroke="#ffffff" stroke-linecap="round"></path>
-        <path d="M16.5 8.5L19.5 12L16.5 15.5" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round"></path>
-        <path d="M7.5 8.5L4.5 12L7.5 15.5" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round"></path>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#eaeaee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m8.5 7-5 5 5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/>
 </svg>

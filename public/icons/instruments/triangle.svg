@@ -1,30 +1,4 @@
-<svg version="1.1" id="Icons"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 32 32"
-    fill="none">
-
-    <!-- Черная внешняя обводка -->
-    <g
-        stroke="#000000"
-        stroke-width="4"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-miterlimit="10">
-        <circle cx="16" cy="6" r="2"></circle>
-        <polyline points="7,23.2 16,8 27,26 8.8,26"></polyline>
-        <line x1="17" y1="21" x2="23" y2="29"></line>
-    </g>
-
-    <!-- Белая основная иконка -->
-    <g
-        stroke="#ffffff"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-miterlimit="10">
-        <circle cx="16" cy="6" r="2"></circle>
-        <polyline points="7,23.2 16,8 27,26 8.8,26"></polyline>
-        <line x1="17" y1="21" x2="23" y2="29"></line>
-    </g>
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#eaeaee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m12 4.5 8 14H4l6.5-11.25"/>
+  <path d="m17.25 8 3.5-3.5"/>
 </svg>
