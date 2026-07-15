@@ -124,6 +124,7 @@ Desktop.ini
 # Misc
 # ==========================
 tmp/
+tests/
 temp/
 *.tmp
 *.bak

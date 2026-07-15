@@ -1,11 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { ButtonHTMLAttributes, ReactNode, RefObject } from 'react';
+import type {
+    ButtonHTMLAttributes,
+    CSSProperties,
+    ReactNode,
+    RefObject,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { LockKeyhole } from 'lucide-react';
 import type { ShareInfo } from '../../share/components/ShareModal';
 import GuestButtons from './GuestButtons';
 import { cn } from '../../../utils/cn';
 import { getModelStageLabel, type ChatModel } from '../modelSelection';
+import type { ThinkingLevel } from '../../../services/api';
 
 interface GlobalHeaderProps {
     isAuthenticated: boolean;
@@ -13,6 +19,8 @@ interface GlobalHeaderProps {
     currentModel: string;
     models: ChatModel[];
     onModelChange: (modelId: string) => void;
+    thinkingLevel: ThinkingLevel;
+    onThinkingLevelChange: (level: ThinkingLevel) => void;
     onOpenAuth: () => void;
     onShowRegister: () => void;
     shareInfo?: ShareInfo | null;
@@ -31,6 +39,8 @@ interface ModelOption {
     name: string;
     desc: string;
     badge?: string;
+    thinkingLevels: ThinkingLevel[];
+    defaultThinkingLevel?: ThinkingLevel;
 }
 
 interface HeaderIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -46,8 +56,26 @@ interface ModelSelectorProps {
     models: ModelOption[];
     onCloseDropdown: () => void;
     onModelChange: (modelId: string) => void;
+    thinkingLevel: ThinkingLevel;
+    onThinkingLevelChange: (level: ThinkingLevel) => void;
     onToggleDropdown: () => void;
     chooseLabel: string;
+}
+
+const THINKING_THUMB_RADIUS = 22;
+
+function thinkingSliderPosition(index: number, count: number): string {
+    if (count <= 1 || index <= 0) {
+        return `${THINKING_THUMB_RADIUS}px`;
+    }
+    if (index >= count - 1) {
+        return `calc(100% - ${THINKING_THUMB_RADIUS}px)`;
+    }
+    const ratio = index / (count - 1);
+    const percentage = ratio * 100;
+    const pixelCorrection = THINKING_THUMB_RADIUS - (THINKING_THUMB_RADIUS * 2 * ratio);
+    const operator = pixelCorrection >= 0 ? '+' : '-';
+    return `calc(${percentage}% ${operator} ${Math.abs(pixelCorrection)}px)`;
 }
 
 function HeaderIconButton({
@@ -67,7 +95,7 @@ function HeaderIconButton({
     );
 }
 
-function ModelSelector({
+export function ModelSelector({
     activeModel,
     currentModel,
     dropdownId,
@@ -76,9 +104,25 @@ function ModelSelector({
     models,
     onCloseDropdown,
     onModelChange,
+    thinkingLevel,
+    onThinkingLevelChange,
     onToggleDropdown,
     chooseLabel,
 }: ModelSelectorProps) {
+    const { t } = useTranslation();
+    const supportedThinkingLevels = activeModel.thinkingLevels || [];
+    const activeThinkingLevel = supportedThinkingLevels.includes(thinkingLevel)
+        ? thinkingLevel
+        : activeModel.defaultThinkingLevel || supportedThinkingLevels[0];
+    const thinkingLevelIndex = Math.max(
+        0,
+        activeThinkingLevel ? supportedThinkingLevels.indexOf(activeThinkingLevel) : 0,
+    );
+    const thinkingThumbPosition = thinkingSliderPosition(
+        thinkingLevelIndex,
+        supportedThinkingLevels.length,
+    );
+
     return (
         <div
             className="model-selector-new ui-toolbar-anchor"
@@ -92,11 +136,18 @@ function ModelSelector({
                 )}
                 onClick={onToggleDropdown}
                 aria-expanded={isDropdownOpen}
-                aria-haspopup="listbox"
+                aria-haspopup="dialog"
                 aria-controls={dropdownId}
             >
-                <span className="model-btn-name ui-toolbar-trigger-label">
-                    {activeModel.name}
+                <span className="model-btn-copy">
+                    <span className="model-btn-name ui-toolbar-trigger-label">
+                        {activeModel.name}
+                    </span>
+                    {activeThinkingLevel && (
+                        <span className="model-btn-variant" aria-live="polite">
+                            {t(`models.thinkingLevels.${activeThinkingLevel}`)}
+                        </span>
+                    )}
                 </span>
                 <svg
                     className={cn(
@@ -121,44 +172,95 @@ function ModelSelector({
                         ? 'open ui-toolbar-dropdown-open'
                         : 'ui-toolbar-dropdown-closed'
                 )}
-                role="listbox"
+                role="dialog"
                 aria-label={chooseLabel}
             >
-                <div className="model-dropdown-header ui-toolbar-dropdown-header">
-                    <span className="model-dropdown-title ui-toolbar-dropdown-title">
-                        {chooseLabel}
-                    </span>
-                </div>
                 <div className="model-options ui-toolbar-option-list">
-                    {models.map((model) => (
-                        <button
-                            key={model.id}
-                            type="button"
-                            className="model-option ui-toolbar-option"
-                            aria-selected={currentModel === model.id}
-                            role="option"
-                            onClick={() => {
-                                onModelChange(model.id);
-                                onCloseDropdown();
-                            }}
-                        >
-                            <div className="model-option-header ui-toolbar-option-header">
-                                <span className="model-option-name ui-toolbar-option-name">
-                                    {model.name}
-                                </span>
-                                {model.badge && (
-                                    <span className="model-option-badge ui-toolbar-option-badge">
-                                        {model.badge}
+                    {models.map((model) => {
+                        const isSelected = currentModel === model.id;
+                        return (
+                            <div
+                                key={model.id}
+                                className={cn('model-option-card', isSelected && 'is-selected')}
+                            >
+                                <button
+                                    type="button"
+                                    className="model-option ui-toolbar-option"
+                                    aria-pressed={isSelected}
+                                    onClick={() => {
+                                        onModelChange(model.id);
+                                        if (!isSelected || model.thinkingLevels.length === 0) {
+                                            onCloseDropdown();
+                                        }
+                                    }}
+                                >
+                                    <span className="model-option-header ui-toolbar-option-header">
+                                        <span className="model-option-name ui-toolbar-option-name">
+                                            {model.name}
+                                        </span>
+                                        {model.badge && (
+                                            <span className="model-option-badge ui-toolbar-option-badge">
+                                                {model.badge}
+                                            </span>
+                                        )}
                                     </span>
+                                    {model.desc && (
+                                        <span className="model-option-desc ui-toolbar-option-description">
+                                            {model.desc}
+                                        </span>
+                                    )}
+                                </button>
+                                {isSelected && supportedThinkingLevels.length > 0 && activeThinkingLevel && (
+                                    <section
+                                        className="model-thinking-control"
+                                        aria-label={t('models.thinkingLevel')}
+                                    >
+                                        <div
+                                            className="model-thinking-slider"
+                                            style={{
+                                                '--thinking-thumb-position': thinkingThumbPosition,
+                                            } as CSSProperties}
+                                        >
+                                            <div className="model-thinking-track" aria-hidden="true">
+                                                <span className="model-thinking-track-fill" />
+                                                {supportedThinkingLevels.map((level, index) => (
+                                                    <span
+                                                        key={level}
+                                                        className={cn(
+                                                            'model-thinking-marker',
+                                                            index <= thinkingLevelIndex && 'is-active',
+                                                        )}
+                                                        style={{
+                                                            left: thinkingSliderPosition(
+                                                                index,
+                                                                supportedThinkingLevels.length,
+                                                            ),
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <input
+                                                className="model-thinking-input"
+                                                type="range"
+                                                min="0"
+                                                max={supportedThinkingLevels.length - 1}
+                                                step="1"
+                                                value={thinkingLevelIndex}
+                                                onChange={(event) => {
+                                                    const nextLevel = supportedThinkingLevels[Number(event.target.value)];
+                                                    if (nextLevel) {
+                                                        onThinkingLevelChange(nextLevel);
+                                                    }
+                                                }}
+                                                aria-label={t('models.thinkingLevel')}
+                                                aria-valuetext={t(`models.thinkingLevels.${activeThinkingLevel}`)}
+                                            />
+                                        </div>
+                                    </section>
                                 )}
                             </div>
-                            {model.desc && (
-                                <span className="model-option-desc ui-toolbar-option-description">
-                                    {model.desc}
-                                </span>
-                            )}
-                        </button>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>
@@ -171,6 +273,8 @@ export default function GlobalHeader({
     currentModel,
     models: availableChatModels,
     onModelChange,
+    thinkingLevel,
+    onThinkingLevelChange,
     onOpenAuth,
     onShowRegister,
     shareInfo,
@@ -204,8 +308,14 @@ export default function GlobalHeader({
         const badge = getModelStageLabel(model.stage);
         return {
             id: model.id,
-            name: model.title,
-            desc: model.subtitle,
+            name: model.titleKey ? t(model.titleKey, { defaultValue: model.title }) : model.title,
+            desc: model.subtitleKey
+                ? t(model.subtitleKey, { defaultValue: model.subtitle })
+                : model.subtitle,
+            thinkingLevels: model.thinkingLevels,
+            ...(model.defaultThinkingLevel
+                ? { defaultThinkingLevel: model.defaultThinkingLevel }
+                : {}),
             ...(badge ? { badge } : {}),
         };
     });
@@ -214,6 +324,7 @@ export default function GlobalHeader({
         id: currentModel,
         name: currentModel,
         desc: '',
+        thinkingLevels: [],
     };
     const isShared = !!shareInfo?.isPublic;
     const hasSession = !!currentSessionId;
@@ -262,6 +373,8 @@ export default function GlobalHeader({
                         models={models}
                         onCloseDropdown={() => setIsDropdownOpen(false)}
                         onModelChange={onModelChange}
+                        thinkingLevel={thinkingLevel}
+                        onThinkingLevelChange={onThinkingLevelChange}
                         onToggleDropdown={() => setIsDropdownOpen((prev) => !prev)}
                         chooseLabel={t('models.choose')}
                     />

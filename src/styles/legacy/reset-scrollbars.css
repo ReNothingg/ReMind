@@ -51,14 +51,11 @@ body {
 
 body.has-rail {
   --app-rail-offset: var(--rail-width-collapsed);
-  --app-content-width-dynamic: clamp(
-    320px,
-    700px,
-    calc(100% - var(--spacing-unit) * 8 - var(--app-rail-offset))
+  --app-content-width-dynamic: min(
+    720px,
+    calc(100vw - var(--app-rail-offset) - var(--spacing-unit) * 8)
   );
-  --app-content-max-width-dynamic: calc(
-    100% - var(--app-rail-offset) - var(--spacing-unit) * 4
-  );
+  --app-content-max-width-dynamic: 720px;
 }
 
 body.rail-open {

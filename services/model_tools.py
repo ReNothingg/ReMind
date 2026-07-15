@@ -40,7 +40,9 @@ def model_tool_declarations(
                 "name": "web_search",
                 "description": (
                     "Search the live web when current or source-backed information is needed. "
-                    "Use the user's language and send a concise search-engine query."
+                    "Use the user's language and send a concise search-engine query. Only use "
+                    "facts directly supported by returned extracts; search again when evidence "
+                    "is insufficient."
                 ),
                 "parameters": {
                     "type": "object",
@@ -190,7 +192,6 @@ def _execute_web_search(arguments: dict[str, Any]) -> ModelToolResult:
             "ok": True,
             "query": query,
             "context": str(payload.get("context") or ""),
-            "sources": sources,
         },
         events=events,
         sources=sources,

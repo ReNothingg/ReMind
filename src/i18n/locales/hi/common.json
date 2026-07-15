@@ -74,7 +74,10 @@
     "label": "विचार",
     "loading": "सोच रहा हूं...",
     "expand": "विचार दिखाएं",
-    "collapse": "विचार छिपाएं"
+    "collapse": "विचार छिपाएं",
+    "completedLabel": "{{time}} तक सोचा",
+    "timeMilliseconds": "{{value}} मि.से.",
+    "timeSeconds": "{{value}} से."
   },
   "landing": {
     "ariaLabel": "स्टार्ट स्क्रीन",
@@ -238,7 +241,8 @@
   },
   "files": {
     "removeFile": "फ़ाइल हटाएं",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "चित्र"
   },
   "share": {
     "title": "चैट साझा करना",
@@ -259,7 +263,19 @@
     "readOnly": "केवल पढ़ने के लिए"
   },
   "models": {
-    "choose": "मॉडल चुनें"
+    "choose": "मॉडल चुनें",
+    "thinkingLevel": "चिंतन स्तर",
+    "thinkingLevelDescription": "उत्तर की गति और तर्क की गहराई नियंत्रित करता है",
+    "thinkingLevels": {
+      "minimal": "न्यूनतम",
+      "low": "कम",
+      "medium": "मध्यम",
+      "high": "उच्च"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "ReMind टूल के साथ Google का तेज़ मॉडल"
+    }
   },
   "rail": {
     "newChat": "नई चैट",

@@ -74,7 +74,10 @@
     "label": "Pensamientos",
     "loading": "Pensando...",
     "expand": "Expandir pensamientos",
-    "collapse": "Contraer pensamientos"
+    "collapse": "Contraer pensamientos",
+    "completedLabel": "Pensó durante {{time}}",
+    "timeMilliseconds": "{{value}} ms",
+    "timeSeconds": "{{value}} s"
   },
   "landing": {
     "ariaLabel": "Pantalla de inicio",
@@ -238,7 +241,8 @@
   },
   "files": {
     "removeFile": "Quitar archivo",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "imagen"
   },
   "share": {
     "title": "Compartir chat",
@@ -259,7 +263,19 @@
     "readOnly": "Solo lectura"
   },
   "models": {
-    "choose": "Elige un modelo"
+    "choose": "Elige un modelo",
+    "thinkingLevel": "Nivel de razonamiento",
+    "thinkingLevelDescription": "Controla la velocidad y la profundidad del razonamiento",
+    "thinkingLevels": {
+      "minimal": "Mínimo",
+      "low": "Bajo",
+      "medium": "Medio",
+      "high": "Alto"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "Modelo rápido de Google con herramientas de ReMind"
+    }
   },
   "rail": {
     "newChat": "Nuevo chat",

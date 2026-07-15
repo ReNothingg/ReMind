@@ -7,6 +7,7 @@ import { Utils } from '../../utils/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
+import { imageFilesFromClipboard } from '../../utils/clipboardFiles';
 import {
     deleteRemoteDraft,
     getDeviceId,
@@ -135,6 +136,7 @@ const InputArea = ({
         files,
         isDragActive,
         fileInputRef,
+        addFiles,
         removeFile,
         clearFiles,
         handleFileInputChange,
@@ -240,6 +242,22 @@ const InputArea = ({
             }
         }
     };
+
+    const handlePaste = useCallback((event) => {
+        if (!fileUploadsEnabled || isReadOnly) {
+            return;
+        }
+        const pastedImages = imageFilesFromClipboard(
+            event.clipboardData?.items,
+            Date.now(),
+            t('files.pastedImageName'),
+        );
+        if (pastedImages.length === 0) {
+            return;
+        }
+        event.preventDefault();
+        addFiles(pastedImages);
+    }, [addFiles, fileUploadsEnabled, isReadOnly, t]);
 
     const removeQuote = (index) => {
         setQuotes((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
@@ -540,6 +558,7 @@ const InputArea = ({
                             value={text}
                             onChange={(event) => setText(event.target.value)}
                             onKeyDown={handleKeyDown}
+                            onPaste={handlePaste}
                             disabled={isReadOnly}
                         ></textarea>
 

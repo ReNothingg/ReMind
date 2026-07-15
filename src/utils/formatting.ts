@@ -520,9 +520,8 @@ const processInteractiveHTMLTags = (text, labels?: FormatTextOptions['labels']) 
         const now = Date.now();
         const open = openTime ? parseInt(openTime, 10) : now;
         const close = closeTime ? parseInt(closeTime, 10) : now;
-
-        const escapedContent = escapeHtml(content.trim());
-        return `<div class="think-instance-host" data-think-open="${open}" data-think-close="${close}" data-think-content='${escapedContent}'></div>`;
+        const encodedContent = toBase64(content.trim());
+        return `<div class="think-instance-host" data-think-open="${open}" data-think-close="${close}" data-think-content-b64="${encodedContent}"></div>`;
     });
     const unclosedThink = /<think(?:\s+data-open="(\d+)")?(?:\s+data-close="(\d+)?")?>/gi;
     if (unclosedThink.test(text)) {
@@ -557,7 +556,7 @@ export const formatText = (text, options: FormatTextOptions = {}) => {
             'type', 'checked', 'disabled', 'src', 'name',
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
-            'data-think-open', 'data-think-close', 'data-think-content',
+            'data-think-open', 'data-think-close', 'data-think-content', 'data-think-content-b64',
             'data-tool', 'data-source-ids', 's', 'tabindex', 'aria-live', 'aria-label', 'aria-hidden',
             'aria-expanded', 'aria-selected', 'aria-controls', 'role', 'stroke-width',
             'data-expand-label', 'data-collapse-label', 'hidden'

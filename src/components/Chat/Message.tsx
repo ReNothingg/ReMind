@@ -9,11 +9,19 @@ import Quiz from '../Widgets/Quiz';
 import Spinwheel from '../Widgets/Spinwheel';
 import Beatbox from '../Widgets/Beatbox';
 import ThinkBlock from '../Widgets/ThinkBlock';
+import { mergeThinkWidgets } from '../Widgets/thinkBlockUtils';
+import WebSourcesPanel from '../Widgets/WebSourcesPanel';
+import {
+    normalizeAndMergeWebSources,
+    sourceFallbackIcon,
+} from '../Widgets/webSources';
+import { extractCompletedSearchSources } from '../Widgets/searchActivityUtils';
 import { useAudio } from '../../hooks/useAudio';
 import { Utils } from '../../utils/utils';
 import TranslationPanel from './TranslationPanel';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
+import { isActiveWebSearchStatus } from './webSearchStatus';
 
 const MessageActionButton = ({ className, title, onClick, children, disabled = false }) => (
     <button
@@ -122,62 +130,6 @@ const resolveMediaUrl = (path) => {
     }
     return `${apiService.baseURL}${path}`;
 };
-
-const sourceFallbackIcon = '/icons/ui/web.svg';
-
-const normalizeWebSource = (source, index, sourceFallbackLabel = 'Source') => {
-    const fallbackTitle = `${sourceFallbackLabel} ${index + 1}`;
-    if (typeof source === 'string') {
-        const isUrl = /^https?:\/\//i.test(source);
-        let siteName = fallbackTitle;
-        if (isUrl) {
-            try {
-                siteName = new URL(source).hostname.replace(/^www\./, '');
-            } catch {
-                siteName = fallbackTitle;
-            }
-        }
-        return {
-            rank: index + 1,
-            title: siteName,
-            url: isUrl ? source : '',
-            displayUrl: isUrl ? siteName : source,
-            siteName,
-            snippet: '',
-            faviconUrl: sourceFallbackIcon
-        };
-    }
-
-    if (!source || typeof source !== 'object') {
-        return null;
-    }
-
-    const url = String(source.url || source.final_url || source.finalUrl || '').trim();
-    let siteName = String(source.site_name || source.siteName || '').trim();
-    if (!siteName && url) {
-        try {
-            siteName = new URL(url).hostname.replace(/^www\./, '');
-        } catch {
-            siteName = '';
-        }
-    }
-
-    const title = String(source.title || siteName || fallbackTitle).trim();
-    return {
-        rank: source.rank || index + 1,
-        title,
-        url,
-        displayUrl: String(source.display_url || source.displayUrl || siteName || url).trim(),
-        siteName: siteName || title,
-        snippet: String(source.snippet || '').trim(),
-        faviconUrl: String(source.favicon_url || source.faviconUrl || '').trim() || sourceFallbackIcon
-    };
-};
-
-const normalizeWebSources = (sources, sourceFallbackLabel = 'Source') => (Array.isArray(sources) ? sources : [])
-    .map((source, index) => normalizeWebSource(source, index, sourceFallbackLabel))
-    .filter(Boolean)
-    .filter((source) => source.url || source.title);
 
 const linkifySourceCitations = (text, sources) => {
     if (!text || !Array.isArray(sources) || sources.length === 0) {
@@ -348,72 +300,6 @@ const decorateSourceCitations = (html, sources, labels: { fragmentSources?: stri
     return template.innerHTML;
 };
 
-const WebSourcesPanel = ({ sources, t }) => {
-    const normalizedSources = useMemo(
-        () => normalizeWebSources(sources, t('webSearch.sourceFallback', { defaultValue: 'Source' })),
-        [sources, t]
-    );
-
-    if (normalizedSources.length === 0) {
-        return null;
-    }
-
-    const renderPillContent = (source) => (
-        <>
-            <span className="source-pill-icon-wrap" aria-hidden="true">
-                <img
-                    className="source-favicon"
-                    src={source.faviconUrl}
-                    alt=""
-                    loading="lazy"
-                    onError={(event) => {
-                        if (event.currentTarget.dataset.fallbackApplied !== 'true') {
-                            event.currentTarget.dataset.fallbackApplied = 'true';
-                            event.currentTarget.src = sourceFallbackIcon;
-                        }
-                    }}
-                />
-            </span>
-            <span className="source-pill-name">{source.siteName}</span>
-            <span className="source-tooltip" role="tooltip">
-                <strong>{source.title}</strong>
-                {source.snippet && <span>{source.snippet}</span>}
-                {source.displayUrl && <small>{source.displayUrl}</small>}
-            </span>
-        </>
-    );
-
-    return (
-        <div className="web-sources-container" aria-label={t('webSearch.sourcesAria')}>
-            <div className="web-sources-trigger">
-                <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
-                <span>{t('webSearch.sourcesLabel')}</span>
-                <span className="web-sources-count">{normalizedSources.length}</span>
-            </div>
-            <div className="web-sources-pills">
-                {normalizedSources.map((source, index) => (
-                    source.url ? (
-                        <a
-                            key={`${source.url}-${index}`}
-                            className="source-pill"
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={source.title}
-                        >
-                            {renderPillContent(source)}
-                        </a>
-                    ) : (
-                        <span key={`${source.title}-${index}`} className="source-pill">
-                            {renderPillContent(source)}
-                        </span>
-                    )
-                ))}
-            </div>
-        </div>
-    );
-};
-
 const ThinkingStatus = ({
     label,
     query = '',
@@ -436,6 +322,10 @@ const ThinkingStatus = ({
 
 const WebSearchProgress = ({ status, t }) => {
     if (!status) {
+        return null;
+    }
+
+    if (!isActiveWebSearchStatus(status.status)) {
         return null;
     }
 
@@ -765,6 +655,8 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     const currentVariant = variants && variants.length > 0 && currentVariantIndex !== undefined
         ? variants[currentVariantIndex]
         : null;
+    const liveThinking = currentVariant?.thinking || message.thinking;
+    const streamedThinking = !isUser && isLoading && liveThinking?.id ? liveThinking : null;
     const displayDeliveryState = currentVariant?.deliveryState || deliveryState;
     const githubTool = getGitHubToolPayload(message, currentVariant);
     const githubDiffPayload = useMemo(() => getGitHubDiffPayload(githubTool), [githubTool]);
@@ -804,10 +696,24 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         () => (currentVariant ? (currentVariant.sources || []) : (sources || [])),
         [currentVariant, sources]
     );
+    const completedThoughtSources = useMemo(() => {
+        const thoughtContent = [
+            displayContent || '',
+            ...(Array.isArray(parts)
+                ? parts
+                    .filter((part) => typeof part?.text === 'string')
+                    .map((part) => part.text)
+                : []),
+        ].join('\n');
+        return extractCompletedSearchSources(thoughtContent);
+    }, [displayContent, parts]);
     const sourceFallbackLabel = t('webSearch.sourceFallback', { defaultValue: 'Source' });
     const displaySourceItems = useMemo(
-        () => normalizeWebSources(displaySources, sourceFallbackLabel),
-        [displaySources, sourceFallbackLabel]
+        () => normalizeAndMergeWebSources(
+            [completedThoughtSources, displaySources],
+            sourceFallbackLabel,
+        ),
+        [completedThoughtSources, displaySources, sourceFallbackLabel]
     );
     const displayContentWithSourceLinks = useMemo(
         () => linkifySourceCitations(displayContent || '', displaySourceItems),
@@ -1010,16 +916,26 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 thinkHosts.forEach((host, idx) => {
                     const openTime = host.getAttribute('data-think-open');
                     const closeTime = host.getAttribute('data-think-close');
-                    const content = host.getAttribute('data-think-content');
+                    const encodedContent = host.getAttribute('data-think-content-b64');
+                    const content = encodedContent
+                        ? fromBase64(encodedContent)
+                        : host.getAttribute('data-think-content');
                     if (content && openTime && closeTime) {
+                        const parsedOpenTime = parseInt(openTime, 10);
+                        const parsedCloseTime = parseInt(closeTime, 10);
                         const existingId = `think-${message.id}-${idx}`;
-                        if (!newWidgets.some(w => w.id === existingId)) {
+                        const alreadyCollected = newWidgets.some(w =>
+                            w.type === 'think'
+                            && w.openTime === parsedOpenTime
+                            && w.closeTime === parsedCloseTime
+                        );
+                        if (!alreadyCollected && !newWidgets.some(w => w.id === existingId)) {
                             newWidgets.push({
                                 type: 'think',
                                 id: existingId,
                                 content,
-                                openTime: parseInt(openTime, 10),
-                                closeTime: parseInt(closeTime, 10)
+                                openTime: parsedOpenTime,
+                                closeTime: parsedCloseTime
                             });
                         }
                     }
@@ -1046,7 +962,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 });
             }
             setTimeout(() => {
-                setWidgets(newWidgets);
+                setWidgets(mergeThinkWidgets(newWidgets, `think-${message.id}-merged`));
             }, 0);
         }
     }, [displayContent, isUser, message.id, parts]);
@@ -1704,6 +1620,25 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     <WebSearchProgress status={webSearchStatus} t={t} />
                 )}
 
+                {streamedThinking && (
+                    <ThinkBlock
+                        key={streamedThinking.id}
+                        content={streamedThinking.content}
+                        openTime={streamedThinking.openTime}
+                        closeTime={streamedThinking.closeTime}
+                        isStreaming={streamedThinking.status !== 'complete'}
+                    />
+                )}
+
+                {!streamedThinking && widgets.filter(widget => widget.type === 'think').map(widget => (
+                    <ThinkBlock
+                        key={widget.id}
+                        content={widget.content}
+                        openTime={widget.openTime}
+                        closeTime={widget.closeTime}
+                    />
+                ))}
+
                 <div
                     ref={contentRef}
                     className="message-text ui-message-text"
@@ -1721,23 +1656,17 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                         return <Spinwheel key={widget.id} initialState={widget.state} />;
                     } else if (widget.type === 'beatbox') {
                         return <Beatbox key={widget.id} initialState={widget.state} onStateChange={onBeatboxStateChange} />;
-                    } else if (widget.type === 'think') {
-                        return (
-                            <ThinkBlock
-                                key={widget.id}
-                                content={widget.content}
-                                openTime={widget.openTime}
-                                closeTime={widget.closeTime}
-                            />
-                        );
                     }
                     return null;
                 })}
 
-                {isLoading && !displayContent && !isGeneratingImage && !webSearchStatus && (
-                    <ThinkingStatus
-                        className="live-thinking-animation"
-                        label={t('think.loading')}
+                {isLoading && !displayContent && !isGeneratingImage && !webSearchStatus && !streamedThinking && (
+                    <ThinkBlock
+                        content=""
+                        openTime={Number(message.timestamp || 0) < 1_000_000_000_000
+                            ? Number(message.timestamp || 0) * 1000
+                            : Number(message.timestamp || 0)}
+                        isStreaming
                     />
                 )}
 
@@ -1788,7 +1717,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 )}
                 {!isUser && isLoading && displaySourceItems.length > 0 && (
                     <div className="actions-bar ui-message-actions">
-                        <WebSourcesPanel sources={displaySourceItems} t={t} />
+                        <WebSourcesPanel sources={displaySourceItems} />
                     </div>
                 )}
                 {!isUser && !isLoading && (
@@ -1858,7 +1787,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                         >
                             <img src="/icons/ui/dislike.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
-                        <WebSourcesPanel sources={displaySourceItems} t={t} />
+                        <WebSourcesPanel sources={displaySourceItems} />
                     </div>
                 )}
                 {!isUser && !isLoading && feedbackPanelOpen && (

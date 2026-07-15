@@ -20,7 +20,12 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
 import SEOHelmet from './components/UI/SEOHelmet';
-import { apiService, type CanvasTextdoc, type Mind } from './services/api';
+import {
+  apiService,
+  type CanvasTextdoc,
+  type Mind,
+  type ThinkingLevel,
+} from './services/api';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
@@ -31,6 +36,7 @@ import {
   getFallbackModelId,
   isModelAvailable,
   normalizeModelOptions,
+  normalizeThinkingLevel,
   type ChatModel,
 } from './features/chat/modelSelection';
 import { useSessionList, type SessionSummary } from './features/sessions/hooks/useSessionList';
@@ -56,6 +62,7 @@ interface ImageLightboxState {
 
 const MOBILE_RAIL_MEDIA_QUERY = '(max-width: 1024px)';
 const CANVAS_WIDTH_STORAGE_KEY = 'remind.canvas.width';
+const THINKING_LEVEL_STORAGE_KEY = 'remind.chat.thinkingLevel';
 const CANVAS_MIN_WIDTH = 360;
 const CANVAS_DEFAULT_WIDTH = 520;
 const CANVAS_MAX_WIDTH = 820;
@@ -124,6 +131,12 @@ const MainLayout = () => {
   });
   const [isCanvasResizing, setCanvasResizing] = useState(false);
   const [currentModel, setCurrentModel] = useState('');
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(() => {
+    if (typeof window === 'undefined') {
+      return 'medium';
+    }
+    return normalizeThinkingLevel(window.localStorage.getItem(THINKING_LEVEL_STORAGE_KEY));
+  });
   const [availableModels, setAvailableModels] = useState<ChatModel[]>(FALLBACK_MODELS);
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
   const [routePath, setRoutePath] = useState(() =>
@@ -173,6 +186,10 @@ const MainLayout = () => {
     isAuthLoading || isModelAvailable(currentModel, availableModels)
       ? currentModel
       : getFallbackModelId(availableModels);
+  const selectedModelDefinition = availableModels.find((model) => model.id === selectedModel);
+  const selectedThinkingLevel = selectedModelDefinition?.thinkingLevels.includes(thinkingLevel)
+    ? thinkingLevel
+    : selectedModelDefinition?.defaultThinkingLevel || 'medium';
   const visibleSessions = useMemo<SessionSummary[]>(() => {
     const byId = new Map<string, SessionSummary>(
       sessions.map((session) => [session.session_id, session])
@@ -223,6 +240,12 @@ const MainLayout = () => {
       cancelled = true;
     };
   }, [isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(THINKING_LEVEL_STORAGE_KEY, selectedThinkingLevel);
+    }
+  }, [selectedThinkingLevel]);
 
   useEffect(() => {
     if (isMobileRailOpen && (!isMobileViewport || !isAuthenticated)) {
@@ -435,9 +458,10 @@ const MainLayout = () => {
       sendMessage(text, files, selectedModel, {
         ...options,
         mindId: activeMind?.public_id || null,
+        thinkingLevel: selectedThinkingLevel,
       });
     },
-    [activeMind, clearChat, isTemporaryChat, sendMessage, selectedModel]
+    [activeMind, clearChat, isTemporaryChat, selectedModel, selectedThinkingLevel, sendMessage]
   );
 
   useEffect(() => {
@@ -953,6 +977,8 @@ const MainLayout = () => {
                 currentModel={selectedModel}
                 models={availableModels}
                 onModelChange={setCurrentModel}
+                thinkingLevel={selectedThinkingLevel}
+                onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
                 onOpenAuth={() => setAuthOpen('login')}
                 onShowRegister={() => setAuthOpen('register')}
                 shareInfo={isTemporaryChat ? null : sessionAccess}
@@ -1116,13 +1142,13 @@ const MainLayout = () => {
                       onRegenerate={(messageId) => {
                         if (regenerateMessage) {
                           notifyOnDoneRef.current = true;
-                          regenerateMessage(messageId, selectedModel);
+                          regenerateMessage(messageId, selectedModel, selectedThinkingLevel);
                         }
                       }}
                       onEdit={(messageId, newText) => {
                         if (editMessage) {
                           notifyOnDoneRef.current = true;
-                          editMessage(messageId, newText, selectedModel);
+                          editMessage(messageId, newText, selectedModel, selectedThinkingLevel);
                         }
                       }}
                       onSwitchVariant={(messageId, direction) => {

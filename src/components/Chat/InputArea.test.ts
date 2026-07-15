@@ -4,11 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import InputArea from './InputArea';
 
+const addFilesMock = vi.fn();
+
 vi.mock('../../hooks/useFileHandler', () => ({
     useFileHandler: () => ({
         files: [],
         isDragActive: false,
         fileInputRef: { current: null },
+        addFiles: addFilesMock,
         removeFile: vi.fn(),
         clearFiles: vi.fn(),
         handleFileInputChange: vi.fn(),
@@ -57,6 +60,37 @@ describe('InputArea', () => {
         container?.remove();
         root = null;
         container = null;
+        addFilesMock.mockReset();
+    });
+
+    it('adds a pasted PNG image to the composer', () => {
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        act(() => {
+            root?.render(React.createElement(InputArea, {
+                initialPrompt: null,
+                isLoading: false,
+                onStop: vi.fn(),
+                onSendMessage: vi.fn(),
+                onOpenAuth: vi.fn(),
+            }));
+        });
+
+        const image = new File(['png'], 'clipboard.png', { type: 'image/png' });
+        const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+        Object.defineProperty(pasteEvent, 'clipboardData', {
+            value: {
+                items: [{ kind: 'file', type: image.type, getAsFile: () => image }],
+            },
+        });
+
+        act(() => {
+            container?.querySelector('#promptInput')?.dispatchEvent(pasteEvent);
+        });
+
+        expect(pasteEvent.defaultPrevented).toBe(true);
+        expect(addFilesMock).toHaveBeenCalledWith([image]);
     });
 
     it('clears a URL-provided initial prompt after sending even when the composer remounts', () => {

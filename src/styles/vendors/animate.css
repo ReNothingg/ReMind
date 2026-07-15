@@ -236,7 +236,7 @@
   background: var(--color-bg-interactive);
 }
 
-button:active:not(.password-toggle),
+button:active:not(.password-toggle):not(.think-block-header),
 .action-btn:active,
 .rail-btn:active,
 .file-card:active {

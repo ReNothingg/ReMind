@@ -21,6 +21,10 @@ class ModelDefinition:
     module: str
     handler: str
     runtime_required: bool = True
+    title_key: str | None = None
+    subtitle_key: str | None = None
+    thinking_levels: tuple[str, ...] = ()
+    default_thinking_level: str | None = None
 
 
 DEFAULT_MODEL_ID = "base"
@@ -31,11 +35,15 @@ MODEL_ALIASES: dict[str, str] = {
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
         id=DEFAULT_MODEL_ID,
-        title="Gemini 3.1 Flash-Lite",
+        title="Gemini 3.1 Flash Lite",
         subtitle="Модель от Google, использующая инструменты ReMind",
+        title_key="models.gemini31FlashLite.title",
+        subtitle_key="models.gemini31FlashLite.subtitle",
         stage=ModelStage.RELEASE,
         module="ai_engine.base",
         handler="base_stream",
+        thinking_levels=("minimal", "low", "medium", "high"),
+        default_thinking_level="medium",
     ),
     ModelDefinition(
         id="demo_image",

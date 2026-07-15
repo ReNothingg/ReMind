@@ -191,9 +191,9 @@
   --radius-chat-message: 18px;
 
   --content-max-width: 980px;
-  --content-width: clamp(320px, 720px, 92vw);
-  --content-width-min: 320px;
-  --content-width-max: 92vw;
+  --content-width: min(720px, calc(100vw - 32px));
+  --content-width-min: 0px;
+  --content-width-max: 720px;
   --content-width-rail-open: clamp(
     320px,
     700px,
@@ -602,9 +602,8 @@ html[data-theme='light'] .model-selector-new .model-dropdown {
   background-color: #ffffff;
 }
 
-html[data-theme='light'] .model-option[aria-selected='true'] {
+html[data-theme='light'] .model-option-card.is-selected {
   background: #f0f4ff;
-  border-color: var(--color-accent-primary);
 }
 
 html[data-theme='light'] .model-dropdown .model-info {

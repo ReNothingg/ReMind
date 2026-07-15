@@ -75,7 +75,10 @@
     "label": "Thoughts",
     "loading": "Thinking...",
     "expand": "Expand thoughts",
-    "collapse": "Collapse thoughts"
+    "collapse": "Collapse thoughts",
+    "completedLabel": "Thought for {{time}}",
+    "timeMilliseconds": "{{value}}ms",
+    "timeSeconds": "{{value}}s"
   },
   "landing": {
     "ariaLabel": "Start screen",
@@ -244,7 +247,8 @@
     "lines": "{{count}} lines",
     "previewAlt": "Preview of {{name}}",
     "previewUnavailable": "Preview for file \"{{name}}\" is not available.",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "pasted-image"
   },
   "share": {
     "title": "Chat sharing",
@@ -265,7 +269,19 @@
     "readOnly": "Read-only"
   },
   "models": {
-    "choose": "Choose a model"
+    "choose": "Choose a model",
+    "thinkingLevel": "Thinking level",
+    "thinkingLevelDescription": "Controls response speed and reasoning depth",
+    "thinkingLevels": {
+      "minimal": "Minimal",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "Fast Google model with ReMind tools"
+    }
   },
   "rail": {
     "newChat": "New chat",

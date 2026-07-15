@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from flask import request
@@ -247,8 +247,12 @@ def _format_dimensions(dim: Optional[dict]) -> str:
         return ""
 
 
+def _current_datetime() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
 def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
-    base = load_prompt("prompt.md")
+    base = render_prompt("prompt.md", {"currentDateTime": _current_datetime()})
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Mapping
 
 _PROMPT_ROOT = Path(__file__).parent.resolve()
-_PLACEHOLDER_RE = re.compile(r"\{\{([A-Z][A-Z0-9_]*)\}\}")
+_PLACEHOLDER_RE = re.compile(r"\{\{([A-Za-z][A-Za-z0-9_]*)\}\}")
 
 
 def load_prompt(relative_path: str) -> str:

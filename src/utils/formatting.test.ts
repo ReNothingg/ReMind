@@ -27,6 +27,19 @@ describe('formatText', () => {
         expect(html).toContain('&lt;unsafe&gt;&amp; value');
         expect(html).not.toContain('token keyword');
     });
+
+    it('keeps multiline thoughts inside an encoded host instead of leaking them into the answer', () => {
+        const thought = "**Considering Maze Aesthetics**\nI've started checking options.\n\n**Rendering Visually**\nThe `render` function is ready.";
+        const html = formatText(`<think data-open="100" data-close="674">${thought}</think>Final answer`);
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        const host = container.querySelector('.think-instance-host');
+        const encoded = host?.getAttribute('data-think-content-b64') || '';
+
+        expect(decodeURIComponent(escape(atob(encoded)))).toBe(thought);
+        expect(container.textContent).toBe('Final answer');
+        expect(html).not.toContain('Rendering Visually');
+    });
 });
 
 describe('formatUserMessageText', () => {

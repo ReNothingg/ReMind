@@ -174,31 +174,41 @@
   .model-btn-trigger {
     width: 100%;
     min-width: 0;
-    height: 40px;
+    min-height: 48px;
+    height: auto;
     font-size: 0.85rem;
     padding: 0 calc(var(--spacing-unit) * 1.5);
   }
 
   .model-btn-name {
-    flex: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .model-dropdown {
-    left: -16px;
-    right: -16px;
-    min-width: auto;
+  .global-controls .model-dropdown {
+    top: calc(var(--app-mobile-header-height) + env(safe-area-inset-top) + 8px);
+    right: calc(12px + env(safe-area-inset-right));
+    left: calc(12px + env(safe-area-inset-left));
+    width: auto;
+    min-width: 0;
     max-width: none;
-    max-height: 50vh;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    max-height: min(70vh, 520px);
+    border: 1px solid var(--color-border-medium);
+    border-radius: var(--radius-md);
   }
 
   .model-options {
-    max-height: 300px;
+    max-height: min(62vh, 430px);
+  }
+
+  .model-option {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .model-thinking-control {
+    padding-inline: calc(var(--spacing-unit) * 2);
   }
 
   .web-search-toggle span,

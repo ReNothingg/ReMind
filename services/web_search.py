@@ -40,6 +40,8 @@ WEB_SEARCH_MAX_QUERY_VARIANTS = 3
 WEB_SEARCH_FETCH_WORKERS = 4
 WEB_SEARCH_CANDIDATE_MULTIPLIER = 4
 WEB_SEARCH_MIN_FETCH_CANDIDATES = 8
+WEB_SEARCH_CONTEXT_MAX_CHARS = 36_000
+WEB_SEARCH_CONTEXT_SOURCE_MAX_CHARS = 3_200
 
 HIGH_SIGNAL_HOST_SUFFIXES = (
     ".edu",
@@ -1079,37 +1081,58 @@ def build_web_search_context(search_payload: dict[str, Any]) -> str:
         f"Query: {search_payload.get('query') or ''}",
         f"Fetched at: {search_payload.get('created_at') or ''}",
         (
-            "Use these results for current facts. Cite by wrapping only the "
+            "Use only claims directly supported by these results. Cite by wrapping only the "
             "source-backed words, sentence, or clause in "
             '<c s="1">...</c> using the matching source id. '
-            "For multiple sources use comma-separated ids. Do not invent URLs."
+            "For multiple sources use comma-separated ids. Do not invent facts or URLs. "
+            "If support is insufficient, search again with a narrower query or say so."
         ),
     ]
 
-    for source in sources:
-        if not isinstance(source, dict):
-            continue
+    valid_sources = [source for source in sources if isinstance(source, dict)]
+    header = "\n\n".join(blocks).strip()
+    per_source_budget = max(
+        800,
+        min(
+            WEB_SEARCH_CONTEXT_SOURCE_MAX_CHARS,
+            (WEB_SEARCH_CONTEXT_MAX_CHARS - len(header)) // max(1, len(valid_sources)),
+        ),
+    )
+
+    for source in valid_sources:
 
         rank = source.get("rank") or len(blocks)
-        title = source.get("title") or source.get("site_name") or "Untitled"
-        url = source.get("final_url") or source.get("url") or ""
-        site_name = source.get("site_name") or get_site_name(str(url))
-        snippet = source.get("snippet") or ""
-        text = source.get("text") or ""
-
-        blocks.append(
-            "\n".join(
-                [
-                    f"[{rank}] {title}",
-                    f"Site: {site_name}",
-                    f"URL: {url}",
-                    f"Snippet: {snippet}",
-                    f"Extract: {text}",
-                ]
-            )
+        title = _compact_search_context_value(
+            source.get("title") or source.get("site_name") or "Untitled", 240
         )
+        url = _compact_search_context_value(
+            source.get("final_url") or source.get("url") or "", 700
+        )
+        site_name = _compact_search_context_value(
+            source.get("site_name") or get_site_name(str(url)), 160
+        )
+        snippet = _compact_search_context_value(source.get("snippet") or "", 600)
+        metadata = "\n".join(
+            [
+                f"[{rank}] {title}",
+                f"Site: {site_name}",
+                f"URL: {url}",
+                f"Snippet: {snippet}",
+            ]
+        )
+        extract_budget = max(0, per_source_budget - len(metadata) - len("\nExtract: "))
+        text = _compact_search_context_value(source.get("text") or "", extract_budget)
 
-    return "\n\n".join(blocks).strip()
+        blocks.append(f"{metadata}\nExtract: {text}")
+
+    return "\n\n".join(blocks).strip()[:WEB_SEARCH_CONTEXT_MAX_CHARS]
+
+
+def _compact_search_context_value(value: Any, max_chars: int) -> str:
+    if max_chars <= 0:
+        return ""
+    compact = re.sub(r"\s+", " ", str(value or "")).strip()
+    return compact[:max_chars]
 
 
 def build_web_search_augmented_message(user_message: str, search_payload: dict[str, Any]) -> str:

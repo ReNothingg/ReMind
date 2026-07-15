@@ -74,7 +74,10 @@
     "label": "Pensées",
     "loading": "Réflexion...",
     "expand": "Développer les pensées",
-    "collapse": "Réduire les pensées"
+    "collapse": "Réduire les pensées",
+    "completedLabel": "Réflexion pendant {{time}}",
+    "timeMilliseconds": "{{value}} ms",
+    "timeSeconds": "{{value}} s"
   },
   "landing": {
     "ariaLabel": "Écran de démarrage",
@@ -238,7 +241,8 @@
   },
   "files": {
     "removeFile": "Retirer le fichier",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "image"
   },
   "share": {
     "title": "Partage du chat",
@@ -259,7 +263,19 @@
     "readOnly": "Lecture seule"
   },
   "models": {
-    "choose": "Choisir un modèle"
+    "choose": "Choisir un modèle",
+    "thinkingLevel": "Niveau de réflexion",
+    "thinkingLevelDescription": "Contrôle la vitesse et la profondeur du raisonnement",
+    "thinkingLevels": {
+      "minimal": "Minimal",
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "Modèle Google rapide avec les outils ReMind"
+    }
   },
   "rail": {
     "newChat": "Nouveau chat",

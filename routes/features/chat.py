@@ -36,12 +36,12 @@ from services.canvas_tools import (
 from services.chat_history import (
     _generate_guest_session_token,
     chat_file_exists,
-    has_valid_guest_session_token,
-    load_chat_history,
-    load_chat_graph,
     conversation_context_for_operation,
-    persist_chat_operation,
+    has_valid_guest_session_token,
+    load_chat_graph,
+    load_chat_history,
     normalize_message,
+    persist_chat_operation,
     resolve_session_identifier,
 )
 from services.files import handle_file_upload, restore_stored_file_for_model
@@ -78,6 +78,8 @@ anonymous_synthesize_limiter = RateLimiter(
 ANONYMOUS_TRANSLATION_MAX_CHARS = 2000
 CHAT_OPERATIONS = {"send", "regenerate", "edit"}
 CHAT_MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
+CANMORE_STREAM_HOLDBACK_CHARS = 32
+MAX_STREAMED_WEB_SOURCES = 80
 
 
 def _resolve_db_user_id() -> int | None:
@@ -351,6 +353,40 @@ def _extract_web_sources(user_data: dict[str, Any]) -> list[dict[str, Any]]:
     return public_sources(user_data.get("web_search"))
 
 
+def _merge_web_sources(
+    existing: Any,
+    incoming: Any,
+    *,
+    max_sources: int = MAX_STREAMED_WEB_SOURCES,
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    positions: dict[str, int] = {}
+
+    for source in [*(existing if isinstance(existing, list) else []), *(incoming if isinstance(incoming, list) else [])]:
+        if not isinstance(source, dict):
+            continue
+        url = str(source.get("url") or source.get("final_url") or "").strip()
+        if url:
+            identity = f"url:{url}"
+        else:
+            identity = "meta:" + "\x1f".join(
+                str(source.get(field) or "").strip().casefold()
+                for field in ("site_name", "title", "display_url")
+            )
+        if identity in positions:
+            current = merged[positions[identity]]
+            for key, value in source.items():
+                if not current.get(key) and value:
+                    current[key] = value
+            continue
+        if len(merged) >= max_sources:
+            break
+        positions[identity] = len(merged)
+        merged.append(dict(source))
+
+    return merged
+
+
 def _stream_event(payload: dict[str, Any]) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -617,10 +653,12 @@ def _stream_chat_response(
     def stream_generator():
         with captured_app.app_context():
             full_response = ""
+            internal_reply_parts: list[str] = []
             streamed_response = ""
             pending_reply_buffer = ""
             suppress_canmore_output = False
             final_data: dict[str, Any] = {}
+            aggregated_sources: list[dict[str, Any]] = []
             current_canvas_textdoc = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
             stream_completed = False
             persisted = False
@@ -644,7 +682,7 @@ def _stream_chat_response(
                         yield _stream_event({"reply_part": visible_text})
                     return
 
-                flush_length = max(0, len(pending_reply_buffer) - 160)
+                flush_length = max(0, len(pending_reply_buffer) - CANMORE_STREAM_HOLDBACK_CHARS)
                 if flush_length <= 0:
                     return
 
@@ -693,6 +731,16 @@ def _stream_chat_response(
 
                 for chunk in model_func(db_user_id, user_data):
                     if isinstance(chunk, dict):
+                        if "thinking_update" in chunk:
+                            yield _stream_event({"thinking_update": chunk["thinking_update"]})
+                            continue
+
+                        if "internal_reply_part" in chunk:
+                            internal_reply_parts.append(
+                                str(chunk.get("internal_reply_part") or "")
+                            )
+                            continue
+
                         if "canvas_update" in chunk:
                             yield _stream_event({"canvas_update": chunk["canvas_update"]})
                             final_data.update(
@@ -717,8 +765,15 @@ def _stream_chat_response(
                         if any(
                             key in chunk for key in ("status", "images", "thinkingTime", "sources")
                         ):
-                            yield _stream_event(chunk)
-                            final_data.update(chunk)
+                            stream_chunk = chunk
+                            if "sources" in chunk:
+                                aggregated_sources = _merge_web_sources(
+                                    aggregated_sources,
+                                    chunk.get("sources"),
+                                )
+                                stream_chunk = {**chunk, "sources": aggregated_sources}
+                            yield _stream_event(stream_chunk)
+                            final_data.update(stream_chunk)
                             continue
 
                         final_data.update(chunk)
@@ -739,7 +794,7 @@ def _stream_chat_response(
                     for canvas_update in canvas_result.updates:
                         yield _stream_event({"canvas_update": canvas_update})
 
-                final_data["reply"] = canvas_result.reply
+                final_data["reply"] = "".join(internal_reply_parts) + canvas_result.reply
                 final_data["request_id"] = user_data.get("request_id")
                 final_data["delivery_status"] = "complete"
                 final_data["sessionId"] = resolved_session_id

@@ -52,6 +52,7 @@ type SendMessageOptions = {
     censorship?: boolean;
     mindId?: string | null;
     temporaryChat?: boolean;
+    thinkingLevel?: string;
     _fromQueue?: boolean;
     _forcedSessionId?: string;
     _queueId?: string;
@@ -97,6 +98,15 @@ function appendModelIfSelected(formData, model) {
     const selectedModel = typeof model === 'string' ? model.trim() : '';
     if (selectedModel) {
         formData.append('model', selectedModel);
+    }
+}
+
+const VALID_THINKING_LEVELS = new Set(['minimal', 'low', 'medium', 'high']);
+
+function appendThinkingLevelIfValid(formData: FormData, value: unknown) {
+    const thinkingLevel = String(value || '').trim().toLowerCase();
+    if (VALID_THINKING_LEVELS.has(thinkingLevel)) {
+        formData.append('thinkingLevel', thinkingLevel);
     }
 }
 
@@ -192,6 +202,34 @@ function patchMessageVariant(message, variantId, patch) {
                 ? { ...variant, ...patch }
                 : variant
         )),
+    };
+}
+
+const MAX_STREAMED_THINKING_CHARS = 64_000;
+
+function patchThinkingUpdate(message, update) {
+    if (!message || !update || typeof update !== 'object') {
+        return message;
+    }
+    const id = String(update.id || '').slice(0, 160);
+    if (!id) {
+        return message;
+    }
+    const previous = message.thinking?.id === id ? message.thinking : null;
+    const delta = typeof update.contentDelta === 'string' ? update.contentDelta : '';
+    const content = `${previous?.content || ''}${delta}`.slice(0, MAX_STREAMED_THINKING_CHARS);
+    const openTime = Number(update.openTime || previous?.openTime || 0);
+    const closeTime = Number(update.closeTime || previous?.closeTime || 0);
+    const status = update.status === 'complete' ? 'complete' : 'streaming';
+    return {
+        ...message,
+        thinking: {
+            id,
+            status,
+            content,
+            openTime: Number.isFinite(openTime) ? openTime : 0,
+            closeTime: Number.isFinite(closeTime) && closeTime > 0 ? closeTime : undefined,
+        },
     };
 }
 
@@ -1079,6 +1117,7 @@ export const useChat = () => {
             censorship = false,
             mindId = undefined,
             temporaryChat: requestedTemporaryChat,
+            thinkingLevel,
             _fromQueue = false,
             _forcedSessionId,
             _queueId,
@@ -1137,7 +1176,15 @@ export const useChat = () => {
                     sessionId,
                     text,
                     model,
-                    options: { webSearch, autoWebSearch, censorship, mindId, temporaryChat, ...metadata },
+                    options: {
+                        webSearch,
+                        autoWebSearch,
+                        censorship,
+                        mindId,
+                        temporaryChat,
+                        thinkingLevel,
+                        ...metadata,
+                    },
                     files,
                     apiHistory: queuedHistory,
                     ownerKey: reliabilityOwnerKey,
@@ -1231,6 +1278,7 @@ export const useChat = () => {
         const formData = new FormData();
         formData.append('message', text);
         appendModelIfSelected(formData, model);
+        appendThinkingLevelIfValid(formData, thinkingLevel);
         formData.append('session_id', sessionId);
         formData.append('operation', 'send');
         formData.append('user_message_id', userMessageId);
@@ -1386,6 +1434,12 @@ export const useChat = () => {
                             }
                             return msg;
                         }));
+                    }
+
+                    if (data.thinking_update) {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => (
+                            msg.id === aiMsgId ? patchThinkingUpdate(msg, data.thinking_update) : msg
+                        )));
                     }
 
                     if (data.reply_part) {
@@ -1712,7 +1766,7 @@ export const useChat = () => {
             controller.abort();
         }
     }, []);
-    const regenerateMessage = useCallback(async (aiMessageId, model = '') => {
+    const regenerateMessage = useCallback(async (aiMessageId, model = '', thinkingLevel = '') => {
         if (isLoading || !aiMessageId) return;
 
         const aiIndex = history.findIndex(msg => msg.id === aiMessageId);
@@ -1794,6 +1848,7 @@ export const useChat = () => {
         const formData = new FormData();
         formData.append('message', userMessage.content);
         appendModelIfSelected(formData, model);
+        appendThinkingLevelIfValid(formData, thinkingLevel);
         formData.append('session_id', sessionId);
         formData.append('operation', 'regenerate');
         formData.append('target_message_id', aiMessageId);
@@ -1826,7 +1881,21 @@ export const useChat = () => {
                     if (sessionToken) storeGuestSessionToken(sessionId, sessionToken);
                 },
                 onPart: (data) => {
-                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data?.reply_part) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data) {
+                        return;
+                    }
+                    if (data.thinking_update) {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => {
+                            if (msg.id !== aiMessageId) {
+                                return msg;
+                            }
+                            const updated = patchThinkingUpdate(msg, data.thinking_update);
+                            return patchMessageVariant(updated, assistantMessageId, {
+                                thinking: updated.thinking,
+                            });
+                        }));
+                    }
+                    if (!data.reply_part) {
                         return;
                     }
                     fullReply += data.reply_part;
@@ -2074,7 +2143,12 @@ export const useChat = () => {
         updateBeatboxState,
         updateSessionHistory,
     ]);
-    const editMessage = useCallback(async (userMessageId, newText, model = '') => {
+    const editMessage = useCallback(async (
+        userMessageId,
+        newText,
+        model = '',
+        thinkingLevel = '',
+    ) => {
         if (isLoading || !userMessageId || !newText?.trim() || isReadOnly) return;
 
         const userIndex = history.findIndex(msg => msg.id === userMessageId);
@@ -2164,6 +2238,7 @@ export const useChat = () => {
         const formData = new FormData();
         formData.append('message', newText);
         appendModelIfSelected(formData, model);
+        appendThinkingLevelIfValid(formData, thinkingLevel);
         formData.append('session_id', sessionId);
         formData.append('operation', 'edit');
         formData.append('target_message_id', userMessageId);
@@ -2198,7 +2273,15 @@ export const useChat = () => {
                     if (sessionToken) storeGuestSessionToken(sessionId, sessionToken);
                 },
                 onPart: (data) => {
-                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data?.reply_part) {
+                    if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data) {
+                        return;
+                    }
+                    if (data.thinking_update) {
+                        updateSessionHistory(sessionId, prev => prev.map(msg => (
+                            msg.id === aiMsgId ? patchThinkingUpdate(msg, data.thinking_update) : msg
+                        )));
+                    }
+                    if (!data.reply_part) {
                         return;
                     }
                     fullReply += data.reply_part;

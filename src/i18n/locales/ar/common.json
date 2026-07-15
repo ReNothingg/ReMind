@@ -74,7 +74,10 @@
     "label": "الأفكار",
     "loading": "جارٍ التفكير...",
     "expand": "توسيع الأفكار",
-    "collapse": "طي الأفكار"
+    "collapse": "طي الأفكار",
+    "completedLabel": "فكّر لمدة {{time}}",
+    "timeMilliseconds": "{{value}} مللي ثانية",
+    "timeSeconds": "{{value}} ث"
   },
   "landing": {
     "ariaLabel": "شاشة البدء",
@@ -238,7 +241,8 @@
   },
   "files": {
     "removeFile": "إزالة الملف",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "صورة"
   },
   "share": {
     "title": "مشاركة الدردشة",
@@ -259,7 +263,19 @@
     "readOnly": "للقراءة فقط"
   },
   "models": {
-    "choose": "اختر نموذجًا"
+    "choose": "اختر نموذجًا",
+    "thinkingLevel": "مستوى التفكير",
+    "thinkingLevelDescription": "يتحكم في سرعة الاستجابة وعمق الاستدلال",
+    "thinkingLevels": {
+      "minimal": "الحد الأدنى",
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "نموذج Google سريع مزود بأدوات ReMind"
+    }
   },
   "rail": {
     "newChat": "دردشة جديدة",

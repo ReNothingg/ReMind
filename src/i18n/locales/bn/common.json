@@ -74,7 +74,10 @@
     "label": "ভাবনা",
     "loading": "ভাবছি...",
     "expand": "ভাবনা প্রসারিত করুন",
-    "collapse": "ভাবনা সংকুচিত করুন"
+    "collapse": "ভাবনা সংকুচিত করুন",
+    "completedLabel": "{{time}} ধরে ভেবেছে",
+    "timeMilliseconds": "{{value}} মি.সে.",
+    "timeSeconds": "{{value}} সে."
   },
   "landing": {
     "ariaLabel": "শুরু স্ক্রিন",
@@ -238,7 +241,8 @@
   },
   "files": {
     "removeFile": "ফাইল সরান",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "ছবি"
   },
   "share": {
     "title": "চ্যাট শেয়ারিং",
@@ -259,7 +263,19 @@
     "readOnly": "শুধুমাত্র পড়ার জন্য"
   },
   "models": {
-    "choose": "মডেল নির্বাচন করুন"
+    "choose": "মডেল নির্বাচন করুন",
+    "thinkingLevel": "চিন্তার স্তর",
+    "thinkingLevelDescription": "উত্তরের গতি ও যুক্তির গভীরতা নিয়ন্ত্রণ করে",
+    "thinkingLevels": {
+      "minimal": "সর্বনিম্ন",
+      "low": "কম",
+      "medium": "মাঝারি",
+      "high": "উচ্চ"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "ReMind টুলসহ Google-এর দ্রুত মডেল"
+    }
   },
   "rail": {
     "newChat": "নতুন চ্যাট",

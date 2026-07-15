@@ -102,6 +102,7 @@
 
 .message-content {
   flex: 1;
+  min-width: 0;
   padding: var(--chat-message-padding-y) var(--chat-message-padding-x);
   border-radius: var(--radius-chat-message);
   position: relative;

@@ -75,7 +75,10 @@
     "label": "Размышления",
     "loading": "Думаю...",
     "expand": "Развернуть размышления",
-    "collapse": "Свернуть размышления"
+    "collapse": "Свернуть размышления",
+    "completedLabel": "Думал на протяжении {{time}}",
+    "timeMilliseconds": "{{value}}мс",
+    "timeSeconds": "{{value}}с"
   },
   "landing": {
     "ariaLabel": "Стартовый экран",
@@ -244,7 +247,8 @@
     "lines": "{{count}} строк",
     "previewAlt": "Предпросмотр файла {{name}}",
     "previewUnavailable": "Предпросмотр файла \"{{name}}\" недоступен.",
-    "fileFallback": "Файл"
+    "fileFallback": "Файл",
+    "pastedImageName": "изображение"
   },
   "share": {
     "title": "Общий доступ к чату",
@@ -265,7 +269,19 @@
     "readOnly": "Только чтение"
   },
   "models": {
-    "choose": "Выберите модель"
+    "choose": "Выберите модель",
+    "thinkingLevel": "Уровень размышлений",
+    "thinkingLevelDescription": "Баланс скорости ответа и глубины рассуждений",
+    "thinkingLevels": {
+      "minimal": "Минимальный",
+      "low": "Низкий",
+      "medium": "Средний",
+      "high": "Высокий"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "Быстрая модель Google с инструментами ReMind"
+    }
   },
   "rail": {
     "newChat": "Новый чат",

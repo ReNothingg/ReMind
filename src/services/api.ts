@@ -29,6 +29,14 @@ type ApiServiceError = Error & {
 
 type ChatWidgetUpdate = Record<string, unknown>;
 
+export type ChatThinkingUpdate = {
+    id?: string;
+    status?: 'streaming' | 'complete' | string;
+    contentDelta?: string;
+    openTime?: number;
+    closeTime?: number;
+};
+
 export type CanvasTextdocComment = {
     id?: string;
     pattern: string;
@@ -66,6 +74,7 @@ export type ChatStreamResult = {
     sources?: unknown[];
     status?: string;
     thinkingTime?: number;
+    thinking_update?: ChatThinkingUpdate;
     widget_update?: ChatWidgetUpdate;
     [key: string]: unknown;
 };
@@ -474,12 +483,17 @@ export type AIResponseFeedbackPayload = {
 };
 
 export type ModelStage = 'release' | 'beta' | 'dev' | 'alpha';
+export type ThinkingLevel = 'minimal' | 'low' | 'medium' | 'high';
 
 export type ModelOption = {
     id: string;
     title: string;
     subtitle: string;
     stage?: ModelStage | string | null;
+    titleKey?: string | null;
+    subtitleKey?: string | null;
+    thinkingLevels?: ThinkingLevel[] | string[] | null;
+    defaultThinkingLevel?: ThinkingLevel | string | null;
 };
 
 type ModelListResponse = {
@@ -702,6 +716,7 @@ export const apiService = {
                                 'images',
                                 'sources',
                                 'thinkingTime',
+                                'thinking_update',
                                 'canvas_textdoc',
                                 'canvas_updates',
                             ].some((key) => key in data);
@@ -745,6 +760,7 @@ export const apiService = {
                                 'images',
                                 'sources',
                                 'thinkingTime',
+                                'thinking_update',
                                 'status',
                                 'aborted',
                                 'sessionId',

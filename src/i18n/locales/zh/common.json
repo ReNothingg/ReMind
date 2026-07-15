@@ -74,7 +74,10 @@
     "label": "思考",
     "loading": "正在思考...",
     "expand": "展开思考",
-    "collapse": "收起思考"
+    "collapse": "收起思考",
+    "completedLabel": "思考了 {{time}}",
+    "timeMilliseconds": "{{value}}毫秒",
+    "timeSeconds": "{{value}}秒"
   },
   "landing": {
     "ariaLabel": "开始屏幕",
@@ -238,7 +241,8 @@
   },
   "files": {
     "removeFile": "移除文件",
-    "fileFallback": "File"
+    "fileFallback": "File",
+    "pastedImageName": "图像"
   },
   "share": {
     "title": "聊天分享",
@@ -259,7 +263,19 @@
     "readOnly": "只读"
   },
   "models": {
-    "choose": "选择模型"
+    "choose": "选择模型",
+    "thinkingLevel": "思考级别",
+    "thinkingLevelDescription": "控制响应速度和推理深度",
+    "thinkingLevels": {
+      "minimal": "最低",
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "gemini31FlashLite": {
+      "title": "Gemini 3.1 Flash Lite",
+      "subtitle": "配备 ReMind 工具的快速 Google 模型"
+    }
   },
   "rail": {
     "newChat": "新聊天",
