@@ -533,16 +533,16 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   padding: 0 4px;
 }
 
-.chat-canvas-code-editor .cm-gutters {
-  border-right: 1px solid var(--color-border-subtle);
-  background: var(--color-bg-main);
-  color: var(--color-text-tertiary);
+:root .chat-canvas-code-editor .cm-editor .cm-gutters {
+  border-right: 1px solid var(--color-border-subtle) !important;
+  background: var(--color-bg-main) !important;
+  color: var(--color-text-tertiary) !important;
   font-family: var(--font-family-code);
 }
 
 .chat-canvas-code-editor .cm-lineNumbers .cm-gutterElement {
-  min-width: 38px;
-  padding: 0 8px 0 6px;
+  min-width: 38px !important;
+  padding: 0 8px 0 6px !important;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -581,31 +581,31 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   transform: rotate(-45deg) translate(-1px, -1px);
 }
 
-.chat-canvas-code-editor .cm-foldPlaceholder {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
-  background: var(--color-bg-interactive);
-  color: var(--color-text-tertiary);
-  padding: 0 5px;
+:root .chat-canvas-code-editor .cm-editor .cm-foldPlaceholder {
+  border: 1px solid var(--color-border-subtle) !important;
+  border-radius: 4px !important;
+  background: var(--color-bg-interactive) !important;
+  color: var(--color-text-tertiary) !important;
+  padding: 0 5px !important;
 }
 
 .chat-canvas-code-editor .cm-placeholder {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary) !important;
 }
 
-.chat-canvas-code-editor .cm-activeLine,
-.chat-canvas-code-editor .cm-activeLineGutter {
-  background: rgba(var(--color-accent-raw), 0.045);
+:root .chat-canvas-code-editor .cm-editor .cm-activeLine,
+:root .chat-canvas-code-editor .cm-editor .cm-activeLineGutter {
+  background: rgba(var(--color-accent-raw), 0.045) !important;
 }
 
-.chat-canvas-code-editor .cm-selectionBackground,
-.chat-canvas-code-editor .cm-content ::selection {
+:root .chat-canvas-code-editor .cm-editor .cm-selectionBackground,
+:root .chat-canvas-code-editor .cm-editor .cm-content ::selection {
   background: rgba(var(--color-accent-raw), 0.28) !important;
 }
 
 .chat-canvas-code-editor .cm-cursor,
 .chat-canvas-code-editor .cm-dropCursor {
-  border-left-color: var(--color-text-primary);
+  border-left-color: var(--color-text-primary) !important;
 }
 
 .chat-canvas-editor:focus {
