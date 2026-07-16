@@ -1,31 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Download, Eye, MessageSquare, PanelRightClose } from 'lucide-react';
-import DOMPurify from 'dompurify';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-markup-templating';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-c';
-import 'prismjs/components/prism-cpp';
-import 'prismjs/components/prism-csharp';
-import 'prismjs/components/prism-diff';
-import 'prismjs/components/prism-docker';
-import 'prismjs/components/prism-git';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-java';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-jsx';
-import 'prismjs/components/prism-markdown';
-import 'prismjs/components/prism-php';
-import 'prismjs/components/prism-powershell';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-ruby';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-tsx';
-import 'prismjs/components/prism-yaml';
 import type { CanvasTextdoc } from '../../services/api';
+import CanvasCodeEditor from './CanvasCodeEditor';
 
 type CanvasPanelProps = {
     textdoc: CanvasTextdoc;
@@ -38,53 +20,6 @@ type CanvasPanelProps = {
 
 const codeTypePrefix = 'code/';
 const CANVAS_COMMIT_DELAY_MS = 180;
-const MAX_HIGHLIGHTED_CODE_LENGTH = 50_000;
-const MAX_HIGHLIGHTED_CODE_LINES = 1_500;
-
-const canvasLanguageAliases: Record<string, string> = {
-    'c++': 'cpp',
-    'c#': 'csharp',
-    html: 'markup',
-    xml: 'markup',
-    svg: 'markup',
-    js: 'javascript',
-    mjs: 'javascript',
-    cjs: 'javascript',
-    jsx: 'jsx',
-    ts: 'typescript',
-    mts: 'typescript',
-    cts: 'typescript',
-    tsx: 'tsx',
-    py: 'python',
-    rb: 'ruby',
-    rs: 'rust',
-    sh: 'bash',
-    shell: 'bash',
-    shellscript: 'bash',
-    zsh: 'bash',
-    ps1: 'powershell',
-    psm1: 'powershell',
-    md: 'markdown',
-    yml: 'yaml',
-    jsonc: 'json',
-    dockerfile: 'docker',
-    plaintext: 'none',
-    text: 'none',
-    txt: 'none',
-};
-
-const escapeHtml = (value: string) => value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-
-function getCanvasPrismLanguage(language: string): string {
-    const normalized = (language || 'plaintext').trim().toLowerCase().replace(/[^a-z0-9+#._-]/g, '').slice(0, 32);
-    const prismLanguage = canvasLanguageAliases[normalized] || normalized || 'plaintext';
-    return /^[a-z0-9_-]+$/.test(prismLanguage) ? prismLanguage : 'plaintext';
-}
 
 function buildDownloadName(textdoc: CanvasTextdoc): string {
     const safeName = (textdoc.name || 'canvas')
@@ -117,32 +52,13 @@ const CanvasPanel = ({
     const pendingDraftRef = useRef(textdoc.content || '');
     const lastCommittedDraftRef = useRef(textdoc.content || '');
     const commitTimerRef = useRef<number | null>(null);
-    const highlightRef = useRef<HTMLPreElement | null>(null);
     const isCode = textdoc.type.startsWith(codeTypePrefix);
     const language = isCode ? textdoc.type.slice(codeTypePrefix.length) : '';
-    const prismLanguage = useMemo(() => getCanvasPrismLanguage(language), [language]);
     const canPreviewHtml = textdoc.type === 'code/html';
     const comments = Array.isArray(textdoc.comments) ? textdoc.comments : [];
-    const lineCount = useMemo(() => (draft || '').split(/\r\n|\r|\n/).length, [draft]);
-    const shouldHighlightCode = isCode
-        && draft.length <= MAX_HIGHLIGHTED_CODE_LENGTH
-        && lineCount <= MAX_HIGHLIGHTED_CODE_LINES;
     const typeLabel = isCode
         ? t('canvas.type.code', { language })
         : t('canvas.type.document');
-    const highlightedCode = useMemo(() => {
-        if (!shouldHighlightCode) {
-            return '';
-        }
-
-        const displayCode = `${draft || ' '}${draft.endsWith('\n') ? ' ' : ''}`;
-        const grammar = Prism.languages[prismLanguage];
-        const highlighted = grammar
-            ? Prism.highlight(displayCode, grammar, prismLanguage)
-            : escapeHtml(displayCode);
-
-        return DOMPurify.sanitize(highlighted);
-    }, [draft, prismLanguage, shouldHighlightCode]);
 
     const commitDraft = useCallback(() => {
         if (commitTimerRef.current !== null) {
@@ -216,44 +132,14 @@ const CanvasPanel = ({
         onClose();
     };
 
-    const handleEditorScroll = (event: UIEvent<HTMLTextAreaElement>) => {
-        const highlightLayer = highlightRef.current;
-        if (!highlightLayer) {
-            return;
-        }
-
-        const target = event.currentTarget;
-        highlightLayer.style.transform = `translate(${-target.scrollLeft}px, ${-target.scrollTop}px)`;
-    };
-
     return (
         <aside className="chat-canvas-panel" aria-label={t('canvas.ariaLabel')}>
             <header className="chat-canvas-header">
                 <div className="chat-canvas-title-block">
-                    {/* <span className="chat-canvas-icon" aria-hidden="true">
-                        {isCode ? <Code2 size={17} /> : <FileText size={17} />}
-                    </span> */}
-                    <div>
-                        <strong title={textdoc.name}>{textdoc.name}</strong>
-                    </div>
+                    <strong title={textdoc.name}>{textdoc.name}</strong>
+                    <span className="chat-canvas-type-label">{typeLabel}</span>
                 </div>
-                <button
-                    type="button"
-                    className="chat-canvas-icon-button chat-canvas-close-button"
-                    onClick={handleClose}
-                    aria-label={t('canvas.close')}
-                    title={t('canvas.close')}
-                >
-                    <PanelRightClose size={17} />
-                </button>
-            </header>
-
-            <div className="chat-canvas-toolbar">
-                <div className="chat-canvas-meta">
-                    <span>{typeLabel}</span>
-                    <span>{t('canvas.lines', { count: lineCount })}</span>
-                </div>
-                <div className="chat-canvas-actions">
+                <div className="chat-canvas-header-actions">
                     {canPreviewHtml && (
                         <button
                             type="button"
@@ -284,31 +170,31 @@ const CanvasPanel = ({
                     >
                         <Download size={16} />
                     </button>
+                    <button
+                        type="button"
+                        className="chat-canvas-icon-button chat-canvas-close-button"
+                        onClick={handleClose}
+                        aria-label={t('canvas.close')}
+                        title={t('canvas.close')}
+                    >
+                        <PanelRightClose size={17} />
+                    </button>
                 </div>
-            </div>
+            </header>
 
             <div className="chat-canvas-body ui-scrollbar-thin">
                 {isCode ? (
-                    <div className={`chat-canvas-code-editor${shouldHighlightCode ? '' : ' is-plain'}`}>
-                        {shouldHighlightCode && (
-                            <pre
-                                ref={highlightRef}
-                                className={`chat-canvas-highlight language-${prismLanguage}`}
-                                aria-hidden="true"
-                                dangerouslySetInnerHTML={{ __html: highlightedCode }}
-                            />
-                        )}
-                        <textarea
-                            className="chat-canvas-editor is-code"
+                    <div className="chat-canvas-code-editor">
+                        <CanvasCodeEditor
                             value={draft}
-                            onChange={(event) => handleDraftChange(event.target.value)}
+                            language={language}
+                            filename={textdoc.name}
+                            ariaLabel={t('canvas.editorLabel')}
+                            emptyText={t('canvas.empty')}
+                            collapseLabel={t('codeBlock.collapse')}
+                            expandLabel={t('codeBlock.expand')}
+                            onChange={handleDraftChange}
                             onBlur={commitDraft}
-                            onScroll={handleEditorScroll}
-                            placeholder={t('canvas.empty')}
-                            aria-label={t('canvas.editorLabel')}
-                            spellCheck={false}
-                            autoCapitalize="off"
-                            autoCorrect="off"
                         />
                     </div>
                 ) : (
