@@ -23,7 +23,14 @@
   margin-right: auto !important;
 }
 
-.chat-container > .clear-both {
+.chat-container-content {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.chat-container .clear-both {
   scroll-margin-bottom: calc(
     var(--app-composer-reserved-height) +
     var(--app-visual-viewport-bottom-inset) +

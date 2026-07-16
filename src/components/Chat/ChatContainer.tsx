@@ -56,23 +56,25 @@ const ChatContainer = ({
             aria-relevant="additions text"
             aria-label={t('chat.ariaLog')}
         >
-            {isReadOnly && (
-                <div className="readonly-banner ui-notice-banner" role="status">
-                    <span>{t('landing.readonlyBanner')}</span>
-                </div>
-            )}
-            {history.map((msg) => (
-                <Message
-                    key={msg.id}
-                    message={msg}
-                    sessionId={currentSessionId}
-                    onRegenerate={isReadOnly ? null : onRegenerate}
-                    onEdit={isReadOnly ? null : onEdit}
-                    onSwitchVariant={onSwitchVariant}
-                    onBeatboxStateChange={onBeatboxStateChange}
-                />
-            ))}
-            <div ref={chatEndRef} className="clear-both float-left" />
+            <div className="chat-container-content">
+                {isReadOnly && (
+                    <div className="readonly-banner ui-notice-banner" role="status">
+                        <span>{t('landing.readonlyBanner')}</span>
+                    </div>
+                )}
+                {history.map((msg) => (
+                    <Message
+                        key={msg.id}
+                        message={msg}
+                        sessionId={currentSessionId}
+                        onRegenerate={isReadOnly ? null : onRegenerate}
+                        onEdit={isReadOnly ? null : onEdit}
+                        onSwitchVariant={onSwitchVariant}
+                        onBeatboxStateChange={onBeatboxStateChange}
+                    />
+                ))}
+                <div ref={chatEndRef} className="clear-both float-left" />
+            </div>
         </div>
     );
 };

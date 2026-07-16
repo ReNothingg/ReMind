@@ -155,11 +155,6 @@ body.has-canvas-dock .ui-chat-mind-banner {
 }
 
 body.has-canvas-dock .chat-container {
-  --canvas-chat-content-width: min(720px, calc(100% - var(--spacing-unit) * 12));
-  --canvas-chat-side-padding: max(
-    calc(var(--spacing-unit) * 6),
-    calc((100% - var(--canvas-chat-content-width)) / 2)
-  );
   box-sizing: border-box;
   width: 100% !important;
   height: var(--app-viewport-height);
@@ -171,12 +166,24 @@ body.has-canvas-dock .chat-container {
   margin-right: 0 !important;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: var(--canvas-chat-side-padding);
-  padding-left: var(--canvas-chat-side-padding);
+  padding-right: 0;
+  padding-left: 0;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   scroll-snap-type: none;
   -webkit-overflow-scrolling: touch;
+}
+
+body.has-canvas-dock .chat-container-content {
+  --canvas-chat-content-width: min(720px, var(--canvas-workspace-width));
+  width: var(--canvas-chat-content-width);
+  min-width: 0;
+  max-width: 720px;
+  margin-right: 0;
+  margin-left: calc(
+    var(--canvas-workspace-left) - var(--app-rail-offset) +
+    (var(--canvas-workspace-width) - var(--canvas-chat-content-width)) / 2
+  );
 }
 
 body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) {
@@ -431,6 +438,14 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
       var(--spacing-unit) * 3 +
       env(safe-area-inset-right)
     ) !important;
+  }
+
+  body.has-canvas-dock.canvas-open .chat-container {
+    scroll-padding-top: calc(52px + var(--spacing-unit) * 6 + env(safe-area-inset-top));
+  }
+
+  .ui-app-canvas-stage.is-canvas-open .chat-container-content {
+    padding-top: calc(52px + var(--spacing-unit) * 6 + env(safe-area-inset-top));
   }
 }
 
@@ -745,6 +760,12 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
       env(safe-area-inset-bottom) +
       64px
     );
+  }
+
+  body.has-canvas-dock .chat-container-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
   }
 
   body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) {
