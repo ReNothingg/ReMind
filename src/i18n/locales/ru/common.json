@@ -177,11 +177,17 @@
     "copied": "Скопировано",
     "download": "Скачать",
     "preview": "Предпросмотр",
+    "markdownPreviewLabel": "Предпросмотр Markdown",
     "empty": "Пока нет содержимого.",
     "lines": "{{count}} строк",
     "type": {
       "document": "Документ",
       "code": "Код: {{language}}"
+    },
+    "mode": {
+      "group": "Режим отображения документа",
+      "markdown": "Markdown",
+      "raw": "Сырой текст"
     },
     "comments": {
       "title": "Комментарии",

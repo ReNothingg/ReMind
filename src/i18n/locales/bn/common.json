@@ -176,11 +176,17 @@
     "copied": "Copied",
     "download": "Download",
     "preview": "Preview",
+    "markdownPreviewLabel": "Markdown প্রিভিউ",
     "empty": "No content yet.",
     "lines": "{{count}} lines",
     "type": {
       "document": "Document",
       "code": "Code: {{language}}"
+    },
+    "mode": {
+      "group": "ডকুমেন্ট ভিউ",
+      "markdown": "Markdown",
+      "raw": "অপরিবর্তিত টেক্সট"
     },
     "comments": {
       "title": "Comments",

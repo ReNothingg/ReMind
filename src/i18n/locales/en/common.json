@@ -177,11 +177,17 @@
     "copied": "Copied",
     "download": "Download",
     "preview": "Preview",
+    "markdownPreviewLabel": "Rendered Markdown preview",
     "empty": "No content yet.",
     "lines": "{{count}} lines",
     "type": {
       "document": "Document",
       "code": "Code: {{language}}"
+    },
+    "mode": {
+      "group": "Document view",
+      "markdown": "Markdown",
+      "raw": "Raw text"
     },
     "comments": {
       "title": "Comments",

@@ -176,11 +176,17 @@
     "copied": "Copied",
     "download": "Download",
     "preview": "Preview",
+    "markdownPreviewLabel": "Markdown पूर्वावलोकन",
     "empty": "No content yet.",
     "lines": "{{count}} lines",
     "type": {
       "document": "Document",
       "code": "Code: {{language}}"
+    },
+    "mode": {
+      "group": "दस्तावेज़ दृश्य",
+      "markdown": "Markdown",
+      "raw": "मूल पाठ"
     },
     "comments": {
       "title": "Comments",

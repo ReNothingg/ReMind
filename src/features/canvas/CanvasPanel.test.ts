@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { Utils } from '../../utils/utils';
 import CanvasPanel from './CanvasPanel';
 
 describe('CanvasPanel preview toggle', () => {
@@ -15,6 +16,7 @@ describe('CanvasPanel preview toggle', () => {
         container?.remove();
         root = null;
         container = null;
+        vi.restoreAllMocks();
         vi.useRealTimers();
     });
 
@@ -115,5 +117,140 @@ describe('CanvasPanel preview toggle', () => {
         );
         expect(renderedLineNumbers.length).toBeGreaterThan(0);
         expect(renderedLineNumbers.length).toBeLessThan(100);
+    });
+
+    it('renders documents as sanitized Markdown and switches to editable raw text', async () => {
+        vi.spyOn(Utils, 'renderSvgPreviews').mockImplementation(() => undefined);
+        vi.spyOn(Utils, 'renderCharts').mockResolvedValue(undefined);
+        vi.spyOn(Utils, 'renderD3').mockResolvedValue(undefined);
+        vi.spyOn(Utils, 'renderNomnoml').mockResolvedValue(undefined);
+        vi.spyOn(Utils, 'renderMermaid').mockResolvedValue(undefined);
+        vi.spyOn(Utils, 'attachDiagramPan').mockImplementation(() => undefined);
+        const content = [
+            '# Canvas Markdown',
+            '',
+            '**Bold** and $E = mc^2$',
+            '',
+            '<img src="x" onerror="alert(1)">',
+            '<script>alert(1)</script>',
+            '',
+            '```chartjs',
+            '{"type":"bar","data":{"labels":["A"],"datasets":[{"data":[1]}]}}',
+            '```',
+            '',
+            '```d3',
+            '{"type":"line","data":[1,2,3]}',
+            '```',
+            '',
+            '```nomnoml',
+            '[Canvas]->[Markdown]',
+            '```',
+            '',
+            '```mermaid',
+            'graph TD; A-->B',
+            '```',
+        ].join('\n');
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        await act(async () => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-document',
+                    name: 'notes.md',
+                    type: 'document',
+                    content,
+                    comments: [],
+                    updated_at: 1,
+                },
+                onClose: vi.fn(),
+            }));
+        });
+
+        expect(container.querySelector('[data-canvas-view="markdown"]')?.getAttribute('aria-selected'))
+            .toBe('true');
+        expect(container.querySelector('[data-canvas-view="markdown"]')?.closest('.chat-canvas-header'))
+            .not.toBeNull();
+        expect(container.querySelector('[data-canvas-view="markdown"]')?.textContent).toBe('');
+        expect(container.querySelector('.chat-canvas-view-switcher')).toBeNull();
+        expect(container.querySelector('.chat-canvas-markdown h1')?.textContent).toBe('Canvas Markdown');
+        expect(container.querySelector<HTMLElement>('.chat-canvas-markdown')?.getAttribute('contenteditable'))
+            .toBe('true');
+        expect(container.querySelector('.chat-canvas-markdown strong')?.textContent).toBe('Bold');
+        expect(container.querySelector('.chat-canvas-markdown .katex')).not.toBeNull();
+        expect(container.querySelector('.chart-container')).not.toBeNull();
+        expect(container.querySelector('.d3-container')).not.toBeNull();
+        expect(container.querySelector('.nomnoml-container')).not.toBeNull();
+        expect(container.querySelector('.mermaid-container')).not.toBeNull();
+        expect(container.querySelector('.chat-canvas-markdown script')).toBeNull();
+        expect(container.querySelector('.chat-canvas-markdown [onerror]')).toBeNull();
+
+        const markdownEditor = container.querySelector<HTMLDivElement>('.chat-canvas-markdown');
+        const heading = markdownEditor?.querySelector('h1');
+        act(() => {
+            if (heading) heading.textContent = 'Edited Canvas Markdown';
+            markdownEditor?.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            markdownEditor?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+        });
+
+        const rawButton = container.querySelector<HTMLButtonElement>('[data-canvas-view="raw"]');
+        act(() => rawButton?.click());
+
+        expect(rawButton?.getAttribute('aria-selected')).toBe('true');
+        expect(container.querySelector<HTMLTextAreaElement>('.chat-canvas-editor')?.value)
+            .toContain('# Edited Canvas Markdown');
+        expect(container.querySelector('.chat-canvas-markdown')).toBeNull();
+    });
+
+    it('keeps the Markdown caret stable while autosave refreshes the canvas document', () => {
+        vi.useFakeTimers();
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        const onClose = vi.fn();
+        let updatedAt = 1;
+        const renderPanel = (content: string) => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-editable-document',
+                    name: 'editable.md',
+                    type: 'document',
+                    content,
+                    comments: [],
+                    updated_at: updatedAt,
+                },
+                onClose,
+                onContentChange: (nextContent: string) => {
+                    updatedAt += 1;
+                    renderPanel(nextContent);
+                },
+            }));
+        };
+
+        act(() => renderPanel('# Stable caret'));
+        const editor = container.querySelector<HTMLDivElement>('.chat-canvas-markdown');
+        const textNode = editor?.querySelector('h1')?.firstChild;
+        expect(textNode).toBeInstanceOf(Text);
+        if (!(textNode instanceof Text) || !editor) return;
+
+        const selection = window.getSelection();
+        const range = document.createRange();
+        const originalLength = textNode.length;
+        textNode.insertData(originalLength, '!');
+        range.setStart(textNode, originalLength + 1);
+        range.collapse(true);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+
+        act(() => {
+            editor.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            vi.advanceTimersByTime(200);
+        });
+
+        expect(container.querySelector('.chat-canvas-markdown')).toBe(editor);
+        expect(selection?.anchorNode).toBe(textNode);
+        expect(selection?.anchorOffset).toBe(originalLength + 1);
+        expect(editor.querySelector('h1')?.textContent).toBe('Stable caret!');
     });
 });

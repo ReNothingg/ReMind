@@ -349,6 +349,7 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
 
     const displayName = filename || meta.label;
     const safeName = escapeHtml(displayName);
+    const safeSourceFilename = escapeHtml(filename || '');
     const escapedContent = escapeHtml(codeContent);
     const codeLanguage = meta.codeLanguage || normalizedLanguage;
     const highlightedContent = highlightCodeContent(codeContent, codeLanguage);
@@ -362,7 +363,7 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
     const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
 
     return `
-    <div class="code-block diagram-block ${meta.blockClass}" data-language="${normalizedLanguage}" data-filename="${safeName}">
+    <div class="code-block diagram-block ${meta.blockClass}" data-language="${normalizedLanguage}" data-filename="${safeName}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeName}</span>
@@ -401,10 +402,10 @@ md.render = function (str, env) {
     let html = originalRender(toRender, env);
     try {
         html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_match, expr) =>
-            katex.renderToString(expr, { displayMode: true, throwOnError: false })
+            `<span class="markdown-latex-source" data-latex-source="${escapeHtml(expr.trim())}" data-latex-display="true">${katex.renderToString(expr, { displayMode: true, throwOnError: false })}</span>`
         );
         html = html.replace(/\$([^$\n]+?)\$/g, (_match, expr) =>
-            katex.renderToString(expr, { displayMode: false, throwOnError: false })
+            `<span class="markdown-latex-source" data-latex-source="${escapeHtml(expr.trim())}" data-latex-display="false">${katex.renderToString(expr, { displayMode: false, throwOnError: false })}</span>`
         );
     } catch (e) {
         console.warn('KaTeX render failed', e);
@@ -437,6 +438,7 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
     }
 
     const safeFilename = escapeHtml(filename);
+    const safeSourceFilename = escapeHtml(parsedFilename);
     const safeLanguage = escapeHtml(actualLanguage);
     const safePrismLanguage = escapeHtml(prismLanguage);
     const highlightedContent = highlightCodeContent(codeContent, prismLanguage);
@@ -445,7 +447,7 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
     const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
     const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
     return `
-    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}">
+    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
@@ -552,7 +554,7 @@ export const formatText = (text, options: FormatTextOptions = {}) => {
         ADD_TAGS: ['svg', 'path', 'rect', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'mark', 'c', 'button', 'img', 'input', 'canvas'],
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
-            'data-language', 'data-filename', 'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
+            'data-language', 'data-filename', 'data-source-filename', 'data-latex-source', 'data-latex-display', 'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
             'type', 'checked', 'disabled', 'src', 'name',
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
@@ -648,6 +650,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     }
 
     const safeFilename = escapeHtml(filename);
+    const safeSourceFilename = escapeHtml(parsedFilename);
     const safeLanguage = escapeHtml(actualLanguage);
     const safePrismLanguage = escapeHtml(prismLanguage);
     const highlightedContent = highlightCodeContent(codeContent, prismLanguage);
@@ -657,7 +660,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
 
     return `
-    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}">
+    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
@@ -688,7 +691,7 @@ export const formatUserText = (text, options: FormatTextOptions = {}) => {
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
             'type', 'checked', 'disabled', 'src', 'name',
-            'data-language', 'data-filename', 'data-tab', 'data-pane',
+            'data-language', 'data-filename', 'data-source-filename', 'data-tab', 'data-pane',
             'aria-label', 'aria-hidden', 'aria-expanded', 'aria-selected', 'aria-controls',
             'role', 'aria-live', 'tabindex', 'data-expand-label', 'data-collapse-label', 'hidden',
         ]

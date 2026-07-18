@@ -1,13 +1,15 @@
 import {
     useCallback,
     useEffect,
+    useLayoutEffect,
     useRef,
     useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Download, Eye, MessageSquare, PanelRightClose } from 'lucide-react';
+import { Braces, Copy, Download, Eye, FileText, MessageSquare, PanelRightClose } from 'lucide-react';
 import type { CanvasTextdoc } from '../../services/api';
 import CanvasCodeEditor from './CanvasCodeEditor';
+import CanvasMarkdownPreview from './CanvasMarkdownPreview';
 
 type CanvasPanelProps = {
     textdoc: CanvasTextdoc;
@@ -20,6 +22,7 @@ type CanvasPanelProps = {
 
 const codeTypePrefix = 'code/';
 const CANVAS_COMMIT_DELAY_MS = 180;
+type CanvasDocumentView = 'markdown' | 'raw';
 
 function buildDownloadName(textdoc: CanvasTextdoc): string {
     const safeName = (textdoc.name || 'canvas')
@@ -28,7 +31,7 @@ function buildDownloadName(textdoc: CanvasTextdoc): string {
         || 'canvas';
     const language = textdoc.type.startsWith(codeTypePrefix)
         ? textdoc.type.slice(codeTypePrefix.length)
-        : 'txt';
+        : 'document';
     const extension = language === 'javascript' ? 'js'
         : language === 'typescript' ? 'ts'
             : language === 'python' ? 'py'
@@ -49,9 +52,12 @@ const CanvasPanel = ({
     const { t } = useTranslation();
     const [copyState, setCopyState] = useState<'idle' | 'done'>('idle');
     const [draft, setDraft] = useState(textdoc.content || '');
+    const [documentView, setDocumentView] = useState<CanvasDocumentView>('markdown');
     const pendingDraftRef = useRef(textdoc.content || '');
     const lastCommittedDraftRef = useRef(textdoc.content || '');
     const commitTimerRef = useRef<number | null>(null);
+    const onContentChangeRef = useRef(onContentChange);
+    const onDraftChangeRef = useRef(onDraftChange);
     const isCode = textdoc.type.startsWith(codeTypePrefix);
     const language = isCode ? textdoc.type.slice(codeTypePrefix.length) : '';
     const canPreviewHtml = textdoc.type === 'code/html';
@@ -59,6 +65,11 @@ const CanvasPanel = ({
     const typeLabel = isCode
         ? t('canvas.type.code', { language })
         : t('canvas.type.document');
+
+    useLayoutEffect(() => {
+        onContentChangeRef.current = onContentChange;
+        onDraftChangeRef.current = onDraftChange;
+    }, [onContentChange, onDraftChange]);
 
     const commitDraft = useCallback(() => {
         if (commitTimerRef.current !== null) {
@@ -68,8 +79,8 @@ const CanvasPanel = ({
         const content = pendingDraftRef.current;
         if (content === lastCommittedDraftRef.current) return;
         lastCommittedDraftRef.current = content;
-        onContentChange?.(content);
-    }, [onContentChange]);
+        onContentChangeRef.current?.(content);
+    }, []);
 
     useEffect(() => {
         const nextContent = textdoc.content || '';
@@ -120,12 +131,27 @@ const CanvasPanel = ({
     const handleDraftChange = (content: string) => {
         setDraft(content);
         pendingDraftRef.current = content;
-        onDraftChange?.(content);
+        onDraftChangeRef.current?.(content);
         if (commitTimerRef.current !== null) {
             window.clearTimeout(commitTimerRef.current);
         }
         commitTimerRef.current = window.setTimeout(commitDraft, CANVAS_COMMIT_DELAY_MS);
     };
+
+    const handleMarkdownDraftChange = useCallback((content: string) => {
+        pendingDraftRef.current = content;
+        onDraftChangeRef.current?.(content);
+        if (commitTimerRef.current !== null) {
+            window.clearTimeout(commitTimerRef.current);
+        }
+        commitTimerRef.current = window.setTimeout(commitDraft, CANVAS_COMMIT_DELAY_MS);
+    }, [commitDraft]);
+
+    const handleMarkdownBlur = useCallback((content: string) => {
+        setDraft(content);
+        pendingDraftRef.current = content;
+        commitDraft();
+    }, [commitDraft]);
 
     const handleClose = () => {
         commitDraft();
@@ -140,6 +166,38 @@ const CanvasPanel = ({
                     <span className="chat-canvas-type-label">{typeLabel}</span>
                 </div>
                 <div className="chat-canvas-header-actions">
+                    {!isCode && (
+                        <div
+                            className="chat-canvas-mode-actions"
+                            role="tablist"
+                            aria-label={t('canvas.mode.group')}
+                        >
+                            <button
+                                type="button"
+                                role="tab"
+                                className={`chat-canvas-icon-button${documentView === 'markdown' ? ' is-active' : ''}`}
+                                aria-selected={documentView === 'markdown'}
+                                aria-label={t('canvas.mode.markdown')}
+                                title={t('canvas.mode.markdown')}
+                                onClick={() => setDocumentView('markdown')}
+                                data-canvas-view="markdown"
+                            >
+                                <FileText size={16} aria-hidden="true" />
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                className={`chat-canvas-icon-button${documentView === 'raw' ? ' is-active' : ''}`}
+                                aria-selected={documentView === 'raw'}
+                                aria-label={t('canvas.mode.raw')}
+                                title={t('canvas.mode.raw')}
+                                onClick={() => setDocumentView('raw')}
+                                data-canvas-view="raw"
+                            >
+                                <Braces size={16} aria-hidden="true" />
+                            </button>
+                        </div>
+                    )}
                     {canPreviewHtml && (
                         <button
                             type="button"
@@ -182,7 +240,7 @@ const CanvasPanel = ({
                 </div>
             </header>
 
-            <div className="chat-canvas-body ui-scrollbar-thin">
+            <div className={`chat-canvas-body ui-scrollbar-thin${isCode ? '' : ' is-document'}`}>
                 {isCode ? (
                     <div className="chat-canvas-code-editor">
                         <CanvasCodeEditor
@@ -198,15 +256,27 @@ const CanvasPanel = ({
                         />
                     </div>
                 ) : (
-                    <textarea
-                        className="chat-canvas-editor"
-                        value={draft}
-                        onChange={(event) => handleDraftChange(event.target.value)}
-                        onBlur={commitDraft}
-                        placeholder={t('canvas.empty')}
-                        aria-label={t('canvas.editorLabel')}
-                        spellCheck
-                    />
+                    <div className="chat-canvas-document">
+                        <div className={`chat-canvas-document-content is-${documentView}`}>
+                            {documentView === 'markdown' ? (
+                                <CanvasMarkdownPreview
+                                    content={draft}
+                                    onChange={handleMarkdownDraftChange}
+                                    onBlur={handleMarkdownBlur}
+                                />
+                            ) : (
+                                <textarea
+                                    className="chat-canvas-editor"
+                                    value={draft}
+                                    onChange={(event) => handleDraftChange(event.target.value)}
+                                    onBlur={commitDraft}
+                                    placeholder={t('canvas.empty')}
+                                    aria-label={t('canvas.editorLabel')}
+                                    spellCheck
+                                />
+                            )}
+                        </div>
+                    </div>
                 )}
             </div>
 

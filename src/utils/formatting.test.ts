@@ -40,6 +40,22 @@ describe('formatText', () => {
         expect(container.textContent).toBe('Final answer');
         expect(html).not.toContain('Rendering Visually');
     });
+
+    it('sanitizes executable HTML and unsafe links in rendered documents', () => {
+        const html = formatText([
+            '# Safe document',
+            '<script>window.compromised = true</script>',
+            '<img src="x" onerror="window.compromised = true">',
+            '[unsafe](javascript:alert(1))',
+        ].join('\n'));
+        const container = document.createElement('div');
+        container.innerHTML = html;
+
+        expect(container.querySelector('h1')?.textContent).toBe('Safe document');
+        expect(container.querySelector('script')).toBeNull();
+        expect(container.querySelector('[onerror]')).toBeNull();
+        expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+    });
 });
 
 describe('formatUserMessageText', () => {

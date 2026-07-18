@@ -176,11 +176,17 @@
     "copied": "Copied",
     "download": "Download",
     "preview": "Preview",
+    "markdownPreviewLabel": "Aperçu Markdown",
     "empty": "No content yet.",
     "lines": "{{count}} lines",
     "type": {
       "document": "Document",
       "code": "Code: {{language}}"
+    },
+    "mode": {
+      "group": "Affichage du document",
+      "markdown": "Markdown",
+      "raw": "Texte brut"
     },
     "comments": {
       "title": "Comments",

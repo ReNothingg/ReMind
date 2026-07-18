@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { getChart } from './chartjsLoader';
 import { getD3 } from './d3Loader';
 import { getNomnoml } from './nomnomlLoader';
@@ -8,6 +9,12 @@ import { showToast } from './toast';
 
 
 let mermaidConfigured = false;
+
+export const sanitizeGeneratedDiagramSvg = (markup: string) => DOMPurify.sanitize(markup, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_TAGS: ['script', 'foreignObject', 'iframe', 'object', 'embed', 'image', 'use'],
+    FORBID_ATTR: ['href', 'xlink:href'],
+});
 
 const TRANSPARENT_BACKGROUND_VALUES = new Set([
     'transparent',
@@ -299,8 +306,8 @@ export const Utils = {
         return matches ? (matches.length % 2 === 1) : false;
     },
 
-    attachDiagramPan: () => {
-        document.querySelectorAll<HTMLElement>('.diagram-pan-surface').forEach(container => {
+    attachDiagramPan: (root: ParentNode = document) => {
+        root.querySelectorAll<HTMLElement>('.diagram-pan-surface').forEach(container => {
             if (container.dataset.hasPan) return;
             const target = container.querySelector<HTMLElement | SVGElement>('.diagram-pan-target') || container.querySelector<HTMLElement | SVGElement>('canvas, svg');
             if (!target) return;
@@ -308,8 +315,8 @@ export const Utils = {
         });
     },
 
-    renderSvgPreviews: () => {
-        const containers = document.querySelectorAll<HTMLElement>('.svg-preview-container');
+    renderSvgPreviews: (root: ParentNode = document) => {
+        const containers = root.querySelectorAll<HTMLElement>('.svg-preview-container');
         if (!containers.length) return;
 
         containers.forEach(container => {
@@ -403,8 +410,8 @@ export const Utils = {
         });
     },
 
-    renderCharts: async () => {
-        const containers = document.querySelectorAll<HTMLElement>('.chart-container');
+    renderCharts: async (root: ParentNode = document) => {
+        const containers = root.querySelectorAll<HTMLElement>('.chart-container');
         if (!containers.length) return;
 
         let Chart;
@@ -536,8 +543,8 @@ export const Utils = {
         });
     },
 
-    renderD3: async () => {
-        const containers = document.querySelectorAll<HTMLElement>('.d3-container');
+    renderD3: async (root: ParentNode = document) => {
+        const containers = root.querySelectorAll<HTMLElement>('.d3-container');
         if (!containers.length) return;
 
         let d3;
@@ -758,8 +765,8 @@ export const Utils = {
         });
     },
 
-    renderNomnoml: async () => {
-        const containers = document.querySelectorAll<HTMLElement>('.nomnoml-container');
+    renderNomnoml: async (root: ParentNode = document) => {
+        const containers = root.querySelectorAll<HTMLElement>('.nomnoml-container');
         if (!containers.length) return;
 
         let nomnoml;
@@ -807,7 +814,11 @@ export const Utils = {
 
             try {
                 const svgText = nomnoml.renderSvg(codeElement.textContent || '');
-                viz.innerHTML = svgText;
+                const sanitizedSvg = sanitizeGeneratedDiagramSvg(svgText);
+                if (!sanitizedSvg) {
+                    throw new Error();
+                }
+                viz.innerHTML = sanitizedSvg;
                 const svg = viz.querySelector<SVGSVGElement>('svg');
                 if (svg) {
                     svg.classList.add('diagram-pan-target');
@@ -834,8 +845,8 @@ export const Utils = {
         });
     },
 
-    renderMermaid: async () => {
-        const containers = document.querySelectorAll<HTMLElement>('.mermaid-container');
+    renderMermaid: async (root: ParentNode = document) => {
+        const containers = root.querySelectorAll<HTMLElement>('.mermaid-container');
         if (!containers.length) return;
 
         let mermaid;
@@ -908,7 +919,7 @@ export const Utils = {
                     viz.removeChild(viz.firstChild);
                 }
 
-                const svgContent = result?.svg || '';
+                const svgContent = sanitizeGeneratedDiagramSvg(result?.svg || '');
                 if (svgContent) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(svgContent, 'image/svg+xml');
