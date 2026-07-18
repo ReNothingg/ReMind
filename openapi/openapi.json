@@ -132,10 +132,6 @@
           "409": {
             "description": "Message identifier conflict or version limit reached",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
-          },
-          "429": {
-            "description": "Chat rate limit exceeded",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }

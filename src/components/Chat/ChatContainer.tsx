@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Message from './Message';
-import { useSettings } from '../../context/SettingsContext';
 
 const ChatContainer = ({
     history,
@@ -15,7 +14,6 @@ const ChatContainer = ({
 }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const chatEndRef = useRef<HTMLDivElement | null>(null);
-    const { settings } = useSettings();
     const shouldAutoScrollRef = useRef(true);
     const { t } = useTranslation();
     useEffect(() => {
@@ -34,7 +32,6 @@ const ChatContainer = ({
         };
     }, []);
     useEffect(() => {
-        if (!settings.autoscroll) return;
         const last = history[history.length - 1];
         const isUserJustSent = last && last.role === 'user';
         const shouldScroll = shouldAutoScrollRef.current || isUserJustSent || isLoading;
@@ -44,7 +41,7 @@ const ChatContainer = ({
         } else if (shouldScroll && chatEndRef.current) {
             chatEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
         }
-    }, [history, isLoading, settings.autoscroll]);
+    }, [history, isLoading]);
 
     return (
         <div

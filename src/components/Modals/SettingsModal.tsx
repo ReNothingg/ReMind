@@ -1149,13 +1149,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     checked={settings.showChatPreview}
                                     onClick={() => updateSetting('showChatPreview', !settings.showChatPreview)}
                                 />
-                                <SettingToggle
-                                    title={t('settings.interface.autocomplete.title')}
-                                    description={t('settings.interface.autocomplete.description')}
-                                    checked={settings.autocomplete}
-                                    onClick={() => updateSetting('autocomplete', !settings.autocomplete)}
-                                    withDivider
-                                />
                             </SettingGroup>
 
                             {isMacWrapper && (
@@ -1284,12 +1277,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
                             <SettingGroup title={t('settings.interface.behaviorGroup')}>
                                 <SettingToggle
-                                    title={t('settings.interface.autoscroll.title')}
-                                    description={t('settings.interface.autoscroll.description')}
-                                    checked={settings.autoscroll}
-                                    onClick={() => updateSetting('autoscroll', !settings.autoscroll)}
-                                />
-                                <SettingToggle
                                     title={t('settings.interface.notifyOnThinkingDone.title')}
                                     description={t('settings.interface.notifyOnThinkingDone.description')}
                                     checked={settings.notifyOnThinkingDone}
@@ -1303,27 +1290,12 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                             }
                                         }
                                     }}
-                                    withDivider
                                 />
                                 <SettingToggle
                                     title={t('settings.interface.requireCtrlEnter.title')}
                                     description={t('settings.interface.requireCtrlEnter.description')}
                                     checked={settings.requireCtrlEnterToSend}
                                     onClick={() => updateSetting('requireCtrlEnterToSend', !settings.requireCtrlEnterToSend)}
-                                    withDivider
-                                />
-                                <SettingToggle
-                                    title={t('settings.interface.renderUserMarkdown.title')}
-                                    description={t('settings.interface.renderUserMarkdown.description')}
-                                    checked={settings.renderUserMarkdown}
-                                    onClick={() => updateSetting('renderUserMarkdown', !settings.renderUserMarkdown)}
-                                    withDivider
-                                />
-                                <SettingToggle
-                                    title={t('settings.interface.autoSave.title')}
-                                    description={t('settings.interface.autoSave.description')}
-                                    checked={settings.autoSave}
-                                    onClick={() => updateSetting('autoSave', !settings.autoSave)}
                                     withDivider
                                 />
                             </SettingGroup>

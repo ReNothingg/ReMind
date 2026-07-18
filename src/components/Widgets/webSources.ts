@@ -91,7 +91,6 @@ export function normalizeWebSources(
 export function normalizeAndMergeWebSources(
     sourceGroups: Array<RawWebSource[] | undefined>,
     sourceFallbackLabel = 'Source',
-    maxSources = 80,
 ): NormalizedWebSource[] {
     const merged: NormalizedWebSource[] = [];
     const positions = new Map<string, number>();
@@ -114,9 +113,6 @@ export function normalizeAndMergeWebSources(
                         ? source.faviconUrl
                         : existing.faviconUrl,
                 };
-                return;
-            }
-            if (merged.length >= maxSources) {
                 return;
             }
             positions.set(identity, merged.length);

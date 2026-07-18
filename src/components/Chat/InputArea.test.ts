@@ -93,6 +93,40 @@ describe('InputArea', () => {
         expect(addFilesMock).toHaveBeenCalledWith([image]);
     });
 
+    it('keeps the send button disabled and in send mode while the composer is empty', () => {
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(InputArea, {
+                initialPrompt: null,
+                isLoading: false,
+                onStop: vi.fn(),
+                onSendMessage: vi.fn(),
+                onOpenAuth: vi.fn(),
+            }));
+        });
+
+        const sendButton = container.querySelector<HTMLButtonElement>('#sendButton');
+        const input = container.querySelector<HTMLTextAreaElement>('#promptInput');
+
+        expect(sendButton?.disabled).toBe(true);
+        expect(sendButton?.classList.contains('send-mode-button')).toBe(true);
+        expect(sendButton?.classList.contains('audio-link-button')).toBe(false);
+
+        act(() => {
+            const valueSetter = Object.getOwnPropertyDescriptor(
+                HTMLTextAreaElement.prototype,
+                'value'
+            )?.set;
+            valueSetter?.call(input, 'Hello');
+            input?.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
+        expect(sendButton?.disabled).toBe(false);
+    });
+
     it('clears a URL-provided initial prompt after sending even when the composer remounts', () => {
         const onSendMessage = vi.fn();
 

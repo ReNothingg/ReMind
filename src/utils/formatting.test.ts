@@ -57,6 +57,20 @@ describe('formatUserMessageText', () => {
         expect(html).not.toContain('user-message-quote-display');
         expect(html).toBe('А что это?');
     });
+
+    it('renders enabled user Markdown without allowing executable markup', () => {
+        const html = formatUserMessageText(
+            '**Важно**\n\n[опасная ссылка](javascript:alert(1))\n\n<img src=x onerror=alert(1)>',
+            { renderMarkdown: true }
+        );
+        const container = document.createElement('div');
+        container.innerHTML = html;
+
+        expect(html).toContain('<strong>Важно</strong>');
+        expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+        expect(container.querySelector('[onerror]')).toBeNull();
+        expect(container.querySelector('img')).toBeNull();
+    });
 });
 
 describe('highlightCode', () => {

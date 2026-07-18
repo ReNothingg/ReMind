@@ -21,6 +21,7 @@ langdetect==1.0.9
 requests==2.33.0
 beautifulsoup4==4.12.3
 ddgs==9.14.4
+defusedxml==0.7.1
 python-dotenv==1.2.2
 Pillow==12.2.0
 redis==5.2.1

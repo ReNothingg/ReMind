@@ -455,15 +455,7 @@
         "title": "প্রিভিউ দেখান",
         "description": "চ্যাট তালিকায় শেষ বার্তা দেখান।"
       },
-      "autocomplete": {
-        "title": "অটো-কমপ্লিট",
-        "description": "টাইপ করার সময় স্বয়ংক্রিয়ভাবে অপশন প্রস্তাব করুন।"
-      },
       "behaviorGroup": "আচরণ",
-      "autoscroll": {
-        "title": "অটো-স্ক্রল",
-        "description": "নতুন বার্তায় স্বয়ংক্রিয়ভাবে স্ক্রল করুন।"
-      },
       "notifyOnThinkingDone": {
         "title": "ReMind চিন্তা শেষ করলে জানান",
         "description": "উত্তর শেষ হলে নোটিফিকেশন দেখান।"
@@ -472,14 +464,6 @@
       "requireCtrlEnter": {
         "title": "পাঠাতে Cmd+Enter দরকার",
         "description": "সক্রিয় হলে Cmd+Enter (অথবা Ctrl+Enter) বার্তা পাঠায়। Enter নতুন লাইন যোগ করে।"
-      },
-      "renderUserMarkdown": {
-        "title": "আপনার বার্তায় Markdown",
-        "description": "আপনার বার্তায় তালিকা ও কোড ব্লক রেন্ডার করুন।"
-      },
-      "autoSave": {
-        "title": "অটো-সেভ",
-        "description": "চ্যাট ইতিহাস স্বয়ংক্রিয়ভাবে সংরক্ষণ করুন।"
       },
       "chatPanel": {
         "group": "চ্যাট প্যানেল",

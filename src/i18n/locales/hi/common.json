@@ -455,15 +455,7 @@
         "title": "प्रीव्यू दिखाएं",
         "description": "चैट सूची में अंतिम संदेश दिखाएं।"
       },
-      "autocomplete": {
-        "title": "ऑटोकम्प्लीट",
-        "description": "टाइप करते समय स्वचालित रूप से विकल्प सुझाएं।"
-      },
       "behaviorGroup": "व्यवहार",
-      "autoscroll": {
-        "title": "ऑटो-स्क्रॉल",
-        "description": "नए संदेशों पर स्वतः स्क्रॉल करें।"
-      },
       "notifyOnThinkingDone": {
         "title": "ReMind के सोचने पर सूचना दें",
         "description": "उत्तर समाप्त होने पर सूचना दिखाएं।"
@@ -472,14 +464,6 @@
       "requireCtrlEnter": {
         "title": "भेजने के लिए Cmd+Enter आवश्यक",
         "description": "सक्षम होने पर Cmd+Enter (या Ctrl+Enter) संदेश भेजता है। Enter नई पंक्ति जोड़ता है।"
-      },
-      "renderUserMarkdown": {
-        "title": "आपके संदेशों में Markdown",
-        "description": "आपके संदेशों में सूचियां और कोड ब्लॉक रेंडर करें।"
-      },
-      "autoSave": {
-        "title": "ऑटो-सेव",
-        "description": "चैट इतिहास स्वतः सहेजें।"
       },
       "chatPanel": {
         "group": "चैट पैनल",

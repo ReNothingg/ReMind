@@ -27,7 +27,13 @@ OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 180
 ROOT_ADMIN_USER_ID = 1
-REMOVED_SETTINGS_DATA_KEYS = frozenset({"personalization_nickname"})
+REMOVED_SETTINGS_DATA_KEYS = frozenset({
+    "personalization_nickname",
+    "autocomplete",
+    "autoscroll",
+    "renderUserMarkdown",
+    "autoSave",
+})
 CHAT_SESSION_UNIQUE_INDEX = "uq_user_chat_history_user_session"
 
 
@@ -233,7 +239,12 @@ class UserSettings(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     theme = db.Column(db.String(20), default="dark")
     language = db.Column(db.String(10), default="ru")
-    automatic_web_search = db.Column(db.Boolean, default=False, nullable=False)
+    automatic_web_search = db.Column(
+        db.Boolean,
+        default=True,
+        server_default=text("TRUE"),
+        nullable=False,
+    )
     settings_data = db.Column(db.Text, default="{}")  # JSON for additional settings
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1831,7 +1842,7 @@ def setup_auth(app):
                     connection.execute(
                         text(
                             "ALTER TABLE user_settings "
-                            "ADD COLUMN automatic_web_search BOOLEAN DEFAULT FALSE NOT NULL"
+                            "ADD COLUMN automatic_web_search BOOLEAN DEFAULT TRUE NOT NULL"
                         )
                     )
                 app.logger.info("Added missing user_settings.automatic_web_search column")

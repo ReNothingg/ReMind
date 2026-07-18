@@ -5,6 +5,13 @@ import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from '../i1
 
 const SettingsContext = createContext(null);
 
+const REMOVED_SETTING_KEYS = new Set([
+    'autocomplete',
+    'autoscroll',
+    'renderUserMarkdown',
+    'autoSave'
+]);
+
 const detectInterfaceLanguage = () => {
     const hasStorage = typeof localStorage !== 'undefined';
     let storedInterfaceLanguage;
@@ -39,16 +46,12 @@ const DEFAULT_SETTINGS = {
     theme: 'light',
     accentColor: 'white',
     renderMarkdown: true,
-    renderUserMarkdown: false,
     codeWrap: true,
     compactMode: false,
     showChatPreview: true,
-    autocomplete: true,
-    autoscroll: true,
     notifyOnThinkingDone: false,
     requireCtrlEnterToSend: false,
     snowBackground: false,
-    autoSave: true,
     fontFamily: "'Manrope', 'Inter', 'Segoe UI', sans-serif",
     fontSize: '16px',
     keyboardSupport: true,
@@ -59,7 +62,7 @@ const DEFAULT_SETTINGS = {
     chatPanelKeyboardShortcut: 'optionCommandSpace',
     chatPanelNewChatDestination: 'companion',
     macLaunchAtLogin: null,
-    automaticWebSearch: false,
+    automaticWebSearch: true,
     service_improvement_opt_in: false,
     personalization_instructions: '',
     personalization_profession: '',
@@ -91,6 +94,9 @@ export const SettingsProvider = ({ children }) => {
 
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem('settings_personalization_nickname');
+            REMOVED_SETTING_KEYS.forEach(key => {
+                localStorage.removeItem(`settings_${key}`);
+            });
         }
 
         const normalizedInterfaceLanguage = normalizeLanguage(merged.interface_language);
@@ -271,6 +277,7 @@ export const SettingsProvider = ({ children }) => {
     }, [isAuthenticated]);
 
     const updateSetting = useCallback((key, value) => {
+        if (REMOVED_SETTING_KEYS.has(key)) return;
         setSettings(prev => ({ ...prev, [key]: value }));
         try {
             localStorage.setItem(`settings_${key}`, JSON.stringify(value));

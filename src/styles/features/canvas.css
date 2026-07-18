@@ -64,7 +64,8 @@ html.has-canvas-dock #root {
   display: flex;
   width: var(--canvas-dock-width, 88px);
   align-items: flex-start;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-right: calc(var(--spacing-unit) * 3);
   padding-top: calc(var(--app-mobile-header-height) + 18px);
 }
 
@@ -83,7 +84,7 @@ html.has-canvas-dock #root {
 
 body.has-canvas-dock {
   --canvas-panel-width: 520px;
-  --canvas-dock-collapsed-width: 88px;
+  --canvas-dock-collapsed-width: 68px;
   --canvas-dock-width: var(--canvas-dock-collapsed-width);
   --canvas-dock-gap: 28px;
   --canvas-layout-right-offset: calc(var(--canvas-dock-width) + var(--canvas-dock-gap));
@@ -250,9 +251,9 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 
 .chat-canvas-dock-trigger {
   display: grid;
-  width: 52px;
+  width: 44px;
   min-height: 188px;
-  grid-template-rows: 38px minmax(0, 1fr);
+  grid-template-rows: 34px minmax(0, 1fr);
   align-items: center;
   justify-items: center;
   gap: 10px;
@@ -261,7 +262,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   background: var(--color-bg-interactive);
   color: var(--color-text-primary);
   cursor: pointer;
-  padding: 8px 6px;
+  padding: 8px 4px;
   transition:
     transform var(--transition-fast),
     border-color var(--transition-fast),

@@ -7,12 +7,14 @@ import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from functools import lru_cache
 from typing import Any
 from urllib.parse import parse_qs, quote_plus, unquote, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
+from defusedxml import ElementTree as ET
 
 from ai_engine.prompt_templates import render_prompt_section
 from config import (
@@ -20,7 +22,6 @@ from config import (
     WEB_SEARCH_ENABLED,
     WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
     WEB_SEARCH_MAX_RESPONSE_BYTES,
-    WEB_SEARCH_MAX_RESULTS,
     WEB_SEARCH_PAGE_TEXT_CHARS,
 )
 from services.ai_provider import generate_text, is_ai_provider_configured
@@ -30,6 +31,7 @@ SEARCH_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
 }
+GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search"
 
 BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0"}
 BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal")
@@ -38,10 +40,9 @@ ROBOTS_MAX_BYTES = 512 * 1024
 WEB_SEARCH_MAX_REDIRECTS = 5
 WEB_SEARCH_MAX_QUERY_VARIANTS = 3
 WEB_SEARCH_FETCH_WORKERS = 4
-WEB_SEARCH_CANDIDATE_MULTIPLIER = 4
-WEB_SEARCH_MIN_FETCH_CANDIDATES = 8
 WEB_SEARCH_CONTEXT_MAX_CHARS = 36_000
 WEB_SEARCH_CONTEXT_SOURCE_MAX_CHARS = 3_200
+WEB_SEARCH_QUALITY_SCORE_WINDOW = 7.0
 
 HIGH_SIGNAL_HOST_SUFFIXES = (
     ".edu",
@@ -56,6 +57,58 @@ HIGH_SIGNAL_HOSTS = {
     "support.google.com",
     "learn.microsoft.com",
     "synvexai.com",
+}
+
+TRUSTED_NEWS_HOSTS = {
+    "apnews.com",
+    "arstechnica.com",
+    "axios.com",
+    "bbc.com",
+    "bbc.co.uk",
+    "bloomberg.com",
+    "businessinsider.com",
+    "cnbc.com",
+    "engadget.com",
+    "forbes.com",
+    "ft.com",
+    "npr.org",
+    "nytimes.com",
+    "politico.com",
+    "reuters.com",
+    "straitstimes.com",
+    "techcrunch.com",
+    "theguardian.com",
+    "theverge.com",
+    "time.com",
+    "washingtonpost.com",
+    "wired.com",
+    "wsj.com",
+}
+
+LOW_SIGNAL_AGGREGATOR_HOSTS = {
+    "news.google.com",
+}
+
+SEARCH_QUERY_STOP_TERMS = {
+    "and", "current", "find", "latest", "news", "official", "recent", "search", "the",
+    "апрель", "август", "декабрь", "июль", "июнь", "май", "март", "ноябрь", "новости",
+    "октябрь", "официально", "последние", "сентябрь", "свежие", "февраль", "январь",
+    "для", "или", "как", "найди", "что",
+}
+
+QUERY_MONTH_TERMS = {
+    1: ("january", "jan", "январь", "января"),
+    2: ("february", "feb", "февраль", "февраля"),
+    3: ("march", "mar", "март", "марта"),
+    4: ("april", "apr", "апрель", "апреля"),
+    5: ("may", "май", "мая"),
+    6: ("june", "jun", "июнь", "июня"),
+    7: ("july", "jul", "июль", "июля"),
+    8: ("august", "aug", "август", "августа"),
+    9: ("september", "sep", "sept", "сентябрь", "сентября"),
+    10: ("october", "oct", "октябрь", "октября"),
+    11: ("november", "nov", "ноябрь", "ноября"),
+    12: ("december", "dec", "декабрь", "декабря"),
 }
 
 
@@ -324,7 +377,7 @@ def query_terms(query: str) -> set[str]:
     return {
         term
         for term in re.findall(r"[\wА-Яа-яЁё]{3,}", str(query or "").lower())
-        if term not in {"the", "and", "for", "with", "что", "как", "или", "для"}
+        if term not in SEARCH_QUERY_STOP_TERMS and not term.isdigit()
     }
 
 
@@ -333,6 +386,15 @@ def query_looks_time_sensitive(query: str) -> bool:
     return bool(
         AUTO_SEARCH_POSITIVE_RE.search(cleaned) or AUTO_SEARCH_TIME_SENSITIVE_RE.search(cleaned)
     )
+
+
+def official_site_hint(query: str) -> str | None:
+    lowered = str(query or "").lower()
+    for host in sorted(HIGH_SIGNAL_HOSTS):
+        brand = host.split(".")[0]
+        if len(brand) >= 4 and re.search(rf"\b{re.escape(brand)}\b", lowered):
+            return host
+    return None
 
 
 def build_search_query_variants(query: str) -> list[str]:
@@ -347,7 +409,10 @@ def build_search_query_variants(query: str) -> list[str]:
     if query_looks_time_sensitive(normalized) and current_year not in lower:
         variants.append(f"{normalized} {current_year}")
 
-    if not re.search(r"\b(official|официальн\w+|site:)\b", lower):
+    official_host = official_site_hint(normalized)
+    if official_host and "site:" not in lower:
+        variants.append(f"{normalized} site:{official_host}")
+    elif not re.search(r"\b(official|официальн\w+|site:)\b", lower):
         variants.append(f"{normalized} official")
 
     deduped: list[str] = []
@@ -361,6 +426,25 @@ def build_search_query_variants(query: str) -> list[str]:
         if len(deduped) >= WEB_SEARCH_MAX_QUERY_VARIANTS:
             break
     return deduped
+
+
+def build_news_query_variants(query: str) -> list[str]:
+    normalized = safe_query(query)
+    if not normalized:
+        return []
+    editorial_query = safe_query(
+        f"{normalized} Reuters Bloomberg Financial Times AP TechCrunch"
+    )
+    return list(
+        dict.fromkeys(
+            [
+                normalized,
+                editorial_query,
+                safe_query(f"{normalized} site:reuters.com"),
+                safe_query(f"{normalized} site:bloomberg.com"),
+            ]
+        )
+    )
 
 
 def _is_blocked_ip_address(address: str) -> bool:
@@ -627,11 +711,37 @@ def canonical_search_url_key(url: str) -> str:
     return urlunparse((scheme, netloc, path, "", query, ""))
 
 
+def _host_matches(host: str, domains: set[str]) -> bool:
+    normalized = str(host or "").lower().removeprefix("www.")
+    return any(normalized == domain or normalized.endswith(f".{domain}") for domain in domains)
+
+
 def host_is_high_signal(url: str) -> bool:
     host = get_site_name(url)
-    return host in HIGH_SIGNAL_HOSTS or any(
+    return _host_matches(host, HIGH_SIGNAL_HOSTS) or any(
         host.endswith(suffix) for suffix in HIGH_SIGNAL_HOST_SUFFIXES
     )
+
+
+def host_is_trusted_news(url: str) -> bool:
+    return _host_matches(get_site_name(url), TRUSTED_NEWS_HOSTS)
+
+
+def host_is_low_signal_aggregator(url: str) -> bool:
+    return _host_matches(get_site_name(url), LOW_SIGNAL_AGGREGATOR_HOSTS)
+
+
+def query_host_affinity(url: str, query: str) -> float:
+    host = re.sub(r"[^a-z0-9]+", " ", get_site_name(url).lower())
+    if not host:
+        return 0.0
+    host_tokens = {token for token in host.split() if len(token) >= 4}
+    query_tokens = {
+        token
+        for token in re.findall(r"[a-z0-9]+", str(query or "").lower())
+        if len(token) >= 4 and not token.isdigit()
+    }
+    return 1.0 if host_tokens & query_tokens else 0.0
 
 
 def get_favicon_url(page_url: str, html: str) -> str | None:
@@ -657,6 +767,59 @@ def get_favicon_url(page_url: str, html: str) -> str | None:
     parsed = urlparse(page_url)
     if parsed.scheme and parsed.netloc:
         return f"{parsed.scheme}://{parsed.netloc}/favicon.ico"
+    return None
+
+
+def extract_published_at(html: str) -> str | None:
+    soup = BeautifulSoup(html or "", "html.parser")
+    meta_keys = {
+        "article:published_time",
+        "date",
+        "datepublished",
+        "dc.date",
+        "dc.date.issued",
+        "og:published_time",
+        "publishdate",
+        "pubdate",
+    }
+    for meta in soup.find_all("meta"):
+        key = str(
+            meta.get("property") or meta.get("name") or meta.get("itemprop") or ""
+        ).strip().lower()
+        value = str(meta.get("content") or "").strip()
+        if key in meta_keys and value:
+            return value[:120]
+
+    time_node = soup.find("time", attrs={"datetime": True})
+    if time_node:
+        value = str(time_node.get("datetime") or "").strip()
+        if value:
+            return value[:120]
+
+    def find_json_date(value: Any) -> str | None:
+        if isinstance(value, dict):
+            published = value.get("datePublished") or value.get("dateCreated")
+            if published:
+                return str(published).strip()[:120]
+            for nested in value.values():
+                result = find_json_date(nested)
+                if result:
+                    return result
+        elif isinstance(value, list):
+            for nested in value:
+                result = find_json_date(nested)
+                if result:
+                    return result
+        return None
+
+    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        try:
+            parsed = json.loads(script.string or script.get_text(" ", strip=True) or "")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        published = find_json_date(parsed)
+        if published:
+            return published
     return None
 
 
@@ -779,6 +942,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                 final_url = response.url or current_url
                 favicon_url = None
                 text = ""
+                published_at = None
 
                 if "text/html" in content_type.lower() or "<html" in html[:2048].lower():
                     candidate_favicon = get_favicon_url(final_url, html)
@@ -786,6 +950,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                         candidate_favicon, resolve_hostname=True
                     ):
                         favicon_url = candidate_favicon
+                    published_at = extract_published_at(html)
                     text = extract_text_from_html(html)
 
                 return {
@@ -795,6 +960,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                     "content_type": content_type,
                     "text": compact_text(text),
                     "favicon_url": favicon_url,
+                    "published_at": published_at,
                     "error": None,
                 }
 
@@ -819,7 +985,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
         }
 
 
-def _ddgs_text_search(query: str, max_results: int) -> list[dict[str, Any]]:
+def _ddgs_text_search(query: str, max_results: int | None) -> list[dict[str, Any]]:
     from ddgs import DDGS
 
     with DDGS() as ddgs:
@@ -828,7 +994,16 @@ def _ddgs_text_search(query: str, max_results: int) -> list[dict[str, Any]]:
     return list(results or [])
 
 
-def _duckduckgo_html_search(query: str, max_results: int) -> list[dict[str, Any]]:
+def _ddgs_news_search(query: str, max_results: int | None) -> list[dict[str, Any]]:
+    from ddgs import DDGS
+
+    with DDGS() as ddgs:
+        results = ddgs.news(query, max_results=max_results)
+
+    return list(results or [])
+
+
+def _duckduckgo_html_search(query: str, max_results: int | None) -> list[dict[str, Any]]:
     response = requests.get(
         "https://duckduckgo.com/html/",
         params={"q": query},
@@ -851,14 +1026,15 @@ def _duckduckgo_html_search(query: str, max_results: int) -> list[dict[str, Any]
                 "body": snippet_node.get_text(" ", strip=True) if snippet_node else "",
             }
         )
-        if len(results) >= max_results:
+        if max_results is not None and len(results) >= max_results:
             break
 
     return results
 
 
-def web_search_free(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> list[dict[str, Any]]:
-    max_results = max(1, min(int(max_results or WEB_SEARCH_MAX_RESULTS), 10))
+def web_search_free(query: str, max_results: int | None = None) -> list[dict[str, Any]]:
+    if max_results is not None:
+        max_results = max(1, int(max_results))
     try:
         raw_results = _ddgs_text_search(query, max_results)
     except Exception:
@@ -875,27 +1051,144 @@ def web_search_free(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> li
                 "title": str(raw.get("title") or get_site_name(url)).strip(),
                 "url": url,
                 "snippet": str(raw.get("body") or raw.get("content") or "").strip(),
+                "published_at": str(
+                    raw.get("published_at") or raw.get("published") or raw.get("date") or ""
+                ).strip(),
+                "result_type": "web",
             }
         )
-        if len(results) >= max_results:
+        if max_results is not None and len(results) >= max_results:
             break
 
     return results
 
 
-def collect_web_search_candidates(query: str, max_candidates: int) -> list[dict[str, Any]]:
+def web_search_news_free(
+    query: str,
+    max_results: int | None = None,
+) -> list[dict[str, Any]]:
+    if max_results is not None:
+        max_results = max(1, int(max_results))
+    raw_results = _ddgs_news_search(query, max_results)
+    results: list[dict[str, Any]] = []
+    for raw in raw_results:
+        url = normalize_search_url(raw.get("url") or raw.get("href") or "")
+        if not url:
+            continue
+        results.append(
+            {
+                "title": str(raw.get("title") or get_site_name(url)).strip(),
+                "url": url,
+                "snippet": str(raw.get("body") or raw.get("content") or "").strip(),
+                "published_at": str(
+                    raw.get("published_at") or raw.get("published") or raw.get("date") or ""
+                ).strip(),
+                "result_type": "news",
+            }
+        )
+        if max_results is not None and len(results) >= max_results:
+            break
+    return results
+
+
+def google_news_rss_search(query: str) -> list[dict[str, Any]]:
+    with requests.get(
+        GOOGLE_NEWS_RSS_URL,
+        params={"q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"},
+        headers=SEARCH_HEADERS,
+        timeout=WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
+        stream=True,
+    ) as response:
+        response.raise_for_status()
+        chunks: list[bytes] = []
+        size = 0
+        for chunk in response.iter_content(chunk_size=16_384):
+            if not chunk:
+                continue
+            remaining = WEB_SEARCH_MAX_RESPONSE_BYTES - size
+            if remaining <= 0:
+                break
+            chunks.append(chunk[:remaining])
+            size += min(len(chunk), remaining)
+            if len(chunk) > remaining:
+                break
+
+    root = ET.fromstring(b"".join(chunks))
+    results: list[dict[str, Any]] = []
+    for item in root.findall(".//item"):
+        url = normalize_search_url(item.findtext("link") or "")
+        publisher = item.find("source")
+        publisher_url = normalize_search_url(
+            publisher.get("url") if publisher is not None else ""
+        )
+        if (
+            not url
+            or not publisher_url
+            or not is_public_http_url(publisher_url, resolve_hostname=False)
+        ):
+            continue
+        publisher_name = compact_text(
+            publisher.text if publisher is not None else get_site_name(publisher_url),
+            160,
+        )
+        description_html = item.findtext("description") or ""
+        snippet = BeautifulSoup(description_html, "html.parser").get_text(" ", strip=True)
+        results.append(
+            {
+                "title": compact_text(item.findtext("title") or publisher_name, 240),
+                "url": url,
+                "snippet": compact_text(snippet, 360),
+                "published_at": str(item.findtext("pubDate") or "").strip(),
+                "result_type": "news_rss",
+                "publisher_url": publisher_url,
+                "site_name": publisher_name or get_site_name(publisher_url),
+                "display_url": get_display_url(publisher_url),
+                "favicon_url": f"{publisher_url.rstrip('/')}/favicon.ico",
+            }
+        )
+    return results
+
+
+def collect_web_search_candidates(
+    query: str,
+    max_candidates: int | None = None,
+) -> list[dict[str, Any]]:
     candidates_by_url: dict[str, dict[str, Any]] = {}
     query_variants = build_search_query_variants(query)
     if not query_variants:
         return []
 
-    per_query_limit = max(4, min(10, max_candidates))
-    for variant_index, variant in enumerate(query_variants):
+    per_query_limit = max(4, max_candidates) if max_candidates is not None else None
+    search_batches: list[tuple[int, str, list[dict[str, Any]]]] = []
+    if query_looks_time_sensitive(query):
+        try:
+            search_batches.append((0, query, google_news_rss_search(query)))
+        except Exception:
+            pass
+        for news_variant_index, news_variant in enumerate(
+            build_news_query_variants(query),
+            start=len(search_batches),
+        ):
+            try:
+                search_batches.append(
+                    (
+                        news_variant_index,
+                        news_variant,
+                        web_search_news_free(news_variant, max_results=per_query_limit),
+                    )
+                )
+            except Exception:
+                continue
+
+    variant_offset = len(search_batches)
+    for variant_index, variant in enumerate(query_variants, start=variant_offset):
         try:
             raw_results = web_search_free(variant, max_results=per_query_limit)
         except Exception:
             continue
+        search_batches.append((variant_index, variant, raw_results))
 
+    for variant_index, variant, raw_results in search_batches:
         for result_index, raw in enumerate(raw_results):
             url = normalize_search_url(raw.get("url") or raw.get("href") or "")
             if not url:
@@ -910,39 +1203,152 @@ def collect_web_search_candidates(query: str, max_candidates: int) -> list[dict[
                 )
                 if not existing.get("snippet") and raw.get("snippet"):
                     existing["snippet"] = str(raw.get("snippet") or "").strip()
+                if not existing.get("published_at") and raw.get("published_at"):
+                    existing["published_at"] = str(raw.get("published_at") or "").strip()
+                if str(raw.get("result_type") or "").startswith("news"):
+                    existing["result_type"] = str(raw.get("result_type"))
+                for field in ("publisher_url", "site_name", "display_url", "favicon_url"):
+                    if not existing.get(field) and raw.get(field):
+                        existing[field] = raw.get(field)
                 continue
 
             candidates_by_url[key] = {
                 "title": str(raw.get("title") or get_site_name(url)).strip(),
                 "url": url,
                 "snippet": str(raw.get("snippet") or "").strip(),
+                "published_at": str(raw.get("published_at") or "").strip(),
                 "search_rank": result_index + 1,
                 "query_variant_index": variant_index,
                 "matched_queries": [variant],
+                "result_type": str(raw.get("result_type") or "web"),
+                "publisher_url": str(raw.get("publisher_url") or ""),
+                "site_name": str(raw.get("site_name") or ""),
+                "display_url": str(raw.get("display_url") or ""),
+                "favicon_url": str(raw.get("favicon_url") or ""),
             }
 
-            if len(candidates_by_url) >= max_candidates:
+            if max_candidates is not None and len(candidates_by_url) >= max_candidates:
                 break
-        if len(candidates_by_url) >= max_candidates:
+        if max_candidates is not None and len(candidates_by_url) >= max_candidates:
             break
 
     return list(candidates_by_url.values())
 
 
-def score_web_source(source: dict[str, Any], query: str) -> float:
+def parse_published_datetime(value: Any) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    normalized = raw.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        try:
+            parsed = parsedate_to_datetime(raw)
+        except (TypeError, ValueError, OverflowError):
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def source_recency_score(published_at: Any, query: str) -> float:
+    if not query_looks_time_sensitive(query):
+        return 0.0
+    published = parse_published_datetime(published_at)
+    if published is None:
+        return 0.0
+    age_days = max(0.0, (datetime.now(timezone.utc) - published).total_seconds() / 86400)
+    if age_days <= 7:
+        return 3.0
+    if age_days <= 31:
+        return 2.0
+    if age_days <= 180:
+        return 0.8
+    if age_days <= 365:
+        return 0.0
+    if age_days <= 730:
+        return -1.5
+    return -2.5
+
+
+def requested_period_score(published_at: Any, query: str) -> float:
+    published = parse_published_datetime(published_at)
+    if published is None:
+        return 0.0
+    lowered_query = str(query or "").lower()
+    requested_years = {
+        int(year) for year in re.findall(r"\b(20\d{2})\b", lowered_query)
+    }
+    requested_month = next(
+        (
+            month
+            for month, terms in QUERY_MONTH_TERMS.items()
+            if any(re.search(rf"\b{re.escape(term)}\b", lowered_query) for term in terms)
+        ),
+        None,
+    )
+    if requested_years and published.year not in requested_years:
+        return -7.0
+    if requested_month is not None and published.month != requested_month:
+        return -6.0
+    if requested_years or requested_month is not None:
+        return 1.5
+    return 0.0
+
+
+def score_search_candidate(candidate: dict[str, Any], query: str) -> float:
     terms = query_terms(query)
-    title = str(source.get("title") or "")
-    snippet = str(source.get("snippet") or "")
-    text = str(source.get("text") or "")
-    searchable = f"{title} {snippet} {text[:1200]}".lower()
+    title = str(candidate.get("title") or "")
+    snippet = str(candidate.get("snippet") or "")
+    url = str(
+        candidate.get("authority_url")
+        or candidate.get("publisher_url")
+        or candidate.get("final_url")
+        or candidate.get("url")
+        or ""
+    )
+    searchable = f"{title} {snippet}".lower()
     matched_terms = {term for term in terms if term in searchable}
 
     score = 0.0
     if terms:
-        score += (len(matched_terms) / len(terms)) * 4.0
+        score += (len(matched_terms) / len(terms)) * 5.0
+        title_terms = {term for term in terms if term in title.lower()}
+        score += (len(title_terms) / len(terms)) * 1.5
+
+    score += query_host_affinity(url, query) * 4.0
+    if host_is_high_signal(url):
+        score += 2.5
+    is_trusted_news = host_is_trusted_news(url)
+    if is_trusted_news:
+        score += 2.0
+        if query_looks_time_sensitive(query):
+            score += 3.0
+    if host_is_low_signal_aggregator(url):
+        score -= 2.0
+
+    explicit_years = set(re.findall(r"\b20\d{2}\b", str(query or "")))
+    if explicit_years:
+        score += 1.8 if any(year in searchable for year in explicit_years) else -1.0
+
+    search_rank = int(candidate.get("search_rank") or 10)
+    query_variant_index = int(candidate.get("query_variant_index") or 0)
+    score += max(0.0, 1.5 - (search_rank - 1) * 0.12)
+    score -= query_variant_index * 0.15
+    score += source_recency_score(candidate.get("published_at"), query)
+    score += requested_period_score(candidate.get("published_at"), query)
+    if str(candidate.get("result_type") or "").startswith("news"):
+        score += 3.0
+    return score
+
+
+def score_web_source(source: dict[str, Any], query: str) -> float:
+    score = score_search_candidate(source, query)
+    text = str(source.get("text") or "")
     if source.get("ok") and text:
         score += 2.0
-    elif snippet:
+    elif source.get("snippet"):
         score += 0.6
 
     text_length = len(text)
@@ -951,13 +1357,6 @@ def score_web_source(source: dict[str, Any], query: str) -> float:
     elif text_length >= 350:
         score += 0.5
 
-    if host_is_high_signal(str(source.get("final_url") or source.get("url") or "")):
-        score += 1.0
-
-    search_rank = int(source.get("search_rank") or 10)
-    query_variant_index = int(source.get("query_variant_index") or 0)
-    score += max(0.0, 1.2 - (search_rank - 1) * 0.12)
-    score -= query_variant_index * 0.2
     if source.get("error"):
         score -= 0.8
     return score
@@ -967,19 +1366,43 @@ def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[s
     url = normalize_search_url(candidate.get("url") or "")
     if not url:
         return None
-    if not is_public_http_url(url, resolve_hostname=True) or not robots_txt_allows(
-        url, resolve_hostname=True
-    ):
+    if not is_public_http_url(url, resolve_hostname=True):
         return None
 
-    page = fetch_full_page(url)
+    is_rss_metadata = candidate.get("result_type") == "news_rss"
+    if is_rss_metadata:
+        page = {
+            "ok": False,
+            "final_url": url,
+            "status_code": None,
+            "content_type": "application/rss+xml",
+            "text": "",
+            "favicon_url": candidate.get("favicon_url"),
+            "published_at": candidate.get("published_at"),
+            "error": None,
+        }
+    elif robots_txt_allows(url, resolve_hostname=True):
+        page = fetch_full_page(url)
+    else:
+        page = {
+            "ok": False,
+            "final_url": url,
+            "status_code": None,
+            "content_type": None,
+            "text": "",
+            "favicon_url": None,
+            "published_at": None,
+            "error": "robots_disallowed",
+        }
     final_url = normalize_search_url(page.get("final_url") or url) or url
     title = str(candidate.get("title") or get_site_name(final_url)).strip()
     snippet = compact_text(candidate.get("snippet") or "", 360)
     page_text = compact_text(page.get("text") or "", WEB_SEARCH_PAGE_TEXT_CHARS)
+    publisher_url = normalize_search_url(candidate.get("publisher_url") or "")
+    authority_url = publisher_url or final_url
     favicon_url = (
-        page.get("favicon_url")
-        or f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}/favicon.ico"
+        candidate.get("favicon_url") or page.get("favicon_url")
+        or f"{urlparse(authority_url).scheme}://{urlparse(authority_url).netloc}/favicon.ico"
     )
 
     source = {
@@ -987,10 +1410,11 @@ def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[s
         "title": title,
         "url": url,
         "final_url": final_url,
-        "display_url": get_display_url(final_url),
-        "site_name": get_site_name(final_url),
+        "display_url": candidate.get("display_url") or get_display_url(authority_url),
+        "site_name": candidate.get("site_name") or get_site_name(authority_url),
         "snippet": snippet,
         "text": page_text,
+        "published_at": page.get("published_at") or candidate.get("published_at"),
         "favicon_url": favicon_url,
         "ok": bool(page.get("ok")),
         "status_code": page.get("status_code"),
@@ -999,13 +1423,16 @@ def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[s
         "search_rank": candidate.get("search_rank"),
         "query_variant_index": candidate.get("query_variant_index"),
         "matched_queries": candidate.get("matched_queries") or [],
+        "result_type": candidate.get("result_type") or "web",
+        "authority_url": authority_url,
     }
     source["score"] = score_web_source(source, query)
     return source
 
 
-def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dict[str, Any]:
-    max_results = max(1, min(int(max_results or WEB_SEARCH_MAX_RESULTS), 10))
+def run_web_search(query: str, max_results: int | None = None) -> dict[str, Any]:
+    if max_results is not None:
+        max_results = max(1, int(max_results))
     normalized_query = safe_query(query)
     if not normalized_query:
         return {
@@ -1015,11 +1442,11 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
             "context": "",
         }
 
-    max_candidates = max(
-        WEB_SEARCH_MIN_FETCH_CANDIDATES,
-        min(30, max_results * WEB_SEARCH_CANDIDATE_MULTIPLIER),
+    candidates = collect_web_search_candidates(normalized_query)
+    candidates.sort(
+        key=lambda candidate: score_search_candidate(candidate, normalized_query),
+        reverse=True,
     )
-    candidates = collect_web_search_candidates(normalized_query, max_candidates=max_candidates)
     sources: list[dict[str, Any]] = []
     if candidates:
         with ThreadPoolExecutor(
@@ -1047,19 +1474,48 @@ def run_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> dic
 
     host_counts: dict[str, int] = {}
     selected_sources: list[dict[str, Any]] = []
+    best_score = float(sources[0].get("score") or 0) if sources else 0.0
+    quality_floor = max(3.0, best_score - WEB_SEARCH_QUALITY_SCORE_WINDOW)
+    prefer_established_sources = query_looks_time_sensitive(normalized_query) and any(
+        host_is_high_signal(str(source.get("final_url") or source.get("url") or ""))
+        or host_is_trusted_news(str(source.get("final_url") or source.get("url") or ""))
+        for source in sources
+    )
     for source in sources:
         host = str(source.get("site_name") or "")
-        if host_counts.get(host, 0) >= 2:
+        host_count = host_counts.get(host, 0)
+        source_url = str(
+            source.get("authority_url")
+            or source.get("final_url")
+            or source.get("url")
+            or ""
+        )
+        is_established_source = host_is_high_signal(source_url) or host_is_trusted_news(
+            source_url
+        )
+        authority_adjustment = (
+            -5.0 if prefer_established_sources and not is_established_source else 0.0
+        )
+        diversity_penalty = host_count * (0.5 if is_established_source else 1.25)
+        source_quality_floor = quality_floor - (1.0 if is_established_source else 0.0)
+        diversity_adjusted_score = (
+            float(source.get("score") or 0)
+            + authority_adjustment
+            - diversity_penalty
+        )
+        if diversity_adjusted_score < source_quality_floor:
             continue
-        host_counts[host] = host_counts.get(host, 0) + 1
+        host_counts[host] = host_count + 1
         public_source = dict(source)
         public_source["rank"] = len(selected_sources) + 1
         public_source.pop("score", None)
         public_source.pop("search_rank", None)
         public_source.pop("query_variant_index", None)
         public_source.pop("matched_queries", None)
+        public_source.pop("result_type", None)
+        public_source.pop("authority_url", None)
         selected_sources.append(public_source)
-        if len(selected_sources) >= max_results:
+        if max_results is not None and len(selected_sources) >= max_results:
             break
 
     result = {
@@ -1112,11 +1568,13 @@ def build_web_search_context(search_payload: dict[str, Any]) -> str:
             source.get("site_name") or get_site_name(str(url)), 160
         )
         snippet = _compact_search_context_value(source.get("snippet") or "", 600)
+        published_at = _compact_search_context_value(source.get("published_at") or "", 120)
         metadata = "\n".join(
             [
                 f"[{rank}] {title}",
                 f"Site: {site_name}",
                 f"URL: {url}",
+                f"Published: {published_at or 'unknown'}",
                 f"Snippet: {snippet}",
             ]
         )
@@ -1161,6 +1619,7 @@ def public_sources(search_payload: dict[str, Any] | None) -> list[dict[str, Any]
                 "site_name": source.get("site_name"),
                 "snippet": source.get("snippet"),
                 "favicon_url": source.get("favicon_url"),
+                "published_at": source.get("published_at"),
             }
         )
 

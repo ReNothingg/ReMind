@@ -1,14 +1,14 @@
   .minds-page {
     width: min(1180px, calc(100vw - var(--app-rail-offset, 0px) - 48px));
     margin: 0 auto;
-    padding: 32px 0 110px;
+    padding: 24px 0 110px;
     color: var(--color-text-primary);
   }
 
   .mind-editor-page {
     width: min(1180px, calc(100vw - var(--app-rail-offset, 0px) - 48px));
     margin: 0 auto;
-    padding: 84px 0 110px;
+    padding: 24px 0 110px;
     color: var(--color-text-primary);
   }
 
@@ -458,8 +458,21 @@
 
   .mind-starter-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 40px;
+    grid-template-columns: minmax(0, 1fr) 42px;
     gap: 8px;
+    align-items: stretch;
+  }
+
+  .mind-starter-row input,
+  .mind-starter-row .mind-icon-action,
+  .mind-field > .mind-secondary-action {
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .mind-starter-row .mind-icon-action {
+    width: 42px;
+    height: 42px;
   }
 
   .mind-visibility-list,
@@ -469,9 +482,18 @@
   }
 
   .mind-visibility-list button {
-    justify-content: flex-start;
     display: flex;
+    height: 42px;
+    align-items: center;
+    justify-content: flex-start;
     gap: 8px;
+  }
+
+  .mind-visibility-list button svg,
+  .mind-starter-row .mind-icon-action svg,
+  .mind-field > .mind-secondary-action svg {
+    display: block;
+    flex: 0 0 auto;
   }
 
   .mind-category-select-grid {

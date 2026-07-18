@@ -123,7 +123,7 @@
   color: var(--icon-color-secondary);
   background-color: var(--input-button-bg);
   background-image: none;
-  margin-left: calc(var(--spacing-unit) * 0.75);
+  margin: 0;
   border-radius: var(--input-area-border-radius);
   border: none;
   outline: none;
@@ -171,10 +171,6 @@
   background-color: var(--color-danger);
 }
 
-.send-button.audio-link-button {
-  --composer-icon-url: var(--icon-audio-url);
-}
-
 .attach-button:hover,
 .send-button:hover {
   background-color: var(--input-button-hover-bg);
@@ -182,6 +178,12 @@
 
 .send-button:hover {
   background-color: var(--input-send-button-hover-bg);
+}
+
+.send-button:disabled:not(.stop-button) {
+  background-color: var(--input-button-bg) !important;
+  color: var(--icon-color-secondary) !important;
+  cursor: not-allowed;
 }
 
 .send-button.stop-button:hover {
@@ -382,7 +384,7 @@
   color: var(--input-text-color);
   font-size: 1rem;
   line-height: 1.5;
-  padding: calc(var(--spacing-unit) * 2.25) 0 calc(var(--spacing-unit) * 0.75);
+  padding: calc(var(--spacing-unit) * 1.5) 0;
   resize: none;
 }
 .input-wrapper textarea#promptInput::placeholder {

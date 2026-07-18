@@ -461,15 +461,7 @@
         "title": "Show preview",
         "description": "Show the last message in the chat list."
       },
-      "autocomplete": {
-        "title": "Autocomplete",
-        "description": "Automatically suggest options while typing."
-      },
       "behaviorGroup": "Behavior",
-      "autoscroll": {
-        "title": "Auto-scroll",
-        "description": "Automatically scroll to new messages."
-      },
       "notifyOnThinkingDone": {
         "title": "Notify when ReMind is done thinking",
         "description": "Show a notification after the response is finished."
@@ -478,14 +470,6 @@
       "requireCtrlEnter": {
         "title": "Require Cmd+Enter to send",
         "description": "When enabled, Cmd+Enter (or Ctrl+Enter) sends a message. Enter adds a new line."
-      },
-      "renderUserMarkdown": {
-        "title": "Markdown in your messages",
-        "description": "Render lists and code blocks in your messages."
-      },
-      "autoSave": {
-        "title": "Auto-save",
-        "description": "Automatically save chat history."
       },
       "chatPanel": {
         "group": "Chat Panel",

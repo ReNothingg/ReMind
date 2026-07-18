@@ -31,9 +31,7 @@ const VALID_SEARCH_STATUSES = new Set<SearchActivityStatus>([
     'web_search_no_results',
     'web_search_failed',
 ]);
-const MAX_ENCODED_ACTIVITY_LENGTH = 32_768;
-const MAX_SOURCES_PER_ACTIVITY = 10;
-export const MAX_EXTRACTED_SEARCH_SOURCES = 80;
+const MAX_ENCODED_ACTIVITY_LENGTH = 64_000;
 
 export function decodeThoughtEntities(value: string): string {
     return value
@@ -75,7 +73,6 @@ export function decodeSearchActivity(encoded: string): DecodedSearchActivity | n
 
         const sources = Array.isArray(payload.sources)
             ? payload.sources
-                .slice(0, MAX_SOURCES_PER_ACTIVITY)
                 .filter((source: unknown): source is Record<string, unknown> => (
                     Boolean(source) && typeof source === 'object'
                 ))
@@ -102,19 +99,18 @@ export function decodeSearchActivity(encoded: string): DecodedSearchActivity | n
 
 export function extractCompletedSearchSources(
     value: string,
-    maxSources = MAX_EXTRACTED_SEARCH_SOURCES,
 ): RawWebSource[] {
     const text = decodeThoughtEntities(String(value || ''));
     const sources: RawWebSource[] = [];
     let match: RegExpExecArray | null;
     SEARCH_ACTIVITY_PATTERN.lastIndex = 0;
 
-    while (sources.length < maxSources && (match = SEARCH_ACTIVITY_PATTERN.exec(text)) !== null) {
+    while ((match = SEARCH_ACTIVITY_PATTERN.exec(text)) !== null) {
         const activity = decodeSearchActivity(match[1]);
         if (activity?.status !== 'web_search_done') {
             continue;
         }
-        sources.push(...activity.sources.slice(0, maxSources - sources.length));
+        sources.push(...activity.sources);
     }
 
     return sources;

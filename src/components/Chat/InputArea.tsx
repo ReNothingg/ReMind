@@ -56,12 +56,12 @@ const InputArea = ({
         const local = localRaw ? (() => {
             try { return JSON.parse(localRaw); } catch { return null; }
         })() : null;
-        if (!initialPrompt && settings.autoSave && typeof local?.content === 'string') {
+        if (!initialPrompt && typeof local?.content === 'string') {
             queueMicrotask(() => {
                 if (!cancelled) setText(local.content);
             });
         }
-        if (!isAuthenticated || !settings.autoSave || !navigator.onLine) {
+        if (!isAuthenticated || !navigator.onLine) {
             draftLoadedRef.current = true;
             return () => { cancelled = true; };
         }
@@ -79,10 +79,10 @@ const InputArea = ({
             if (!cancelled) draftLoadedRef.current = true;
         });
         return () => { cancelled = true; };
-    }, [currentSessionId, draftStorageKey, initialPrompt, isAuthenticated, settings.autoSave]);
+    }, [currentSessionId, draftStorageKey, initialPrompt, isAuthenticated]);
 
     useEffect(() => {
-        if (!settings.autoSave || !draftLoadedRef.current) return;
+        if (!draftLoadedRef.current) return;
         let cancelled = false;
         const updatedAt = Date.now();
         localStorage.setItem(draftStorageKey, JSON.stringify({ content: text, updatedAt }));
@@ -109,7 +109,7 @@ const InputArea = ({
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [currentSessionId, draftStorageKey, isAuthenticated, settings.autoSave, text]);
+    }, [currentSessionId, draftStorageKey, isAuthenticated, text]);
 
     useEffect(() => {
         if (!initialPrompt) {
@@ -380,19 +380,13 @@ const InputArea = ({
     const effectiveFileCount = fileUploadsEnabled ? files.length : 0;
     const hasContent = Boolean(text.trim() || effectiveFileCount > 0 || quotes.length > 0);
     const hasQuotes = quotes.length > 0;
-    const sendButtonClass = isLoading
-        ? 'stop-button'
-        : hasContent
-          ? 'send-mode-button'
-          : 'audio-link-button';
+    const sendButtonClass = isLoading ? 'stop-button' : 'send-mode-button';
 
     const sendButtonTitle = isLoading
         ? t('composer.stop')
-        : hasContent
-          ? settings.requireCtrlEnterToSend
-              ? t('composer.sendCtrlEnter')
-              : t('composer.sendEnter')
-          : t('composer.joinDialog');
+        : settings.requireCtrlEnterToSend
+          ? t('composer.sendCtrlEnter')
+          : t('composer.sendEnter');
 
     return (
         <>
@@ -510,7 +504,7 @@ const InputArea = ({
                         {isAuthenticated && !isReadOnly ? (
                             <button
                                 type="button"
-                                className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]"
+                                className="attach-button ui-composer-icon-button"
                                 title={t('composer.attachFiles')}
                                 aria-label={t('composer.attachFiles')}
                                 onClick={() => fileInputRef.current?.click()}
@@ -518,7 +512,7 @@ const InputArea = ({
                         ) : (
                             <button
                                 type="button"
-                                className="attach-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)] cursor-not-allowed opacity-50"
+                                className="attach-button ui-composer-icon-button cursor-not-allowed opacity-50"
                                 title={isReadOnly ? t('composer.attachUnavailableReadOnly') : t('composer.attachRequiresAccount')}
                                 aria-label={t('composer.attachUnavailable')}
                                 onClick={(event) => {
@@ -566,7 +560,7 @@ const InputArea = ({
                             id="sendButton"
                             type="button"
                             className={cn(
-                                'send-button ui-composer-icon-button ml-[calc(var(--spacing-unit)*0.75)]',
+                                'send-button ui-composer-icon-button',
                                 hasContent || isLoading
                                     ? 'bg-foreground text-white hover:brightness-110'
                                     : 'bg-surface-alt',
@@ -575,7 +569,7 @@ const InputArea = ({
                             title={isReadOnly ? t('chat.readOnly') : sendButtonTitle}
                             aria-label={isLoading ? t('composer.stop') : sendButtonTitle}
                             onClick={handleSend}
-                            disabled={isReadOnly}
+                            disabled={isReadOnly || (!isLoading && !hasContent)}
                         >
                         </button>
                     </div>

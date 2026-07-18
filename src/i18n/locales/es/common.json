@@ -455,15 +455,7 @@
         "title": "Mostrar vista previa",
         "description": "Muestra el último mensaje en la lista de chats."
       },
-      "autocomplete": {
-        "title": "Autocompletar",
-        "description": "Sugiere opciones automáticamente al escribir."
-      },
       "behaviorGroup": "Comportamiento",
-      "autoscroll": {
-        "title": "Desplazamiento automático",
-        "description": "Desplaza automáticamente a los nuevos mensajes."
-      },
       "notifyOnThinkingDone": {
         "title": "Notificar cuando ReMind termine de pensar",
         "description": "Muestra una notificación al finalizar la respuesta."
@@ -472,14 +464,6 @@
       "requireCtrlEnter": {
         "title": "Requerir Cmd+Enter para enviar",
         "description": "Cuando está habilitado, Cmd+Enter (o Ctrl+Enter) envía el mensaje. Enter añade una nueva línea."
-      },
-      "renderUserMarkdown": {
-        "title": "Markdown en tus mensajes",
-        "description": "Renderiza listas y bloques de código en tus mensajes."
-      },
-      "autoSave": {
-        "title": "Guardado automático",
-        "description": "Guarda automáticamente el historial del chat."
       },
       "chatPanel": {
         "group": "Panel de chat",

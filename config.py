@@ -333,8 +333,6 @@ WEB_SEARCH_ENABLED: bool = os.getenv("WEB_SEARCH_ENABLED", "True").lower() in (
     "yes",
 )
 
-WEB_SEARCH_MAX_RESULTS = 10
-
 try:
     WEB_SEARCH_FETCH_TIMEOUT_SECONDS: float = float(
         os.getenv("WEB_SEARCH_FETCH_TIMEOUT_SECONDS", "12")

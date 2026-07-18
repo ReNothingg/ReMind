@@ -461,15 +461,7 @@
         "title": "Показывать предпросмотр",
         "description": "Отображать последнее сообщение в списке чатов."
       },
-      "autocomplete": {
-        "title": "Автодополнение",
-        "description": "Автоматически предлагать варианты при вводе."
-      },
       "behaviorGroup": "Поведение",
-      "autoscroll": {
-        "title": "Автопрокрутка",
-        "description": "Автоматически прокручивать к новым сообщениям."
-      },
       "notifyOnThinkingDone": {
         "title": "Уведомлять, когда ReMind закончил размышлять",
         "description": "Показывать уведомление после завершения ответа."
@@ -478,14 +470,6 @@
       "requireCtrlEnter": {
         "title": "Требовать Ctrl+Enter для отправки",
         "description": "Когда включено, Cmd+Enter (или Ctrl+Enter) отправляет сообщение. Enter добавляет новую строку."
-      },
-      "renderUserMarkdown": {
-        "title": "Markdown в сообщениях пользователя",
-        "description": "Отображать ваше сообщения в Markdown формате."
-      },
-      "autoSave": {
-        "title": "Автосохранение",
-        "description": "Автоматически сохранять историю чатов."
       },
       "chatPanel": {
         "group": "Панель чата",

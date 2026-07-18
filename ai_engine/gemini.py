@@ -46,7 +46,7 @@ THINKING_LEVELS: dict[str, types.ThinkingLevel] = {
 }
 MAX_THOUGHT_SUMMARY_CHARS = 64_000
 _THINK_BLOCK_RE = re.compile(r"<think(?:\s[^>]*)?>[\s\S]*?</think>", re.IGNORECASE)
-MAX_SEARCH_ACTIVITY_SOURCES = 10
+MAX_SEARCH_ACTIVITY_ENCODED_CHARS = 48_000
 
 
 def _db_user_id(user_id: Any) -> int | None:
@@ -296,30 +296,40 @@ def _search_activity_token(
     query: Any,
     sources: list[dict[str, Any]] | None = None,
 ) -> str:
-    safe_sources = []
-    for source in (sources or [])[:MAX_SEARCH_ACTIVITY_SOURCES]:
+    safe_query = _bounded_activity_text(query, 500)
+    safe_sources: list[dict[str, Any]] = []
+
+    def encode_payload(candidate_sources: list[dict[str, Any]]) -> str:
+        payload = {
+            "type": "web_search",
+            "status": status,
+            "query": safe_query,
+            "sources": candidate_sources,
+            "source_count": len(sources or []),
+        }
+        return base64.urlsafe_b64encode(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        ).decode("ascii")
+
+    encoded = encode_payload(safe_sources)
+    for source in sources or []:
         if not isinstance(source, dict):
             continue
-        safe_sources.append(
-            {
-                "rank": source.get("rank"),
-                "title": _bounded_activity_text(source.get("title"), 240),
-                "url": _bounded_activity_text(source.get("url"), 1_000),
-                "display_url": _bounded_activity_text(source.get("display_url"), 240),
-                "site_name": _bounded_activity_text(source.get("site_name"), 160),
-                "snippet": _bounded_activity_text(source.get("snippet"), 600),
-                "favicon_url": _bounded_activity_text(source.get("favicon_url"), 1_000),
-            }
-        )
-    payload = {
-        "type": "web_search",
-        "status": status,
-        "query": _bounded_activity_text(query, 500),
-        "sources": safe_sources,
-    }
-    encoded = base64.urlsafe_b64encode(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    ).decode("ascii")
+        candidate = {
+            "rank": source.get("rank"),
+            "title": _bounded_activity_text(source.get("title"), 240),
+            "url": _bounded_activity_text(source.get("url"), 1_000),
+            "display_url": _bounded_activity_text(source.get("display_url"), 240),
+            "site_name": _bounded_activity_text(source.get("site_name"), 160),
+            "snippet": _bounded_activity_text(source.get("snippet"), 600),
+            "favicon_url": _bounded_activity_text(source.get("favicon_url"), 1_000),
+        }
+        candidate_encoded = encode_payload([*safe_sources, candidate])
+        if len(candidate_encoded) > MAX_SEARCH_ACTIVITY_ENCODED_CHARS:
+            break
+        safe_sources.append(candidate)
+        encoded = candidate_encoded
+
     return f'<search_activity data-b64="{encoded}"></search_activity>'
 
 

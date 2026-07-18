@@ -455,15 +455,7 @@
         "title": "عرض المعاينة",
         "description": "عرض آخر رسالة في قائمة الدردشات."
       },
-      "autocomplete": {
-        "title": "إكمال تلقائي",
-        "description": "اقتراح خيارات تلقائيًا أثناء الكتابة."
-      },
       "behaviorGroup": "السلوك",
-      "autoscroll": {
-        "title": "تمرير تلقائي",
-        "description": "التمرير تلقائيًا إلى الرسائل الجديدة."
-      },
       "notifyOnThinkingDone": {
         "title": "إشعار عند انتهاء ReMind من التفكير",
         "description": "عرض إشعار بعد انتهاء الرد."
@@ -472,14 +464,6 @@
       "requireCtrlEnter": {
         "title": "يتطلب Cmd+Enter للإرسال",
         "description": "عند التفعيل، يرسل Cmd+Enter (أو Ctrl+Enter) الرسالة. يضيف Enter سطرًا جديدًا."
-      },
-      "renderUserMarkdown": {
-        "title": "Markdown في رسائلك",
-        "description": "عرض القوائم وكتل الشيفرة في رسائلك."
-      },
-      "autoSave": {
-        "title": "حفظ تلقائي",
-        "description": "حفظ سجل الدردشة تلقائيًا."
       },
       "chatPanel": {
         "group": "لوحة الدردشة",

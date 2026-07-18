@@ -238,7 +238,34 @@ const buildSourceCitationPopover = (documentRef, sources, fragmentSourcesLabel =
     return popover;
 };
 
-const decorateSourceCitations = (html, sources, labels: { fragmentSources?: string } = {}) => {
+const normalizeCitationPunctuation = (documentRef, mark) => {
+    const originalText = String(mark.textContent || '');
+    if (!/[\p{L}\p{N}]/u.test(originalText)) {
+        mark.replaceWith(documentRef.createTextNode(originalText));
+        return false;
+    }
+
+    const walker = documentRef.createTreeWalker(mark, NodeFilter.SHOW_TEXT);
+    let lastTextNode = null;
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+        lastTextNode = currentNode;
+        currentNode = walker.nextNode();
+    }
+
+    const trailingMatch = String(lastTextNode?.nodeValue || '').match(/([.,!?;:…]+\s*)$/u);
+    if (lastTextNode && trailingMatch) {
+        lastTextNode.nodeValue = String(lastTextNode.nodeValue || '').slice(
+            0,
+            -trailingMatch[1].length
+        );
+        mark.after(documentRef.createTextNode(trailingMatch[1]));
+    }
+
+    return true;
+};
+
+export const decorateSourceCitations = (html, sources, labels: { fragmentSources?: string } = {}) => {
     if (!html || typeof document === 'undefined' || !Array.isArray(sources) || sources.length === 0) {
         return html || '';
     }
@@ -261,6 +288,9 @@ const decorateSourceCitations = (html, sources, labels: { fragmentSources?: stri
     template.innerHTML = html;
 
     template.content.querySelectorAll('c[s], mark[data-source-ids]').forEach((mark) => {
+        if (!normalizeCitationPunctuation(document, mark)) {
+            return;
+        }
         const markSources = parseSourceIds(mark.getAttribute('s') || mark.getAttribute('data-source-ids'))
             .map((rank) => sourcesByRank.get(rank))
             .filter(Boolean);
@@ -1002,7 +1032,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         }
     }, [widgetUpdate, message.id, isUser]);
 
-    const markdownEnabledForMessage = isUser ? !!settings.renderUserMarkdown : !!settings.renderMarkdown;
+    const markdownEnabledForMessage = isUser || !!settings.renderMarkdown;
     const htmlContent = useMemo(() => {
         if (isUser) {
             return formatUserMessageText(content || '', {

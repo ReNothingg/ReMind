@@ -619,7 +619,7 @@
   }
 
   .ui-rail-search-wrap {
-    @apply px-2 pb-2;
+    @apply px-2 pt-0 pb-2;
     border-bottom: 1px solid var(--color-border-subtle);
   }
 
@@ -1018,7 +1018,7 @@
   .ui-composer-textarea {
     @apply min-h-[calc(var(--input-area-item-height)-var(--spacing-unit)*4)] flex-1 resize-none bg-transparent px-1 py-1 text-base leading-6 outline-none placeholder:text-subtle disabled:cursor-not-allowed;
     color: var(--input-text-color);
-    padding-block: calc(var(--spacing-unit) * 2.25) calc(var(--spacing-unit) * 0.75);
+    padding-block: calc(var(--spacing-unit) * 1.5);
   }
 
   .ui-composer-icon-button {

@@ -66,7 +66,6 @@ from utils.responses import logger, make_ok
 from utils.url_security import UnsafeUrlError, validate_public_http_url
 
 PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
-chat_limiter = RateLimiter(max_requests=60, time_window=3600, namespace="chat")
 translation_limiter = RateLimiter(max_requests=60, time_window=3600, namespace="translation")
 anonymous_translation_limiter = RateLimiter(
     max_requests=10, time_window=3600, namespace="anonymous_translation"
@@ -79,7 +78,6 @@ ANONYMOUS_TRANSLATION_MAX_CHARS = 2000
 CHAT_OPERATIONS = {"send", "regenerate", "edit"}
 CHAT_MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 CANMORE_STREAM_HOLDBACK_CHARS = 32
-MAX_STREAMED_WEB_SOURCES = 80
 
 
 def _resolve_db_user_id() -> int | None:
@@ -356,8 +354,6 @@ def _extract_web_sources(user_data: dict[str, Any]) -> list[dict[str, Any]]:
 def _merge_web_sources(
     existing: Any,
     incoming: Any,
-    *,
-    max_sources: int = MAX_STREAMED_WEB_SOURCES,
 ) -> list[dict[str, Any]]:
     merged: list[dict[str, Any]] = []
     positions: dict[str, int] = {}
@@ -379,8 +375,6 @@ def _merge_web_sources(
                 if not current.get(key) and value:
                     current[key] = value
             continue
-        if len(merged) >= max_sources:
-            break
         positions[identity] = len(merged)
         merged.append(dict(source))
 
@@ -844,7 +838,6 @@ def _maybe_return_direct_image(model_output):
 
 def register_chat_routes(api_bp):
     @api_bp.route("/chat", methods=["POST"])
-    @rate_limit(chat_limiter, "Too many chat requests. Please wait.")
     @api_error_boundary("chat_unexpected_error")
     def chat():
         session_identifier, user_data, model_name = process_request_data()

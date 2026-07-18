@@ -455,15 +455,7 @@
         "title": "显示预览",
         "description": "在聊天列表中显示最后一条消息。"
       },
-      "autocomplete": {
-        "title": "自动补全",
-        "description": "输入时自动建议选项。"
-      },
       "behaviorGroup": "行为",
-      "autoscroll": {
-        "title": "自动滚动",
-        "description": "自动滚动到新消息。"
-      },
       "notifyOnThinkingDone": {
         "title": "ReMind 完成思考时通知",
         "description": "回复完成后显示通知。"
@@ -472,14 +464,6 @@
       "requireCtrlEnter": {
         "title": "发送需 Cmd+Enter",
         "description": "启用后，Cmd+Enter (或 Ctrl+Enter) 发送消息。Enter 换行。"
-      },
-      "renderUserMarkdown": {
-        "title": "你的消息中的 Markdown",
-        "description": "在你的消息中渲染列表和代码块。"
-      },
-      "autoSave": {
-        "title": "自动保存",
-        "description": "自动保存聊天历史。"
       },
       "chatPanel": {
         "group": "聊天面板",

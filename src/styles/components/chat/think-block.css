@@ -117,7 +117,7 @@
   position: absolute;
   top: 10px;
   bottom: -2px;
-  left: -14px;
+  left: -19px;
   width: 1px;
   background: var(--color-border-medium);
   content: '';
@@ -126,7 +126,7 @@
 .think-block-step-marker {
   position: absolute;
   top: 7px;
-  left: -17px;
+  left: -22px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -135,7 +135,7 @@
 
 .think-block-step.is-search .think-block-step-marker {
   top: 2px;
-  left: -23px;
+  left: -28px;
   width: 18px;
   height: 18px;
   border-radius: 0;
@@ -192,7 +192,7 @@
   }
 
   .think-block-content {
-    margin-left: 6px;
+    margin-left: 8px;
     padding-left: calc(var(--spacing-unit) * 4.5);
   }
 

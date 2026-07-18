@@ -79,4 +79,23 @@ describe('WebSourcesPanel', () => {
         expect(merged).toHaveLength(40);
         expect(new Set(merged.map((source) => source.url)).size).toBe(40);
     });
+
+    it('keeps more than ten sources from one search activity', () => {
+        const payload = {
+            type: 'web_search',
+            status: 'web_search_done',
+            query: 'broad research query',
+            sources: Array.from({ length: 23 }, (_, index) => ({
+                rank: index + 1,
+                title: `Result ${index + 1}`,
+                site_name: `source-${index + 1}.example`,
+                url: `https://source-${index + 1}.example/article`,
+            })),
+        };
+        const bytes = new TextEncoder().encode(JSON.stringify(payload));
+        const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+        const thoughtContent = `<search_activity data-b64="${btoa(binary)}"></search_activity>`;
+
+        expect(extractCompletedSearchSources(thoughtContent)).toHaveLength(23);
+    });
 });

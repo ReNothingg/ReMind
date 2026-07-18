@@ -408,11 +408,6 @@ export interface paths {
             "application/json": components["schemas"]["ErrorResponse"];
           };
         };
-        "429": {
-          content: {
-            "application/json": components["schemas"]["ErrorResponse"];
-          };
-        };
       };
     };
   };
