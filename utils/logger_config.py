@@ -12,6 +12,8 @@ from utils.observability import get_request_id
 
 logger = logging.getLogger("remind")
 logger.addHandler(logging.NullHandler())
+# Fail closed before setup_logging() installs the real filtered handlers.
+logger.propagate = False
 
 
 class PIIFilter(logging.Filter):
@@ -47,24 +49,39 @@ class PIIFilter(logging.Filter):
             record.msg = self._sanitize(str(record.msg))
 
         if record.args:
-            sanitized = []
-            for arg in record.args:
-                if isinstance(arg, str):
-                    sanitized.append(self._sanitize(arg))
-                else:
-                    sanitized.append(arg)
-            record.args = tuple(sanitized)
+            if isinstance(record.args, dict):
+                record.args = {
+                    key: self._sanitize(value) if isinstance(value, str) else value
+                    for key, value in record.args.items()
+                }
+            else:
+                record.args = tuple(
+                    self._sanitize(arg) if isinstance(arg, str) else arg for arg in record.args
+                )
 
         return True
 
 
-class JsonFormatter(logging.Formatter):
+_PII_SANITIZER = PIIFilter()
+
+
+class PIISafeFormatter(logging.Formatter):
+    """Sanitize the rendered message and exception text for every log format."""
+
+    def formatMessage(self, record):
+        return _PII_SANITIZER._sanitize(super().formatMessage(record))
+
+    def formatException(self, exc_info):
+        return _PII_SANITIZER._sanitize(super().formatException(exc_info))
+
+
+class JsonFormatter(PIISafeFormatter):
     def format(self, record):
         payload = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "logger": record.name,
             "level": record.levelname,
-            "message": record.getMessage(),
+            "message": _PII_SANITIZER._sanitize(record.getMessage()),
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,
@@ -79,9 +96,8 @@ class JsonFormatter(logging.Formatter):
                 payload["cf_ray"] = cf_ray
 
         if has_request_context():
-            payload["path"] = request.path
+            payload["path"] = request.url_rule.rule if request.url_rule else "[unmatched-route]"
             payload["method"] = request.method
-            payload["remote_addr"] = request.remote_addr
 
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
@@ -94,7 +110,7 @@ def _build_formatter() -> logging.Formatter:
     use_json = os.getenv("LOG_JSON", json_default).lower() in ("1", "true", "yes")
     if use_json:
         return JsonFormatter()
-    return logging.Formatter(
+    return PIISafeFormatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -112,38 +128,44 @@ def setup_logging(app):
     if getattr(logger, "_remind_configured", False):
         app.logger.handlers = logger.handlers
         app.logger.setLevel(logger.level)
+        app.logger.propagate = False
         return logger
 
     pii_filter = PIIFilter()
     formatter = _build_formatter()
 
-    handlers = [
-        logging.handlers.RotatingFileHandler(
-            str(LOGS_FOLDER / "app.log"), maxBytes=10 * 1024 * 1024, backupCount=10
-        ),
-        logging.handlers.RotatingFileHandler(
-            str(LOGS_FOLDER / "security.log"), maxBytes=10 * 1024 * 1024, backupCount=20
-        ),
-        logging.handlers.RotatingFileHandler(
-            str(LOGS_FOLDER / "error.log"), maxBytes=10 * 1024 * 1024, backupCount=20
-        ),
-        logging.handlers.RotatingFileHandler(
-            str(LOGS_FOLDER / "access.log"), maxBytes=10 * 1024 * 1024, backupCount=10
-        ),
-        logging.handlers.RotatingFileHandler(
-            str(LOGS_FOLDER / "model.log"), maxBytes=10 * 1024 * 1024, backupCount=10
-        ),
-        logging.StreamHandler(),
-    ]
-
-    levels = [
-        logging.DEBUG,
-        logging.WARNING,
-        logging.ERROR,
-        logging.INFO,
-        logging.INFO,
-        logging.INFO if IS_PRODUCTION else logging.DEBUG,
-    ]
+    if IS_PRODUCTION:
+        # Containers emit a single stream. Docker/collector rotation is process-safe
+        # and bounded by the production Compose logging policy.
+        handlers = [logging.StreamHandler()]
+        levels = [logging.INFO]
+    else:
+        handlers = [
+            logging.handlers.RotatingFileHandler(
+                str(LOGS_FOLDER / "app.log"), maxBytes=10 * 1024 * 1024, backupCount=10
+            ),
+            logging.handlers.RotatingFileHandler(
+                str(LOGS_FOLDER / "security.log"), maxBytes=10 * 1024 * 1024, backupCount=20
+            ),
+            logging.handlers.RotatingFileHandler(
+                str(LOGS_FOLDER / "error.log"), maxBytes=10 * 1024 * 1024, backupCount=20
+            ),
+            logging.handlers.RotatingFileHandler(
+                str(LOGS_FOLDER / "access.log"), maxBytes=10 * 1024 * 1024, backupCount=10
+            ),
+            logging.handlers.RotatingFileHandler(
+                str(LOGS_FOLDER / "model.log"), maxBytes=10 * 1024 * 1024, backupCount=10
+            ),
+            logging.StreamHandler(),
+        ]
+        levels = [
+            logging.DEBUG,
+            logging.WARNING,
+            logging.ERROR,
+            logging.INFO,
+            logging.INFO,
+            logging.DEBUG,
+        ]
 
     for handler, level in zip(handlers, levels, strict=False):
         handler.setLevel(level)
@@ -153,6 +175,9 @@ def setup_logging(app):
 
     app.logger.handlers = logger.handlers
     app.logger.setLevel(logger.level)
+    # Flask's logger is outside the ``remind`` namespace. Once it owns the
+    # filtered application handlers it must not also emit through root.
+    app.logger.propagate = False
     for handler in app.logger.handlers:
         handler.addFilter(pii_filter)
 

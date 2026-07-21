@@ -6,16 +6,82 @@ from typing import Any, List, Optional
 HIGH_WORDS = {"high", "critical", "error", "err"}
 
 
-def load_json_file(path: Optional[str]) -> Any:
+class SecurityReportError(ValueError):
+    """A scanner report cannot be trusted as evidence for a passing gate."""
+
+
+def load_json_file(path: Optional[str], scanner: str = "security scanner") -> Any:
     if not path:
-        return None
+        raise SecurityReportError(f"{scanner}: report path was not provided")
     file_path = pathlib.Path(path)
-    if not file_path.exists():
-        return None
+    if not file_path.is_file():
+        raise SecurityReportError(f"{scanner}: report is missing: {file_path}")
     try:
-        return json.loads(file_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+        raw_report = file_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SecurityReportError(f"{scanner}: report cannot be read: {file_path}") from exc
+    if not raw_report.strip():
+        raise SecurityReportError(f"{scanner}: report is empty: {file_path}")
+    try:
+        return json.loads(raw_report)
+    except json.JSONDecodeError as exc:
+        raise SecurityReportError(f"{scanner}: report is not valid JSON: {file_path}") from exc
+
+
+def validate_report(scanner: str, report: Any) -> None:
+    if scanner == "pip-audit":
+        dependencies = report if isinstance(report, list) else None
+        if isinstance(report, dict):
+            dependencies = report.get("dependencies")
+        if not isinstance(dependencies, list):
+            raise SecurityReportError("pip-audit: report has an unexpected schema")
+        if isinstance(report, dict) and (report.get("error") or report.get("errors")):
+            raise SecurityReportError("pip-audit: scanner reported an operational error")
+        for dependency in dependencies:
+            if not isinstance(dependency, dict) or not isinstance(dependency.get("vulns"), list):
+                raise SecurityReportError("pip-audit: report has malformed dependency data")
+            for vulnerability in dependency["vulns"]:
+                if not isinstance(vulnerability, dict) or not vulnerability.get("id"):
+                    raise SecurityReportError("pip-audit: report has malformed vulnerability data")
+        return
+
+    if not isinstance(report, dict):
+        raise SecurityReportError(f"{scanner}: report has an unexpected schema")
+    if report.get("error"):
+        raise SecurityReportError(f"{scanner}: scanner reported an operational error")
+
+    expected_list_keys = {
+        "bandit": ("results", "errors"),
+        "semgrep": ("results", "errors"),
+    }
+    if scanner == "npm-audit":
+        vulnerabilities = report.get("vulnerabilities")
+        if not isinstance(vulnerabilities, dict) or not isinstance(report.get("metadata"), dict):
+            raise SecurityReportError("npm-audit: report has an unexpected schema")
+        if any(
+            not isinstance(details, dict) or normalize_severity(details.get("severity")) is None
+            for details in vulnerabilities.values()
+        ):
+            raise SecurityReportError("npm-audit: report has malformed vulnerability data")
+        return
+
+    required_keys = expected_list_keys.get(scanner)
+    if not required_keys or any(not isinstance(report.get(key), list) for key in required_keys):
+        raise SecurityReportError(f"{scanner}: report has an unexpected schema")
+    if report.get("errors"):
+        raise SecurityReportError(f"{scanner}: scanner reported an operational error")
+    for result in report["results"]:
+        if not isinstance(result, dict):
+            raise SecurityReportError(f"{scanner}: report has malformed finding data")
+        if scanner == "bandit":
+            severity = result.get("issue_severity")
+        else:
+            extra = result.get("extra")
+            if not isinstance(extra, dict):
+                raise SecurityReportError("semgrep: report has malformed finding data")
+            severity = extra.get("severity")
+        if normalize_severity(severity) is None:
+            raise SecurityReportError(f"{scanner}: report has malformed finding severity")
 
 
 def normalize_severity(value: Any) -> Optional[str]:
@@ -145,16 +211,28 @@ def collect_semgrep_findings(report: Any) -> List[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pip", dest="pip_report")
-    parser.add_argument("--npm", dest="npm_report")
-    parser.add_argument("--bandit", dest="bandit_report")
-    parser.add_argument("--semgrep", dest="semgrep_report")
+    parser.add_argument("--pip", dest="pip_report", required=True)
+    parser.add_argument("--npm", dest="npm_report", required=True)
+    parser.add_argument("--bandit", dest="bandit_report", required=True)
+    parser.add_argument("--semgrep", dest="semgrep_report", required=True)
     args = parser.parse_args()
 
-    pip_report = load_json_file(args.pip_report)
-    npm_report = load_json_file(args.npm_report)
-    bandit_report = load_json_file(args.bandit_report)
-    semgrep_report = load_json_file(args.semgrep_report)
+    try:
+        pip_report = load_json_file(args.pip_report, "pip-audit")
+        npm_report = load_json_file(args.npm_report, "npm-audit")
+        bandit_report = load_json_file(args.bandit_report, "bandit")
+        semgrep_report = load_json_file(args.semgrep_report, "semgrep")
+        reports = {
+            "pip-audit": pip_report,
+            "npm-audit": npm_report,
+            "bandit": bandit_report,
+            "semgrep": semgrep_report,
+        }
+        for scanner, report in reports.items():
+            validate_report(scanner, report)
+    except SecurityReportError as exc:
+        print(f"Security gate failed closed: {exc}")
+        return 2
 
     findings: List[str] = []
     findings.extend(collect_pip_audit_findings(pip_report))

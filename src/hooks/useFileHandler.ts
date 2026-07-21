@@ -1,27 +1,32 @@
 import { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  CHAT_UPLOAD_EXTENSIONS,
+  CHAT_UPLOAD_MAX_FILES,
+  CHAT_UPLOAD_MAX_TOTAL_BYTES,
   TEXT_FILE_EXTENSIONS,
   VALID_IMAGE_MIME_TYPES,
 } from "../utils/constants";
 import { showToast } from "../utils/toast";
 
-const MAX_FILES = 10;
+const ALLOWED_UPLOAD_EXTENSIONS = new Set(CHAT_UPLOAD_EXTENSIONS);
+
+const formatFileSize = (bytes, decimals = 2) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+};
 
 export const useFileHandler = ({ enabled = true } = {}) => {
+  const { t } = useTranslation();
   const [files, setFiles] = useState([]);
   const [, setDragCounter] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const dragHasFilesRef = useRef(false);
   const fileInputRef = useRef(null);
-
-  const formatFileSize = (bytes, decimals = 2) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-  };
 
   const isTextFile = (file) => {
     if (!file?.name) return false;
@@ -47,19 +52,59 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     (newFiles) => {
       if (!enabled) return;
       if (!newFiles || newFiles.length === 0) return;
-      let fileList = Array.from(newFiles);
+      let fileList = Array.from(newFiles) as File[];
 
       const totalFiles = files.length + fileList.length;
-      if (totalFiles > MAX_FILES) {
-        showToast(`Можно прикрепить не более ${MAX_FILES} файлов.`, { type: "warning" });
-        const remainingSlots = MAX_FILES - files.length;
+      if (totalFiles > CHAT_UPLOAD_MAX_FILES) {
+        showToast(t("files.tooMany", { count: CHAT_UPLOAD_MAX_FILES }), { type: "warning" });
+        const remainingSlots = CHAT_UPLOAD_MAX_FILES - files.length;
         if (remainingSlots <= 0) return;
         fileList = fileList.slice(0, remainingSlots);
       }
 
-      setFiles((prev) => [...prev, ...fileList]);
+      let totalBytes = files.reduce((sum, file) => sum + Number(file.size || 0), 0);
+      const acceptedFiles: File[] = [];
+      let showedTypeWarning = false;
+      let showedSizeWarning = false;
+      let showedEmptyWarning = false;
+
+      for (const file of fileList) {
+        const extension = file.name.split(".").pop()?.toLowerCase() || "";
+        if (!ALLOWED_UPLOAD_EXTENSIONS.has(extension)) {
+          if (!showedTypeWarning) {
+            showToast(t("files.unsupportedType", { name: file.name }), { type: "warning" });
+            showedTypeWarning = true;
+          }
+          continue;
+        }
+        if (file.size <= 0) {
+          if (!showedEmptyWarning) {
+            showToast(t("files.emptyFile", { name: file.name }), { type: "warning" });
+            showedEmptyWarning = true;
+          }
+          continue;
+        }
+        if (totalBytes + file.size > CHAT_UPLOAD_MAX_TOTAL_BYTES) {
+          if (!showedSizeWarning) {
+            showToast(
+              t("files.sizeLimit", {
+                size: formatFileSize(CHAT_UPLOAD_MAX_TOTAL_BYTES, 0),
+              }),
+              { type: "warning" },
+            );
+            showedSizeWarning = true;
+          }
+          continue;
+        }
+        totalBytes += file.size;
+        acceptedFiles.push(file);
+      }
+
+      if (acceptedFiles.length > 0) {
+        setFiles((prev) => [...prev, ...acceptedFiles]);
+      }
     },
-    [enabled, files.length]
+    [enabled, files, t]
   );
 
   const removeFile = useCallback((index) => {
@@ -175,7 +220,7 @@ export const useFileHandler = ({ enabled = true } = {}) => {
     handleDragLeave,
     handleDragOver,
     handleDrop,
-    MAX_FILES,
+    MAX_FILES: CHAT_UPLOAD_MAX_FILES,
     VALID_IMAGE_MIME_TYPES,
   };
 };

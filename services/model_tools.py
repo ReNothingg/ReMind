@@ -166,7 +166,7 @@ def _execute_web_search(arguments: dict[str, Any]) -> ModelToolResult:
     if not query:
         return ModelToolResult({"ok": False, "error": "invalid_query"})
 
-    events = [
+    events: list[dict[str, Any]] = [
         {"status": "web_search_started", "query": query},
         {"status": "web_search_fetching", "query": query},
     ]
@@ -272,9 +272,7 @@ def _execute_github_repository_map(
         return ModelToolResult({"ok": False, "error": "github_repository_unavailable"})
 
     paths = [
-        item
-        for item in repo_map.get("flat", [])
-        if isinstance(item, dict) and item.get("path")
+        item for item in repo_map.get("flat", []) if isinstance(item, dict) and item.get("path")
     ]
     return ModelToolResult(
         {
@@ -283,15 +281,12 @@ def _execute_github_repository_map(
             "base_branch": repo_map.get("base_branch"),
             "stats": repo_map.get("stats"),
             "paths": paths[:MAX_GITHUB_TREE_PATHS],
-            "truncated": bool(repo_map.get("truncated"))
-            or len(paths) > MAX_GITHUB_TREE_PATHS,
+            "truncated": bool(repo_map.get("truncated")) or len(paths) > MAX_GITHUB_TREE_PATHS,
         }
     )
 
 
-def _execute_github_read_file(
-    user_id: int | None, arguments: dict[str, Any]
-) -> ModelToolResult:
+def _execute_github_read_file(user_id: int | None, arguments: dict[str, Any]) -> ModelToolResult:
     repo_full_name = str(arguments.get("repo_full_name") or "").strip()
     raw_path = str(arguments.get("path") or "").strip()
     try:

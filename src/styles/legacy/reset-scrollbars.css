@@ -13,7 +13,7 @@ html {
 
 ::selection {
   background: rgba(var(--color-accent-raw), 0.28);
-  color: var(--color-text-on-accent-bg);
+  color: inherit;
 }
 
 html[data-theme='light'] ::selection {
@@ -21,18 +21,23 @@ html[data-theme='light'] ::selection {
   color: inherit;
 }
 
-html,
+html {
+  min-height: 100%;
+  width: 100%;
+  padding: 0;
+  display: block;
+}
+
 body {
   background: var(--color-bg-main);
   color: var(--color-text-primary);
   font-family: var(--font-family-main);
   min-height: var(--app-viewport-height);
-  padding: calc(var(--spacing-unit) * 4);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: block;
   overflow-x: hidden;
-  font-family: var(--font-family-main);
   font-optical-sizing: auto;
 
   -webkit-font-smoothing: antialiased;
@@ -44,7 +49,7 @@ body {
     background var(--transition-normal),
     color var(--transition-normal),
     padding-left var(--transition-normal);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.55;
   letter-spacing: 0;
 }
@@ -60,6 +65,12 @@ body.has-rail {
 
 body.rail-open {
   --app-rail-offset: var(--rail-width-expanded);
+}
+
+html.modal-open,
+body.modal-open {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 @keyframes snowFall {

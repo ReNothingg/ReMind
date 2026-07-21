@@ -33,7 +33,7 @@ const SEOHelmet = ({
     ogImage = null,
     ogType = 'website',
     twitterCard = 'summary_large_image',
-    themeColor = '#111214',
+    themeColor = null,
 }) => {
     const { i18n } = useTranslation();
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';

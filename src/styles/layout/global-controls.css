@@ -522,7 +522,7 @@
 }
 
 .model-thinking-slider:focus-within .model-thinking-track {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-border-focus);
   outline-offset: 3px;
 }
 

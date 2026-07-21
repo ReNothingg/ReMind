@@ -69,8 +69,8 @@ def _serialize_model(model) -> dict[str, object]:
     return serialized
 
 
-def list_accessible_models(user_id: int | None) -> list[dict[str, str]]:
-    models = []
+def list_accessible_models(user_id: int | None) -> list[dict[str, object]]:
+    models: list[dict[str, object]] = []
     for model in iter_model_definitions():
         if not model_runtime_available(model):
             continue
@@ -80,10 +80,9 @@ def list_accessible_models(user_id: int | None) -> list[dict[str, str]]:
     return models
 
 
-def list_released_models() -> list[dict[str, str]]:
+def list_released_models() -> list[dict[str, object]]:
     return [
         _serialize_model(model)
         for model in iter_model_definitions()
-        if model.stage == ModelStage.RELEASE
-        and model_runtime_available(model)
+        if model.stage == ModelStage.RELEASE and model_runtime_available(model)
     ]

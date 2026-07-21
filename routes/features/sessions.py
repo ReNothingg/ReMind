@@ -12,6 +12,10 @@ from werkzeug.utils import secure_filename
 from config import ALLOW_GUEST_CHATS_SAVE
 from routes.api_errors import ApiError, api_error_boundary, require_authenticated_user_id
 from routes.features.minds import get_mind_for_session_binding, serialize_mind_for_session
+from services.attachment_lifecycle import (
+    collect_managed_references,
+    delete_unreferenced_managed_files,
+)
 from services.canvas_tools import MAX_TEXTDOC_CONTENT_LENGTH
 from services.chat_history import (
     _verify_guest_session_token,
@@ -487,15 +491,18 @@ def register_session_routes(api_bp):
 
         raw_user_id = session.get("user_id")
         if isinstance(raw_user_id, int):
-            deleted = UserChatHistory.query.filter_by(
+            chat = UserChatHistory.query.filter_by(
                 user_id=raw_user_id, session_id=session_id
-            ).delete(synchronize_session=False)
-            if not deleted:
+            ).first()
+            if not chat:
                 raise ApiError("Chat not found", status=404, code="not_found")
+            managed_references = collect_managed_references(chat.get_messages())
+            db.session.delete(chat)
             ChatShare.query.filter_by(user_id=raw_user_id, session_id=session_id).delete(
                 synchronize_session=False
             )
             db.session.commit()
+            delete_unreferenced_managed_files(managed_references)
             log_audit_event(AuditEvents.DELETE_CHAT, {"session_id": session_id}, raw_user_id)
             return "", 204
 
@@ -506,6 +513,9 @@ def register_session_routes(api_bp):
             or not has_valid_guest_session_token(safe_session_id)
         ):
             raise ApiError("Authentication required", status=401, code="auth_required")
+        guest_chat_data = read_chat_file_secure(safe_session_id, require_auth=True)
+        managed_references = collect_managed_references(guest_chat_data)
         if not delete_guest_chat_file(safe_session_id):
             raise ApiError("Chat not found", status=404, code="not_found")
+        delete_unreferenced_managed_files(managed_references)
         return "", 204

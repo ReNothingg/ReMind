@@ -19,7 +19,8 @@
   font-size: 0.85em;
   color: var(--color-text-secondary);
   position: relative;
-  height: 35px;
+  min-height: 44px;
+  height: auto;
 }
 
 .code-block-icon {
@@ -62,9 +63,18 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-tertiary);
-  width: 25px;
-  height: 25px;
+  width: 32px;
+  height: 32px;
   position: relative;
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  .code-block-header-actions .copy-code-btn,
+  .code-block-header-actions .toggle-code-btn,
+  .code-block-header-actions .download-code-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 .code-block-header-actions .toggle-code-btn.disabled {

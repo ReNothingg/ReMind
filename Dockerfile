@@ -1,4 +1,4 @@
-FROM node:26-alpine AS frontend
+FROM node:24-alpine AS frontend
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -49,7 +49,7 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 COPY . .
 COPY --from=frontend /app/dist ./dist
-RUN rm -rf .git tests/ .gitignore
+RUN rm -f .gitignore
 RUN addgroup --system --gid 1001 app \
     && adduser --system --uid 1001 --ingroup app --home /app app \
     && mkdir -p /app/database /app/logs /app/upload \
@@ -62,4 +62,4 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "wsgi:application", "--workers", "2", "--threads", "4", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "wsgi:application", "--workers", "2", "--threads", "4", "--timeout", "120", "--access-logfile", "-", "--access-logformat", "%(t)s \"%(m)s %(H)s\" %(s)s %(b)s", "--error-logfile", "-"]

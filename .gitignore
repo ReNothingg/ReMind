@@ -127,7 +127,9 @@ tmp/
 tests/
 !tests/
 tests/*
-!tests/test_web_search_quality.py
+!tests/test_*.py
+!tests/e2e/
+!tests/e2e/**
 temp/
 *.tmp
 *.bak

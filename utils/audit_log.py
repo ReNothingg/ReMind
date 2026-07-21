@@ -1,20 +1,21 @@
 import hashlib
 import json
 import logging
-import logging.handlers
 from datetime import datetime
 from functools import wraps
 
 from flask import has_request_context, request, session
 
-from config import IS_PRODUCTION, LOGS_FOLDER
+from config import IS_PRODUCTION, LOGS_FOLDER, SECURITY_LOG_RETENTION_DAYS
+from utils.process_safe_log_handler import ProcessSafeRotatingFileHandler
 
 audit_logger = logging.getLogger("remind.audit")
 audit_logger.setLevel(logging.INFO)
-_audit_handler = logging.handlers.RotatingFileHandler(
+_audit_handler = ProcessSafeRotatingFileHandler(
     str(LOGS_FOLDER / "audit.log"),
-    maxBytes=50 * 1024 * 1024,
-    backupCount=30,
+    max_bytes=10 * 1024 * 1024,
+    backup_count=10,
+    retention_days=SECURITY_LOG_RETENTION_DAYS,
 )
 _audit_handler.setFormatter(
     logging.Formatter("%(asctime)s - AUDIT - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")

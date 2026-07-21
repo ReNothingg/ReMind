@@ -13,9 +13,7 @@ from utils.rate_limiting import RateLimiter, rate_limit
 
 DRAFT_MAX_CHARS = 20_000
 DRAFT_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
-draft_save_limiter = RateLimiter(
-    max_requests=600, time_window=3600, namespace="chat_draft"
-)
+draft_save_limiter = RateLimiter(max_requests=600, time_window=3600, namespace="chat_draft")
 
 
 def _load_settings(user_id: int, *, create: bool = False) -> UserSettings | None:
@@ -82,7 +80,9 @@ def register_user_state_routes(api_bp):
         if not isinstance(device_id, str) or not device_id.strip() or len(device_id) > 100:
             return jsonify({"error": "invalid_device_id"}), 400
         if base_revision is not None and (
-            not isinstance(base_revision, int) or isinstance(base_revision, bool) or base_revision < 0
+            not isinstance(base_revision, int)
+            or isinstance(base_revision, bool)
+            or base_revision < 0
         ):
             return jsonify({"error": "invalid_revision"}), 400
 

@@ -22,7 +22,7 @@
     "loginTitle": "আপনার অ্যাকাউন্টে সাইন ইন করুন",
     "registerTitle": "অ্যাকাউন্ট তৈরি করুন",
     "fields": {
-      "email": "Email:",
+      "email": "ইমেইল:",
       "password": "পাসওয়ার্ড:",
       "username": "ব্যবহারকারীর নাম:",
       "confirmPassword": "পাসওয়ার্ড নিশ্চিত করুন:",
@@ -50,6 +50,7 @@
       "emailTooLong": "Email 100 অক্ষরের বেশি হতে পারবে না",
       "passwordTooLong": "পাসওয়ার্ড 100 অক্ষরের বেশি হতে পারবে না",
       "turnstileRequired": "আপনি যে রোবট নন তা নিশ্চিত করে আবার চেষ্টা করুন।",
+      "turnstileLoadError": "Cloudflare যাচাইকরণ লোড হয়নি। পৃষ্ঠাটি রিফ্রেশ করুন অথবা এই সাইটের জন্য ব্লকার বন্ধ করুন।",
       "requestError": "নেটওয়ার্ক অথবা সার্ভার ত্রুটি"
     },
     "passwordStrength": {
@@ -67,8 +68,8 @@
     "loading": "লোড হচ্ছে...",
     "closeEsc": "বন্ধ করুন (Esc)",
     "selectOption": "একটি অপশন নির্বাচন করুন",
-    "copy": "Copy",
-    "close": "Close"
+    "copy": "কপি করুন",
+    "close": "বন্ধ করুন"
   },
   "think": {
     "label": "ভাবনা",
@@ -97,36 +98,36 @@
   "chat": {
     "readOnly": "চ্যাট শুধুমাত্র পড়ার জন্য",
     "editUserMessage": {
-      "placeholder": "Edit your message...",
-      "ariaLabel": "Edit your message",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit"
+      "placeholder": "আপনার বার্তা সম্পাদনা করুন...",
+      "ariaLabel": "আপনার বার্তা সম্পাদনা করুন",
+      "save": "সংরক্ষণ করুন",
+      "cancel": "বাতিল করুন",
+      "edit": "সম্পাদনা করুন"
     },
     "githubDiff": {
-      "title": "Pull request changes",
-      "branch": "Branch",
-      "filesChanged": "{{count}} files changed",
-      "additions": "{{count}} additions",
-      "deletions": "{{count}} deletions",
-      "copy": "Copy diff",
-      "copied": "Copied",
-      "download": "Download diff",
-      "expandFile": "Expand file",
-      "collapseFile": "Collapse file",
-      "openPullRequest": "Open pull request",
-      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "title": "Pull request-এর পরিবর্তন",
+      "branch": "ব্রাঞ্চ",
+      "filesChanged": "{{count}}টি ফাইল পরিবর্তিত",
+      "additions": "{{count}}টি সংযোজন",
+      "deletions": "{{count}}টি অপসারণ",
+      "copy": "diff কপি করুন",
+      "copied": "কপি হয়েছে",
+      "download": "diff ডাউনলোড করুন",
+      "expandFile": "ফাইল প্রসারিত করুন",
+      "collapseFile": "ফাইল সংকুচিত করুন",
+      "openPullRequest": "Pull request খুলুন",
+      "truncated": "diff-এর {{total}}টি লাইনের মধ্যে {{shown}}টি দেখানো হচ্ছে",
       "status": {
-        "added": "Added",
-        "deleted": "Deleted",
-        "modified": "Modified",
-        "renamed": "Renamed"
+        "added": "যোগ করা হয়েছে",
+        "deleted": "মুছে ফেলা হয়েছে",
+        "modified": "পরিবর্তিত",
+        "renamed": "নাম পরিবর্তিত"
       }
     },
-    "ariaLog": "Conversation messages",
-    "userMessageAria": "Your message",
-    "assistantMessageAria": "Assistant message",
-    "regenerate": "Regenerate",
+    "ariaLog": "কথোপকথনের বার্তা",
+    "userMessageAria": "আপনার বার্তা",
+    "assistantMessageAria": "সহকারীর বার্তা",
+    "regenerate": "আবার তৈরি করুন",
     "generationFailed": "উত্তর তৈরি করা যায়নি।",
     "generationStopped": "উত্তর তৈরি বন্ধ হয়েছে",
     "variantLimitReached": "এই বার্তায় সংস্করণের সীমা পূর্ণ হয়েছে।",
@@ -137,33 +138,33 @@
       "counter": "{{total}}টির মধ্যে সংস্করণ {{current}}"
     },
     "audio": {
-      "speak": "Read aloud",
-      "label": "Audio",
-      "loading": "Loading audio...",
-      "play": "Play",
-      "pause": "Pause",
-      "progress": "Audio playback position",
-      "error": "Could not load audio."
+      "speak": "জোরে পড়ুন",
+      "label": "অডিও",
+      "loading": "অডিও লোড হচ্ছে...",
+      "play": "চালান",
+      "pause": "বিরতি দিন",
+      "progress": "অডিও প্লেব্যাকের অবস্থান",
+      "error": "অডিও লোড করা যায়নি।"
     },
     "feedback": {
-      "like": "Good answer",
-      "dislike": "Bad answer",
-      "panelTitle": "What was wrong with the answer?",
-      "reasonGroup": "Feedback reasons",
-      "commentLabel": "Additional feedback",
-      "commentPlaceholder": "Describe what should be improved",
-      "submit": "Send feedback",
-      "sending": "Sending...",
-      "sent": "Feedback sent",
-      "error": "Failed to send feedback",
-      "noSession": "Feedback is available only in saved chats.",
+      "like": "ভালো উত্তর",
+      "dislike": "খারাপ উত্তর",
+      "panelTitle": "উত্তরটিতে কী সমস্যা ছিল?",
+      "reasonGroup": "মতামতের কারণ",
+      "commentLabel": "অতিরিক্ত মতামত",
+      "commentPlaceholder": "কী উন্নত করা উচিত তা লিখুন",
+      "submit": "মতামত পাঠান",
+      "sending": "পাঠানো হচ্ছে...",
+      "sent": "মতামত পাঠানো হয়েছে",
+      "error": "মতামত পাঠানো যায়নি",
+      "noSession": "শুধু সংরক্ষিত চ্যাটে মতামত দেওয়া যায়।",
       "reasons": {
-        "incorrect": "Incorrect",
-        "unsafe": "Unsafe",
-        "not_helpful": "Not helpful",
-        "too_long": "Too long",
-        "missing_context": "Missed context",
-        "other": "Other"
+        "incorrect": "ভুল",
+        "unsafe": "অনিরাপদ",
+        "not_helpful": "সহায়ক নয়",
+        "too_long": "অতিরিক্ত দীর্ঘ",
+        "missing_context": "প্রসঙ্গ বাদ পড়েছে",
+        "other": "অন্যান্য"
       }
     }
   },
@@ -207,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}, ধাপ {{step}}",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -231,8 +233,8 @@
     "attachUnavailableReadOnly": "পাবলিক চ্যাট: ফাইল উপলভ্য নয়",
     "removeQuote": "উদ্ধৃতি সরান",
     "dragDropTitle": "ফাইল এখানে ছাড়ুন",
-    "dragDropSubtitle": "ছবি, ডকুমেন্ট এবং অন্যান্য ফাইল সমর্থিত",
-    "placeholder": "আজ আপনি কী শিখতে চান?",
+    "dragDropSubtitle": "ছবি ও টেক্সট ফাইল, মোট {{size}} পর্যন্ত",
+    "placeholder": "যেকোনো প্রশ্ন করুন",
     "placeholderReadOnly": "পাবলিক চ্যাট: শুধুমাত্র পড়ার জন্য",
     "ariaInput": "বার্তা ইনপুট",
     "send": "পাঠান",
@@ -247,8 +249,17 @@
   },
   "files": {
     "removeFile": "ফাইল সরান",
-    "fileFallback": "File",
-    "pastedImageName": "ছবি"
+    "preview": "প্রিভিউ",
+    "code": "কোড",
+    "lines": "{{count}}টি লাইন",
+    "previewAlt": "{{name}}-এর প্রিভিউ",
+    "previewUnavailable": "“{{name}}” ফাইলটির প্রিভিউ পাওয়া যাচ্ছে না।",
+    "fileFallback": "ফাইল",
+    "pastedImageName": "ছবি",
+    "tooMany": "আপনি সর্বোচ্চ {{count}}টি ফাইল সংযুক্ত করতে পারেন।",
+    "unsupportedType": "«{{name}}» ফাইলের ধরন সমর্থিত নয়।",
+    "emptyFile": "«{{name}}» ফাইলটি খালি।",
+    "sizeLimit": "সংযুক্ত ফাইলগুলোর মোট আকার {{size}} পর্যন্ত হতে পারে।"
   },
   "share": {
     "title": "চ্যাট শেয়ারিং",
@@ -302,13 +313,16 @@
     "publicChat": "পাবলিক চ্যাট",
     "emptyHistory": "ইতিহাস খালি",
     "noResults": "কোনো মিল নেই",
+    "statusGenerating": "উত্তর তৈরি হচ্ছে",
+    "statusError": "উত্তর তৈরি করা ব্যর্থ হয়েছে",
+    "statusComplete": "উত্তর প্রস্তুত",
     "settings": "সেটিংস",
     "share": "শেয়ার করুন",
     "rename": "নাম পরিবর্তন",
     "delete": "মুছুন",
-    "temporaryChat": "Temporary chat",
+    "temporaryChat": "অস্থায়ী চ্যাট",
     "minds": "Minds",
-    "admin": "Admin",
+    "admin": "অ্যাডমিন",
     "github": "GitHub"
   },
   "settings": {
@@ -321,7 +335,7 @@
       "interface": "ইন্টারফেস",
       "accessibility": "অ্যাক্সেসিবিলিটি",
       "about": "আমাদের সম্পর্কে",
-      "privacy": "Privacy"
+      "privacy": "গোপনীয়তা"
     },
     "languages": {
       "en": "English",
@@ -386,20 +400,20 @@
         "error": "অ্যাকাউন্ট মুছে ফেলা যায়নি"
       },
       "connectedApps": {
-        "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "title": "সংযুক্ত অ্যাপ",
+        "description": "চ্যাটে ReMind যে বাহ্যিক পরিষেবাগুলো ব্যবহার করতে পারে সেগুলো পরিচালনা করুন।",
         "github": {
           "name": "GitHub",
-          "description": "Let ReMind plan code changes and open pull requests from chat.",
-          "connect": "Connect GitHub",
-          "manage": "Manage",
-          "error": "Failed to load GitHub status",
-          "repoCount": "Available repositories: {{count}}",
+          "description": "চ্যাট থেকেই ReMind-কে কোড পরিবর্তনের পরিকল্পনা করতে এবং pull request খুলতে দিন।",
+          "connect": "GitHub সংযুক্ত করুন",
+          "manage": "পরিচালনা করুন",
+          "error": "GitHub-এর অবস্থা লোড করা যায়নি",
+          "repoCount": "উপলভ্য রিপোজিটরি: {{count}}",
           "status": {
-            "checking": "Checking",
-            "connected": "Connected",
-            "disconnected": "Not connected",
-            "configMissing": "Config missing"
+            "checking": "যাচাই করা হচ্ছে",
+            "connected": "সংযুক্ত",
+            "disconnected": "সংযুক্ত নয়",
+            "configMissing": "কনফিগারেশন অনুপস্থিত"
           }
         }
       }
@@ -491,9 +505,9 @@
         "shortcut": {
           "label": "কীবোর্ড শর্টকাট",
           "disabled": "বন্ধ",
-          "record": "Record shortcut (current: {{shortcut}})",
-          "recording": "Press a shortcut now, or Esc to cancel",
-          "invalid": "Press a keyboard shortcut with at least one modifier."
+          "record": "শর্টকাট রেকর্ড করুন (বর্তমান: {{shortcut}})",
+          "recording": "এখন একটি শর্টকাট চাপুন, অথবা বাতিল করতে Esc চাপুন",
+          "invalid": "অন্তত একটি মডিফায়ারসহ কিবোর্ড শর্টকাট চাপুন।"
         },
         "newChat": {
           "label": "নতুন চ্যাট খুলুন",
@@ -501,8 +515,8 @@
           "browser": "ব্রাউজারে"
         },
         "launchAtLogin": {
-          "title": "Launch at login",
-          "description": "Keep ReMind ready in the background after you sign in to your Mac."
+          "title": "লগইনের সময় চালু করুন",
+          "description": "Mac-এ সাইন ইন করার পর ReMind-কে ব্যাকগ্রাউন্ডে প্রস্তুত রাখুন।"
         }
       }
     },
@@ -538,6 +552,11 @@
         "description": "খবর, প্রকল্প, গবেষণা এবং দলের তথ্য।",
         "link": "SynvexAI ওয়েবসাইট খুলুন"
       },
+      "github": {
+        "title": "GitHub-এ ReMind",
+        "description": "সোর্স কোড দেখুন এবং ওপেন-সোর্স প্রকল্পে অবদান রাখুন।",
+        "link": "GitHub-এ ReMind রিপোজিটরি খুলুন"
+      },
       "socials": {
         "title": "সামাজিক মাধ্যমে ReMind",
         "description": "ReMind এবং SynvexAI-এর অফিসিয়াল চ্যানেল।",
@@ -557,20 +576,20 @@
       }
     },
     "privacy": {
-      "title": "Privacy and data",
-      "description": "Control data use according to the SynvexAI privacy policy.",
+      "title": "গোপনীয়তা ও ডেটা",
+      "description": "SynvexAI-এর গোপনীয়তা নীতি অনুযায়ী ডেটার ব্যবহার নিয়ন্ত্রণ করুন।",
       "serviceImprovement": {
-        "title": "Use my content to improve SynvexAI",
-        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+        "title": "SynvexAI উন্নত করতে আমার কনটেন্ট ব্যবহার করুন",
+        "description": "ডিফল্টভাবে বন্ধ থাকে। চালু করলে আপনার প্রম্পট, উত্তর, ফাইল ও মতামত পরিষেবার মান ও মডেল উন্নত করতে ব্যবহার করা হতে পারে।"
       },
-      "exportAction": "Export my data",
-      "exportLoading": "Preparing export...",
-      "exportSuccess": "Data export is ready",
-      "exportError": "Failed to export data",
-      "signInForExport": "Sign in to export data",
+      "exportAction": "আমার ডেটা এক্সপোর্ট করুন",
+      "exportLoading": "এক্সপোর্ট প্রস্তুত করা হচ্ছে...",
+      "exportSuccess": "ডেটা এক্সপোর্ট প্রস্তুত",
+      "exportError": "ডেটা এক্সপোর্ট করা যায়নি",
+      "signInForExport": "ডেটা এক্সপোর্ট করতে সাইন ইন করুন",
       "policyLink": {
-        "title": "Privacy policy",
-        "description": "Open the current SynvexAI policy."
+        "title": "গোপনীয়তা নীতি",
+        "description": "SynvexAI-এর বর্তমান নীতি খুলুন।"
       }
     }
   },
@@ -603,7 +622,7 @@
       "hindi": "হিন্দি",
       "bengali": "বাংলা"
     },
-    "translateAction": "Translate"
+    "translateAction": "অনুবাদ করুন"
   },
   "quiz": {
     "dataError": "কুইজ ডেটা ত্রুটি",
@@ -612,10 +631,14 @@
     "tryAgain": "আবার চেষ্টা করুন",
     "question": "প্রশ্ন {{current}}/{{total}}",
     "hint": "ইঙ্গিত",
-    "next": "পরবর্তী"
+    "next": "পরবর্তী",
+    "correctAnswer": "সঠিক উত্তর",
+    "incorrectAnswer": "ভুল উত্তর"
   },
   "spinwheel": {
-    "spin": "স্পিন"
+    "spin": "স্পিন",
+    "spinning": "ঘুরছে",
+    "result": "ফলাফল: {{value}}"
   },
   "minds": {
     "subtitle": "বিভিন্ন কাজ ও কথোপকথন শৈলীর জন্য নিজের কাস্টম AI minds তৈরি ও পরিচালনা করুন।",
@@ -624,7 +647,7 @@
     "searchAria": "minds খুঁজুন",
     "tabsAria": "minds বিভাগ",
     "tabs": {
-      "store": "Mind store",
+      "store": "Minds স্টোর",
       "mine": "আমার minds"
     },
     "categoriesAria": "mind বিভাগসমূহ",
@@ -643,7 +666,7 @@
       "link": "লিঙ্কের মাধ্যমে",
       "linkShort": "লিঙ্কের মাধ্যমে",
       "linkLong": "যার কাছে লিঙ্ক আছে সবাই",
-      "store": "Mind store"
+      "store": "Minds স্টোর"
     },
     "verified": "নির্মাতার অনুমোদিত",
     "startersAria": "কথোপকথন শুরুর প্রম্পট",
@@ -732,9 +755,9 @@
     "queryLabel": "কোয়েরি"
   },
   "temporaryChat": {
-    "title": "Temporary chat",
-    "badge": "Not saved to history",
-    "description": "This chat stays out of the main history and is not saved after the session."
+    "title": "অস্থায়ী চ্যাট",
+    "badge": "ইতিহাসে সংরক্ষিত নয়",
+    "description": "এই চ্যাটটি মূল ইতিহাসে দেখা যাবে না এবং সেশন শেষ হলে সংরক্ষিত হবে না।"
   },
   "github": {
     "title": "GitHub",
@@ -866,8 +889,49 @@
     }
   },
   "chatImage": {
-    "messageAlt": "Chat image {{number}}",
-    "generating": "Creating image: {{prompt}}"
+    "open": "খুলুন",
+    "unavailableTitle": "প্রিভিউ পাওয়া যাচ্ছে না",
+    "unavailableDescription": "ছবিটি লোড করা যায়নি।",
+    "messageAlt": "চ্যাটের ছবি {{number}}",
+    "generating": "ছবি তৈরি হচ্ছে: {{prompt}}"
+  },
+  "imageLightbox": {
+    "badge": "প্রিভিউ",
+    "title": "ছবির প্রিভিউ",
+    "demoTitle": "ReMind ডেমো ছবি",
+    "subtitle": "সম্পূর্ণ ছবিটি দেখুন, অন্য স্টাইলে আবার তৈরি করুন অথবা ফাইলটি ডাউনলোড করুন।",
+    "previewAlt": "ছবির প্রিভিউ",
+    "close": "বন্ধ করুন",
+    "styleLabel": "স্টাইল",
+    "promptLabel": "মূল প্রম্পট",
+    "promptFallback": "এই ছবিটির মূল প্রম্পট পাওয়া যাচ্ছে না।",
+    "actions": {
+      "regenerate": "আবার তৈরি করুন",
+      "regenerating": "তৈরি হচ্ছে...",
+      "download": "ডাউনলোড"
+    },
+    "styles": {
+      "realistic": "বাস্তবধর্মী",
+      "cartoon": "কার্টুন",
+      "anime": "অ্যানিমে",
+      "oilPainting": "তেলরং",
+      "watercolor": "জলরং",
+      "pencilSketch": "পেন্সিল স্কেচ"
+    },
+    "details": {
+      "style": "স্টাইল: {{style}}",
+      "resolution": "{{width}} × {{height}} পিক্সেল"
+    },
+    "errors": {
+      "missingSourceMessage": "মূল ব্যবহারকারীর বার্তাটি খুঁজে পাওয়া যায়নি।",
+      "missingPrompt": "ছবিটি আবার তৈরি করার জন্য উৎস প্রম্পট পাওয়া যায়নি।",
+      "missingResult": "মডেলটি কোনো নতুন ছবি দেয়নি।",
+      "missingImage": "ডাউনলোডের জন্য কোনো ছবি নেই।",
+      "regenerateFailed": "ছবিটি আবার তৈরি করা যায়নি: {{message}}",
+      "downloadFailed": "ছবিটি ডাউনলোড করা যায়নি। মূল ফাইলটি একটি নতুন ট্যাবে খোলা হবে।",
+      "previewTitle": "ছবির প্রিভিউ পাওয়া যাচ্ছে না",
+      "previewDescription": "ফাইলের পথ পরীক্ষা করুন অথবা ছবিটি আবার তৈরি করুন।"
+    }
   },
   "codeBlock": {
     "codeSnippet": "Code snippet",
@@ -897,9 +961,9 @@
   },
   "admin": {
     "aiFeedback": {
-      "likeRatio": "AI answer likes",
-      "dislikeRatio": "AI answer dislikes",
-      "total": "AI answer ratings"
+      "likeRatio": "AI উত্তরে লাইক",
+      "dislikeRatio": "AI উত্তরে ডিসলাইক",
+      "total": "AI উত্তরের মূল্যায়ন"
     }
   }
 }

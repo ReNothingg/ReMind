@@ -4,7 +4,7 @@ from flask import g, has_request_context, request
 
 from config import BACKEND_URL, CORS_ORIGINS, ENABLE_STRICT_HTTPS
 
-JSON_LD_SCRIPT_HASH = "'sha256-eOo7R2QxzL/n0WXjk+i1Gj3T+BbZVyQd3/ZhRDi4nig='"
+JSON_LD_SCRIPT_HASH = "'sha256-529wnUTyEzuvHzh9W52mngjs3kPjTj0o1Y74Rgsw7Eg='"
 HTML_PREVIEW_PATH = "/html-preview.html"
 
 
@@ -60,20 +60,22 @@ def get_csp_header():
 
 
 def get_html_preview_csp_header():
-    return "; ".join([
-        "default-src 'none'",
-        "script-src 'unsafe-inline' 'unsafe-eval' data: blob:",
-        "style-src 'unsafe-inline' data: blob:",
-        "img-src data: blob:",
-        "font-src data: blob:",
-        "media-src data: blob:",
-        "connect-src 'none'",
-        "frame-src 'self' data: blob:",
-        "worker-src blob:",
-        "form-action 'none'",
-        "base-uri 'none'",
-        "frame-ancestors 'self'",
-    ])
+    return "; ".join(
+        [
+            "default-src 'none'",
+            "script-src 'unsafe-inline' 'unsafe-eval' data: blob:",
+            "style-src 'unsafe-inline' data: blob:",
+            "img-src data: blob:",
+            "font-src data: blob:",
+            "media-src data: blob:",
+            "connect-src 'none'",
+            "frame-src 'self' data: blob:",
+            "worker-src blob:",
+            "form-action 'none'",
+            "base-uri 'none'",
+            "frame-ancestors 'self'",
+        ]
+    )
 
 
 def get_permissions_policy():

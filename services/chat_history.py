@@ -20,17 +20,15 @@ from config import (
     ALLOW_GUEST_CHATS_SAVE,
     ALLOWED_HOSTS,
     BACKEND_URL,
-    CHATS_FOLDER,
     CHAT_MAX_VARIANTS_PER_TURN,
+    CHATS_FOLDER,
     SECRET_KEY,
 )
 from services.canvas_tools import normalize_canvas_textdoc
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.responses import logger
 
-SESSION_LOCKS: weakref.WeakValueDictionary[str, threading.Lock] = (
-    weakref.WeakValueDictionary()
-)
+SESSION_LOCKS: weakref.WeakValueDictionary[str, threading.Lock] = weakref.WeakValueDictionary()
 SESSION_LOCKS_GUARD = threading.Lock()
 
 
@@ -123,7 +121,7 @@ def _verify_guest_session_token(token: str, session_id: str, max_age_seconds: in
 
         token_session_id, timestamp_str, signature = parts
         if token_session_id != session_id:
-            logger.warning("Token session ID mismatch: %s != %s", token_session_id, session_id)
+            logger.warning("Guest chat token session ID mismatch")
             return False
 
         timestamp = int(timestamp_str)
@@ -136,12 +134,12 @@ def _verify_guest_session_token(token: str, session_id: str, max_age_seconds: in
         secret_key = (SECRET_KEY or "").encode("utf-8")
         expected_signature = hmac.new(secret_key, message, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(signature, expected_signature):
-            logger.warning("Token signature mismatch for session: %s", session_id)
+            logger.warning("Guest chat token signature mismatch")
             return False
 
         return True
     except Exception as exc:
-        logger.warning("Token verification failed: %s", exc)
+        logger.warning("Guest chat token verification failed (%s)", type(exc).__name__)
         return False
 
 
@@ -169,11 +167,11 @@ def read_chat_file_secure(safe_session_id: str, require_auth: bool = False) -> d
         if not has_request_context():
             return {}
         if not ALLOW_GUEST_CHATS_SAVE:
-            logger.warning("Guest chat access disabled: %s", safe_session_id)
+            logger.warning("Guest chat access denied because guest persistence is disabled")
             return {}
 
         if not has_valid_guest_session_token(safe_session_id):
-            logger.warning("Unauthorized access attempt to guest chat: %s", safe_session_id)
+            logger.warning("Unauthorized access attempt to guest chat")
             return {}
 
     return read_chat_file(safe_session_id)
@@ -253,9 +251,7 @@ def replace_canvas_textdoc_in_messages(messages: list, value: Any) -> tuple[list
                 if not isinstance(raw_variant, dict):
                     continue
                 variant = dict(raw_variant)
-                variant_key = (
-                    "canvas_textdoc" if "canvas_textdoc" in variant else "canvasTextdoc"
-                )
+                variant_key = "canvas_textdoc" if "canvas_textdoc" in variant else "canvasTextdoc"
                 if matches(variant.get(variant_key)):
                     variant[variant_key] = textdoc
                     next_variants[variant_index] = variant
@@ -309,9 +305,7 @@ def save_canvas_textdoc_to_history(
                 if not chat:
                     return None
                 previous_messages_data = chat.messages_data
-                messages, textdoc = replace_canvas_textdoc_in_messages(
-                    chat.get_messages(), value
-                )
+                messages, textdoc = replace_canvas_textdoc_in_messages(chat.get_messages(), value)
                 if not textdoc:
                     return None
                 updated = (
@@ -467,9 +461,7 @@ def _ensure_single_active_sibling(messages: list[dict]) -> None:
 
 def _variant_payload(message: dict) -> dict:
     payload = {
-        key: value
-        for key, value in message.items()
-        if key not in {"parent_id", "is_active"}
+        key: value for key, value in message.items() if key not in {"parent_id", "is_active"}
     }
     payload["variant_id"] = message.get("id")
     return payload
@@ -490,7 +482,11 @@ def materialize_conversation_history(messages: list[Any]) -> list[dict]:
     while parent_id in sibling_groups:
         siblings = sibling_groups[parent_id]
         current_index = next(
-            (index for index in range(len(siblings) - 1, -1, -1) if siblings[index].get("is_active")),
+            (
+                index
+                for index in range(len(siblings) - 1, -1, -1)
+                if siblings[index].get("is_active")
+            ),
             len(siblings) - 1,
         )
         selected = siblings[current_index]
@@ -533,12 +529,16 @@ def conversation_context_for_operation(
         user_message = path[target_index - 1]
         if user_message.get("role") != "user":
             raise ValueError("invalid_regenerate_target")
-        return [normalize_message(message) for message in path[: target_index - 1]], user_message["id"]
+        return [normalize_message(message) for message in path[: target_index - 1]], user_message[
+            "id"
+        ]
 
     if operation == "edit":
         if target.get("role") != "user":
             raise ValueError("invalid_edit_target")
-        return [normalize_message(message) for message in path[:target_index]], target.get("parent_id")
+        return [normalize_message(message) for message in path[:target_index]], target.get(
+            "parent_id"
+        )
 
     raise ValueError("invalid_chat_operation")
 
@@ -818,9 +818,7 @@ def persist_chat_operation(
                         chat = UserChatHistory(
                             user_id=user_id,
                             session_id=session_id,
-                            title=_generate_title_from_history(
-                                [item for item in seed if item]
-                            ),
+                            title=_generate_title_from_history([item for item in seed if item]),
                             mind_id=mind_id,
                         )
                         chat.set_messages(db_graph)

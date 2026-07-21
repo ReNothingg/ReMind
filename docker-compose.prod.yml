@@ -9,6 +9,13 @@ services:
   app:
     environment:
       - ENABLE_STRICT_HTTPS=True
+      - GITHUB_APP_PRIVATE_KEY_PATH=/run/secrets/github_app_private_key
+    secrets:
+      - github_app_private_key
   worker:
     environment:
       - ENABLE_STRICT_HTTPS=True
+
+secrets:
+  github_app_private_key:
+    file: ${GITHUB_APP_PRIVATE_KEY_PATH:?Set GITHUB_APP_PRIVATE_KEY_PATH to the host PEM file}

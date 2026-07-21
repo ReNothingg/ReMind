@@ -136,14 +136,16 @@ html[data-theme='light'] .custom-select-arrow {
   top: calc(100% - 1px);
   border-top: none;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
-  animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top center;
+  animation: customSelectRevealDown var(--transition-fast);
 }
 
 .custom-select-dropdown.custom-select-dropdown-up {
   bottom: calc(100% - 1px);
   border-bottom: none;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
-  animation: slideUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: bottom center;
+  animation: customSelectRevealUp var(--transition-fast);
 }
 
 html[data-theme='light'] .custom-select-dropdown {
@@ -152,25 +154,25 @@ html[data-theme='light'] .custom-select-dropdown {
   box-shadow: none;
 }
 
-@keyframes slideDown {
+@keyframes customSelectRevealDown {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: scaleY(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scaleY(1);
   }
 }
 
-@keyframes slideUp {
+@keyframes customSelectRevealUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: scaleY(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scaleY(1);
   }
 }
 
@@ -223,7 +225,7 @@ html[data-theme='light'] .custom-select-option {
 }
 
 .custom-select-option:focus-visible {
-  outline: 2px solid rgba(var(--color-accent-raw), 0.82);
+  outline: 2px solid var(--color-border-focus);
   outline-offset: -2px;
   background: var(--color-bg-hover);
 }
@@ -319,30 +321,17 @@ html[data-theme='light'] .custom-select-option.disabled {
     transition: none;
   }
 
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .custom-select-dropdown.custom-select-dropdown-down,
+  .custom-select-dropdown.custom-select-dropdown-up {
+    animation: none;
   }
 }
 
 .custom-select-container:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
 html[data-theme='light'] .custom-select-container:focus-visible {
-  outline-color: var(--color-accent);
+  outline-color: var(--color-border-focus);
 }

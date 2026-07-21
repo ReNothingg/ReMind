@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import type { Arc, Line, Pie, PieArcDatum } from 'd3';
 import { getChart } from './chartjsLoader';
 import { getD3 } from './d3Loader';
 import { getNomnoml } from './nomnomlLoader';
@@ -29,6 +30,27 @@ type PanZoomOptions = {
     activeClass?: string;
     panningClass?: string;
 };
+
+type FlashType = 'warning' | 'error' | 'info' | 'success';
+type ChartCanvas = HTMLCanvasElement & {
+    __chartInstance?: InstanceType<Awaited<ReturnType<typeof getChart>>>;
+};
+type D3Datum = number | {
+    label?: string;
+    name?: string;
+    value?: number;
+    x?: number;
+    y?: number;
+};
+type D3Config = {
+    type?: unknown;
+    data?: unknown;
+};
+
+const isD3Datum = (value: unknown): value is D3Datum => (
+    typeof value === 'number'
+    || (typeof value === 'object' && value !== null)
+);
 
 const getErrorMessage = (error: unknown) => (
     error instanceof Error ? error.message : 'Неизвестная ошибка'
@@ -106,7 +128,7 @@ const setupPanZoom = (
         setTimeout(() => { target.style.transition = 'none'; }, 300);
     });
 
-    const onPointerDown = (e) => {
+    const onPointerDown = (e: PointerEvent) => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
 
         state.panning = true;
@@ -120,7 +142,7 @@ const setupPanZoom = (
         e.preventDefault();
     };
 
-    const onPointerMove = (e) => {
+    const onPointerMove = (e: PointerEvent) => {
         if (!state.panning) return;
 
         state.x = e.clientX - state.startX;
@@ -129,7 +151,7 @@ const setupPanZoom = (
         e.preventDefault();
     };
 
-    const onPointerUp = (e) => {
+    const onPointerUp = (e: PointerEvent) => {
         if (!state.panning) return;
         state.panning = false;
         container.classList.remove(panningClass);
@@ -142,7 +164,7 @@ const setupPanZoom = (
         e.preventDefault();
     };
 
-    const onWheel = (e) => {
+    const onWheel = (e: WheelEvent) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
 
         e.preventDefault();
@@ -171,11 +193,11 @@ const setupPanZoom = (
     container.addEventListener('pointerup', onPointerUp);
     container.addEventListener('pointercancel', onPointerUp);
     container.addEventListener('wheel', onWheel, { passive: false });
-    target.addEventListener('dragstart', (e) => e.preventDefault());
+    target.addEventListener('dragstart', (e: Event) => e.preventDefault());
 };
 
 export const Utils = {
-    escapeHtml: (str) => {
+    escapeHtml: (str: unknown) => {
         if (typeof str !== 'string') return '';
         return str
             .replace(/&/g, "&amp;")
@@ -185,7 +207,7 @@ export const Utils = {
             .replace(/'/g, "&#039;");
     },
 
-    addTempAnimation: (element, className, durationMs = 1000) => {
+    addTempAnimation: (element: Element | null, className: string, durationMs = 1000) => {
         if (!(element instanceof HTMLElement) || !className) return;
         element.classList.add(className);
         const remove = () => element.classList.remove(className);
@@ -193,9 +215,9 @@ export const Utils = {
         setTimeout(remove, durationMs);
     },
 
-    flashElement: (element, type = 'warning') => {
+    flashElement: (element: Element | null, type: FlashType = 'warning') => {
         if (!(element instanceof HTMLElement)) return;
-        const map = {
+        const map: Record<FlashType, string> = {
             warning: 'attention-flash',
             error: 'shake',
             info: 'pulse-once',
@@ -205,8 +227,8 @@ export const Utils = {
         Utils.addTempAnimation(element, cls);
     },
 
-    autoResizeTextarea: (textarea, minHeight = 70, maxHeight = 190) => {
-        if (!textarea || typeof textarea.style === 'undefined') return;
+    autoResizeTextarea: (textarea: HTMLTextAreaElement | null, minHeight = 70, maxHeight = 190) => {
+        if (!textarea) return;
         textarea.style.height = 'auto';
         requestAnimationFrame(() => {
             const scrollHeight = textarea.scrollHeight || minHeight;
@@ -217,7 +239,7 @@ export const Utils = {
         });
     },
 
-    copyToClipboard: async (text, buttonElement) => {
+    copyToClipboard: async (text: string, buttonElement?: HTMLElement | null) => {
         if (!navigator.clipboard) {
             Utils.showPopupWarning('Копирование не поддерживается вашим браузером.');
             return;
@@ -240,7 +262,7 @@ export const Utils = {
         }
     },
 
-    showPopupWarning: (message) => {
+    showPopupWarning: (message: string) => {
         if (message) {
             showToast(message, { type: 'warning' });
         }
@@ -251,15 +273,17 @@ export const Utils = {
         Utils.flashElement(target, active ? 'error' : 'warning');
     },
 
-    getRandomPhrase: (phrasesArray, defaultPhrase) => {
+    getRandomPhrase: (phrasesArray: readonly string[], defaultPhrase: string) => {
         if (!Array.isArray(phrasesArray) || phrasesArray.length === 0) return defaultPhrase;
         const validPhrases = phrasesArray.filter(p => typeof p === 'string' && p.trim() !== '');
-        return validPhrases.length > 0 ? validPhrases[Math.floor(Math.random() * validPhrases.length)] : defaultPhrase;
+        return validPhrases.length > 0
+            ? (validPhrases[Math.floor(Math.random() * validPhrases.length)] ?? defaultPhrase)
+            : defaultPhrase;
     },
 
-    getFileIconPath: (ext) => {
+    getFileIconPath: (ext?: string | null) => {
         const ICON_CDN_BASE_URL = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/file_type_';
-        const iconMap = {
+        const iconMap: Record<string, string> = {
             'js': 'js', 'py': 'python', 'html': 'html', 'css': 'css', 'json': 'json', 'txt': 'text',
             'cpp': 'cpp', 'c': 'c', 'cs': 'csharp', 'java': 'java', 'php': 'php', 'rb': 'ruby',
             'swift': 'swift', 'kt': 'kotlin', 'go': 'go', 'rs': 'rust', 'ts': 'typescript',
@@ -280,7 +304,7 @@ export const Utils = {
         return iconName ? `${ICON_CDN_BASE_URL}${iconName}.svg` : 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
     },
 
-    downloadFile: (content, filename, mimeType = 'text/plain') => {
+    downloadFile: (content: BlobPart, filename: string, mimeType = 'text/plain') => {
         const blob = new Blob([content], { type: mimeType });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -292,15 +316,18 @@ export const Utils = {
         window.URL.revokeObjectURL(url);
     },
 
-    debounce: (func, wait) => {
-        let timeout;
-        return function (...args) {
-            clearTimeout(timeout);
+    debounce: <This, Args extends unknown[]>(
+        func: (this: This, ...args: Args) => void,
+        wait: number
+    ) => {
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        return function (this: This, ...args: Args) {
+            if (timeout !== undefined) clearTimeout(timeout);
             timeout = setTimeout(() => func.apply(this, args), wait);
         };
     },
 
-    hasUnclosedCodeFence: (text) => {
+    hasUnclosedCodeFence: (text: unknown) => {
         if (typeof text !== 'string') return false;
         const matches = text.match(/```/g);
         return matches ? (matches.length % 2 === 1) : false;
@@ -324,8 +351,8 @@ export const Utils = {
                 container.classList.remove('loading', 'has-error');
             };
 
-            const setErrorState = (message) => {
-                const errorEl = container.querySelector('.svg-error');
+            const setErrorState = (message: string) => {
+                const errorEl = container.querySelector<HTMLElement>('.svg-error');
                 container.classList.remove('loading');
                 container.classList.add('has-error');
                 if (errorEl) {
@@ -433,7 +460,7 @@ export const Utils = {
         }
 
         containers.forEach(container => {
-            const canvas = container.querySelector<HTMLCanvasElement>('canvas');
+            const canvas = container.querySelector<ChartCanvas>('canvas');
             const loadingEl = container.querySelector<HTMLElement>('.chart-loading');
             const errorEl = container.querySelector<HTMLElement>('.chart-error');
             const codeBlock = container.closest('.code-block');
@@ -590,9 +617,13 @@ export const Utils = {
                 return;
             }
 
-            let config;
+            let config: D3Config;
             try {
-                config = JSON.parse(codeElement.textContent || '{}');
+                const parsed: unknown = JSON.parse(codeElement.textContent || '{}');
+                if (!parsed || typeof parsed !== 'object') {
+                    throw new Error('Invalid D3 configuration');
+                }
+                config = parsed as D3Config;
             } catch {
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (errorEl) {
@@ -603,8 +634,8 @@ export const Utils = {
                 return;
             }
 
-            const type = (config.type || '').toLowerCase();
-            const data = Array.isArray(config.data) ? config.data : [];
+            const type = (typeof config.type === 'string' ? config.type : '').toLowerCase();
+            const data = Array.isArray(config.data) ? config.data.filter(isD3Datum) : [];
             const width = Math.max(320, container.clientWidth || 640);
             const height = 320;
             const margin = { top: 20, right: 24, bottom: 36, left: 48 };
@@ -641,8 +672,10 @@ export const Utils = {
                     const values = data.map((d) => (typeof d === 'number' ? d : (d.value ?? d.y ?? 0)));
                     const labels = data.map((d, i) => (typeof d === 'object' ? (d.label || d.name || `${i + 1}`) : `${i + 1}`));
                     const radius = Math.min(width, height) / 2 - 12;
-                    const pie = d3.pie()(values);
-                    const arc = d3.arc().innerRadius(0).outerRadius(radius);
+                    const pie = (d3.pie() as Pie<unknown, number>)(values);
+                    const arc = (d3.arc() as unknown as Arc<unknown, PieArcDatum<number>>)
+                        .innerRadius(0)
+                        .outerRadius(radius);
 
                     const g = svg.append('g')
                         .attr('transform', `translate(${width / 2},${height / 2})`);
@@ -652,7 +685,7 @@ export const Utils = {
                         .enter()
                         .append('path')
                         .attr('d', arc)
-	                        .attr('fill', (_d, i) => palette[i % palette.length])
+	                        .attr('fill', (_d, i) => palette[i % palette.length] ?? accentColor)
                         .attr('stroke', 'rgba(0,0,0,0.1)');
 
                     g.selectAll('text')
@@ -675,13 +708,17 @@ export const Utils = {
 
                     const xExtent = d3.extent(points, d => d.x);
                     const yExtent = d3.extent(points, d => d.y);
+                    const xMin = xExtent[0] ?? 0;
+                    const xMax = xExtent[1] ?? xMin;
+                    const yMin = yExtent[0] ?? 0;
+                    const yMax = yExtent[1] ?? yMin;
 
                     const x = d3.scaleLinear()
-                        .domain(xExtent[0] === xExtent[1] ? [xExtent[0] - 1, xExtent[1] + 1] : xExtent)
+                        .domain(xMin === xMax ? [xMin - 1, xMax + 1] : [xMin, xMax])
                         .range([margin.left, width - margin.right]);
 
                     const y = d3.scaleLinear()
-                        .domain(yExtent[0] === yExtent[1] ? [yExtent[0] - 1, yExtent[1] + 1] : yExtent)
+                        .domain(yMin === yMax ? [yMin - 1, yMax + 1] : [yMin, yMax])
                         .nice()
                         .range([height - margin.bottom, margin.top]);
 
@@ -694,7 +731,7 @@ export const Utils = {
                     styleAxis();
 
                     if (type === 'line') {
-                        const line = d3.line()
+                        const line = (d3.line() as Line<{ x: number; y: number }>)
                             .x(d => x(d.x))
                             .y(d => y(d.y));
 
@@ -742,7 +779,7 @@ export const Utils = {
                         .data(values)
                         .enter()
                         .append('rect')
-                        .attr('x', (_, i) => x(labels[i]))
+                        .attr('x', (_, i) => x(labels[i] ?? '') ?? 0)
                         .attr('y', d => y(d))
                         .attr('height', d => y(0) - y(d))
                         .attr('width', x.bandwidth())
@@ -935,7 +972,7 @@ export const Utils = {
 
                 const svg = viz.querySelector<SVGSVGElement>('svg');
                 if (svg) {
-                    const parseSvgSize = (value) => {
+                    const parseSvgSize = (value: string | null) => {
                         if (!value) return null;
                         const num = parseFloat(String(value).replace('px', ''));
                         return Number.isFinite(num) ? num : null;

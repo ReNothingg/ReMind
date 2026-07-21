@@ -102,13 +102,15 @@ const CustomSelect = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         setIsOpen(false);
-        triggerRef.current?.focus();
+        window.requestAnimationFrame(() => triggerRef.current?.focus());
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen]);
 
   useEffect(() => {
@@ -232,8 +234,10 @@ const CustomSelect = ({
         type="button"
         ref={triggerRef}
         className={cn(
-          'custom-select-container relative flex h-8 w-full cursor-pointer items-center rounded-md border border-border bg-interactive px-2 text-sm text-foreground transition duration-200 ease-out select-none',
-          isOpen && 'open rounded-b-none border-accent-brand bg-surface',
+          'custom-select-container relative flex h-11 w-full cursor-pointer items-center rounded-md border border-border bg-interactive px-3 text-sm text-foreground transition duration-200 ease-out select-none',
+          isOpen && 'open border-accent-brand bg-surface',
+          isOpen && dropDirection === 'down' && 'rounded-b-none border-b-transparent',
+          isOpen && dropDirection === 'up' && 'rounded-t-none border-t-transparent',
           disabled && 'disabled cursor-not-allowed opacity-50',
           !disabled && 'hover:border-border-heavy hover:bg-surface-alt'
         )}
@@ -280,8 +284,10 @@ const CustomSelect = ({
       {isOpen && (
         <div
           className={cn(
-            'custom-select-dropdown absolute inset-x-0 z-[1000] overflow-hidden rounded-md border border-border-strong bg-surface shadow-[var(--shadow-lg)]',
-            dropDirection === 'up' ? 'custom-select-dropdown-up' : 'custom-select-dropdown-down'
+            'custom-select-dropdown absolute inset-x-0 z-[var(--z-popups)] overflow-hidden border border-border-strong bg-surface',
+            dropDirection === 'up'
+              ? 'custom-select-dropdown-up rounded-b-none rounded-t-md border-b-0'
+              : 'custom-select-dropdown-down rounded-b-md rounded-t-none border-t-0'
           )}
           ref={dropdownRef}
           role="listbox"
@@ -299,7 +305,7 @@ const CustomSelect = ({
                   optionRefs.current[index] = node;
                 }}
                 className={cn(
-                  'custom-select-option flex w-full items-center gap-2 border-0 bg-transparent px-2.5 py-2 text-left text-sm text-foreground transition duration-150 ease-out select-none',
+                  'custom-select-option flex min-h-11 w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-sm text-foreground transition duration-150 ease-out select-none',
                   option.value === value && 'selected bg-interactive font-medium text-accent-brand',
                   option.disabled
                     ? 'disabled cursor-not-allowed text-subtle opacity-50'

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Message from './Message';
 
@@ -16,32 +16,55 @@ const ChatContainer = ({
     const chatEndRef = useRef<HTMLDivElement | null>(null);
     const shouldAutoScrollRef = useRef(true);
     const { t } = useTranslation();
+
+    const getScrollTarget = useCallback(() => {
+        const container = containerRef.current;
+        if (container) {
+            const { overflowY } = window.getComputedStyle(container);
+            const isScrollable = /(auto|scroll)/.test(overflowY)
+                && container.scrollHeight > container.clientHeight + 1;
+            if (isScrollable) {
+                return container;
+            }
+        }
+        return document.scrollingElement || document.documentElement;
+    }, []);
+
     useEffect(() => {
         const container = containerRef.current;
         const update = () => {
-            const scrollTarget = container || document.documentElement;
+            const scrollTarget = getScrollTarget();
             const distanceFromBottom = scrollTarget.scrollHeight - (scrollTarget.scrollTop + scrollTarget.clientHeight);
             shouldAutoScrollRef.current = distanceFromBottom < 200;
         };
         update();
         container?.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('scroll', update, { passive: true });
         window.visualViewport?.addEventListener('resize', update, { passive: true });
         return () => {
             container?.removeEventListener('scroll', update);
+            window.removeEventListener('scroll', update);
             window.visualViewport?.removeEventListener('resize', update);
         };
-    }, []);
+    }, [getScrollTarget]);
     useEffect(() => {
         const last = history[history.length - 1];
         const isUserJustSent = last && last.role === 'user';
         const shouldScroll = shouldAutoScrollRef.current || isUserJustSent || isLoading;
-        const container = containerRef.current;
-        if (shouldScroll && container) {
-            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-        } else if (shouldScroll && chatEndRef.current) {
-            chatEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        if (shouldScroll) {
+            const behavior: ScrollBehavior =
+                typeof window.matchMedia === 'function'
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'auto'
+                    : 'smooth';
+            const scrollTarget = getScrollTarget();
+            if (scrollTarget === containerRef.current) {
+                scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior });
+            } else if (chatEndRef.current) {
+                chatEndRef.current.scrollIntoView({ behavior, block: 'end' });
+            }
         }
-    }, [history, isLoading]);
+    }, [getScrollTarget, history, isLoading]);
 
     return (
         <div

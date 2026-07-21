@@ -208,6 +208,7 @@
     "deleteTrack": "Удалить дорожку",
     "adsrSettings": "Настройки ADSR",
     "selectInstrument": "Выбрать инструмент: {{instrument}}",
+    "stepLabel": "{{instrument}}, шаг {{step}}",
     "adsr": {
       "attack": "Атака",
       "decay": "Спад",
@@ -232,8 +233,8 @@
     "attachUnavailableReadOnly": "Публичный чат: файлы недоступны",
     "removeQuote": "Удалить цитату",
     "dragDropTitle": "Перетащите файлы сюда",
-    "dragDropSubtitle": "Поддерживаются изображения, документы и другие файлы",
-    "placeholder": "Что хотите узнать сегодня?",
+    "dragDropSubtitle": "Изображения и текстовые файлы — до {{size}} суммарно",
+    "placeholder": "Спросите что-нибудь",
     "placeholderReadOnly": "Публичный чат: доступно только чтение",
     "ariaInput": "Поле ввода сообщения",
     "send": "Отправить",
@@ -254,7 +255,11 @@
     "previewAlt": "Предпросмотр файла {{name}}",
     "previewUnavailable": "Предпросмотр файла \"{{name}}\" недоступен.",
     "fileFallback": "Файл",
-    "pastedImageName": "изображение"
+    "pastedImageName": "изображение",
+    "tooMany": "Можно прикрепить не более {{count}} файлов.",
+    "unsupportedType": "Тип файла «{{name}}» не поддерживается.",
+    "emptyFile": "Файл «{{name}}» пуст.",
+    "sizeLimit": "Общий размер вложений — не более {{size}}."
   },
   "share": {
     "title": "Общий доступ к чату",
@@ -308,6 +313,9 @@
     "publicChat": "Публичный чат",
     "emptyHistory": "История пуста",
     "noResults": "Ничего не найдено",
+    "statusGenerating": "Генерируется ответ",
+    "statusError": "Не удалось сгенерировать ответ",
+    "statusComplete": "Ответ готов",
     "settings": "Настройки",
     "share": "Поделиться",
     "rename": "Переименовать",
@@ -544,6 +552,11 @@
         "description": "Новости, проекты, исследования и информация о команде.",
         "link": "Открыть сайт SynvexAI"
       },
+      "github": {
+        "title": "ReMind на GitHub",
+        "description": "Исходный код и участие в развитии открытого проекта.",
+        "link": "Открыть репозиторий ReMind на GitHub"
+      },
       "socials": {
         "title": "ReMind в соцсетях",
         "description": "Официальные каналы ReMind и SynvexAI.",
@@ -622,6 +635,7 @@
     "badge": "Превью",
     "title": "Просмотр изображения",
     "demoTitle": "Демо-изображение ReMind",
+    "subtitle": "Просмотрите изображение целиком, создайте его заново в другом стиле или скачайте файл.",
     "previewAlt": "Предпросмотр изображения",
     "close": "Закрыть",
     "styleLabel": "Стиль",
@@ -662,10 +676,14 @@
     "tryAgain": "Попробовать снова",
     "question": "Вопрос {{current}}/{{total}}",
     "hint": "Подсказка",
-    "next": "Далее"
+    "next": "Далее",
+    "correctAnswer": "Правильный ответ",
+    "incorrectAnswer": "Неправильный ответ"
   },
   "spinwheel": {
-    "spin": "Вращать"
+    "spin": "Вращать",
+    "spinning": "Колесо вращается",
+    "result": "Результат: {{value}}"
   },
   "minds": {
     "subtitle": "Создавайте и управляйте собственными ИИ для разных задач и стилей общения.",

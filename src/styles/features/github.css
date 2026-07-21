@@ -78,8 +78,8 @@
 
 .github-primary-action:hover,
 .github-secondary-action:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+  filter: contrast(1.04);
+  transform: none;
 }
 
 .github-primary-action:disabled,

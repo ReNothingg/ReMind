@@ -6,6 +6,12 @@ from pathlib import Path
 from flask import current_app, has_app_context
 
 from config import CHATS_FOLDER, CREATE_IMAGE_FOLDER, UPLOAD_FOLDER
+from services.attachment_lifecycle import (
+    collect_managed_references,
+    delete_unreferenced_managed_files,
+    merge_managed_references,
+)
+from utils.responses import logger
 
 SERVICE_IMPROVEMENT_SETTING_KEY = "service_improvement_opt_in"
 
@@ -43,6 +49,8 @@ def get_user_data_locations(user_id):
             "chat_share",
             "mind",
             "mind_pin",
+            "github_installation",
+            "github_agent_task",
         ],
         "files": {
             "chats": CHATS_FOLDER,
@@ -60,54 +68,12 @@ def _configured_folder(config_key: str, fallback: Path) -> Path:
     return fallback
 
 
-def _iter_message_url_paths(messages):
-    for message in messages or []:
-        if not isinstance(message, dict):
-            continue
-        for part in message.get("parts") or []:
-            if not isinstance(part, dict):
-                continue
-            for key in ("file", "image"):
-                value = part.get(key)
-                if isinstance(value, dict) and isinstance(value.get("url_path"), str):
-                    yield value["url_path"]
-            if isinstance(part.get("url_path"), str):
-                yield part["url_path"]
-
-
-def _delete_referenced_files(chats):
-    folders = {
-        "/uploads/": _configured_folder("UPLOAD_FOLDER", UPLOAD_FOLDER),
-        "/images/": _configured_folder("CREATE_IMAGE_FOLDER", CREATE_IMAGE_FOLDER),
-    }
-    deleted = {"uploads": 0, "generated_images": 0}
-
-    for chat in chats:
-        for url_path in _iter_message_url_paths(chat.get_messages()):
-            for prefix, folder in folders.items():
-                if not url_path.startswith(prefix):
-                    continue
-                filename = Path(url_path).name
-                if not filename:
-                    continue
-                target = folder / filename
-                try:
-                    if target.is_file():
-                        target.unlink()
-                        if prefix == "/uploads/":
-                            deleted["uploads"] += 1
-                        else:
-                            deleted["generated_images"] += 1
-                except OSError:
-                    pass
-
-    return deleted
-
-
 def export_user_data(user_id):
     from utils.auth import (
         AIResponseFeedback,
         ChatShare,
+        GitHubAgentTask,
+        GitHubInstallation,
         Mind,
         MindPin,
         User,
@@ -166,6 +132,12 @@ def export_user_data(user_id):
         }
         for pin in pins
     ]
+    github_installations = GitHubInstallation.query.filter_by(user_id=user_id).all()
+    export_data["github_installations"] = [
+        installation.to_dict() for installation in github_installations
+    ]
+    github_tasks = GitHubAgentTask.query.filter_by(user_id=user_id).all()
+    export_data["github_agent_tasks"] = [task.to_dict() for task in github_tasks]
 
     return export_data
 
@@ -175,6 +147,8 @@ def delete_user_data(user_id, delete_account=False):
     from utils.auth import (
         AIResponseFeedback,
         ChatShare,
+        GitHubAgentTask,
+        GitHubInstallation,
         Mind,
         MindPin,
         User,
@@ -190,28 +164,21 @@ def delete_user_data(user_id, delete_account=False):
     }
 
     try:
+        github_tasks_deleted = GitHubAgentTask.query.filter_by(user_id=user_id).delete()
+        results["items_deleted"]["github_agent_tasks"] = github_tasks_deleted
+        github_installations_deleted = GitHubInstallation.query.filter_by(user_id=user_id).delete()
+        results["items_deleted"]["github_installations"] = github_installations_deleted
         shares_deleted = ChatShare.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["chat_shares"] = shares_deleted
         feedback_deleted = AIResponseFeedback.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["ai_response_feedback"] = feedback_deleted
         chats = UserChatHistory.query.filter_by(user_id=user_id).all()
         chat_session_ids = [chat.session_id for chat in chats]
-        referenced_files_deleted = _delete_referenced_files(chats)
+        managed_references = merge_managed_references(
+            *(collect_managed_references(chat.get_messages()) for chat in chats)
+        )
         chats_deleted = UserChatHistory.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["chats"] = chats_deleted
-        files_deleted = 0
-        for session_id in chat_session_ids:
-            try:
-                safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
-                chat_file = CHATS_FOLDER / f"{safe_id}.json"
-                if chat_file.exists():
-                    os.remove(chat_file)
-                    files_deleted += 1
-            except Exception:
-                pass
-        results["items_deleted"]["chat_files"] = files_deleted
-        results["items_deleted"]["uploaded_files"] = referenced_files_deleted["uploads"]
-        results["items_deleted"]["generated_images"] = referenced_files_deleted["generated_images"]
         owned_mind_ids = [mind.id for mind in Mind.query.filter_by(user_id=user_id).all()]
         pins_deleted = MindPin.query.filter_by(user_id=user_id).delete()
         if owned_mind_ids:
@@ -235,6 +202,27 @@ def delete_user_data(user_id, delete_account=False):
                 results["account_deleted"] = True
 
         db.session.commit()
+
+        files_deleted = 0
+        chats_folder = _configured_folder("CHATS_FOLDER", CHATS_FOLDER)
+        for session_id in chat_session_ids:
+            try:
+                safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
+                chat_file = chats_folder / f"{safe_id}.json"
+                if chat_file.exists():
+                    os.remove(chat_file)
+                    files_deleted += 1
+            except OSError:
+                logger.warning("Could not remove a legacy chat file", exc_info=True)
+        results["items_deleted"]["chat_files"] = files_deleted
+        try:
+            referenced_files_deleted = delete_unreferenced_managed_files(managed_references)
+        except Exception:
+            logger.exception("Could not finish privacy asset cleanup")
+            referenced_files_deleted = {"uploads": 0, "generated_images": 0}
+        results["items_deleted"]["uploaded_files"] = referenced_files_deleted["uploads"]
+        results["items_deleted"]["generated_images"] = referenced_files_deleted["generated_images"]
+
         log_audit_event(
             AuditEvents.DELETE_USER_DATA,
             {"items_deleted": results["items_deleted"], "account_deleted": delete_account},
@@ -251,7 +239,15 @@ def delete_user_data(user_id, delete_account=False):
 
 
 def anonymize_user_data(user_id):
-    from utils.auth import AIResponseFeedback, User, UserChatHistory, UserSettings, db
+    from utils.auth import (
+        AIResponseFeedback,
+        GitHubAgentTask,
+        GitHubInstallation,
+        User,
+        UserChatHistory,
+        UserSettings,
+        db,
+    )
 
     user = db.session.get(User, user_id)
     if not user:
@@ -264,14 +260,23 @@ def anonymize_user_data(user_id):
     user.confirmation_token = None
     user.reset_token = None
     user.oauth_id = None
+    GitHubAgentTask.query.filter_by(user_id=user_id).delete()
+    GitHubInstallation.query.filter_by(user_id=user_id).delete()
     UserSettings.query.filter_by(user_id=user_id).delete()
     AIResponseFeedback.query.filter_by(user_id=user_id).delete()
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
+    managed_references = merge_managed_references(
+        *(collect_managed_references(chat.get_messages()) for chat in chats)
+    )
     for chat in chats:
         chat.title = "Deleted Chat"
         chat.messages_data = "[]"
 
     db.session.commit()
+    try:
+        delete_unreferenced_managed_files(managed_references)
+    except Exception:
+        logger.exception("Could not finish anonymized-user asset cleanup")
     return True
 
 

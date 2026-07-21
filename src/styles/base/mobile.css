@@ -35,14 +35,15 @@
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background: var(--color-bg-surface);
 
-    z-index: 9999 !important;
-    pointer-events: auto !important;
+    z-index: calc(var(--z-overlay) + 1) !important;
+    pointer-events: none !important;
     display: flex !important;
     flex-direction: column !important;
   }
 
   body.mobile-menu-open #appRail {
     transform: translateX(0);
+    pointer-events: auto !important;
   }
 
   body.mobile-menu-open::after {
@@ -52,7 +53,7 @@
 
     background: rgba(0, 0, 0, 0.6);
 
-    z-index: 9998 !important;
+    z-index: var(--z-overlay) !important;
     pointer-events: auto;
     animation: fadeInOverlay 0.3s ease forwards;
   }
@@ -77,28 +78,6 @@
 
   .rail-toggle-zone {
     display: none !important;
-  }
-
-  .rail-header {
-    display: flex !important;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px !important;
-    min-height: 60px;
-    background: var(--color-bg-surface-alt);
-    border-bottom: 1px solid var(--color-border-subtle);
-  }
-
-  .rail-close-btn {
-    display: flex !important;
-    width: 40px !important;
-    height: 40px !important;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-radius: var(--radius-md);
-    color: var(--color-text-primary) !important;
-    z-index: 10;
   }
 
   .global-controls {
@@ -218,7 +197,8 @@
 
   .web-search-toggle,
   .censorship-button {
-    width: 40px !important;
+    width: 44px !important;
+    height: 44px;
     padding: 0 !important;
     justify-content: center;
   }
@@ -321,6 +301,12 @@
     padding: 12px 0 0 0;
     margin-top: 12px;
     border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .actions-bar.ui-message-actions {
+    width: fit-content;
+    max-width: 100%;
+    flex-wrap: wrap;
   }
 
   .user-message.has-user-actions {
@@ -497,80 +483,6 @@
     padding-left: 3.5em !important;
   }
 
-  .user-settings-content,
-  .file-modal-content {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    border-radius: 0 !important;
-    transform: none !important;
-    border: none;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .user-settings-modal.active,
-  .file-modal.active {
-    padding: 0;
-    z-index: 10000;
-  }
-
-  .user-settings-header {
-    padding: 16px;
-    background: var(--color-bg-main);
-  }
-
-  .user-settings-body {
-    padding: 0;
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .settings-tabs {
-    padding: 8px 12px;
-    margin: 10px 12px 0;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 8px;
-    overflow: visible;
-    background: var(--color-bg-surface);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-  }
-
-  .settings-tab {
-    padding: 8px 10px;
-    flex: 1 1 calc(50% - 8px);
-    min-width: 96px;
-    justify-content: flex-start;
-    font-size: 0.85rem;
-  }
-
-  .settings-tab svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  .settings-tab::after {
-    bottom: -4px;
-  }
-
-  .settings-pane {
-    padding: 20px 16px;
-  }
-
-  .user-settings-close,
-  .file-modal-close {
-    width: 44px;
-    height: 44px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .quiz-card,
   .spin-wheel-container {
     width: 100%;
@@ -584,6 +496,38 @@
 
   .wheel-viewport {
     height: 200px;
+  }
+}
+
+@media screen and (max-width: 340px) {
+  .ai-message .actions-bar.ui-message-actions:has(> .action-btn) {
+    width: calc((44px * 3) + (8px * 2) + 8px);
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .file-modal.active {
+    align-items: flex-end;
+    padding: 0;
+    z-index: var(--z-modal);
+  }
+
+  .file-modal-content {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+    transform: none !important;
+  }
+
+  .user-settings-close,
+  .file-modal-close {
+    width: 44px;
+    height: 44px;
   }
 }
 
@@ -624,15 +568,7 @@
   }
 }
 
-a:active,
-button:active,
-.tap-target:active {
-  background: transparent !important;
-}
-
-:focus {
-  outline: none;
-}
 :focus-visible {
+  outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }

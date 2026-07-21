@@ -6,14 +6,14 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#111214",
-  "background_color": "#f8fafc",
+  "theme_color": "#111111",
+  "background_color": "#f9fafb",
   "categories": [
     "productivity",
     "education",
     "utilities"
   ],
-  "lang": "en",
+  "lang": "ru",
   "dir": "ltr",
   "icons": [
     {

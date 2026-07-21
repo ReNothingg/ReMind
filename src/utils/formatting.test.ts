@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatText, formatUserMessageText, highlightCode, refreshCodeLineNumbers } from './formatting';
+import { formatText, formatUserMessageText, highlightCode, refreshCodeLineNumbers, stripThinkingBlocks } from './formatting';
+
+describe('stripThinkingBlocks', () => {
+    it('removes completed thinking blocks from copied responses', () => {
+        const response = '<think data-open="100" data-close="674">Internal reasoning</think>Final answer';
+
+        expect(stripThinkingBlocks(response)).toBe('Final answer');
+    });
+
+    it('removes unfinished thinking blocks from copied responses', () => {
+        expect(stripThinkingBlocks('Visible answer\n\n<think data-open="100">Internal reasoning')).toBe('Visible answer');
+    });
+
+    it('preserves responses without thinking blocks', () => {
+        expect(stripThinkingBlocks('Final answer')).toBe('Final answer');
+    });
+});
 
 describe('formatText', () => {
     it('renders fenced code blocks with language metadata', () => {

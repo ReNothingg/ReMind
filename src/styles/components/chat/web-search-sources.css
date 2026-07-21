@@ -160,7 +160,8 @@
   z-index: 4;
   background: var(--color-bg-interactive);
   border-color: var(--color-border-strong);
-  outline: none;
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .source-pill-icon-wrap {
@@ -244,7 +245,8 @@
 
 .message-text a.source-citation-link:hover,
 .message-text a.source-citation-link:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .message-text {
@@ -270,7 +272,8 @@
 .message-text .source-citation-mark:hover,
 .message-text .source-citation-mark:focus-visible {
   background: rgba(var(--color-accent-raw), 0.25);
-  outline: none;
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .source-citation-popover {

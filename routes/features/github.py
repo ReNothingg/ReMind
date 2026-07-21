@@ -434,16 +434,42 @@ def register_github_routes(api_bp):
             raise ApiError("task_id is required", status=400, code="missing_task_id")
 
         task = _task_for_user(db_user_id, task_id)
+        if task.status in {"pull_request_opened", "completed_no_changes"}:
+            return make_ok({"task": task.to_dict()})
+        if task.status == "error":
+            raise ApiError(
+                "A failed GitHub task cannot be retried safely. Create and review a new plan.",
+                status=409,
+                code="github_task_retry_requires_new_plan",
+            )
         _installation_for_user(db_user_id, int(task.installation_id))
-        if task.status not in {"planned", "error"}:
+        if task.status != "planned":
             raise ApiError(
                 "Task cannot be run from its current state", status=409, code="invalid_task_state"
             )
 
-        task.status = "running"
-        task.error = None
-        task.updated_at = datetime.utcnow()
+        claimed_at = datetime.utcnow()
+        claimed = GitHubAgentTask.query.filter_by(
+            user_id=db_user_id,
+            public_id=task_id,
+            status="planned",
+        ).update(
+            {
+                "status": "running",
+                "error": None,
+                "updated_at": claimed_at,
+            },
+            synchronize_session=False,
+        )
         db.session.commit()
+        db.session.expire_all()
+        task = _task_for_user(db_user_id, task_id)
+        if claimed != 1:
+            if task.status in {"pull_request_opened", "completed_no_changes"}:
+                return make_ok({"task": task.to_dict()})
+            raise ApiError(
+                "Task cannot be run from its current state", status=409, code="invalid_task_state"
+            )
 
         try:
             result = GitHubAgentService(int(task.installation_id)).run(
@@ -481,6 +507,8 @@ def register_github_routes(api_bp):
             task.set_edits({"activity": exc.activity})
             task.updated_at = datetime.utcnow()
             db.session.commit()
+            if any(item.get("code") == "approvedPlanStale" for item in exc.activity):
+                raise ApiError(str(exc), status=409, code="github_approved_plan_stale") from exc
             raise
         except Exception as exc:
             db.session.rollback()

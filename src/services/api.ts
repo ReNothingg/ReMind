@@ -196,6 +196,7 @@ export type GitHubAgentActivity = {
 
 export type GitHubAgentPlan = {
     activity?: GitHubAgentActivity[];
+    base_commit_sha?: string;
     branch_suffix?: string;
     commit_message?: string;
     files?: GitHubPlanFile[];

@@ -22,7 +22,7 @@
     "loginTitle": "登录账户",
     "registerTitle": "创建账户",
     "fields": {
-      "email": "Email:",
+      "email": "电子邮箱：",
       "password": "密码:",
       "username": "用户名:",
       "confirmPassword": "确认密码:",
@@ -50,6 +50,7 @@
       "emailTooLong": "Email 不能超过 100 个字符",
       "passwordTooLong": "密码不能超过 100 个字符",
       "turnstileRequired": "请确认你不是机器人，然后重试。",
+      "turnstileLoadError": "Cloudflare 验证未能加载。请刷新页面，或为此网站停用拦截器。",
       "requestError": "网络或服务器错误"
     },
     "passwordStrength": {
@@ -67,8 +68,8 @@
     "loading": "加载中...",
     "closeEsc": "关闭 (Esc)",
     "selectOption": "选择一个选项",
-    "copy": "Copy",
-    "close": "Close"
+    "copy": "复制",
+    "close": "关闭"
   },
   "think": {
     "label": "思考",
@@ -97,36 +98,36 @@
   "chat": {
     "readOnly": "聊天只读",
     "editUserMessage": {
-      "placeholder": "Edit your message...",
-      "ariaLabel": "Edit your message",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit"
+      "placeholder": "编辑你的消息...",
+      "ariaLabel": "编辑你的消息",
+      "save": "保存",
+      "cancel": "取消",
+      "edit": "编辑"
     },
     "githubDiff": {
-      "title": "Pull request changes",
-      "branch": "Branch",
-      "filesChanged": "{{count}} files changed",
-      "additions": "{{count}} additions",
-      "deletions": "{{count}} deletions",
-      "copy": "Copy diff",
-      "copied": "Copied",
-      "download": "Download diff",
-      "expandFile": "Expand file",
-      "collapseFile": "Collapse file",
-      "openPullRequest": "Open pull request",
-      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "title": "拉取请求更改",
+      "branch": "分支",
+      "filesChanged": "{{count}} 个文件已更改",
+      "additions": "新增 {{count}} 行",
+      "deletions": "删除 {{count}} 行",
+      "copy": "复制 diff",
+      "copied": "已复制",
+      "download": "下载 diff",
+      "expandFile": "展开文件",
+      "collapseFile": "折叠文件",
+      "openPullRequest": "打开拉取请求",
+      "truncated": "显示 diff 的 {{shown}} 行，共 {{total}} 行",
       "status": {
-        "added": "Added",
-        "deleted": "Deleted",
-        "modified": "Modified",
-        "renamed": "Renamed"
+        "added": "已添加",
+        "deleted": "已删除",
+        "modified": "已修改",
+        "renamed": "已重命名"
       }
     },
-    "ariaLog": "Conversation messages",
-    "userMessageAria": "Your message",
-    "assistantMessageAria": "Assistant message",
-    "regenerate": "Regenerate",
+    "ariaLog": "对话消息",
+    "userMessageAria": "你的消息",
+    "assistantMessageAria": "助手消息",
+    "regenerate": "重新生成",
     "generationFailed": "无法生成回复。",
     "generationStopped": "已停止生成",
     "variantLimitReached": "此轮对话已达到版本上限。",
@@ -137,33 +138,33 @@
       "counter": "第 {{current}} 个版本，共 {{total}} 个"
     },
     "audio": {
-      "speak": "Read aloud",
-      "label": "Audio",
-      "loading": "Loading audio...",
-      "play": "Play",
-      "pause": "Pause",
-      "progress": "Audio playback position",
-      "error": "Could not load audio."
+      "speak": "朗读",
+      "label": "音频",
+      "loading": "正在加载音频...",
+      "play": "播放",
+      "pause": "暂停",
+      "progress": "音频播放位置",
+      "error": "无法加载音频。"
     },
     "feedback": {
-      "like": "Good answer",
-      "dislike": "Bad answer",
-      "panelTitle": "What was wrong with the answer?",
-      "reasonGroup": "Feedback reasons",
-      "commentLabel": "Additional feedback",
-      "commentPlaceholder": "Describe what should be improved",
-      "submit": "Send feedback",
-      "sending": "Sending...",
-      "sent": "Feedback sent",
-      "error": "Failed to send feedback",
-      "noSession": "Feedback is available only in saved chats.",
+      "like": "回答很好",
+      "dislike": "回答不好",
+      "panelTitle": "回答有什么问题？",
+      "reasonGroup": "反馈原因",
+      "commentLabel": "补充反馈",
+      "commentPlaceholder": "请说明需要改进的地方",
+      "submit": "发送反馈",
+      "sending": "正在发送...",
+      "sent": "反馈已发送",
+      "error": "发送反馈失败",
+      "noSession": "仅可在已保存的聊天中提供反馈。",
       "reasons": {
-        "incorrect": "Incorrect",
-        "unsafe": "Unsafe",
-        "not_helpful": "Not helpful",
-        "too_long": "Too long",
-        "missing_context": "Missed context",
-        "other": "Other"
+        "incorrect": "不正确",
+        "unsafe": "不安全",
+        "not_helpful": "没有帮助",
+        "too_long": "太长",
+        "missing_context": "遗漏上下文",
+        "other": "其他"
       }
     }
   },
@@ -207,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}，第 {{step}} 步",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -231,8 +233,8 @@
     "attachUnavailableReadOnly": "公共聊天：文件不可用",
     "removeQuote": "移除引用",
     "dragDropTitle": "将文件拖到此处",
-    "dragDropSubtitle": "支持图片、文档和其他文件",
-    "placeholder": "今天想了解什么？",
+    "dragDropSubtitle": "图片和文本文件，总计不超过 {{size}}",
+    "placeholder": "问点什么",
     "placeholderReadOnly": "公共聊天：只读",
     "ariaInput": "消息输入",
     "send": "发送",
@@ -247,8 +249,17 @@
   },
   "files": {
     "removeFile": "移除文件",
-    "fileFallback": "File",
-    "pastedImageName": "图像"
+    "preview": "预览",
+    "code": "代码",
+    "lines": "{{count}} 行",
+    "previewAlt": "{{name}} 的预览",
+    "previewUnavailable": "无法预览文件“{{name}}”。",
+    "fileFallback": "文件",
+    "pastedImageName": "图像",
+    "tooMany": "最多可附加 {{count}} 个文件。",
+    "unsupportedType": "不支持文件“{{name}}”的类型。",
+    "emptyFile": "文件“{{name}}”为空。",
+    "sizeLimit": "附件总大小不能超过 {{size}}。"
   },
   "share": {
     "title": "聊天分享",
@@ -302,13 +313,16 @@
     "publicChat": "公共聊天",
     "emptyHistory": "历史为空",
     "noResults": "无匹配结果",
+    "statusGenerating": "正在生成回答",
+    "statusError": "回答生成失败",
+    "statusComplete": "回答已准备好",
     "settings": "设置",
     "share": "分享",
     "rename": "重命名",
     "delete": "删除",
-    "temporaryChat": "Temporary chat",
+    "temporaryChat": "临时聊天",
     "minds": "Minds",
-    "admin": "Admin",
+    "admin": "管理",
     "github": "GitHub"
   },
   "settings": {
@@ -321,7 +335,7 @@
       "interface": "界面",
       "accessibility": "无障碍",
       "about": "关于我们",
-      "privacy": "Privacy"
+      "privacy": "隐私"
     },
     "languages": {
       "en": "English",
@@ -386,20 +400,20 @@
         "error": "删除账户失败"
       },
       "connectedApps": {
-        "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "title": "已连接的应用",
+        "description": "管理 ReMind 可在聊天中使用的外部服务。",
         "github": {
           "name": "GitHub",
-          "description": "Let ReMind plan code changes and open pull requests from chat.",
-          "connect": "Connect GitHub",
-          "manage": "Manage",
-          "error": "Failed to load GitHub status",
-          "repoCount": "Available repositories: {{count}}",
+          "description": "允许 ReMind 在聊天中规划代码更改并打开拉取请求。",
+          "connect": "连接 GitHub",
+          "manage": "管理",
+          "error": "无法加载 GitHub 状态",
+          "repoCount": "可用仓库：{{count}}",
           "status": {
-            "checking": "Checking",
-            "connected": "Connected",
-            "disconnected": "Not connected",
-            "configMissing": "Config missing"
+            "checking": "正在检查",
+            "connected": "已连接",
+            "disconnected": "未连接",
+            "configMissing": "缺少配置"
           }
         }
       }
@@ -491,9 +505,9 @@
         "shortcut": {
           "label": "键盘快捷键",
           "disabled": "已关闭",
-          "record": "Record shortcut (current: {{shortcut}})",
-          "recording": "Press a shortcut now, or Esc to cancel",
-          "invalid": "Press a keyboard shortcut with at least one modifier."
+          "record": "录制快捷键（当前：{{shortcut}}）",
+          "recording": "请按下快捷键，或按 Esc 取消",
+          "invalid": "请按下至少包含一个修饰键的键盘快捷键。"
         },
         "newChat": {
           "label": "打开新聊天",
@@ -501,8 +515,8 @@
           "browser": "在浏览器中"
         },
         "launchAtLogin": {
-          "title": "Launch at login",
-          "description": "Keep ReMind ready in the background after you sign in to your Mac."
+          "title": "登录时启动",
+          "description": "登录 Mac 后，让 ReMind 在后台保持就绪。"
         }
       }
     },
@@ -538,6 +552,11 @@
         "description": "新闻、项目、研究和团队信息。",
         "link": "打开 SynvexAI 网站"
       },
+      "github": {
+        "title": "GitHub 上的 ReMind",
+        "description": "查看源代码并参与开源项目。",
+        "link": "在 GitHub 上打开 ReMind 仓库"
+      },
       "socials": {
         "title": "ReMind 社交媒体",
         "description": "ReMind 和 SynvexAI 官方渠道。",
@@ -557,20 +576,20 @@
       }
     },
     "privacy": {
-      "title": "Privacy and data",
-      "description": "Control data use according to the SynvexAI privacy policy.",
+      "title": "隐私与数据",
+      "description": "根据 SynvexAI 隐私政策控制数据使用方式。",
       "serviceImprovement": {
-        "title": "Use my content to improve SynvexAI",
-        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+        "title": "使用我的内容改进 SynvexAI",
+        "description": "默认关闭。启用后，你的提示词、回答、文件和反馈可能会用于改进服务质量和模型。"
       },
-      "exportAction": "Export my data",
-      "exportLoading": "Preparing export...",
-      "exportSuccess": "Data export is ready",
-      "exportError": "Failed to export data",
-      "signInForExport": "Sign in to export data",
+      "exportAction": "导出我的数据",
+      "exportLoading": "正在准备导出...",
+      "exportSuccess": "数据导出已准备就绪",
+      "exportError": "导出数据失败",
+      "signInForExport": "登录后导出数据",
       "policyLink": {
-        "title": "Privacy policy",
-        "description": "Open the current SynvexAI policy."
+        "title": "隐私政策",
+        "description": "打开当前的 SynvexAI 政策。"
       }
     }
   },
@@ -603,7 +622,7 @@
       "hindi": "印地语",
       "bengali": "孟加拉语"
     },
-    "translateAction": "Translate"
+    "translateAction": "翻译"
   },
   "quiz": {
     "dataError": "测验数据错误",
@@ -612,10 +631,14 @@
     "tryAgain": "再试一次",
     "question": "问题 {{current}}/{{total}}",
     "hint": "提示",
-    "next": "下一题"
+    "next": "下一题",
+    "correctAnswer": "回答正确",
+    "incorrectAnswer": "回答错误"
   },
   "spinwheel": {
-    "spin": "旋转"
+    "spin": "旋转",
+    "spinning": "正在旋转",
+    "result": "结果：{{value}}"
   },
   "minds": {
     "subtitle": "创建并管理适用于不同任务和对话风格的自定义 AI minds。",
@@ -624,7 +647,7 @@
     "searchAria": "搜索 minds",
     "tabsAria": "Minds 分区",
     "tabs": {
-      "store": "Mind store",
+      "store": "Minds 商店",
       "mine": "我的 minds"
     },
     "categoriesAria": "Minds 分类",
@@ -643,7 +666,7 @@
       "link": "通过链接",
       "linkShort": "通过链接",
       "linkLong": "拥有链接的任何人",
-      "store": "Mind store"
+      "store": "Minds 商店"
     },
     "verified": "创建者已批准",
     "startersAria": "对话开场",
@@ -732,9 +755,9 @@
     "queryLabel": "查询"
   },
   "temporaryChat": {
-    "title": "Temporary chat",
-    "badge": "Not saved to history",
-    "description": "This chat stays out of the main history and is not saved after the session."
+    "title": "临时聊天",
+    "badge": "不会保存到历史记录",
+    "description": "此聊天不会出现在主历史记录中，会话结束后也不会保存。"
   },
   "github": {
     "title": "GitHub",
@@ -866,8 +889,49 @@
     }
   },
   "chatImage": {
-    "messageAlt": "Chat image {{number}}",
-    "generating": "Creating image: {{prompt}}"
+    "open": "打开",
+    "unavailableTitle": "预览不可用",
+    "unavailableDescription": "无法加载图片。",
+    "messageAlt": "聊天图片 {{number}}",
+    "generating": "正在创建图片：{{prompt}}"
+  },
+  "imageLightbox": {
+    "badge": "预览",
+    "title": "图片预览",
+    "demoTitle": "ReMind 演示图片",
+    "subtitle": "查看完整图片、以其他风格重新生成，或下载文件。",
+    "previewAlt": "图片预览",
+    "close": "关闭",
+    "styleLabel": "风格",
+    "promptLabel": "原始提示词",
+    "promptFallback": "此图片的原始提示词不可用。",
+    "actions": {
+      "regenerate": "重新生成",
+      "regenerating": "正在生成...",
+      "download": "下载"
+    },
+    "styles": {
+      "realistic": "写实",
+      "cartoon": "卡通",
+      "anime": "动漫",
+      "oilPainting": "油画",
+      "watercolor": "水彩",
+      "pencilSketch": "铅笔素描"
+    },
+    "details": {
+      "style": "风格：{{style}}",
+      "resolution": "{{width}} × {{height}} 像素"
+    },
+    "errors": {
+      "missingSourceMessage": "找不到用户的原始消息。",
+      "missingPrompt": "找不到用于重新生成图片的源提示词。",
+      "missingResult": "模型未返回新图片。",
+      "missingImage": "没有可供下载的图片。",
+      "regenerateFailed": "无法重新生成图片：{{message}}",
+      "downloadFailed": "无法下载图片。将在新标签页中打开原始文件。",
+      "previewTitle": "图片预览不可用",
+      "previewDescription": "请检查文件路径或重新生成图片。"
+    }
   },
   "codeBlock": {
     "codeSnippet": "Code snippet",
@@ -897,9 +961,9 @@
   },
   "admin": {
     "aiFeedback": {
-      "likeRatio": "AI answer likes",
-      "dislikeRatio": "AI answer dislikes",
-      "total": "AI answer ratings"
+      "likeRatio": "AI 回答点赞数",
+      "dislikeRatio": "AI 回答点踩数",
+      "total": "AI 回答评分数"
     }
   }
 }

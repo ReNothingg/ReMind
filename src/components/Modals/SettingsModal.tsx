@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback, type FormEvent, type ReactNode } from 'react';
+import {
+    useState,
+    useEffect,
+    useCallback,
+    type FormEvent,
+    type KeyboardEvent as ReactKeyboardEvent,
+    type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Accessibility,
@@ -36,6 +43,7 @@ import ToggleSwitch from '../UI/ToggleSwitch';
 import { requestNotificationPermission } from '../../utils/notifications';
 import { showToast } from '../../utils/toast';
 import { cn } from '../../utils/cn';
+import { safeGitHubUrl } from '../../utils/githubUrls';
 import {
     firstAccountFieldError,
     localizeAccountError,
@@ -51,6 +59,7 @@ type SettingsTabButtonProps = {
     icon: ReactNode;
     label: string;
     onClick: () => void;
+    tabId: SettingsTabId;
 };
 
 type SettingsPaneProps = {
@@ -220,6 +229,7 @@ const shortcutRawFromEvent = (event: KeyboardEvent): string | null => {
 
 const ABOUT_LINKS = {
     website: 'https://synvexai.com/',
+    github: 'https://github.com/ReNothingg/ReMind',
     policies: 'https://synvexai.com/policies/privacy-policy/',
     socials: [
         { key: 'synvexTelegram', href: 'https://t.me/SynvexAI', icon: Send },
@@ -231,7 +241,7 @@ const ABOUT_LINKS = {
     ]
 } as const;
 
-const SettingsTabButton = ({ active, icon, label, onClick }: SettingsTabButtonProps) => (
+const SettingsTabButton = ({ active, icon, label, onClick, tabId }: SettingsTabButtonProps) => (
     <button
         type="button"
         className={cn(
@@ -240,7 +250,11 @@ const SettingsTabButton = ({ active, icon, label, onClick }: SettingsTabButtonPr
         )}
         onClick={onClick}
         role="tab"
+        id={`settings-tab-${tabId}`}
+        aria-controls={`settings-panel-${tabId}`}
         aria-selected={active}
+        data-settings-tab={tabId}
+        tabIndex={active ? 0 : -1}
     >
         <span className="settings-tab-icon" aria-hidden="true">
             {icon}
@@ -257,6 +271,9 @@ const SettingsPane = ({ children, dataPane, className = '' }: SettingsPaneProps)
         )}
         data-pane={dataPane}
         role="tabpanel"
+        id={`settings-panel-${dataPane}`}
+        aria-labelledby={`settings-tab-${dataPane}`}
+        tabIndex={0}
     >
         {children}
     </div>
@@ -628,6 +645,40 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         }
     ];
 
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            document
+                .querySelector<HTMLElement>(`[data-settings-tab="${activeTab}"]`)
+                ?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [activeTab]);
+
+    const handleTabsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        const currentIndex = tabs.findIndex((tab) => tab.id === activeTab);
+        let nextIndex = currentIndex;
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+            nextIndex = (currentIndex + 1) % tabs.length;
+        } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+            nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = tabs.length - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        const nextTab = tabs[nextIndex];
+        if (!nextTab) return;
+        handleTabChange(nextTab.id);
+        window.requestAnimationFrame(() => {
+            document.querySelector<HTMLElement>(`[data-settings-tab="${nextTab.id}"]`)?.focus();
+        });
+    };
+
     const normalizedAccountName = String(user?.name || '').trim();
     const accountDisplayName =
         normalizedAccountName || user?.username || user?.email || t('settings.account.status.guest');
@@ -637,6 +688,9 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const isGitHubConnected = githubInstallations.length > 0;
     const githubConnectionError = githubStatusError || githubStatus?.connection_error || '';
     const githubRepositoryCount = githubStatus?.repositories?.length || 0;
+    const githubManagementUrl = safeGitHubUrl(
+        githubStatus?.urls?.app_page || githubStatus?.app?.page_url
+    );
     const githubStatusLabel = isLoadingGitHubStatus
         ? t('settings.account.connectedApps.github.status.checking')
         : !isGitHubConfigured
@@ -654,9 +708,9 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
     const handleGitHubConnect = () => {
         if (isGitHubConnected) {
-            onClose();
-            window.history.pushState({}, '', '/github');
-            window.dispatchEvent(new PopStateEvent('popstate'));
+            if (githubManagementUrl) {
+                window.location.assign(githubManagementUrl);
+            }
             return;
         }
         const connectUrl = githubStatus?.urls?.connect || '/auth/github/login?after=install';
@@ -705,9 +759,13 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                     </span>
                     <button
                         type="button"
-                        className="account-connected-app-action ui-button-secondary min-h-10 rounded-md px-3 py-2"
+                        className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
                         onClick={handleGitHubConnect}
-                        disabled={isLoadingGitHubStatus || !isGitHubConfigured}
+                        disabled={
+                            isLoadingGitHubStatus
+                            || !isGitHubConfigured
+                            || (isGitHubConnected && !githubManagementUrl)
+                        }
                     >
                         <PlugZap size={15} strokeWidth={1.9} />
                         {isGitHubConnected
@@ -772,7 +830,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                         </div>
                         <button
                             type="button"
-                            className="account-signout-btn ui-button-secondary min-h-10 rounded-md px-3 py-2"
+                            className="account-signout-btn ui-button-secondary min-h-11 rounded-md px-3 py-2"
                             onClick={logout}
                         >
                             <LogOut size={16} strokeWidth={1.9} />
@@ -909,7 +967,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         <ModalShell
             ariaLabel={t('settings.title')}
             className="user-settings-modal active items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-            contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface shadow-[var(--shadow-xl)] sm:h-[85vh] sm:min-h-[560px] sm:rounded-xl"
+            contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface sm:h-[85vh] sm:min-h-[560px] sm:rounded-xl"
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
@@ -928,13 +986,19 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             </div>
 
             <div className="user-settings-body flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-                <div className="settings-tabs ui-scrollbar-thin" role="tablist" aria-label={t('settings.title')}>
+                <div
+                    className="settings-tabs ui-scrollbar-thin"
+                    role="tablist"
+                    aria-label={t('settings.title')}
+                    onKeyDown={handleTabsKeyDown}
+                >
                     {tabs.map((tab) => (
                         <SettingsTabButton
                             key={tab.id}
                             active={activeTab === tab.id}
                             icon={tab.icon}
                             label={tab.label}
+                            tabId={tab.id}
                             onClick={() => handleTabChange(tab.id)}
                         />
                     ))}
@@ -1074,7 +1138,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <SettingControlGroup withDivider>
                                         <button
                                             type="button"
-                                            className="ui-button-secondary min-h-11 rounded-md px-4 py-3"
+                                            className="ui-button-secondary min-h-11 gap-2 rounded-md px-4 py-3"
                                             onClick={handleExportData}
                                             disabled={isExportingData}
                                         >
@@ -1416,6 +1480,23 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     <span className="settings-about-action-copy">
                                         <span>{t('settings.about.policies.title')}</span>
                                         <small>{t('settings.about.policies.description')}</small>
+                                    </span>
+                                    <ArrowUpRight size={17} strokeWidth={2} aria-hidden="true" />
+                                </a>
+
+                                <a
+                                    className="settings-about-action-card"
+                                    href={ABOUT_LINKS.github}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={t('settings.about.github.link')}
+                                >
+                                    <span className="settings-about-action-icon" aria-hidden="true">
+                                        <Github size={20} strokeWidth={1.9} />
+                                    </span>
+                                    <span className="settings-about-action-copy">
+                                        <span>{t('settings.about.github.title')}</span>
+                                        <small>{t('settings.about.github.description')}</small>
                                     </span>
                                     <ArrowUpRight size={17} strokeWidth={2} aria-hidden="true" />
                                 </a>

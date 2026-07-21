@@ -22,7 +22,7 @@
     "loginTitle": "سجّل الدخول إلى حسابك",
     "registerTitle": "أنشئ حسابًا",
     "fields": {
-      "email": "Email:",
+      "email": "البريد الإلكتروني:",
       "password": "كلمة المرور:",
       "username": "اسم المستخدم:",
       "confirmPassword": "أكّد كلمة المرور:",
@@ -50,6 +50,7 @@
       "emailTooLong": "يجب ألا يتجاوز البريد الإلكتروني 100 حرف",
       "passwordTooLong": "يجب ألا تتجاوز كلمة المرور 100 حرف",
       "turnstileRequired": "أكّد أنك لست روبوتًا ثم حاول مرة أخرى.",
+      "turnstileLoadError": "تعذّر تحميل التحقق من Cloudflare. حدّث الصفحة أو عطّل أدوات الحظر لهذا الموقع.",
       "requestError": "خطأ في الشبكة أو الخادم"
     },
     "passwordStrength": {
@@ -67,8 +68,8 @@
     "loading": "جارٍ التحميل...",
     "closeEsc": "إغلاق (Esc)",
     "selectOption": "اختر خيارًا",
-    "copy": "Copy",
-    "close": "Close"
+    "copy": "نسخ",
+    "close": "إغلاق"
   },
   "think": {
     "label": "الأفكار",
@@ -97,36 +98,36 @@
   "chat": {
     "readOnly": "الدردشة للقراءة فقط",
     "editUserMessage": {
-      "placeholder": "Edit your message...",
-      "ariaLabel": "Edit your message",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit"
+      "placeholder": "عدّل رسالتك...",
+      "ariaLabel": "تعديل رسالتك",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "edit": "تعديل"
     },
     "githubDiff": {
-      "title": "Pull request changes",
-      "branch": "Branch",
-      "filesChanged": "{{count}} files changed",
-      "additions": "{{count}} additions",
-      "deletions": "{{count}} deletions",
-      "copy": "Copy diff",
-      "copied": "Copied",
-      "download": "Download diff",
-      "expandFile": "Expand file",
-      "collapseFile": "Collapse file",
-      "openPullRequest": "Open pull request",
-      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "title": "تغييرات طلب السحب",
+      "branch": "الفرع",
+      "filesChanged": "تم تغيير {{count}} ملفات",
+      "additions": "{{count}} إضافات",
+      "deletions": "{{count}} عمليات حذف",
+      "copy": "نسخ diff",
+      "copied": "تم النسخ",
+      "download": "تنزيل diff",
+      "expandFile": "توسيع الملف",
+      "collapseFile": "طي الملف",
+      "openPullRequest": "فتح طلب السحب",
+      "truncated": "عرض {{shown}} من أصل {{total}} سطرًا في diff",
       "status": {
-        "added": "Added",
-        "deleted": "Deleted",
-        "modified": "Modified",
-        "renamed": "Renamed"
+        "added": "مضاف",
+        "deleted": "محذوف",
+        "modified": "معدّل",
+        "renamed": "أعيدت تسميته"
       }
     },
-    "ariaLog": "Conversation messages",
-    "userMessageAria": "Your message",
-    "assistantMessageAria": "Assistant message",
-    "regenerate": "Regenerate",
+    "ariaLog": "رسائل المحادثة",
+    "userMessageAria": "رسالتك",
+    "assistantMessageAria": "رسالة المساعد",
+    "regenerate": "إعادة الإنشاء",
     "generationFailed": "تعذّر إنشاء الرد.",
     "generationStopped": "تم إيقاف الإنشاء",
     "variantLimitReached": "بلغت هذه الرسالة الحد الأقصى للإصدارات.",
@@ -137,33 +138,33 @@
       "counter": "الإصدار {{current}} من {{total}}"
     },
     "audio": {
-      "speak": "Read aloud",
-      "label": "Audio",
-      "loading": "Loading audio...",
-      "play": "Play",
-      "pause": "Pause",
-      "progress": "Audio playback position",
-      "error": "Could not load audio."
+      "speak": "قراءة بصوت عالٍ",
+      "label": "الصوت",
+      "loading": "جارٍ تحميل الصوت...",
+      "play": "تشغيل",
+      "pause": "إيقاف مؤقت",
+      "progress": "موضع تشغيل الصوت",
+      "error": "تعذّر تحميل الصوت."
     },
     "feedback": {
-      "like": "Good answer",
-      "dislike": "Bad answer",
-      "panelTitle": "What was wrong with the answer?",
-      "reasonGroup": "Feedback reasons",
-      "commentLabel": "Additional feedback",
-      "commentPlaceholder": "Describe what should be improved",
-      "submit": "Send feedback",
-      "sending": "Sending...",
-      "sent": "Feedback sent",
-      "error": "Failed to send feedback",
-      "noSession": "Feedback is available only in saved chats.",
+      "like": "إجابة جيدة",
+      "dislike": "إجابة سيئة",
+      "panelTitle": "ما المشكلة في الإجابة؟",
+      "reasonGroup": "أسباب الملاحظات",
+      "commentLabel": "ملاحظات إضافية",
+      "commentPlaceholder": "صف ما ينبغي تحسينه",
+      "submit": "إرسال الملاحظات",
+      "sending": "جارٍ الإرسال...",
+      "sent": "تم إرسال الملاحظات",
+      "error": "فشل إرسال الملاحظات",
+      "noSession": "تتوفر الملاحظات فقط في الدردشات المحفوظة.",
       "reasons": {
-        "incorrect": "Incorrect",
-        "unsafe": "Unsafe",
-        "not_helpful": "Not helpful",
-        "too_long": "Too long",
-        "missing_context": "Missed context",
-        "other": "Other"
+        "incorrect": "غير صحيح",
+        "unsafe": "غير آمن",
+        "not_helpful": "غير مفيد",
+        "too_long": "طويل جدًا",
+        "missing_context": "تجاهل السياق",
+        "other": "أخرى"
       }
     }
   },
@@ -207,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}، الخطوة {{step}}",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -231,8 +233,8 @@
     "attachUnavailableReadOnly": "دردشة عامة: الملفات غير متاحة",
     "removeQuote": "إزالة الاقتباس",
     "dragDropTitle": "أسقط الملفات هنا",
-    "dragDropSubtitle": "تُدعم الصور والمستندات وملفات أخرى",
-    "placeholder": "ماذا تريد أن تتعلم اليوم؟",
+    "dragDropSubtitle": "صور وملفات نصية بإجمالي يصل إلى {{size}}",
+    "placeholder": "اسأل أي شيء",
     "placeholderReadOnly": "دردشة عامة: للقراءة فقط",
     "ariaInput": "إدخال الرسالة",
     "send": "إرسال",
@@ -247,8 +249,17 @@
   },
   "files": {
     "removeFile": "إزالة الملف",
-    "fileFallback": "File",
-    "pastedImageName": "صورة"
+    "preview": "معاينة",
+    "code": "الرمز",
+    "lines": "{{count}} سطرًا",
+    "previewAlt": "معاينة {{name}}",
+    "previewUnavailable": "لا تتوفر معاينة للملف «{{name}}».",
+    "fileFallback": "ملف",
+    "pastedImageName": "صورة",
+    "tooMany": "يمكنك إرفاق ما يصل إلى {{count}} ملفات.",
+    "unsupportedType": "نوع الملف «{{name}}» غير مدعوم.",
+    "emptyFile": "الملف «{{name}}» فارغ.",
+    "sizeLimit": "يمكن أن يصل إجمالي المرفقات إلى {{size}}."
   },
   "share": {
     "title": "مشاركة الدردشة",
@@ -302,13 +313,16 @@
     "publicChat": "دردشة عامة",
     "emptyHistory": "السجل فارغ",
     "noResults": "لا توجد نتائج",
+    "statusGenerating": "جارٍ إنشاء الإجابة",
+    "statusError": "فشل إنشاء الإجابة",
+    "statusComplete": "الإجابة جاهزة",
     "settings": "الإعدادات",
     "share": "مشاركة",
     "rename": "إعادة تسمية",
     "delete": "حذف",
-    "temporaryChat": "Temporary chat",
+    "temporaryChat": "دردشة مؤقتة",
     "minds": "Minds",
-    "admin": "Admin",
+    "admin": "الإدارة",
     "github": "GitHub"
   },
   "settings": {
@@ -321,7 +335,7 @@
       "interface": "الواجهة",
       "accessibility": "إمكانية الوصول",
       "about": "من نحن",
-      "privacy": "Privacy"
+      "privacy": "الخصوصية"
     },
     "languages": {
       "en": "English",
@@ -386,20 +400,20 @@
         "error": "تعذر حذف الحساب"
       },
       "connectedApps": {
-        "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "title": "التطبيقات المتصلة",
+        "description": "إدارة الخدمات الخارجية التي يمكن لـ ReMind استخدامها داخل الدردشة.",
         "github": {
           "name": "GitHub",
-          "description": "Let ReMind plan code changes and open pull requests from chat.",
-          "connect": "Connect GitHub",
-          "manage": "Manage",
-          "error": "Failed to load GitHub status",
-          "repoCount": "Available repositories: {{count}}",
+          "description": "اسمح لـ ReMind بتخطيط تغييرات الشيفرة وفتح طلبات السحب من الدردشة.",
+          "connect": "ربط GitHub",
+          "manage": "إدارة",
+          "error": "تعذّر تحميل حالة GitHub",
+          "repoCount": "المستودعات المتاحة: {{count}}",
           "status": {
-            "checking": "Checking",
-            "connected": "Connected",
-            "disconnected": "Not connected",
-            "configMissing": "Config missing"
+            "checking": "جارٍ التحقق",
+            "connected": "متصل",
+            "disconnected": "غير متصل",
+            "configMissing": "الإعداد غير مكتمل"
           }
         }
       }
@@ -491,9 +505,9 @@
         "shortcut": {
           "label": "اختصار لوحة المفاتيح",
           "disabled": "متوقف",
-          "record": "Record shortcut (current: {{shortcut}})",
-          "recording": "Press a shortcut now, or Esc to cancel",
-          "invalid": "Press a keyboard shortcut with at least one modifier."
+          "record": "تسجيل اختصار (الحالي: {{shortcut}})",
+          "recording": "اضغط اختصارًا الآن، أو Esc للإلغاء",
+          "invalid": "اضغط اختصار لوحة مفاتيح يتضمن مفتاح تعديل واحدًا على الأقل."
         },
         "newChat": {
           "label": "فتح الدردشات الجديدة",
@@ -501,8 +515,8 @@
           "browser": "في المتصفح"
         },
         "launchAtLogin": {
-          "title": "Launch at login",
-          "description": "Keep ReMind ready in the background after you sign in to your Mac."
+          "title": "التشغيل عند تسجيل الدخول",
+          "description": "أبقِ ReMind جاهزًا في الخلفية بعد تسجيل الدخول إلى Mac."
         }
       }
     },
@@ -538,6 +552,11 @@
         "description": "أخبار ومشاريع وأبحاث ومعلومات عن الفريق.",
         "link": "فتح موقع SynvexAI"
       },
+      "github": {
+        "title": "ReMind على GitHub",
+        "description": "اطّلع على الشفرة المصدرية وساهم في المشروع مفتوح المصدر.",
+        "link": "فتح مستودع ReMind على GitHub"
+      },
       "socials": {
         "title": "ReMind على وسائل التواصل الاجتماعي",
         "description": "القنوات الرسمية لـ ReMind و SynvexAI.",
@@ -557,20 +576,20 @@
       }
     },
     "privacy": {
-      "title": "Privacy and data",
-      "description": "Control data use according to the SynvexAI privacy policy.",
+      "title": "الخصوصية والبيانات",
+      "description": "تحكّم في استخدام البيانات وفقًا لسياسة خصوصية SynvexAI.",
       "serviceImprovement": {
-        "title": "Use my content to improve SynvexAI",
-        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+        "title": "استخدام محتواي لتحسين SynvexAI",
+        "description": "متوقف افتراضيًا. عند تفعيله، قد تُستخدم مطالباتك وردودك وملفاتك وملاحظاتك لتحسين جودة الخدمة والنماذج."
       },
-      "exportAction": "Export my data",
-      "exportLoading": "Preparing export...",
-      "exportSuccess": "Data export is ready",
-      "exportError": "Failed to export data",
-      "signInForExport": "Sign in to export data",
+      "exportAction": "تصدير بياناتي",
+      "exportLoading": "جارٍ إعداد التصدير...",
+      "exportSuccess": "تصدير البيانات جاهز",
+      "exportError": "فشل تصدير البيانات",
+      "signInForExport": "سجّل الدخول لتصدير البيانات",
       "policyLink": {
-        "title": "Privacy policy",
-        "description": "Open the current SynvexAI policy."
+        "title": "سياسة الخصوصية",
+        "description": "فتح سياسة SynvexAI الحالية."
       }
     }
   },
@@ -603,7 +622,7 @@
       "hindi": "الهندية",
       "bengali": "البنغالية"
     },
-    "translateAction": "Translate"
+    "translateAction": "ترجمة"
   },
   "quiz": {
     "dataError": "خطأ في بيانات الاختبار",
@@ -612,10 +631,14 @@
     "tryAgain": "حاول مرة أخرى",
     "question": "السؤال {{current}}/{{total}}",
     "hint": "تلميح",
-    "next": "التالي"
+    "next": "التالي",
+    "correctAnswer": "إجابة صحيحة",
+    "incorrectAnswer": "إجابة غير صحيحة"
   },
   "spinwheel": {
-    "spin": "أدر"
+    "spin": "أدر",
+    "spinning": "جارٍ التدوير",
+    "result": "النتيجة: {{value}}"
   },
   "minds": {
     "subtitle": "أنشئ وأدر minds ذكاء اصطناعي مخصصة لمهام وأنماط محادثة مختلفة.",
@@ -624,7 +647,7 @@
     "searchAria": "البحث في minds",
     "tabsAria": "أقسام minds",
     "tabs": {
-      "store": "Mind store",
+      "store": "متجر Minds",
       "mine": "minds الخاصة بي"
     },
     "categoriesAria": "فئات minds",
@@ -643,7 +666,7 @@
       "link": "عبر الرابط",
       "linkShort": "عبر الرابط",
       "linkLong": "كل من لديه الرابط",
-      "store": "Mind store"
+      "store": "متجر Minds"
     },
     "verified": "معتمد من المنشئ",
     "startersAria": "بدايات المحادثة",
@@ -732,9 +755,9 @@
     "queryLabel": "الاستعلام"
   },
   "temporaryChat": {
-    "title": "Temporary chat",
-    "badge": "Not saved to history",
-    "description": "This chat stays out of the main history and is not saved after the session."
+    "title": "دردشة مؤقتة",
+    "badge": "لا تُحفظ في السجل",
+    "description": "لا تظهر هذه الدردشة في السجل الرئيسي ولا تُحفظ بعد انتهاء الجلسة."
   },
   "github": {
     "title": "GitHub",
@@ -866,8 +889,49 @@
     }
   },
   "chatImage": {
-    "messageAlt": "Chat image {{number}}",
-    "generating": "Creating image: {{prompt}}"
+    "open": "فتح",
+    "unavailableTitle": "المعاينة غير متاحة",
+    "unavailableDescription": "تعذّر تحميل الصورة.",
+    "messageAlt": "صورة الدردشة {{number}}",
+    "generating": "جارٍ إنشاء الصورة: {{prompt}}"
+  },
+  "imageLightbox": {
+    "badge": "معاينة",
+    "title": "معاينة الصورة",
+    "demoTitle": "صورة ReMind التجريبية",
+    "subtitle": "اعرض الصورة كاملة، أو أعد إنشاءها بنمط آخر، أو نزّل الملف.",
+    "previewAlt": "معاينة الصورة",
+    "close": "إغلاق",
+    "styleLabel": "النمط",
+    "promptLabel": "المطالبة الأصلية",
+    "promptFallback": "المطالبة الأصلية غير متاحة لهذه الصورة.",
+    "actions": {
+      "regenerate": "إعادة الإنشاء",
+      "regenerating": "جارٍ الإنشاء...",
+      "download": "تنزيل"
+    },
+    "styles": {
+      "realistic": "واقعي",
+      "cartoon": "كرتوني",
+      "anime": "أنمي",
+      "oilPainting": "لوحة زيتية",
+      "watercolor": "ألوان مائية",
+      "pencilSketch": "رسم بقلم رصاص"
+    },
+    "details": {
+      "style": "النمط: {{style}}",
+      "resolution": "{{width}} × {{height}} بكسل"
+    },
+    "errors": {
+      "missingSourceMessage": "تعذّر العثور على رسالة المستخدم الأصلية.",
+      "missingPrompt": "لم يتم العثور على مطالبة مصدر لإعادة إنشاء الصورة.",
+      "missingResult": "لم يُرجع النموذج صورة جديدة.",
+      "missingImage": "لا توجد صورة متاحة للتنزيل.",
+      "regenerateFailed": "تعذّرت إعادة إنشاء الصورة: {{message}}",
+      "downloadFailed": "تعذّر تنزيل الصورة. سيُفتح الملف الأصلي في علامة تبويب جديدة.",
+      "previewTitle": "معاينة الصورة غير متاحة",
+      "previewDescription": "تحقق من مسار الملف أو أعد إنشاء الصورة."
+    }
   },
   "codeBlock": {
     "codeSnippet": "Code snippet",
@@ -897,9 +961,9 @@
   },
   "admin": {
     "aiFeedback": {
-      "likeRatio": "AI answer likes",
-      "dislikeRatio": "AI answer dislikes",
-      "total": "AI answer ratings"
+      "likeRatio": "إعجابات إجابات الذكاء الاصطناعي",
+      "dislikeRatio": "عدم إعجاب بإجابات الذكاء الاصطناعي",
+      "total": "تقييمات إجابات الذكاء الاصطناعي"
     }
   }
 }

@@ -144,8 +144,8 @@
   background: rgba(var(--color-white-raw), 0.08);
   border: 1px solid rgba(var(--color-white-raw), 0.08);
   border-radius: var(--radius-md);
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,11 +166,11 @@
   background: var(--color-bg-surface-alt);
   border-color: rgba(var(--color-white-raw), 0.15);
   color: var(--color-text-primary);
-  transform: translateY(-2px) scale(1.05);
+  transform: none;
 }
 
 .table-wrapper .table-copy-btn:active {
-  transform: translateY(-1px) scale(0.98);
+  transform: scale(0.98);
   transition-duration: 0.05s;
 }
 

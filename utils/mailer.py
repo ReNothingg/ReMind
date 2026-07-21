@@ -1,17 +1,29 @@
 import logging
+import math
 import os
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from config import LOGS_FOLDER
+logger = logging.getLogger("remind.mailer")
+_DEFAULT_SMTP_TIMEOUT_SECONDS = 10.0
+_MIN_SMTP_TIMEOUT_SECONDS = 1.0
+_MAX_SMTP_TIMEOUT_SECONDS = 60.0
 
-logging.basicConfig(
-    filename=os.path.join(LOGS_FOLDER, "email_logs.log"),
-    level=logging.INFO,
-    format="%(asctime)s:%(levelname)s:%(message)s",
-)
+
+def _smtp_timeout_seconds() -> float:
+    """Return a finite SMTP socket timeout constrained to a safe range."""
+    raw_timeout = os.getenv("SMTP_TIMEOUT_SECONDS", str(_DEFAULT_SMTP_TIMEOUT_SECONDS))
+    try:
+        timeout = float(raw_timeout)
+    except (TypeError, ValueError):
+        return _DEFAULT_SMTP_TIMEOUT_SECONDS
+    if not math.isfinite(timeout):
+        return _DEFAULT_SMTP_TIMEOUT_SECONDS
+    return max(_MIN_SMTP_TIMEOUT_SECONDS, min(timeout, _MAX_SMTP_TIMEOUT_SECONDS))
+
+
 EMAIL_TEMPLATES = {
     "confirmation": """
     <!DOCTYPE html>
@@ -124,37 +136,38 @@ def send_email(to_email, subject, body, is_html=False, template_name=None, templ
 
             html_content = EMAIL_TEMPLATES[template_name].format(**template_data)
             msg.attach(MIMEText(html_content, "html"))
-            logging.info(f"Sending HTML template email to: {to_email}")
-            logging.info(f"Subject: {subject}")
-            logging.info(f"Template: {template_name}")
+            logger.info(
+                "Sending HTML template email: recipient=[REDACTED] template=%s",
+                template_name,
+            )
         else:
             content_type = "html" if is_html else "plain"
             msg.attach(MIMEText(body, content_type))
-            logging.info(f"Sending email to: {to_email}")
-            logging.info(f"Subject: {subject}")
+            logger.info("Sending email: recipient=[REDACTED]")
+        smtp_timeout = _smtp_timeout_seconds()
         try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=smtp_timeout) as server:
                 server.login(sender_email, password)
                 server.send_message(msg)
-                logging.info(f"Email sent successfully to {to_email} via SSL")
+                logger.info("Email sent successfully via SSL: recipient=[REDACTED]")
                 return True
         except Exception as ssl_error:
-            logging.warning(f"SSL connection failed: {str(ssl_error)}, trying TLS...")
+            logger.warning("SSL email connection failed (%s), trying TLS", type(ssl_error).__name__)
             try:
-                with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=smtp_timeout) as server:
                     server.ehlo()
                     server.starttls()
                     server.ehlo()
                     server.login(sender_email, password)
                     server.send_message(msg)
-                    logging.info(f"Email sent successfully to {to_email} via TLS")
+                    logger.info("Email sent successfully via TLS: recipient=[REDACTED]")
                     return True
             except Exception as tls_error:
-                logging.error(f"TLS connection also failed: {str(tls_error)}")
+                logger.error("TLS email connection failed (%s)", type(tls_error).__name__)
                 raise tls_error
 
     except Exception as e:
-        logging.error(f"Failed to send email: {str(e)}")
+        logger.error("Failed to send email (%s)", type(e).__name__)
         save_email_to_file(to_email, subject, body, is_html, template_name, template_data)
         return False
 
@@ -163,31 +176,16 @@ def save_email_to_file(
     to_email, subject, body, is_html=False, template_name=None, template_data=None
 ):
     """
-    Сохраняет содержимое письма в файл для отладки и резервного хранения
+    Сохраняет только безопасные метаданные ошибки доставки без тела письма и токенов.
     """
     try:
-        with open("sent_emails.log", "a", encoding="utf-8") as f:
-            f.write(f"\n\n--- NEW EMAIL [{datetime.now()}] ---\n")
-            f.write(f"To: {to_email}\n")
-            f.write(f"Subject: {subject}\n")
-            if template_name and template_name in EMAIL_TEMPLATES:
-                if not template_data:
-                    template_data = {}
-                template_data["year"] = datetime.now().year
-                template_data["timestamp"] = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-                content = EMAIL_TEMPLATES[template_name].format(**template_data)
-                f.write(f"Content: [HTML Template {template_name}]\n")
-            else:
-                content = body
-                f.write(f"Content: {'[HTML]' if is_html else '[Plain text]'}\n")
-
-            f.write(f"{content}\n")
-            f.write("--- END EMAIL ---\n")
-
-        print(f"[EMAIL SAVED] Email to {to_email} saved to sent_emails.log")
+        logger.warning(
+            "Email delivery failed; recipient and content omitted (template=%s)",
+            template_name or "custom",
+        )
         return True
     except Exception as e:
-        print(f"[ERROR SAVING EMAIL] {str(e)}")
+        logger.error("Could not record failed email metadata (%s)", type(e).__name__)
         return False
 
 
@@ -195,7 +193,10 @@ def test_email_sending():
     """
     Тестовая функция для проверки отправки почты
     """
-    recipient = "pashasob2009@gmail.com"  # Замените на реальный адрес
+    recipient = os.getenv("TEST_EMAIL_RECIPIENT")
+    if not recipient:
+        print("TEST_EMAIL_RECIPIENT is not configured")
+        return False
     subject = "Тестовое письмо от ReMind"
 
     template_data = {
@@ -212,9 +213,9 @@ def test_email_sending():
     )
 
     if result:
-        print(f"Тестовое письмо успешно отправлено на {recipient}")
+        print("Тестовое письмо успешно отправлено")
     else:
-        print("Не удалось отправить тестовое письмо, проверьте sent_emails.log")
+        print("Не удалось отправить тестовое письмо, проверьте failed_email_metadata.log")
 
     return result
 

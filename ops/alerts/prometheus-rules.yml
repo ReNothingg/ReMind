@@ -47,11 +47,12 @@ groups:
           description: "p99 latency is above 5s for key endpoints."
 
       - alert: ReMindErrorBudgetBurnFast
-        expr: (
+        expr: >-
+          (
           sum(rate(remind_http_errors_total{endpoint=~"/chat|/translate|/synthesize"}[5m]))
           /
           clamp_min(sum(rate(remind_http_requests_total{endpoint=~"/chat|/translate|/synthesize"}[5m])), 0.001)
-        ) > 0.02
+          ) > 0.02
         for: 10m
         labels:
           severity: critical

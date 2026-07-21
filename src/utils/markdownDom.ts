@@ -48,7 +48,7 @@ const serializeTable = (table: HTMLTableElement) => {
     const normalizedRows = rows.map((row) => (
         Array.from({ length: columnCount }, (_, index) => row[index] || '')
     ));
-    const header = normalizedRows[0];
+    const header = normalizedRows[0] ?? [];
     const separator = Array.from({ length: columnCount }, () => '---');
     const body = normalizedRows.slice(1);
     return [header, separator, ...body]

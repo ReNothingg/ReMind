@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
 import { imageFilesFromClipboard } from '../../utils/clipboardFiles';
+import { CHAT_UPLOAD_ACCEPT, CHAT_UPLOAD_MAX_TOTAL_BYTES } from '../../utils/constants';
 import {
     deleteRemoteDraft,
     getDeviceId,
@@ -139,6 +140,7 @@ const InputArea = ({
         addFiles,
         removeFile,
         clearFiles,
+        formatFileSize,
         handleFileInputChange,
         handleDragEnter,
         handleDragLeave,
@@ -415,7 +417,11 @@ const InputArea = ({
                     </div>
                     
                     <div className="drop-zone-text mb-2 text-lg font-medium text-foreground">{t('composer.dragDropTitle')}</div>
-                    <div className="drop-zone-subtext text-sm text-muted">{t('composer.dragDropSubtitle')}</div>
+                    <div className="drop-zone-subtext text-sm text-muted">
+                        {t('composer.dragDropSubtitle', {
+                            size: formatFileSize(CHAT_UPLOAD_MAX_TOTAL_BYTES, 0),
+                        })}
+                    </div>
                 </div>
             </div>
 
@@ -431,7 +437,7 @@ const InputArea = ({
                     type="file"
                     id="fileInput"
                     multiple
-                    accept="*/*"
+                    accept={CHAT_UPLOAD_ACCEPT}
                     style={{ display: 'none' }}
                     ref={fileInputRef}
                     onChange={(event) => {
@@ -561,9 +567,7 @@ const InputArea = ({
                             type="button"
                             className={cn(
                                 'send-button ui-composer-icon-button',
-                                hasContent || isLoading
-                                    ? 'bg-foreground text-white hover:brightness-110'
-                                    : 'bg-surface-alt',
+                                hasContent && !isLoading && 'is-ready',
                                 sendButtonClass
                             )}
                             title={isReadOnly ? t('chat.readOnly') : sendButtonTitle}

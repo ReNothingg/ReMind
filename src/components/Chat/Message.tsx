@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
-import { formatText, formatPlainText, formatUserMessageText, highlightCode, refreshCodeLineNumbers } from '../../utils/formatting';
+import { formatText, formatPlainText, formatUserMessageText, highlightCode, refreshCodeLineNumbers, stripThinkingBlocks } from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { stripCanmoreToolMarkup } from '../../utils/canmore';
 import { fileService } from '../../services/fileService';
@@ -265,7 +265,7 @@ const normalizeCitationPunctuation = (documentRef, mark) => {
     return true;
 };
 
-export const decorateSourceCitations = (html, sources, labels: { fragmentSources?: string } = {}) => {
+const decorateSourceCitations = (html, sources, labels: { fragmentSources?: string } = {}) => {
     if (!html || typeof document === 'undefined' || !Array.isArray(sources) || sources.length === 0) {
         return html || '';
     }
@@ -1375,7 +1375,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         }
     }, [displayContent, markdownEnabledForMessage, message.id, t]);
     const handleCopy = async () => {
-        const contentToCopy = isUser ? content : displayContent;
+        const contentToCopy = isUser ? content : stripThinkingBlocks(displayContent);
         if (!contentToCopy) return;
         try {
             await navigator.clipboard.writeText(contentToCopy);

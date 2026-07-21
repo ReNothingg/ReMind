@@ -258,9 +258,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     user_md = render_user_md_with_settings(user_id, metadata)
     web_tool_prompt = (
         render_web_tool_prompt()
-        if str(user_data.get("webSearch") or user_data.get("autoWebSearch") or "")
-        .strip()
-        .lower()
+        if str(user_data.get("webSearch") or user_data.get("autoWebSearch") or "").strip().lower()
         in {"1", "true", "yes", "on"}
         else ""
     )

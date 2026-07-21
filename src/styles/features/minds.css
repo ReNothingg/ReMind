@@ -71,8 +71,8 @@
   .mind-create-button:hover,
   .mind-save-button:hover,
   .mind-primary-action:hover {
-    filter: brightness(1.08);
-    transform: translateY(-1px);
+    filter: contrast(1.04);
+    transform: none;
   }
 
   .mind-create-button:disabled,
@@ -740,6 +740,49 @@
 
     .minds-tabs {
       justify-content: flex-start;
+    }
+
+    .mind-create-button,
+    .mind-save-button,
+    .mind-primary-action,
+    .mind-secondary-action,
+    .mind-back-button,
+    .mind-icon-action,
+    .minds-tabs button,
+    .mind-category-tabs button,
+    .mind-category-select-grid button,
+    .mind-visibility-list button,
+    .mind-starters button,
+    .ui-landing-mind-close,
+    .ui-landing-mind-starters button,
+    .ui-chat-mind-banner-close {
+      min-height: 44px;
+    }
+
+    .mind-icon-action,
+    .ui-landing-mind-close,
+    .ui-chat-mind-banner-close {
+      width: 44px;
+      height: 44px;
+    }
+
+    .minds-search input {
+      min-height: 44px;
+    }
+
+    .mind-starter-row {
+      grid-template-columns: minmax(0, 1fr) 44px;
+    }
+
+    .mind-starter-row input,
+    .mind-starter-row .mind-icon-action,
+    .mind-field > .mind-secondary-action {
+      height: 44px;
+      min-height: 44px;
+    }
+
+    .mind-starter-row .mind-icon-action {
+      width: 44px;
     }
 
     .mind-form-side {

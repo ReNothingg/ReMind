@@ -212,7 +212,7 @@ html[data-theme='light'] .settings-tabs {
 
 .settings-tab.active svg {
   color: var(--color-text-link);
-  filter: drop-shadow(0 4px 12px rgba(var(--color-accent-raw), 0.35));
+  filter: none;
 }
 
 .settings-content {

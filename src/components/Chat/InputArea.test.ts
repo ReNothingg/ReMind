@@ -14,6 +14,7 @@ vi.mock('../../hooks/useFileHandler', () => ({
         addFiles: addFilesMock,
         removeFile: vi.fn(),
         clearFiles: vi.fn(),
+        formatFileSize: vi.fn(() => '8 MB'),
         handleFileInputChange: vi.fn(),
         handleDragEnter: vi.fn(),
         handleDragLeave: vi.fn(),
@@ -37,7 +38,9 @@ vi.mock('../../context/SettingsContext', () => ({
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (key: string, fallback?: string) => fallback ?? key,
+        t: (key: string, options?: string | Record<string, unknown>) => (
+            typeof options === 'string' ? options : key
+        ),
     }),
 }));
 

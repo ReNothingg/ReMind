@@ -304,6 +304,20 @@ export default function GlobalHeader({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        if (!isDropdownOpen) return undefined;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            setIsDropdownOpen(false);
+            dropdownRef.current?.querySelector<HTMLButtonElement>('.ui-toolbar-trigger')?.focus();
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isDropdownOpen]);
+
     const models: ModelOption[] = availableChatModels.map((model) => {
         const badge = getModelStageLabel(model.stage);
         return {

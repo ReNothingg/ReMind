@@ -1,5 +1,9 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState } from 'react';
+import type {
+    CSSProperties,
+    KeyboardEvent as ReactKeyboardEvent,
+    ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Activity,
@@ -265,6 +269,40 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
     const [restrictionDraft, setRestrictionDraft] = useState<RestrictionDraft | null>(null);
     const deferredUserQuery = useDeferredValue(userQuery.trim());
     const deferredMindQuery = useDeferredValue(mindQuery.trim());
+    const tabGroupId = useId();
+
+    const tabId = (tab: AdminTab) => `${tabGroupId}-${tab}-tab`;
+    const panelId = (tab: AdminTab) => `${tabGroupId}-${tab}-panel`;
+
+    const handleTabsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        const tabs = Array.from(
+            event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+        );
+        const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
+        if (currentIndex < 0) return;
+
+        const isRtl = window.getComputedStyle(event.currentTarget).direction === 'rtl';
+        let nextIndex = currentIndex;
+
+        if (event.key === 'ArrowRight') {
+            nextIndex = (currentIndex + (isRtl ? -1 : 1) + tabs.length) % tabs.length;
+        } else if (event.key === 'ArrowLeft') {
+            nextIndex = (currentIndex + (isRtl ? 1 : -1) + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = tabs.length - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        const nextTab = tabs[nextIndex];
+        const nextValue = nextTab?.dataset.adminTab as AdminTab | undefined;
+        if (!nextTab || !nextValue) return;
+        setActiveTab(nextValue);
+        nextTab.focus();
+    };
 
     const canAccessAdmin = Boolean(isAuthenticated && user?.is_admin);
     const canAssignAdmins = Boolean(overview?.admin.is_super_admin || user?.is_super_admin);
@@ -559,10 +597,22 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 </button>
             </div>
 
-            <div className="admin-tabs" role="tablist" aria-label="Admin sections">
+            <div
+                className="admin-tabs"
+                role="tablist"
+                aria-label={t('rail.admin')}
+                aria-orientation="horizontal"
+                onKeyDown={handleTabsKeyDown}
+            >
                 <button
                     type="button"
                     className={cn(activeTab === 'overview' && 'active')}
+                    id={tabId('overview')}
+                    data-admin-tab="overview"
+                    role="tab"
+                    aria-controls={panelId('overview')}
+                    aria-selected={activeTab === 'overview'}
+                    tabIndex={activeTab === 'overview' ? 0 : -1}
                     onClick={() => setActiveTab('overview')}
                 >
                     <Gauge size={16} />
@@ -571,6 +621,12 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 <button
                     type="button"
                     className={cn(activeTab === 'operations' && 'active')}
+                    id={tabId('operations')}
+                    data-admin-tab="operations"
+                    role="tab"
+                    aria-controls={panelId('operations')}
+                    aria-selected={activeTab === 'operations'}
+                    tabIndex={activeTab === 'operations' ? 0 : -1}
                     onClick={() => setActiveTab('operations')}
                 >
                     <ClipboardList size={16} />
@@ -579,6 +635,12 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 <button
                     type="button"
                     className={cn(activeTab === 'users' && 'active')}
+                    id={tabId('users')}
+                    data-admin-tab="users"
+                    role="tab"
+                    aria-controls={panelId('users')}
+                    aria-selected={activeTab === 'users'}
+                    tabIndex={activeTab === 'users' ? 0 : -1}
                     onClick={() => setActiveTab('users')}
                 >
                     <Users size={16} />
@@ -587,6 +649,12 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 <button
                     type="button"
                     className={cn(activeTab === 'minds' && 'active')}
+                    id={tabId('minds')}
+                    data-admin-tab="minds"
+                    role="tab"
+                    aria-controls={panelId('minds')}
+                    aria-selected={activeTab === 'minds'}
+                    tabIndex={activeTab === 'minds' ? 0 : -1}
                     onClick={() => setActiveTab('minds')}
                 >
                     <BrainCircuit size={16} />
@@ -595,6 +663,12 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                 <button
                     type="button"
                     className={cn(activeTab === 'server' && 'active')}
+                    id={tabId('server')}
+                    data-admin-tab="server"
+                    role="tab"
+                    aria-controls={panelId('server')}
+                    aria-selected={activeTab === 'server'}
+                    tabIndex={activeTab === 'server' ? 0 : -1}
                     onClick={() => setActiveTab('server')}
                 >
                     <Server size={16} />
@@ -670,7 +744,13 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             )}
 
             {activeTab === 'overview' && (
-                <div className="admin-section">
+                <div
+                    className="admin-section"
+                    role="tabpanel"
+                    id={panelId('overview')}
+                    aria-labelledby={tabId('overview')}
+                    tabIndex={0}
+                >
                     <div className="admin-command-strip">
                         <div>
                             <span>Health score</span>
@@ -721,7 +801,13 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             )}
 
             {activeTab === 'operations' && (
-                <div className="admin-ops-grid">
+                <div
+                    className="admin-ops-grid"
+                    role="tabpanel"
+                    id={panelId('operations')}
+                    aria-labelledby={tabId('operations')}
+                    tabIndex={0}
+                >
                     <div className="admin-ops-health">
                         <div>
                             <span>Operational health</span>
@@ -864,7 +950,13 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             )}
 
             {activeTab === 'users' && (
-                <div className="admin-section">
+                <div
+                    className="admin-section"
+                    role="tabpanel"
+                    id={panelId('users')}
+                    aria-labelledby={tabId('users')}
+                    tabIndex={0}
+                >
                     <div className="admin-controls">
                         <div className="admin-search">
                             <Search size={18} />
@@ -989,7 +1081,13 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             )}
 
             {activeTab === 'minds' && (
-                <div className="admin-section">
+                <div
+                    className="admin-section"
+                    role="tabpanel"
+                    id={panelId('minds')}
+                    aria-labelledby={tabId('minds')}
+                    tabIndex={0}
+                >
                     <div className="admin-controls">
                         <div className="admin-search">
                             <Search size={18} />
@@ -1099,7 +1197,13 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             )}
 
             {activeTab === 'server' && (
-                <div className="admin-server-grid">
+                <div
+                    className="admin-server-grid"
+                    role="tabpanel"
+                    id={panelId('server')}
+                    aria-labelledby={tabId('server')}
+                    tabIndex={0}
+                >
                     {serverRows.map((item) => (
                         <div className="admin-server-row" key={item.label}>
                             <span>{item.icon}</span>

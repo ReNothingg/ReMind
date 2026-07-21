@@ -55,8 +55,9 @@
   color: var(--color-text-secondary);
 }
 
-.beatbox-instance-host #bpm {
-  width: 55px;
+.beatbox-instance-host .bpm-input {
+  width: 60px;
+  min-height: 44px;
   padding: calc(var(--spacing-unit) * 1.5);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-medium);
@@ -67,14 +68,15 @@
   transition: border-color var(--transition-fast);
 }
 
-.beatbox-instance-host #bpm:focus {
+.beatbox-instance-host .bpm-input:focus-visible {
   border-color: var(--color-border-focus);
-  outline: none;
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
-.beatbox-instance-host #play-stop-btn {
-  width: 36px;
-  height: 36px;
+.beatbox-instance-host .play-button {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -86,26 +88,26 @@
   transition: all var(--transition-fast);
 }
 
-.beatbox-instance-host #play-stop-btn:hover {
+.beatbox-instance-host .play-button:hover {
   transform: scale(1.05);
   background-color: rgba(var(--color-accent-raw), 0.9);
 }
 
-.beatbox-instance-host #play-stop-btn svg {
+.beatbox-instance-host .play-button svg {
   width: 18px;
   height: 18px;
   fill: currentColor;
 }
 
-.beatbox-instance-host #play-stop-btn .icon-stop {
+.beatbox-instance-host .play-button .icon-stop {
   display: none;
 }
 
-.beatbox-instance-host #play-stop-btn.playing .icon-play {
+.beatbox-instance-host .play-button.playing .icon-play {
   display: none;
 }
 
-.beatbox-instance-host #play-stop-btn.playing .icon-stop {
+.beatbox-instance-host .play-button.playing .icon-stop {
   display: block;
 }
 
@@ -153,7 +155,7 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  flex: 0 0 76px;
+  flex: 0 0 104px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -162,8 +164,8 @@
   padding: calc(var(--spacing-unit) * 2);
   background-color: var(--color-bg-surface);
   border-bottom: 1px solid var(--color-border-medium);
-  width: 76px;
-  min-height: 88px;
+  width: 104px;
+  min-height: 108px;
   border-right: 1px solid var(--color-border-medium);
   box-shadow: none;
 }
@@ -172,12 +174,12 @@
   flex: 0 0 auto;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 38px;
+  grid-auto-columns: 44px;
   gap: calc(var(--spacing-unit) * 1.5);
   align-items: center;
   padding: calc(var(--spacing-unit) * 2.5) calc(var(--spacing-unit) * 4);
   border-bottom: 1px solid var(--color-border-medium);
-  min-height: 88px;
+  min-height: 108px;
 }
 
 .beatbox-instance-host .instrument-control {
@@ -193,8 +195,8 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--transition-fast);
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   padding: 7px;
 }
 
@@ -267,6 +269,7 @@
   align-items: center;
   gap: calc(var(--spacing-unit) * 1);
   pointer-events: auto;
+  min-height: 44px;
 }
 
 .beatbox-instance-host .instrument-item:hover {
@@ -300,8 +303,8 @@
 }
 
 .beatbox-instance-host .control-btn {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   background: var(--color-bg-interactive);
   border: 1px solid transparent;
   color: var(--color-text-secondary);
@@ -339,7 +342,13 @@
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
+  padding: 0;
   transition: all var(--transition-fast);
+}
+
+.beatbox-instance-host .step:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .beatbox-instance-host .step.beat-start {
@@ -428,9 +437,9 @@
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 18px;
+  height: 44px;
   margin: 0;
-  background: rgba(var(--color-accent-raw), 0.42);
+  background: transparent;
   border-radius: var(--radius-sm);
   outline: none;
 }
@@ -499,6 +508,7 @@
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing-unit) * 2);
@@ -541,27 +551,27 @@
     gap: calc(var(--spacing-unit) * 0.5);
   }
 
-  .beatbox-instance-host #bpm {
-    width: 52px;
+  .beatbox-instance-host .bpm-input {
+    width: 56px;
     padding: calc(var(--spacing-unit) * 1.25);
   }
 
-  .beatbox-instance-host #play-stop-btn {
-    width: 34px;
-    height: 34px;
+  .beatbox-instance-host .play-button {
+    width: 44px;
+    height: 44px;
   }
 
   .beatbox-instance-host .track-controls {
-    flex-basis: 64px;
-    width: 64px;
-    min-height: 78px;
+    flex-basis: 104px;
+    width: 104px;
+    min-height: 108px;
     padding: calc(var(--spacing-unit) * 1.5);
   }
 
   .beatbox-instance-host .steps-container {
-    grid-auto-columns: 28px;
+    grid-auto-columns: 44px;
     gap: calc(var(--spacing-unit) * 1);
-    min-height: 78px;
+    min-height: 108px;
     padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 2.5);
   }
 
@@ -590,14 +600,14 @@
   }
 
   .beatbox-instance-host .instrument-select-btn {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     padding: 6px;
   }
 
   .beatbox-instance-host .control-btn {
-    width: 25px;
-    height: 25px;
+    width: 44px;
+    height: 44px;
   }
 
   .beatbox-instance-host .instrument-panel {

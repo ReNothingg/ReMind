@@ -22,7 +22,7 @@
     "loginTitle": "अपने खाते में साइन इन करें",
     "registerTitle": "खाता बनाएं",
     "fields": {
-      "email": "Email:",
+      "email": "ईमेल:",
       "password": "पासवर्ड:",
       "username": "उपयोगकर्ता नाम:",
       "confirmPassword": "पासवर्ड दोबारा दर्ज करें:",
@@ -50,6 +50,7 @@
       "emailTooLong": "Email 100 वर्णों से अधिक नहीं होना चाहिए",
       "passwordTooLong": "पासवर्ड 100 वर्णों से अधिक नहीं होना चाहिए",
       "turnstileRequired": "पुष्टि करें कि आप रोबोट नहीं हैं और फिर कोशिश करें।",
+      "turnstileLoadError": "Cloudflare सत्यापन लोड नहीं हुआ। पेज रीफ़्रेश करें या इस साइट के लिए ब्लॉकर बंद करें।",
       "requestError": "नेटवर्क या सर्वर त्रुटि"
     },
     "passwordStrength": {
@@ -67,8 +68,8 @@
     "loading": "लोड हो रहा है...",
     "closeEsc": "बंद करें (Esc)",
     "selectOption": "एक विकल्प चुनें",
-    "copy": "Copy",
-    "close": "Close"
+    "copy": "कॉपी करें",
+    "close": "बंद करें"
   },
   "think": {
     "label": "विचार",
@@ -97,36 +98,36 @@
   "chat": {
     "readOnly": "चैट केवल पढ़ने के लिए है",
     "editUserMessage": {
-      "placeholder": "Edit your message...",
-      "ariaLabel": "Edit your message",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit"
+      "placeholder": "अपना संदेश संपादित करें...",
+      "ariaLabel": "अपना संदेश संपादित करें",
+      "save": "सहेजें",
+      "cancel": "रद्द करें",
+      "edit": "संपादित करें"
     },
     "githubDiff": {
-      "title": "Pull request changes",
-      "branch": "Branch",
-      "filesChanged": "{{count}} files changed",
-      "additions": "{{count}} additions",
-      "deletions": "{{count}} deletions",
-      "copy": "Copy diff",
-      "copied": "Copied",
-      "download": "Download diff",
-      "expandFile": "Expand file",
-      "collapseFile": "Collapse file",
-      "openPullRequest": "Open pull request",
-      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "title": "Pull request में बदलाव",
+      "branch": "ब्रांच",
+      "filesChanged": "{{count}} फ़ाइलें बदली गईं",
+      "additions": "{{count}} जोड़",
+      "deletions": "{{count}} हटाव",
+      "copy": "diff कॉपी करें",
+      "copied": "कॉपी हो गया",
+      "download": "diff डाउनलोड करें",
+      "expandFile": "फ़ाइल फैलाएँ",
+      "collapseFile": "फ़ाइल समेटें",
+      "openPullRequest": "Pull request खोलें",
+      "truncated": "diff की {{total}} पंक्तियों में से {{shown}} दिखाई जा रही हैं",
       "status": {
-        "added": "Added",
-        "deleted": "Deleted",
-        "modified": "Modified",
-        "renamed": "Renamed"
+        "added": "जोड़ा गया",
+        "deleted": "हटाया गया",
+        "modified": "बदला गया",
+        "renamed": "नाम बदला गया"
       }
     },
-    "ariaLog": "Conversation messages",
-    "userMessageAria": "Your message",
-    "assistantMessageAria": "Assistant message",
-    "regenerate": "Regenerate",
+    "ariaLog": "बातचीत के संदेश",
+    "userMessageAria": "आपका संदेश",
+    "assistantMessageAria": "सहायक का संदेश",
+    "regenerate": "दोबारा बनाएँ",
     "generationFailed": "उत्तर तैयार नहीं किया जा सका।",
     "generationStopped": "उत्तर बनाना रोक दिया गया",
     "variantLimitReached": "इस संदेश की संस्करण सीमा पूरी हो गई है।",
@@ -137,33 +138,33 @@
       "counter": "{{total}} में से संस्करण {{current}}"
     },
     "audio": {
-      "speak": "Read aloud",
-      "label": "Audio",
-      "loading": "Loading audio...",
-      "play": "Play",
-      "pause": "Pause",
-      "progress": "Audio playback position",
-      "error": "Could not load audio."
+      "speak": "ज़ोर से पढ़ें",
+      "label": "ऑडियो",
+      "loading": "ऑडियो लोड हो रहा है...",
+      "play": "चलाएँ",
+      "pause": "रोकें",
+      "progress": "ऑडियो चलने की स्थिति",
+      "error": "ऑडियो लोड नहीं किया जा सका।"
     },
     "feedback": {
-      "like": "Good answer",
-      "dislike": "Bad answer",
-      "panelTitle": "What was wrong with the answer?",
-      "reasonGroup": "Feedback reasons",
-      "commentLabel": "Additional feedback",
-      "commentPlaceholder": "Describe what should be improved",
-      "submit": "Send feedback",
-      "sending": "Sending...",
-      "sent": "Feedback sent",
-      "error": "Failed to send feedback",
-      "noSession": "Feedback is available only in saved chats.",
+      "like": "अच्छा जवाब",
+      "dislike": "खराब जवाब",
+      "panelTitle": "जवाब में क्या गलत था?",
+      "reasonGroup": "प्रतिक्रिया के कारण",
+      "commentLabel": "अतिरिक्त प्रतिक्रिया",
+      "commentPlaceholder": "बताएँ कि क्या बेहतर किया जाना चाहिए",
+      "submit": "प्रतिक्रिया भेजें",
+      "sending": "भेजा जा रहा है...",
+      "sent": "प्रतिक्रिया भेज दी गई",
+      "error": "प्रतिक्रिया नहीं भेजी जा सकी",
+      "noSession": "प्रतिक्रिया केवल सहेजी गई चैट में उपलब्ध है।",
       "reasons": {
-        "incorrect": "Incorrect",
-        "unsafe": "Unsafe",
-        "not_helpful": "Not helpful",
-        "too_long": "Too long",
-        "missing_context": "Missed context",
-        "other": "Other"
+        "incorrect": "गलत",
+        "unsafe": "असुरक्षित",
+        "not_helpful": "मददगार नहीं",
+        "too_long": "बहुत लंबा",
+        "missing_context": "संदर्भ छूट गया",
+        "other": "अन्य"
       }
     }
   },
@@ -207,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}, चरण {{step}}",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -231,8 +233,8 @@
     "attachUnavailableReadOnly": "सार्वजनिक चैट: फ़ाइलें उपलब्ध नहीं हैं",
     "removeQuote": "उद्धरण हटाएं",
     "dragDropTitle": "फ़ाइलें यहां छोड़ें",
-    "dragDropSubtitle": "छवियां, दस्तावेज़ और अन्य फ़ाइलें समर्थित हैं",
-    "placeholder": "आज आप क्या सीखना चाहते हैं?",
+    "dragDropSubtitle": "चित्र और टेक्स्ट फ़ाइलें, कुल {{size}} तक",
+    "placeholder": "कुछ भी पूछें",
     "placeholderReadOnly": "सार्वजनिक चैट: केवल पढ़ने के लिए",
     "ariaInput": "संदेश इनपुट",
     "send": "भेजें",
@@ -247,8 +249,17 @@
   },
   "files": {
     "removeFile": "फ़ाइल हटाएं",
-    "fileFallback": "File",
-    "pastedImageName": "चित्र"
+    "preview": "पूर्वावलोकन",
+    "code": "कोड",
+    "lines": "{{count}} पंक्तियाँ",
+    "previewAlt": "{{name}} का पूर्वावलोकन",
+    "previewUnavailable": "फ़ाइल “{{name}}” का पूर्वावलोकन उपलब्ध नहीं है।",
+    "fileFallback": "फ़ाइल",
+    "pastedImageName": "चित्र",
+    "tooMany": "आप अधिकतम {{count}} फ़ाइलें संलग्न कर सकते हैं।",
+    "unsupportedType": "«{{name}}» फ़ाइल प्रकार समर्थित नहीं है।",
+    "emptyFile": "«{{name}}» फ़ाइल खाली है।",
+    "sizeLimit": "संलग्न फ़ाइलों का कुल आकार {{size}} तक हो सकता है।"
   },
   "share": {
     "title": "चैट साझा करना",
@@ -302,13 +313,16 @@
     "publicChat": "सार्वजनिक चैट",
     "emptyHistory": "इतिहास खाली है",
     "noResults": "कोई परिणाम नहीं",
+    "statusGenerating": "उत्तर तैयार किया जा रहा है",
+    "statusError": "उत्तर तैयार नहीं हो सका",
+    "statusComplete": "उत्तर तैयार है",
     "settings": "सेटिंग्स",
     "share": "साझा करें",
     "rename": "नाम बदलें",
     "delete": "हटाएं",
-    "temporaryChat": "Temporary chat",
+    "temporaryChat": "अस्थायी चैट",
     "minds": "Minds",
-    "admin": "Admin",
+    "admin": "एडमिन",
     "github": "GitHub"
   },
   "settings": {
@@ -321,7 +335,7 @@
       "interface": "इंटरफेस",
       "accessibility": "सुलभता",
       "about": "हमारे बारे में",
-      "privacy": "Privacy"
+      "privacy": "गोपनीयता"
     },
     "languages": {
       "en": "English",
@@ -386,20 +400,20 @@
         "error": "खाता हटाया नहीं जा सका"
       },
       "connectedApps": {
-        "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "title": "कनेक्ट किए गए ऐप्स",
+        "description": "चैट में ReMind जिन बाहरी सेवाओं का उपयोग कर सकता है उन्हें प्रबंधित करें।",
         "github": {
           "name": "GitHub",
-          "description": "Let ReMind plan code changes and open pull requests from chat.",
-          "connect": "Connect GitHub",
-          "manage": "Manage",
-          "error": "Failed to load GitHub status",
-          "repoCount": "Available repositories: {{count}}",
+          "description": "चैट से ReMind को कोड बदलावों की योजना बनाने और pull request खोलने दें।",
+          "connect": "GitHub कनेक्ट करें",
+          "manage": "प्रबंधित करें",
+          "error": "GitHub की स्थिति लोड नहीं की जा सकी",
+          "repoCount": "उपलब्ध रिपॉज़िटरी: {{count}}",
           "status": {
-            "checking": "Checking",
-            "connected": "Connected",
-            "disconnected": "Not connected",
-            "configMissing": "Config missing"
+            "checking": "जाँच की जा रही है",
+            "connected": "कनेक्ट है",
+            "disconnected": "कनेक्ट नहीं है",
+            "configMissing": "कॉन्फ़िगरेशन मौजूद नहीं है"
           }
         }
       }
@@ -491,9 +505,9 @@
         "shortcut": {
           "label": "कीबोर्ड शॉर्टकट",
           "disabled": "बंद",
-          "record": "Record shortcut (current: {{shortcut}})",
-          "recording": "Press a shortcut now, or Esc to cancel",
-          "invalid": "Press a keyboard shortcut with at least one modifier."
+          "record": "शॉर्टकट रिकॉर्ड करें (वर्तमान: {{shortcut}})",
+          "recording": "अब कोई शॉर्टकट दबाएँ, या रद्द करने के लिए Esc दबाएँ",
+          "invalid": "कम से कम एक मॉडिफ़ायर वाला कीबोर्ड शॉर्टकट दबाएँ।"
         },
         "newChat": {
           "label": "नई चैट खोलें",
@@ -501,8 +515,8 @@
           "browser": "ब्राउजर में"
         },
         "launchAtLogin": {
-          "title": "Launch at login",
-          "description": "Keep ReMind ready in the background after you sign in to your Mac."
+          "title": "लॉगिन पर शुरू करें",
+          "description": "Mac में साइन इन करने के बाद ReMind को बैकग्राउंड में तैयार रखें।"
         }
       }
     },
@@ -538,6 +552,11 @@
         "description": "समाचार, परियोजनाएँ, शोध और टीम की जानकारी।",
         "link": "SynvexAI वेबसाइट खोलें"
       },
+      "github": {
+        "title": "GitHub पर ReMind",
+        "description": "सोर्स कोड देखें और ओपन-सोर्स प्रोजेक्ट में योगदान दें।",
+        "link": "GitHub पर ReMind रिपॉज़िटरी खोलें"
+      },
       "socials": {
         "title": "सोशल मीडिया पर ReMind",
         "description": "ReMind और SynvexAI के आधिकारिक चैनल।",
@@ -557,20 +576,20 @@
       }
     },
     "privacy": {
-      "title": "Privacy and data",
-      "description": "Control data use according to the SynvexAI privacy policy.",
+      "title": "गोपनीयता और डेटा",
+      "description": "SynvexAI की गोपनीयता नीति के अनुसार डेटा के उपयोग को नियंत्रित करें।",
       "serviceImprovement": {
-        "title": "Use my content to improve SynvexAI",
-        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+        "title": "SynvexAI को बेहतर बनाने के लिए मेरे कॉन्टेंट का उपयोग करें",
+        "description": "यह डिफ़ॉल्ट रूप से बंद रहता है। चालू करने पर आपके प्रॉम्प्ट, जवाब, फ़ाइलें और प्रतिक्रिया सेवा की गुणवत्ता और मॉडल बेहतर बनाने के लिए उपयोग की जा सकती हैं।"
       },
-      "exportAction": "Export my data",
-      "exportLoading": "Preparing export...",
-      "exportSuccess": "Data export is ready",
-      "exportError": "Failed to export data",
-      "signInForExport": "Sign in to export data",
+      "exportAction": "मेरा डेटा एक्सपोर्ट करें",
+      "exportLoading": "एक्सपोर्ट तैयार किया जा रहा है...",
+      "exportSuccess": "डेटा एक्सपोर्ट तैयार है",
+      "exportError": "डेटा एक्सपोर्ट नहीं किया जा सका",
+      "signInForExport": "डेटा एक्सपोर्ट करने के लिए साइन इन करें",
       "policyLink": {
-        "title": "Privacy policy",
-        "description": "Open the current SynvexAI policy."
+        "title": "गोपनीयता नीति",
+        "description": "SynvexAI की वर्तमान नीति खोलें।"
       }
     }
   },
@@ -603,7 +622,7 @@
       "hindi": "हिंदी",
       "bengali": "बंगाली"
     },
-    "translateAction": "Translate"
+    "translateAction": "अनुवाद करें"
   },
   "quiz": {
     "dataError": "क्विज़ डेटा त्रुटि",
@@ -612,10 +631,14 @@
     "tryAgain": "फिर से प्रयास करें",
     "question": "प्रश्न {{current}}/{{total}}",
     "hint": "संकेत",
-    "next": "अगला"
+    "next": "अगला",
+    "correctAnswer": "सही उत्तर",
+    "incorrectAnswer": "गलत उत्तर"
   },
   "spinwheel": {
-    "spin": "स्पिन करें"
+    "spin": "स्पिन करें",
+    "spinning": "घूम रहा है",
+    "result": "परिणाम: {{value}}"
   },
   "minds": {
     "subtitle": "अलग-अलग कार्यों और बातचीत की शैलियों के लिए अपने कस्टम AI minds बनाएं और प्रबंधित करें।",
@@ -624,7 +647,7 @@
     "searchAria": "minds खोजें",
     "tabsAria": "minds अनुभाग",
     "tabs": {
-      "store": "Mind store",
+      "store": "Minds स्टोर",
       "mine": "मेरे minds"
     },
     "categoriesAria": "mind श्रेणियां",
@@ -643,7 +666,7 @@
       "link": "लिंक से",
       "linkShort": "लिंक से",
       "linkLong": "लिंक वाले सभी लोग",
-      "store": "Mind store"
+      "store": "Minds स्टोर"
     },
     "verified": "निर्माता द्वारा स्वीकृत",
     "startersAria": "बातचीत शुरू करने वाले संकेत",
@@ -732,9 +755,9 @@
     "queryLabel": "क्वेरी"
   },
   "temporaryChat": {
-    "title": "Temporary chat",
-    "badge": "Not saved to history",
-    "description": "This chat stays out of the main history and is not saved after the session."
+    "title": "अस्थायी चैट",
+    "badge": "इतिहास में सहेजा नहीं जाता",
+    "description": "यह चैट मुख्य इतिहास में दिखाई नहीं देती और सत्र खत्म होने के बाद सहेजी नहीं जाती।"
   },
   "github": {
     "title": "GitHub",
@@ -866,8 +889,49 @@
     }
   },
   "chatImage": {
-    "messageAlt": "Chat image {{number}}",
-    "generating": "Creating image: {{prompt}}"
+    "open": "खोलें",
+    "unavailableTitle": "पूर्वावलोकन उपलब्ध नहीं है",
+    "unavailableDescription": "चित्र लोड नहीं किया जा सका।",
+    "messageAlt": "चैट चित्र {{number}}",
+    "generating": "चित्र बनाया जा रहा है: {{prompt}}"
+  },
+  "imageLightbox": {
+    "badge": "पूर्वावलोकन",
+    "title": "चित्र का पूर्वावलोकन",
+    "demoTitle": "ReMind डेमो चित्र",
+    "subtitle": "पूरा चित्र देखें, उसे किसी दूसरी शैली में दोबारा बनाएँ या फ़ाइल डाउनलोड करें।",
+    "previewAlt": "चित्र का पूर्वावलोकन",
+    "close": "बंद करें",
+    "styleLabel": "शैली",
+    "promptLabel": "मूल प्रॉम्प्ट",
+    "promptFallback": "इस चित्र के लिए मूल प्रॉम्प्ट उपलब्ध नहीं है।",
+    "actions": {
+      "regenerate": "दोबारा बनाएँ",
+      "regenerating": "बनाया जा रहा है...",
+      "download": "डाउनलोड करें"
+    },
+    "styles": {
+      "realistic": "यथार्थवादी",
+      "cartoon": "कार्टून",
+      "anime": "ऐनिमे",
+      "oilPainting": "तैल चित्र",
+      "watercolor": "जलरंग",
+      "pencilSketch": "पेंसिल स्केच"
+    },
+    "details": {
+      "style": "शैली: {{style}}",
+      "resolution": "{{width}} × {{height}} पिक्सेल"
+    },
+    "errors": {
+      "missingSourceMessage": "उपयोगकर्ता का मूल संदेश नहीं मिला।",
+      "missingPrompt": "चित्र को दोबारा बनाने के लिए स्रोत प्रॉम्प्ट नहीं मिला।",
+      "missingResult": "मॉडल ने नया चित्र नहीं लौटाया।",
+      "missingImage": "डाउनलोड के लिए कोई चित्र उपलब्ध नहीं है।",
+      "regenerateFailed": "चित्र को दोबारा नहीं बनाया जा सका: {{message}}",
+      "downloadFailed": "चित्र डाउनलोड नहीं किया जा सका। मूल फ़ाइल नए टैब में खोली जाएगी।",
+      "previewTitle": "चित्र का पूर्वावलोकन उपलब्ध नहीं है",
+      "previewDescription": "फ़ाइल का पथ जाँचें या चित्र को दोबारा बनाएँ।"
+    }
   },
   "codeBlock": {
     "codeSnippet": "Code snippet",
@@ -897,9 +961,9 @@
   },
   "admin": {
     "aiFeedback": {
-      "likeRatio": "AI answer likes",
-      "dislikeRatio": "AI answer dislikes",
-      "total": "AI answer ratings"
+      "likeRatio": "AI जवाबों पर पसंद",
+      "dislikeRatio": "AI जवाबों पर नापसंद",
+      "total": "AI जवाबों की रेटिंग"
     }
   }
 }

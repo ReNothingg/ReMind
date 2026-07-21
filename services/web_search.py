@@ -90,10 +90,36 @@ LOW_SIGNAL_AGGREGATOR_HOSTS = {
 }
 
 SEARCH_QUERY_STOP_TERMS = {
-    "and", "current", "find", "latest", "news", "official", "recent", "search", "the",
-    "апрель", "август", "декабрь", "июль", "июнь", "май", "март", "ноябрь", "новости",
-    "октябрь", "официально", "последние", "сентябрь", "свежие", "февраль", "январь",
-    "для", "или", "как", "найди", "что",
+    "and",
+    "current",
+    "find",
+    "latest",
+    "news",
+    "official",
+    "recent",
+    "search",
+    "the",
+    "апрель",
+    "август",
+    "декабрь",
+    "июль",
+    "июнь",
+    "май",
+    "март",
+    "ноябрь",
+    "новости",
+    "октябрь",
+    "официально",
+    "последние",
+    "сентябрь",
+    "свежие",
+    "февраль",
+    "январь",
+    "для",
+    "или",
+    "как",
+    "найди",
+    "что",
 }
 
 QUERY_MONTH_TERMS = {
@@ -432,9 +458,7 @@ def build_news_query_variants(query: str) -> list[str]:
     normalized = safe_query(query)
     if not normalized:
         return []
-    editorial_query = safe_query(
-        f"{normalized} Reuters Bloomberg Financial Times AP TechCrunch"
-    )
+    editorial_query = safe_query(f"{normalized} Reuters Bloomberg Financial Times AP TechCrunch")
     return list(
         dict.fromkeys(
             [
@@ -783,9 +807,11 @@ def extract_published_at(html: str) -> str | None:
         "pubdate",
     }
     for meta in soup.find_all("meta"):
-        key = str(
-            meta.get("property") or meta.get("name") or meta.get("itemprop") or ""
-        ).strip().lower()
+        key = (
+            str(meta.get("property") or meta.get("name") or meta.get("itemprop") or "")
+            .strip()
+            .lower()
+        )
         value = str(meta.get("content") or "").strip()
         if key in meta_keys and value:
             return value[:120]
@@ -1118,9 +1144,7 @@ def google_news_rss_search(query: str) -> list[dict[str, Any]]:
     for item in root.findall(".//item"):
         url = normalize_search_url(item.findtext("link") or "")
         publisher = item.find("source")
-        publisher_url = normalize_search_url(
-            publisher.get("url") if publisher is not None else ""
-        )
+        publisher_url = normalize_search_url(publisher.get("url") if publisher is not None else "")
         if (
             not url
             or not publisher_url
@@ -1277,9 +1301,7 @@ def requested_period_score(published_at: Any, query: str) -> float:
     if published is None:
         return 0.0
     lowered_query = str(query or "").lower()
-    requested_years = {
-        int(year) for year in re.findall(r"\b(20\d{2})\b", lowered_query)
-    }
+    requested_years = {int(year) for year in re.findall(r"\b(20\d{2})\b", lowered_query)}
     requested_month = next(
         (
             month
@@ -1371,7 +1393,7 @@ def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[s
 
     is_rss_metadata = candidate.get("result_type") == "news_rss"
     if is_rss_metadata:
-        page = {
+        page: dict[str, Any] = {
             "ok": False,
             "final_url": url,
             "status_code": None,
@@ -1401,7 +1423,8 @@ def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[s
     publisher_url = normalize_search_url(candidate.get("publisher_url") or "")
     authority_url = publisher_url or final_url
     favicon_url = (
-        candidate.get("favicon_url") or page.get("favicon_url")
+        candidate.get("favicon_url")
+        or page.get("favicon_url")
         or f"{urlparse(authority_url).scheme}://{urlparse(authority_url).netloc}/favicon.ico"
     )
 
@@ -1485,23 +1508,16 @@ def run_web_search(query: str, max_results: int | None = None) -> dict[str, Any]
         host = str(source.get("site_name") or "")
         host_count = host_counts.get(host, 0)
         source_url = str(
-            source.get("authority_url")
-            or source.get("final_url")
-            or source.get("url")
-            or ""
+            source.get("authority_url") or source.get("final_url") or source.get("url") or ""
         )
-        is_established_source = host_is_high_signal(source_url) or host_is_trusted_news(
-            source_url
-        )
+        is_established_source = host_is_high_signal(source_url) or host_is_trusted_news(source_url)
         authority_adjustment = (
             -5.0 if prefer_established_sources and not is_established_source else 0.0
         )
         diversity_penalty = host_count * (0.5 if is_established_source else 1.25)
         source_quality_floor = quality_floor - (1.0 if is_established_source else 0.0)
         diversity_adjusted_score = (
-            float(source.get("score") or 0)
-            + authority_adjustment
-            - diversity_penalty
+            float(source.get("score") or 0) + authority_adjustment - diversity_penalty
         )
         if diversity_adjusted_score < source_quality_floor:
             continue
@@ -1561,9 +1577,7 @@ def build_web_search_context(search_payload: dict[str, Any]) -> str:
         title = _compact_search_context_value(
             source.get("title") or source.get("site_name") or "Untitled", 240
         )
-        url = _compact_search_context_value(
-            source.get("final_url") or source.get("url") or "", 700
-        )
+        url = _compact_search_context_value(source.get("final_url") or source.get("url") or "", 700)
         site_name = _compact_search_context_value(
             source.get("site_name") or get_site_name(str(url)), 160
         )

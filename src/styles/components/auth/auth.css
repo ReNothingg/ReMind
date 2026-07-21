@@ -242,7 +242,7 @@ html[data-theme='light'] .auth-modal-content {
 
 .auth-modal-close:hover {
   background: var(--color-bg-interactive-hover, rgba(255, 255, 255, 0.12));
-  transform: scale(1.1);
+  transform: none;
 }
 
 html[data-theme='light'] .auth-modal-close {
@@ -320,13 +320,21 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
   color: var(--color-text-secondary);
 }
 
-.auth-modal .auth-switch-link a {
+.auth-modal .auth-switch-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  border: 0;
+  padding: 0 2px;
+  background: transparent;
   color: var(--color-text-link);
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
+  vertical-align: middle;
 }
 
-.auth-modal .auth-switch-link a:hover {
+.auth-modal .auth-switch-action:hover {
   text-decoration: underline;
 }
 
@@ -387,8 +395,8 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
   right: 0.42rem;
   margin-block: auto;
   transform: none;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   border: none;
   background: transparent;
@@ -410,11 +418,16 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
 }
 
 .auth-modal .password-toggle:hover,
-.auth-modal .password-toggle:focus-visible,
 .auth-modal .password-toggle:active {
   background: var(--color-bg-interactive-hover, rgba(255, 255, 255, 0.1));
   color: var(--color-text-primary);
-  outline: none;
+}
+
+.auth-modal .password-toggle:focus-visible {
+  background: var(--color-bg-interactive-hover, rgba(255, 255, 255, 0.1));
+  color: var(--color-text-primary);
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .auth-modal .auth-register-form {
@@ -533,13 +546,42 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
     width: 100%;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     max-height: 85vh;
-    overflow-y: auto;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
     padding: 1.5rem 1.25rem 1.75rem;
   }
 
   .auth-modal .auth-register-form {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+}
+
+@media (max-height: 680px) {
+  .auth-modal {
+    align-items: flex-start !important;
+    padding-block: 1rem !important;
+  }
+
+  .auth-modal-content {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 640px) and (max-height: 680px) {
+  .auth-modal {
+    align-items: stretch;
+  }
+
+  .auth-modal-content {
+    width: 100%;
+    height: 100dvh !important;
+    max-height: 100dvh;
+    border-radius: 0 !important;
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 }
 

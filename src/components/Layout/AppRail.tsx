@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -87,7 +87,16 @@ const scoreMatch = (query, text) => {
     return score;
 };
 
-const RailActionButton = ({ active = false, children, className, expanded, label, ...props }) => (
+const RailActionButton = ({
+    active = false,
+    children,
+    className,
+    expanded,
+    label,
+    title = undefined,
+    'aria-label': ariaLabel = undefined,
+    ...props
+}) => (
     <button
         type="button"
         className={cn(
@@ -96,6 +105,8 @@ const RailActionButton = ({ active = false, children, className, expanded, label
             active && 'ui-rail-action-button-active',
             className
         )}
+        aria-label={ariaLabel || label}
+        title={title || label}
         {...props}
     >
         {children}
@@ -106,6 +117,7 @@ const RailActionButton = ({ active = false, children, className, expanded, label
 const RailMenuItem = ({ children, className, danger = false, icon, ...props }) => (
     <button
         type="button"
+        role="menuitem"
         className={cn('ui-rail-menu-item', danger && 'ui-rail-menu-item-danger', className)}
         {...props}
     >
@@ -134,6 +146,7 @@ const AppRail = ({
     currentPath = '/',
     currentSessionId,
     isExpanded,
+    isMobile = false,
     onAdminClick,
     onMindsClick,
     onNewChat,
@@ -156,6 +169,7 @@ const AppRail = ({
     const [editingTitle, setEditingTitle] = useState('');
     const [localSessions, setLocalSessions] = useState(sessions);
     const [searchQuery, setSearchQuery] = useState('');
+    const menuTriggerRefs = useRef(new Map());
 
     useEffect(() => {
         if (isExpanded) {
@@ -366,12 +380,53 @@ const AppRail = ({
     const getSessionActivityLabel = (activity) => {
         if (!activity?.status) return '';
         if (activity.status === 'generating') {
-            return t('rail.statusGenerating', { defaultValue: 'Generating answer' });
+            return t('rail.statusGenerating');
         }
         if (activity.status === 'error') {
-            return t('rail.statusError', { defaultValue: 'Generation failed' });
+            return t('rail.statusError');
         }
-        return t('rail.statusComplete', { defaultValue: 'Answer is ready' });
+        return t('rail.statusComplete');
+    };
+
+    const focusSessionMenuItem = (sessionId, edge = 'first') => {
+        window.requestAnimationFrame(() => {
+            const menu = document.getElementById(`rail-session-menu-${sessionId}`);
+            const items = menu?.querySelectorAll('[role="menuitem"]');
+            const target = edge === 'last' ? items?.[items.length - 1] : items?.[0];
+            if (target instanceof HTMLElement) target.focus();
+        });
+    };
+
+    const handleSessionMenuKeyDown = (event, sessionId) => {
+        const items = Array.from(event.currentTarget.querySelectorAll('[role="menuitem"]'));
+        const currentIndex = items.indexOf(document.activeElement);
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpenMenuId(null);
+            window.requestAnimationFrame(() => menuTriggerRefs.current.get(sessionId)?.focus());
+            return;
+        }
+
+        if (items.length === 0) return;
+
+        let nextIndex = currentIndex;
+        if (event.key === 'ArrowDown') {
+            nextIndex = (currentIndex + 1) % items.length;
+        } else if (event.key === 'ArrowUp') {
+            nextIndex = (currentIndex - 1 + items.length) % items.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = items.length - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        const target = items[nextIndex];
+        if (target instanceof HTMLElement) target.focus();
     };
 
     return (
@@ -383,7 +438,27 @@ const AppRail = ({
                     : 'ui-rail-shell-collapsed'
             )}
             id="appRail"
+            aria-hidden={isMobile && !isExpanded ? true : undefined}
+            inert={isMobile && !isExpanded ? true : undefined}
         >
+            <div className="ui-rail-mobile-header">
+                <img
+                    className="ui-rail-mobile-brand"
+                    src="/icons/branding/logo.svg"
+                    alt=""
+                    aria-hidden="true"
+                />
+                <button
+                    type="button"
+                    className="ui-rail-mobile-close"
+                    data-rail-close
+                    onClick={onToggle}
+                    aria-label={t('common.close')}
+                    title={t('common.close')}
+                >
+                    <X aria-hidden="true" />
+                </button>
+            </div>
             <div className="rail-toggle-zone ui-rail-toggle-zone">
                 <button
                     type="button"
@@ -391,6 +466,7 @@ const AppRail = ({
                     id="railToggleBtn"
                     onClick={onToggle}
                     title={isExpanded ? t('rail.collapse') : t('rail.expand')}
+                    aria-label={isExpanded ? t('rail.collapse') : t('rail.expand')}
                 >
                     <svg
                         className={cn('size-[22px] transition-transform duration-200', isExpanded && 'rotate-180')}
@@ -516,61 +592,65 @@ const AppRail = ({
                                     currentSessionId === session.session_id && 'active ui-rail-item-active',
                                     isFavorite && 'favorite ui-rail-item-favorite'
                                 )}
-                                title={title}
-                                onClick={() => onSelectSession(session.session_id)}
                             >
-                                <div className="chat-item-main ui-rail-item-main">
-                                    <div className="chat-item-title-row ui-rail-title-row">
-                                        <span className="chat-item-title ui-rail-title">
-                                            {editingSessionId === session.session_id ? (
-                                                <input
-                                                    type="text"
-                                                    value={editingTitle}
-                                                    onChange={(e) => setEditingTitle(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            handleSaveRename(session.session_id);
-                                                        } else if (e.key === 'Escape') {
-                                                            handleCancelRename();
-                                                        }
-                                                    }}
-                                                    onBlur={() => handleSaveRename(session.session_id)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    autoFocus
-                                                    className="chat-rename-input ui-rail-rename-input"
-                                                    maxLength={200}
+                                {editingSessionId === session.session_id ? (
+                                    <div className="chat-item-main ui-rail-item-main">
+                                        <input
+                                            type="text"
+                                            value={editingTitle}
+                                            onChange={(e) => setEditingTitle(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleSaveRename(session.session_id);
+                                                } else if (e.key === 'Escape') {
+                                                    handleCancelRename();
+                                                }
+                                            }}
+                                            onBlur={() => handleSaveRename(session.session_id)}
+                                            autoFocus
+                                            className="chat-rename-input ui-rail-rename-input"
+                                            maxLength={200}
+                                            aria-label={t('rail.rename')}
+                                        />
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="chat-item-main ui-rail-item-main ui-rail-session-button"
+                                        title={title}
+                                        onClick={() => onSelectSession(session.session_id)}
+                                        aria-current={currentSessionId === session.session_id ? 'page' : undefined}
+                                    >
+                                        <span className="chat-item-title-row ui-rail-title-row">
+                                            <span className="chat-item-title ui-rail-title">{title}</span>
+                                            {session.is_public && (
+                                                <span
+                                                    className="chat-public-chip ui-rail-public-chip"
+                                                    title={t('rail.publicChat')}
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                                                        <circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" strokeWidth="1.6"/>
+                                                        <path d="M2 12h20M12 2c3.5 3.2 3.5 16.8 0 20M7.5 4.5c2.2 2.2 2.2 13 0 15.2M16.5 4.5c-2.2 2.2-2.2 13 0 15.2" stroke="currentColor" fill="none" strokeWidth="1.4"/>
+                                                    </svg>
+                                                    {t('rail.public')}
+                                                </span>
+                                            )}
+                                            {activity?.status && (
+                                                <span
+                                                    className={cn(
+                                                        'ui-rail-status-indicator',
+                                                        `ui-rail-status-${activity.status}`
+                                                    )}
+                                                    title={activityLabel}
+                                                    aria-label={activityLabel}
                                                 />
-                                            ) : (
-                                                title
                                             )}
                                         </span>
-                                        {session.is_public && (
-                                            <span
-                                                className="chat-public-chip ui-rail-public-chip"
-                                                title={t('rail.publicChat')}
-                                            >
-                                                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                                                    <circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" strokeWidth="1.6"/>
-                                                    <path d="M2 12h20M12 2c3.5 3.2 3.5 16.8 0 20M7.5 4.5c2.2 2.2 2.2 13 0 15.2M16.5 4.5c-2.2 2.2-2.2 13 0 15.2" stroke="currentColor" fill="none" strokeWidth="1.4"/>
-                                                </svg>
-                                                {t('rail.public')}
-                                            </span>
+                                        {showPreview && (
+                                            <span className="chat-item-preview ui-rail-preview">{preview}</span>
                                         )}
-                                        {activity?.status && (
-                                            <span
-                                                className={cn(
-                                                    'ui-rail-status-indicator',
-                                                    `ui-rail-status-${activity.status}`
-                                                )}
-                                                title={activityLabel}
-                                                aria-label={activityLabel}
-                                            />
-                                        )}
-                                    </div>
-                                    {showPreview && editingSessionId !== session.session_id && (
-                                        <div className="chat-item-preview ui-rail-preview">{preview}</div>
-                                    )}
-                                </div>
+                                    </button>
+                                )}
                                 <span className="chat-item-details ui-rail-item-details">
                                     <div className="chat-item-actions ui-rail-item-actions">
                                         <div
@@ -582,10 +662,29 @@ const AppRail = ({
                                             <button
                                                 type="button"
                                                 className="chat-menu-btn ui-rail-menu-trigger"
+                                                ref={(element) => {
+                                                    if (element) menuTriggerRefs.current.set(session.session_id, element);
+                                                    else menuTriggerRefs.current.delete(session.session_id);
+                                                }}
                                                 title={t('rail.menu')}
+                                                aria-label={t('rail.menu')}
+                                                aria-haspopup="menu"
+                                                aria-expanded={openMenuId === session.session_id}
+                                                aria-controls={openMenuId === session.session_id ? `rail-session-menu-${session.session_id}` : undefined}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setOpenMenuId(openMenuId === session.session_id ? null : session.session_id);
+                                                    const shouldOpen = openMenuId !== session.session_id;
+                                                    setOpenMenuId(shouldOpen ? session.session_id : null);
+                                                    if (shouldOpen) focusSessionMenuItem(session.session_id);
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                                                    event.preventDefault();
+                                                    setOpenMenuId(session.session_id);
+                                                    focusSessionMenuItem(
+                                                        session.session_id,
+                                                        event.key === 'ArrowUp' ? 'last' : 'first'
+                                                    );
                                                 }}
                                             >
                                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -595,7 +694,12 @@ const AppRail = ({
                                                 </svg>
                                             </button>
                                             {openMenuId === session.session_id && (
-                                                <div className="chat-dropdown-menu ui-rail-menu">
+                                                <div
+                                                    className="chat-dropdown-menu ui-rail-menu"
+                                                    id={`rail-session-menu-${session.session_id}`}
+                                                    role="menu"
+                                                    onKeyDown={(event) => handleSessionMenuKeyDown(event, session.session_id)}
+                                                >
                                                     <RailMenuItem
                                                         className="menu-item favorite-menu-item"
                                                         icon={(

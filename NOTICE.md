@@ -40,6 +40,10 @@ The public repository does not grant rights to any private production infrastruc
 
 Those materials are not part of the open source distribution unless they are explicitly published in this repository under a stated license.
 
+## Speech Synthesis Interoperability
+
+The speech synthesis integration interoperates with the same undocumented Google Translate endpoint used by the [gTTS project](https://github.com/pndurette/gTTS). gTTS is Copyright © 2014–2024 Pierre Nicolas Durette and contributors and is distributed under the MIT License. ReMind does not bundle the gTTS package.
+
 ## No Legal Advice
 
 This notice is a project policy summary and is not legal advice. The controlling software license for covered code is the AGPL-3.0-only license in [LICENSE](LICENSE).

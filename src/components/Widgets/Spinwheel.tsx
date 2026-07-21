@@ -1,73 +1,118 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { buildSpinwheelSegments, normalizeSpinwheelConfig } from './spinwheelConfig';
 
 const Spinwheel = ({ initialState }) => {
     const { t } = useTranslation();
-    const config = useMemo(() => ({
-        min: initialState?.range?.min || 1,
-        max: initialState?.range?.max || 100,
-        step: initialState?.range?.step || 1,
-        target: initialState?.number || 50,
-        spinTime: initialState?.behavior?.spin_time_ms || 4200
-    }), [initialState]);
+    const config = useMemo(() => normalizeSpinwheelConfig(initialState), [initialState]);
 
     const reelRef = useRef(null);
+    const animationFrameRef = useRef(null);
+    const finishTimerRef = useRef(null);
+    const currentIndexRef = useRef(0);
     const [isSpinning, setIsSpinning] = useState(false);
     const [hasSpun, setHasSpun] = useState(false);
-    const segments = useMemo(() => {
-        const values = [];
-        for (let i = config.min; i <= config.max; i += config.step) {
-            values.push(i);
-        }
-        return values;
-    }, [config.max, config.min, config.step]);
+    const segments = useMemo(() => buildSpinwheelSegments(config), [config]);
     const displaySegments = useMemo(
         () => [...segments, ...segments, ...segments, ...segments, ...segments],
         [segments]
     );
+    const resolvedTarget = segments.reduce((nearest, value) =>
+        Math.abs(value - config.target) < Math.abs(nearest - config.target) ? value : nearest
+    );
 
-    const itemHeight = 75;
+    const positionReel = useCallback((index) => {
+        const reel = reelRef.current;
+        const viewport = reel?.parentElement;
+        const targetItem = reel?.children[index];
+        if (!reel || !viewport || !targetItem) return;
+
+        const viewportRect = viewport.getBoundingClientRect();
+        const targetRect = targetItem.getBoundingClientRect();
+        const computedTransform = window.getComputedStyle(reel).transform;
+        const currentOffset = computedTransform === 'none'
+            ? 0
+            : new DOMMatrixReadOnly(computedTransform).m42;
+        const centerDelta = viewportRect.top + viewportRect.height / 2
+            - (targetRect.top + targetRect.height / 2);
+        const offset = currentOffset + centerDelta;
+        currentIndexRef.current = index;
+        reel.style.transform = `translateY(${offset}px)`;
+    }, []);
 
     const spin = () => {
-        if (isSpinning || hasSpun) return;
+        if (isSpinning || hasSpun || resolvedTarget === undefined) return;
         setIsSpinning(true);
         setHasSpun(true);
 
-        const targetIndex = segments.indexOf(Number(config.target));
+        const targetIndex = segments.indexOf(resolvedTarget);
         const middleOffset = segments.length * 2;
         const finalIndex = middleOffset + targetIndex;
-
-        const finalPosition = finalIndex * itemHeight - (225 / 2) + (itemHeight / 2);
-        const startPos = finalPosition - (segments.length * itemHeight * 2);
+        const startIndex = finalIndex - segments.length * 2;
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const duration = reduceMotion ? 0 : Math.max(0, Number(config.spinTime) || 0);
 
         if (reelRef.current) {
             reelRef.current.style.transition = 'none';
-            reelRef.current.style.transform = `translateY(-${startPos}px)`;
+            positionReel(startIndex);
+            reelRef.current.getBoundingClientRect();
 
-            setTimeout(() => {
-                reelRef.current.style.transition = `transform ${config.spinTime}ms cubic-bezier(0.25, 1, 0.5, 1)`;
-                reelRef.current.style.transform = `translateY(-${finalPosition}px)`;
-            }, 50);
+            animationFrameRef.current = window.requestAnimationFrame(() => {
+                if (!reelRef.current) return;
+                reelRef.current.style.transition = duration > 0
+                    ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)`
+                    : 'none';
+                positionReel(finalIndex);
+            });
         }
 
-        setTimeout(() => {
+        finishTimerRef.current = window.setTimeout(() => {
             setIsSpinning(false);
-        }, config.spinTime);
+        }, duration);
     };
+
     useEffect(() => {
         if(reelRef.current && !hasSpun) {
              const startIdx = segments.indexOf(config.min);
-             const pos = (segments.length * 2 + startIdx) * itemHeight - (225/2) + (itemHeight/2);
-             reelRef.current.style.transform = `translateY(-${pos}px)`;
+             const initialIndex = segments.length * 2 + Math.max(0, startIdx);
+             positionReel(initialIndex);
         }
-    }, [config.min, hasSpun, segments]);
+    }, [config.min, hasSpun, positionReel, segments]);
+
+    useEffect(() => {
+        const viewport = reelRef.current?.parentElement;
+        if (!viewport || typeof ResizeObserver === 'undefined') return undefined;
+
+        const observer = new ResizeObserver(() => {
+            if (!reelRef.current) return;
+            reelRef.current.style.transition = 'none';
+            positionReel(currentIndexRef.current);
+        });
+        observer.observe(viewport);
+        return () => observer.disconnect();
+    }, [positionReel]);
+
+    useEffect(() => () => {
+        if (animationFrameRef.current !== null) {
+            window.cancelAnimationFrame(animationFrameRef.current);
+        }
+        if (finishTimerRef.current !== null) {
+            window.clearTimeout(finishTimerRef.current);
+        }
+    }, []);
+
+    const statusText = isSpinning
+        ? t('spinwheel.spinning')
+        : hasSpun && resolvedTarget !== undefined
+            ? t('spinwheel.result', { value: resolvedTarget })
+            : '';
 
     return (
-        <div className={`spin-wheel-container ${isSpinning ? 'spinning' : ''}`}>
-            <div className="wheel-viewport">
+        <div className={`spin-wheel-container ${isSpinning ? 'spinning' : ''}`} aria-busy={isSpinning}>
+            <div className="wheel-viewport" aria-hidden="true">
                 <ul className="wheel-reel" ref={reelRef}>
                     {displaySegments.map((num, i) => (
-                        <li key={i} className={(!isSpinning && hasSpun && num === config.target) ? 'active' : ''}>
+                        <li key={i} className={(!isSpinning && hasSpun && num === resolvedTarget) ? 'active' : ''}>
                             {num}
                         </li>
                     ))}
@@ -75,9 +120,10 @@ const Spinwheel = ({ initialState }) => {
             </div>
             <div className="controls">
                 {!hasSpun && (
-                    <button className="spin-button" onClick={spin}>{t('spinwheel.spin')}</button>
+                    <button type="button" className="spin-button" onClick={spin}>{t('spinwheel.spin')}</button>
                 )}
             </div>
+            <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{statusText}</p>
         </div>
     );
 };

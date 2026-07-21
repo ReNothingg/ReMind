@@ -56,10 +56,7 @@
 
 .table tbody tr:hover {
   background: rgba(var(--color-accent-raw), 0.045);
-  transform: translateX(1px);
-  transition:
-    background var(--transition-fast),
-    transform var(--transition-fast);
+  transition: background var(--transition-fast);
 }
 
 .table tbody tr:last-child td {
@@ -186,6 +183,47 @@
 .ai-message ol {
   padding-left: calc(var(--spacing-unit) * 6);
   margin: calc(var(--spacing-unit) * 3) 0;
+}
+
+.ai-message ul {
+  list-style: disc outside;
+}
+
+.ai-message ol {
+  list-style: decimal outside;
+}
+
+.ai-message ul ul {
+  list-style-type: circle;
+}
+
+.ai-message ul ul ul {
+  list-style-type: square;
+}
+
+@media (max-width: 640px) {
+  .ai-message h1 {
+    font-size: 1.7rem;
+    line-height: 1.2;
+  }
+
+  .ai-message h2 {
+    font-size: 1.4rem;
+    line-height: 1.24;
+  }
+
+  .ai-message h3 {
+    font-size: 1.15rem;
+    line-height: 1.3;
+  }
+
+  .ai-message h1,
+  .ai-message h2,
+  .ai-message h3,
+  .ai-message h4 {
+    margin-top: calc(var(--spacing-unit) * 3);
+    margin-bottom: calc(var(--spacing-unit) * 2);
+  }
 }
 
 .ai-message li {

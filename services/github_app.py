@@ -83,6 +83,23 @@ SENSITIVE_FILE_SUFFIXES = {
     ".pfx",
 }
 
+# These files can change repository governance or execute privileged CI code. The
+# current GitHub workspace only has a single generic "run plan" confirmation, so
+# they must stay out of autonomous edits until a dedicated high-risk approval UI
+# exists.
+PROTECTED_REPOSITORY_PATHS = {
+    ".github/codeowners",
+    ".github/dependabot.yml",
+    ".github/dependabot.yaml",
+    ".gitmodules",
+    "codeowners",
+    "docs/codeowners",
+}
+PROTECTED_REPOSITORY_PREFIXES = (
+    ".github/actions/",
+    ".github/workflows/",
+)
+
 LOCKFILE_FILENAMES = {
     "bun.lockb",
     "cargo.lock",
@@ -98,7 +115,7 @@ LOCKFILE_FILENAMES = {
 }
 
 _SENSITIVE_NAME_RE = re.compile(
-    r"(?:^|[._-])(?:access[_-]?token|api[_-]?key|credential|password|private[_-]?key|secret|token)(?:[._-]|$)",
+    r"(?:^|[._-])(?:access[_-]?token|api[_-]?key|credentials?|password|private[_-]?key|secret|token)(?:[._-]|$)",
     re.IGNORECASE,
 )
 
@@ -328,6 +345,12 @@ def _is_sensitive_or_protected_path(path: str) -> bool:
     if not parts or any(part in SENSITIVE_PATH_PARTS for part in parts):
         return True
 
+    normalized_lower = "/".join(parts)
+    if normalized_lower in PROTECTED_REPOSITORY_PATHS or normalized_lower.startswith(
+        PROTECTED_REPOSITORY_PREFIXES
+    ):
+        return True
+
     name = parts[-1]
     stem = Path(name).stem
     if name.startswith(".env") or name in SENSITIVE_FILENAMES:
@@ -394,6 +417,7 @@ def _coerce_string_list(value: Any, limit: int = 10) -> list[str]:
 
 def _coerce_plan_files(value: Any, fallback_paths: list[str]) -> list[dict[str, str]]:
     files: list[dict[str, str]] = []
+    seen: set[str] = set()
     if isinstance(value, list):
         for item in value[:20]:
             if isinstance(item, str):
@@ -408,12 +432,24 @@ def _coerce_plan_files(value: Any, fallback_paths: list[str]) -> list[dict[str, 
                 continue
             if not path:
                 continue
+            try:
+                path = _normalize_path(path)
+            except ValueError:
+                continue
+            if _is_sensitive_or_protected_path(path) or path in seen:
+                continue
             if action not in {"inspect", "edit", "create", "delete"}:
                 action = "edit"
             files.append({"path": path, "reason": reason, "action": action})
+            seen.add(path)
 
-    seen = {file["path"] for file in files}
-    for path in fallback_paths:
+    for raw_path in fallback_paths:
+        try:
+            path = _normalize_path(raw_path)
+        except ValueError:
+            continue
+        if _is_sensitive_or_protected_path(path):
+            continue
         if path not in seen:
             files.append(
                 {"path": path, "reason": "Matched by repository map.", "action": "inspect"}
@@ -668,6 +704,7 @@ class GitHubClient:
             "stats": summarize_tree(nested_tree),
             "truncated": bool(tree_payload.get("truncated")),
             "source": "git",
+            "commit_sha": commit_sha,
             "sha": tree_sha,
         }
 
@@ -982,7 +1019,7 @@ def _fallback_plan(
                 },
             ],
             "files": [
-                {"path": path, "reason": "Файл выбран по карте репозитория.", "action": "inspect"}
+                {"path": path, "reason": "Файл выбран по карте репозитория.", "action": "edit"}
                 for path in candidate_paths
             ],
             "risks": ["Планировщик ИИ не смог выполниться, поэтому файлы выбраны эвристически."],
@@ -1008,7 +1045,7 @@ def _fallback_plan(
             },
         ],
         "files": [
-            {"path": path, "reason": "Matched by repository map.", "action": "inspect"}
+            {"path": path, "reason": "Matched by repository map.", "action": "edit"}
             for path in candidate_paths
         ],
         "risks": ["The AI planner could not run; selected files are heuristic."],
@@ -1026,6 +1063,7 @@ def normalize_plan(
     base_branch: str,
     candidate_paths: list[str],
 ) -> dict[str, Any]:
+    uses_fallback = not isinstance(raw_plan, dict)
     plan = raw_plan if isinstance(raw_plan, dict) else {}
     fallback = _fallback_plan(task, repo_full_name, base_branch, candidate_paths)
     steps = plan.get("steps")
@@ -1045,10 +1083,15 @@ def normalize_plan(
         normalized_steps = fallback["steps"]
 
     branch_suffix = slugify_branch_suffix(str(plan.get("branch_suffix") or task or repo_full_name))
+    normalized_files = (
+        _coerce_plan_files(fallback["files"], [])
+        if uses_fallback
+        else _coerce_plan_files(plan.get("files"), candidate_paths)
+    )
     return {
         "summary": str(plan.get("summary") or fallback["summary"]).strip(),
         "steps": normalized_steps,
-        "files": _coerce_plan_files(plan.get("files"), candidate_paths),
+        "files": normalized_files,
         "risks": _coerce_string_list(plan.get("risks"), limit=8) or fallback["risks"],
         "branch_suffix": branch_suffix,
         "commit_message": str(plan.get("commit_message") or fallback["commit_message"]).strip(),
@@ -1500,6 +1543,7 @@ def _filter_unsafe_edits(
         if isinstance(item, dict) and item.get("path")
     }
     allow_visual_tokens = _task_allows_visual_token_only_edit(task, plan or {})
+    approved_actions = _approved_plan_actions(plan or {})
     effective_edits: list[dict[str, Any]] = []
     skipped_edits: list[dict[str, Any]] = []
 
@@ -1513,7 +1557,11 @@ def _filter_unsafe_edits(
         next_content = edit.get("content")
 
         reason = ""
-        if (
+        if _is_sensitive_or_protected_path(path):
+            reason = "protected_path"
+        elif not _plan_action_allows_edit(approved_actions.get(path), action):
+            reason = "not_in_approved_plan"
+        elif (
             action == "update"
             and isinstance(original_content, str)
             and isinstance(next_content, str)
@@ -1534,6 +1582,38 @@ def _filter_unsafe_edits(
             existing = []
         edit_payload["skipped_edits"] = [*existing, *skipped_edits]
     return skipped_edits
+
+
+def _approved_plan_actions(plan: dict[str, Any]) -> dict[str, str]:
+    approved: dict[str, str] = {}
+    raw_files = plan.get("files")
+    if not isinstance(raw_files, list):
+        return approved
+
+    for item in raw_files[: max(1, GITHUB_AGENT_MAX_PLAN_FILES)]:
+        if not isinstance(item, dict):
+            continue
+        try:
+            path = _normalize_path(str(item.get("path") or ""))
+        except ValueError:
+            continue
+        if _is_sensitive_or_protected_path(path):
+            continue
+        action = str(item.get("action") or "inspect").strip().lower()
+        if action in {"inspect", "edit", "create", "delete"}:
+            approved[path] = action
+    return approved
+
+
+def _plan_action_allows_edit(planned_action: str | None, edit_action: str) -> bool:
+    if planned_action is None:
+        return False
+    expected_edit_action = {
+        "edit": "update",
+        "create": "create",
+        "delete": "delete",
+    }.get(planned_action)
+    return expected_edit_action == edit_action
 
 
 def _task_allows_visual_token_only_edit(task: str, plan: dict[str, Any]) -> bool:
@@ -1714,6 +1794,7 @@ class GitHubAgentService:
         )
         return {
             **plan,
+            "base_commit_sha": repo_map.get("commit_sha") or repo_map.get("sha"),
             "activity": activity,
             "repo_map": {
                 "stats": repo_map["stats"],
@@ -1807,6 +1888,23 @@ class GitHubAgentService:
                 },
             ),
         ]
+        planned_base_commit = str(plan.get("base_commit_sha") or "").strip()
+        current_base_commit = str(repo_map.get("commit_sha") or repo_map.get("sha") or "").strip()
+        if not planned_base_commit or planned_base_commit != current_base_commit:
+            activity.append(
+                _activity(
+                    "approvedPlanStale",
+                    "error",
+                    {
+                        "planned_commit": planned_base_commit,
+                        "current_commit": current_base_commit,
+                    },
+                )
+            )
+            raise GitHubAgentExecutionError(
+                "The repository changed after this plan was approved. Create and review a new plan.",
+                activity,
+            )
         planned_paths = [
             str(item.get("path") or "").strip()
             for item in plan.get("files", [])

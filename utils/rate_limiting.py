@@ -169,9 +169,7 @@ return {1, limit, remaining, math.floor(reset_at)}
 
 
 login_limiter = RateLimiter(max_requests=5, time_window=300, namespace="login")
-password_reset_limiter = RateLimiter(
-    max_requests=3, time_window=3600, namespace="password_reset"
-)
+password_reset_limiter = RateLimiter(max_requests=3, time_window=3600, namespace="password_reset")
 api_limiter = RateLimiter(max_requests=100, time_window=3600, namespace="api")
 upload_limiter = RateLimiter(max_requests=20, time_window=3600, namespace="upload")
 

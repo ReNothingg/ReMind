@@ -92,14 +92,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install frontend test tooling
-        run: npm install --no-save vitest jsdom @vitest/coverage-v8
 
       - name: Type check frontend (base + strict scope)
         run: npm run typecheck
@@ -131,7 +128,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install backend deps
@@ -141,9 +138,6 @@ jobs:
 
       - name: Install frontend deps
         run: npm ci
-
-      - name: Install Playwright test tooling
-        run: npm install --no-save @playwright/test playwright
 
       - name: Build frontend for backend static serving
         run: npm run build
@@ -177,26 +171,59 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt -c requirements/constraints.txt pip-audit bandit semgrep
+          pip install -r requirements/dev.txt -c requirements/constraints.txt pip-audit bandit
           npm ci
 
       - name: Run pip-audit report
-        run: pip-audit -r requirements.txt --format json --output pip-audit.json || true
+        run: |
+          status=0
+          pip-audit -r requirements.txt --format json --output pip-audit.json || status=$?
+          if [ "$status" -gt 1 ]; then
+            echo "pip-audit failed operationally with exit code $status"
+            exit "$status"
+          fi
+          test -s pip-audit.json
 
       - name: Run npm audit report
-        run: npm audit --json --audit-level=high > npm-audit.json || true
+        run: |
+          status=0
+          npm audit --json --audit-level=high > npm-audit.json || status=$?
+          if [ "$status" -gt 1 ]; then
+            echo "npm audit failed operationally with exit code $status"
+            exit "$status"
+          fi
+          test -s npm-audit.json
 
       - name: Run Bandit report
-        run: bandit -r . -f json -o bandit.json -q || true
+        run: |
+          status=0
+          bandit -r . -f json -o bandit.json -q || status=$?
+          if [ "$status" -gt 1 ]; then
+            echo "Bandit failed operationally with exit code $status"
+            exit "$status"
+          fi
+          test -s bandit.json
 
       - name: Run Semgrep report
-        run: semgrep --config p/security-audit --config p/secrets --exclude node_modules --exclude dist --json --output semgrep.json . || true
+        run: |
+          status=0
+          docker run --rm \
+            --volume "$PWD:/src" \
+            --workdir /src \
+            semgrep/semgrep:1.170.0 \
+            semgrep scan --error --config p/security-audit --config p/secrets \
+              --exclude node_modules --exclude dist --json . > semgrep.json || status=$?
+          if [ "$status" -gt 1 ]; then
+            echo "Semgrep failed operationally with exit code $status"
+            exit "$status"
+          fi
+          test -s semgrep.json
 
       - name: Enforce high-severity security gate
         run: python scripts/security_gate.py --pip pip-audit.json --npm npm-audit.json --bandit bandit.json --semgrep semgrep.json

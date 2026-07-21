@@ -43,7 +43,7 @@ if (typeof window !== 'undefined') {
     window.Prism = Prism;
 }
 
-const escapeHtml = (unsafe) => {
+const escapeHtml = (unsafe: string | null | undefined) => {
     return (unsafe || '')
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -52,7 +52,7 @@ const escapeHtml = (unsafe) => {
         .replace(/'/g, "&#039;");
 };
 
-const linkifyEscapedText = (escapedText) => {
+const linkifyEscapedText = (escapedText: string) => {
     return escapedText.replace(/https?:\/\/[^\s<]+/g, (rawUrl) => {
         const trailingMatch = rawUrl.match(/[.,!?;:)\]]+$/);
         const trailing = trailingMatch ? trailingMatch[0] : '';
@@ -66,7 +66,16 @@ const linkifyEscapedText = (escapedText) => {
     });
 };
 
-const CODE_LANGUAGE_ALIASES = {
+export const stripThinkingBlocks = (text: string | null | undefined): string => {
+    if (!text) return '';
+
+    return text
+        .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think\s*>/gi, '')
+        .replace(/<think(?:\s[^>]*)?>[\s\S]*$/gi, '')
+        .trim();
+};
+
+const CODE_LANGUAGE_ALIASES: Record<string, string> = {
     'c++': 'cpp',
     'c#': 'csharp',
     html: 'markup',
@@ -117,7 +126,7 @@ const replaceControlCharacters = (value: string, replacement = '') => {
     return Array.from(value || '').map((char) => (char.charCodeAt(0) < 32 ? replacement : char)).join('');
 };
 
-const normalizeFenceLanguage = (value) => {
+const normalizeFenceLanguage = (value: string | null | undefined) => {
     const normalizedValue = (value || '').trim().toLowerCase();
     if (!normalizedValue) return 'plaintext';
 
@@ -125,7 +134,7 @@ const normalizeFenceLanguage = (value) => {
     return safeValue || 'plaintext';
 };
 
-const normalizeFenceFilename = (value) => {
+const normalizeFenceFilename = (value: string | null | undefined) => {
     return replaceControlCharacters(value || '', '_')
         .replace(/[\r\n\t]+/g, ' ')
         .replace(/[<>:"/\\|?*]/g, '_')
@@ -133,7 +142,7 @@ const normalizeFenceFilename = (value) => {
         .slice(0, 120);
 };
 
-const getPrismLanguage = (language) => {
+const getPrismLanguage = (language: string) => {
     const normalizedLanguage = normalizeFenceLanguage(language);
     const prismLanguage = CODE_LANGUAGE_ALIASES[normalizedLanguage] || normalizedLanguage;
     return /^[a-z0-9_-]+$/.test(prismLanguage) ? prismLanguage : 'plaintext';
@@ -165,7 +174,11 @@ const resizeCodeLineNumbers = (root: ParentNode) => {
     });
 };
 
-const parseFenceInfo = (info, markdownUtils) => {
+type MarkdownUtils = {
+    unescapeAll: (value: string) => string;
+};
+
+const parseFenceInfo = (info: string, markdownUtils: MarkdownUtils) => {
     const languageHint = info ? markdownUtils.unescapeAll(info).trim() : '';
     if (!languageHint) {
         return {
@@ -180,7 +193,7 @@ const parseFenceInfo = (info, markdownUtils) => {
 
     if (languageHint.includes(':')) {
         const parts = languageHint.split(':', 2);
-        rawLanguage = parts[0].trim();
+        rawLanguage = (parts[0] ?? '').trim();
         filename = normalizeFenceFilename(parts[1]);
     }
 
@@ -226,7 +239,7 @@ type FormatTextOptions = {
         codeBlock: Partial<FormatLabels['codeBlock']>;
         diagrams: Partial<FormatLabels['diagrams']>;
         widgets: Partial<FormatLabels['widgets']>;
-    }>;
+    }> | undefined;
 };
 
 type FormatUserMessageOptions = FormatTextOptions & {
@@ -279,10 +292,24 @@ const interpolateLabel = (template: string, values: Record<string, string>) => (
     )
 );
 
-const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
+type DiagramBlockOptions = {
+    language: string;
+    filename: string;
+    codeContent: string;
+    labels?: FormatTextOptions['labels'];
+};
+
+type DiagramMeta = {
+    label: string;
+    blockClass: string;
+    preview: string;
+    codeLanguage?: string;
+};
+
+const buildDiagramBlock = ({ language, filename, codeContent, labels }: DiagramBlockOptions) => {
     const formatLabels = resolveFormatLabels(labels);
     const normalizedLanguage = language === 'd3' ? 'd3js' : (language === 'mmd' ? 'mermaid' : language);
-    const diagramMeta = {
+    const diagramMeta: Record<string, DiagramMeta> = {
         chartjs: {
             label: 'Chart.js',
             blockClass: 'chartjs-block',
@@ -350,10 +377,9 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }) => {
     const displayName = filename || meta.label;
     const safeName = escapeHtml(displayName);
     const safeSourceFilename = escapeHtml(filename || '');
-    const escapedContent = escapeHtml(codeContent);
     const codeLanguage = meta.codeLanguage || normalizedLanguage;
     const highlightedContent = highlightCodeContent(codeContent, codeLanguage);
-    const previewMarkup = typeof meta.preview === 'function' ? meta.preview({ escapedContent }) : meta.preview;
+    const previewMarkup = meta.preview;
     const safeDiagramLabel = escapeHtml(formatLabels.codeBlock.diagram);
     const safePreviewLabel = escapeHtml(formatLabels.codeBlock.preview);
     const safeCodeLabel = escapeHtml(formatLabels.codeBlock.code);
@@ -414,6 +440,7 @@ md.render = function (str, env) {
 };
 md.renderer.rules.fence = (tokens, idx, _options, env) => {
     const token = tokens[idx];
+    if (!token) return '';
     const formatLabels = resolveFormatLabels(env?.formatLabels);
     const codeContent = token.content;
     const { actualLanguage, prismLanguage, filename: parsedFilename } = parseFenceInfo(token.info, md.utils);
@@ -467,11 +494,11 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
         </div>
     </div>`;
 };
-const processInteractiveHTMLTags = (text, labels?: FormatTextOptions['labels']) => {
+const processInteractiveHTMLTags = (text: string, labels?: FormatTextOptions['labels']) => {
     if (typeof text !== 'string' || !text) return text;
     const formatLabels = resolveFormatLabels(labels);
 
-    const makePlaceholder = (toolName) => {
+    const makePlaceholder = (toolName: string) => {
         const name = (toolName || '').toLowerCase();
         const label = escapeHtml(interpolateLabel(formatLabels.widgets.creating, { tool: name }));
         return `<span class="interactive-placeholder" data-tool="${name}" aria-live="polite"><span class="ip-spinner"></span><span class="ip-text">${label}</span></span>`;
@@ -495,7 +522,7 @@ const processInteractiveHTMLTags = (text, labels?: FormatTextOptions['labels']) 
         }
     }
 
-    const toBase64 = (str) => {
+    const toBase64 = (str: string) => {
         try {
             return btoa(unescape(encodeURIComponent(str)));
         } catch (e) {
@@ -533,7 +560,7 @@ const processInteractiveHTMLTags = (text, labels?: FormatTextOptions['labels']) 
     return text;
 };
 
-export const formatText = (text, options: FormatTextOptions = {}) => {
+export const formatText = (text: string, options: FormatTextOptions = {}) => {
     if (!text) return '';
     const formatLabels = resolveFormatLabels(options.labels);
     let processedText = processInteractiveHTMLTags(text, formatLabels);
@@ -566,12 +593,12 @@ export const formatText = (text, options: FormatTextOptions = {}) => {
     });
 };
 
-export const formatPlainText = (text) => {
+export const formatPlainText = (text: string) => {
     if (!text) return '';
     return linkifyEscapedText(escapeHtml(text)).replace(/\n/g, '<br>');
 };
 
-const extractLeadingUserQuote = (text) => {
+const extractLeadingUserQuote = (text: string) => {
     const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
     if (!lines[0]?.trimStart().startsWith('>')) {
         return null;
@@ -579,12 +606,12 @@ const extractLeadingUserQuote = (text) => {
 
     const quoteLines: string[] = [];
     let index = 0;
-    while (index < lines.length && lines[index].trimStart().startsWith('>')) {
-        quoteLines.push(lines[index].replace(/^\s*>\s?/, ''));
+    while (index < lines.length && lines[index]?.trimStart().startsWith('>')) {
+        quoteLines.push((lines[index] ?? '').replace(/^\s*>\s?/, ''));
         index += 1;
     }
 
-    while (index < lines.length && lines[index].trim() === '') {
+    while (index < lines.length && lines[index]?.trim() === '') {
         index += 1;
     }
 
@@ -599,10 +626,10 @@ const extractLeadingUserQuote = (text) => {
     };
 };
 
-export const formatUserMessageText = (text, options: FormatUserMessageOptions = {}) => {
+export const formatUserMessageText = (text: string, options: FormatUserMessageOptions = {}) => {
     if (!text) return '';
 
-    const renderBody = (value) => (
+    const renderBody = (value: string) => (
         options.renderMarkdown
             ? formatUserText(value, { labels: options.labels })
             : formatPlainText(value)
@@ -630,6 +657,7 @@ const userMd = new MarkdownIt({
 
 userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     const token = tokens[idx];
+    if (!token) return '';
     const formatLabels = resolveFormatLabels(env?.formatLabels);
     const codeContent = token.content || '';
     const { actualLanguage, prismLanguage, filename: parsedFilename } = parseFenceInfo(token.info, userMd.utils);
@@ -681,7 +709,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     </div>`;
 };
 
-export const formatUserText = (text, options: FormatTextOptions = {}) => {
+export const formatUserText = (text: string, options: FormatTextOptions = {}) => {
     if (!text) return '';
     const formatLabels = resolveFormatLabels(options.labels);
     const renderedHtml = userMd.render(text, { formatLabels });

@@ -1,8 +1,12 @@
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   nginx:
     image: nginx:alpine
-    ports:
-      - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -13,6 +17,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
+    logging: *default-logging
     networks:
       - edge
       - backend
@@ -30,19 +36,29 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
-      - SECRET_KEY=${SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
       - SECRET_ROTATION_EPOCH=${SECRET_ROTATION_EPOCH:-0}
-      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY}
-      - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
-      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
-      - BACKEND_URL=${BACKEND_URL}
-      - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY:?Set AI_PROVIDER_API_KEY}
+      - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME:?Set AI_PROVIDER_MODEL_NAME}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+      - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL}
+      - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL:?Set URL-encoded DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:?Set URL-encoded REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:?Set URL-encoded CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:?Set URL-encoded CELERY_RESULT_BACKEND}
+      - EMAIL_SENDER=${EMAIL_SENDER:?Set EMAIL_SENDER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:?Set EMAIL_PASSWORD}
+      - GITHUB_APP_ID=${GITHUB_APP_ID:?Set GITHUB_APP_ID}
+      - GITHUB_APP_CLIENT_ID=${GITHUB_APP_CLIENT_ID:?Set GITHUB_APP_CLIENT_ID}
+      - GITHUB_APP_CLIENT_SECRET=${GITHUB_APP_CLIENT_SECRET:?Set GITHUB_APP_CLIENT_SECRET}
+      - GITHUB_APP_SLUG=${GITHUB_APP_SLUG:?Set GITHUB_APP_SLUG}
+      - GITHUB_PUBLIC_BASE_URL=${GITHUB_PUBLIC_BASE_URL:?Set GITHUB_PUBLIC_BASE_URL}
+      - GITHUB_OAUTH_ENCRYPTION_KEY=${GITHUB_OAUTH_ENCRYPTION_KEY:?Set GITHUB_OAUTH_ENCRYPTION_KEY}
       - LOCALHOST_MODE=False
       - CORS_ALLOW_LOCAL_ORIGINS=False
       - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
@@ -59,7 +75,12 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+      init-storage:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -67,8 +88,6 @@ services:
       retries: 3
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -92,14 +111,16 @@ services:
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
-      - SECRET_KEY=${SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
       - SECRET_ROTATION_EPOCH=${SECRET_ROTATION_EPOCH:-0}
-      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY}
-      - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME}
-      - DATABASE_URL=postgresql://remind:${DB_PASSWORD}@db:5432/remind_db
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY:?Set AI_PROVIDER_API_KEY}
+      - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME:?Set AI_PROVIDER_MODEL_NAME}
+      - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL:?Set URL-encoded DATABASE_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:?Set URL-encoded CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:?Set URL-encoded CELERY_RESULT_BACKEND}
+      - REDIS_URL=${REDIS_URL:?Set URL-encoded REDIS_URL}
       - ENABLE_STRICT_HTTPS=False
       - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
       - PUBLIC_METRICS_ENABLED=False
@@ -112,9 +133,14 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+      init-storage:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       disable: true
     restart: unless-stopped
+    logging: *default-logging
     cap_drop:
       - ALL
     security_opt:
@@ -128,11 +154,76 @@ services:
       - backend
       - edge
 
+  init-storage:
+    image: remind-app:latest
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - chown -R 1001:1001 /app/database /app/logs && chmod -R u+rwX,go-rwx /app/database /app/logs
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+    restart: "no"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+  migrate:
+    image: remind-app:latest
+    command: python scripts/prepare_database.py
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
+      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY:?Set AI_PROVIDER_API_KEY}
+      - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME:?Set AI_PROVIDER_MODEL_NAME}
+      - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL}
+      - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL:?Set URL-encoded DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:?Set URL-encoded REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:?Set URL-encoded CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:?Set URL-encoded CELERY_RESULT_BACKEND}
+      - EMAIL_SENDER=${EMAIL_SENDER:?Set EMAIL_SENDER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:?Set EMAIL_PASSWORD}
+      - LOCALHOST_MODE=False
+      - CORS_ALLOW_LOCAL_ORIGINS=False
+      - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
+      - ENABLE_STRICT_HTTPS=False
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      init-storage:
+        condition: service_completed_successfully
+    restart: "no"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    logging: *default-logging
+
   db:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: remind
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
       POSTGRES_DB: remind_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -142,13 +233,14 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - backend
 
   redis:
     image: redis:7-alpine
     environment:
-      - REDISCLI_AUTH=${REDIS_PASSWORD}
+      - REDISCLI_AUTH=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -165,7 +257,7 @@ services:
       - --bind
       - 0.0.0.0
       - --requirepass
-      - ${REDIS_PASSWORD}
+      - ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       - --rename-command
       - CONFIG
       - ""
@@ -184,6 +276,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+    logging: *default-logging
     networks:
       - backend
 

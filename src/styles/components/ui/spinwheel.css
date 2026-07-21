@@ -1,4 +1,6 @@
 .spin-wheel-container {
+  --spinwheel-item-height: 75px;
+  --spinwheel-viewport-height: 225px;
   width: 600px;
   height: 300px;
   background-color: var(--color-bg-surface);
@@ -18,7 +20,7 @@
 
 .wheel-viewport {
   width: 100%;
-  height: 225px;
+  height: var(--spinwheel-viewport-height);
   overflow: hidden;
   position: relative;
 }
@@ -30,19 +32,22 @@
 }
 
 .wheel-reel li {
-  height: 75px;
+  height: var(--spinwheel-item-height);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: 80px;
   font-weight: 500;
   color: var(--color-text-secondary);
-  transition: filter 0.3s ease, text-shadow 0.3s ease;
+  transition: color 0.3s ease, filter 0.3s ease;
 }
 
 .wheel-reel li.active {
   color: var(--color-text-primary);
-  text-shadow: 0 0 15px rgba(var(--color-accent-raw), 0.7);
+  font-weight: 700;
 }
 
 .controls {
@@ -58,6 +63,8 @@
   border-radius: 50px;
   padding: 15px 40px;
   font-size: 18px;
+  min-width: 44px;
+  min-height: 44px;
   cursor: pointer;
   transition: all 0.3s ease;
   opacity: 1;
@@ -76,7 +83,7 @@
 }
 
 .spin-wheel-container.spinning .wheel-reel {
-  transition: transform 4.2s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
 }
 
 .spinwheel-instance-host {
@@ -89,18 +96,15 @@
 
 @media (max-width: 768px) {
   .spin-wheel-container {
+    --spinwheel-item-height: 60px;
+    --spinwheel-viewport-height: 175px;
     width: 100%;
     max-width: 500px;
     height: 250px;
   }
 
-  .wheel-viewport {
-    height: 175px;
-  }
-
   .wheel-reel li {
     font-size: 60px;
-    height: 60px;
   }
 
   .spin-button {
@@ -111,16 +115,13 @@
 
 @media (max-width: 480px) {
   .spin-wheel-container {
+    --spinwheel-item-height: 50px;
+    --spinwheel-viewport-height: 140px;
     height: 200px;
-  }
-
-  .wheel-viewport {
-    height: 140px;
   }
 
   .wheel-reel li {
     font-size: 50px;
-    height: 50px;
   }
 
   .spin-button {

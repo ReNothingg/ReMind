@@ -208,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}, step {{step}}",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -232,8 +233,8 @@
     "attachUnavailableReadOnly": "Public chat: files are unavailable",
     "removeQuote": "Remove quote",
     "dragDropTitle": "Drop files here",
-    "dragDropSubtitle": "Images, documents, and other files are supported",
-    "placeholder": "What would you like to learn today?",
+    "dragDropSubtitle": "Images and text files, up to {{size}} total",
+    "placeholder": "Ask anything",
     "placeholderReadOnly": "Public chat: read-only",
     "ariaInput": "Message input",
     "send": "Send",
@@ -254,7 +255,11 @@
     "previewAlt": "Preview of {{name}}",
     "previewUnavailable": "Preview for file \"{{name}}\" is not available.",
     "fileFallback": "File",
-    "pastedImageName": "pasted-image"
+    "pastedImageName": "pasted-image",
+    "tooMany": "You can attach up to {{count}} files.",
+    "unsupportedType": "“{{name}}” is not a supported file type.",
+    "emptyFile": "“{{name}}” is empty.",
+    "sizeLimit": "Attachments can total up to {{size}}."
   },
   "share": {
     "title": "Chat sharing",
@@ -308,6 +313,9 @@
     "publicChat": "Public chat",
     "emptyHistory": "History is empty",
     "noResults": "No matches",
+    "statusGenerating": "Generating answer",
+    "statusError": "Generation failed",
+    "statusComplete": "Answer is ready",
     "settings": "Settings",
     "share": "Share",
     "rename": "Rename",
@@ -544,6 +552,11 @@
         "description": "News, projects, research, and team information.",
         "link": "Open SynvexAI website"
       },
+      "github": {
+        "title": "ReMind on GitHub",
+        "description": "View the source code and contribute to the open-source project.",
+        "link": "Open the ReMind repository on GitHub"
+      },
       "socials": {
         "title": "ReMind on social media",
         "description": "Official ReMind and SynvexAI channels.",
@@ -663,10 +676,14 @@
     "tryAgain": "Try again",
     "question": "Question {{current}}/{{total}}",
     "hint": "Hint",
-    "next": "Next"
+    "next": "Next",
+    "correctAnswer": "Correct answer",
+    "incorrectAnswer": "Incorrect answer"
   },
   "spinwheel": {
-    "spin": "Spin"
+    "spin": "Spin",
+    "spinning": "Spinning",
+    "result": "Result: {{value}}"
   },
   "minds": {
     "subtitle": "Create and manage custom AI minds for different tasks and conversation styles.",

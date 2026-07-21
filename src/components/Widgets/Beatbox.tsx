@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const INSTRUMENT_MAP = {
@@ -40,8 +40,21 @@ const ADSR_LIMITS = {
 
 const formatAdsrLimit = (value) => `${value.toFixed(3)}s`;
 
+const createNoiseBuffer = (audioContext, duration) => {
+    const length = Math.floor(duration * audioContext.sampleRate);
+    const buffer = audioContext.createBuffer(1, length, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 0.6);
+    }
+    return buffer;
+};
+
 const Beatbox = ({ initialState, onStateChange }) => {
     const { t } = useTranslation();
+    const instanceId = useId().replace(/:/g, '');
+    const bpmInputId = `${instanceId}-bpm`;
+    const instrumentPanelId = `${instanceId}-instrument-panel`;
     const containerRef = useRef(null);
     const audioContextRef = useRef(null);
     const masterGainRef = useRef(null);
@@ -69,6 +82,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
     const [openAdsrPanel, setOpenAdsrPanel] = useState(null);
     const [draggedTrackIndex, setDraggedTrackIndex] = useState(null);
     const [dragOverIndex, setDragOverIndex] = useState(null);
+    const [focusedStep, setFocusedStep] = useState({ trackIndex: 0, stepIndex: 0 });
     const stopScheduler = () => {
         if (schedulerTimerRef.current) {
             clearInterval(schedulerTimerRef.current);
@@ -97,17 +111,6 @@ const Beatbox = ({ initialState, onStateChange }) => {
             if (ctx.state !== 'closed') ctx.close();
         };
     }, []);
-    const _createNoiseBuffer = (duration) => {
-        const ctx = audioContextRef.current;
-        const length = Math.floor(duration * ctx.sampleRate);
-        const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < length; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 0.6);
-        }
-        return buffer;
-    };
-
     const _applyGainEnvelope = (gainNode, time, adsr) => {
         const a = Math.max(0.001, adsr.attack || 0.001);
         const d = Math.max(0.001, adsr.decay || 0.05);
@@ -137,7 +140,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
             oscGain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
             osc.stop(stopTime + 0.01);
         } else if (type === 'snare') {
-            const noiseBuffer = _createNoiseBuffer(0.6);
+            const noiseBuffer = createNoiseBuffer(ctx, 0.6);
             const noiseSrc = ctx.createBufferSource();
             noiseSrc.buffer = noiseBuffer;
             const noiseGain = ctx.createGain();
@@ -161,7 +164,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
             noiseSrc.stop(stopTime + 0.02); bodyOsc.stop(stopTime + 0.02);
         } else if (type === 'clap') {
             const makeBurst = (delay) => {
-                const nb = _createNoiseBuffer(0.12);
+                const nb = createNoiseBuffer(ctx, 0.12);
                 const ns = ctx.createBufferSource();
                 ns.buffer = nb;
                 const g = ctx.createGain();
@@ -178,7 +181,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
             makeBurst(0.0); makeBurst(0.02); makeBurst(0.045);
         } else if (type === 'hihat' || type === 'open_hat') {
             const duration = (type === 'open_hat') ? 0.4 : 0.08;
-            const buffer = _createNoiseBuffer(duration);
+            const buffer = createNoiseBuffer(ctx, duration);
             const src = ctx.createBufferSource();
             src.buffer = buffer;
             const hp = ctx.createBiquadFilter();
@@ -250,9 +253,10 @@ const Beatbox = ({ initialState, onStateChange }) => {
         setTimeout(() => {
             if (isPlayingRef.current) {
                 setVisualStep(stepIndex);
-                const stepEl = document.querySelector(`.step-col-${stepIndex}`);
+                const stepEl = containerRef.current?.querySelector(`.step-col-${stepIndex}`);
                 if (stepEl) {
-                    stepEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                    stepEl.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
                 }
             }
         }, Math.max(0, msUntil));
@@ -311,6 +315,15 @@ const Beatbox = ({ initialState, onStateChange }) => {
 
     const deleteTrack = (index) => {
         setTracks(prev => prev.filter((_, i) => i !== index));
+        setFocusedStep((current) => {
+            const shiftedTrackIndex = current.trackIndex > index
+                ? current.trackIndex - 1
+                : current.trackIndex;
+            return {
+                trackIndex: Math.min(shiftedTrackIndex, Math.max(0, tracks.length - 2)),
+                stepIndex: current.stepIndex
+            };
+        });
     };
 
     const toggleStep = (trackIndex, stepIndex) => {
@@ -410,6 +423,42 @@ const Beatbox = ({ initialState, onStateChange }) => {
 
     const totalSteps = meta.bars * 16;
 
+    const focusStep = (trackIndex, stepIndex) => {
+        setFocusedStep({ trackIndex, stepIndex });
+        window.requestAnimationFrame(() => {
+            containerRef.current
+                ?.querySelector(`[data-step-coordinate="${trackIndex}-${stepIndex}"]`)
+                ?.focus();
+        });
+    };
+
+    const handleStepKeyDown = (event, trackIndex, stepIndex) => {
+        if (tracks.length === 0 || totalSteps === 0) return;
+
+        let nextTrack = trackIndex;
+        let nextStep = stepIndex;
+        const direction = document.documentElement.dir === 'rtl' ? -1 : 1;
+
+        if (event.key === 'ArrowRight') {
+            nextStep = (stepIndex + direction + totalSteps) % totalSteps;
+        } else if (event.key === 'ArrowLeft') {
+            nextStep = (stepIndex - direction + totalSteps) % totalSteps;
+        } else if (event.key === 'ArrowDown') {
+            nextTrack = (trackIndex + 1) % tracks.length;
+        } else if (event.key === 'ArrowUp') {
+            nextTrack = (trackIndex - 1 + tracks.length) % tracks.length;
+        } else if (event.key === 'Home') {
+            nextStep = 0;
+        } else if (event.key === 'End') {
+            nextStep = totalSteps - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        focusStep(nextTrack, nextStep);
+    };
+
     return (
         <div ref={containerRef} className="beatbox-instance-host">
             <div className="beatbox-app-container">
@@ -417,10 +466,11 @@ const Beatbox = ({ initialState, onStateChange }) => {
                     <h1>{t('beatbox.title')}</h1>
                     <div className="master-controls">
                         <div className="control-group">
-                            <label htmlFor="bpm">{t('beatbox.bpmLabel')}</label>
+                            <label htmlFor={bpmInputId}>{t('beatbox.bpmLabel')}</label>
                             <input
                                 type="number"
-                                id="bpm"
+                                id={bpmInputId}
+                                className="bpm-input"
                                 value={meta.bpm}
                                 min="40"
                                 max="240"
@@ -428,9 +478,10 @@ const Beatbox = ({ initialState, onStateChange }) => {
                             />
                         </div>
                         <button
-                            id="play-stop-btn"
+                            type="button"
                             className={`play-button ${isPlaying ? 'playing' : ''}`}
                             onClick={togglePlayback}
+                            aria-pressed={isPlaying}
                             aria-label={t(isPlaying ? 'beatbox.stop' : 'beatbox.play')}
                             title={t(isPlaying ? 'beatbox.stop' : 'beatbox.play')}
                         >
@@ -440,7 +491,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
                     </div>
                 </header>
 
-                <div className="sequencer" id="sequencer-container">
+                <div className="sequencer">
                     {tracks.map((track, trackIndex) => {
                         const instrument = INSTRUMENT_MAP[track.drum] || INSTRUMENT_MAP.kick;
                         const instrumentName = t(instrument.labelKey);
@@ -451,6 +502,8 @@ const Beatbox = ({ initialState, onStateChange }) => {
                             <Fragment key={track.id}>
                                 <div
                                     className={`track ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
+                                    role="group"
+                                    aria-label={instrumentName}
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, trackIndex)}
                                     onDragOver={(e) => handleDragOver(e, trackIndex)}
@@ -460,9 +513,12 @@ const Beatbox = ({ initialState, onStateChange }) => {
                                     <div className="track-controls">
                                         <div className="instrument-control">
                                             <button
+                                                type="button"
                                                 className="instrument-select-btn"
                                                 title={instrumentName}
                                                 aria-label={t('beatbox.selectInstrument', { instrument: instrumentName })}
+                                                aria-expanded={instrumentPanel.isOpen && instrumentPanel.trackIndex === trackIndex}
+                                                aria-controls={instrumentPanel.isOpen && instrumentPanel.trackIndex === trackIndex ? instrumentPanelId : undefined}
                                                 onClick={(e) => handleInstrumentButtonClick(e, trackIndex)}
                                             >
                                                 <img
@@ -479,9 +535,12 @@ const Beatbox = ({ initialState, onStateChange }) => {
 
                                         <div className="track-action-buttons">
                                             <button
+                                                type="button"
                                                 className="control-btn"
                                                 title={t('beatbox.adsrSettings')}
                                                 aria-label={t('beatbox.adsrSettings')}
+                                                aria-expanded={openAdsrPanel === trackIndex}
+                                                aria-controls={openAdsrPanel === trackIndex ? `${instanceId}-adsr-${trackIndex}` : undefined}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setOpenAdsrPanel(openAdsrPanel === trackIndex ? null : trackIndex);
@@ -491,6 +550,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
                                             </button>
 
                                             <button
+                                                type="button"
                                                 className="control-btn delete-track-btn"
                                                 title={t('beatbox.deleteTrack')}
                                                 aria-label={t('beatbox.deleteTrack')}
@@ -501,11 +561,18 @@ const Beatbox = ({ initialState, onStateChange }) => {
                                         </div>
                                     </div>
 
-                                    <div className="steps-container">
+                                    <div className="steps-container" role="group" aria-label={instrumentName}>
                                         {Array.from({ length: totalSteps }).map((_, stepIndex) => (
-                                            <div
+                                            <button
                                                 key={stepIndex}
+                                                type="button"
                                                 className={`step step-col-${stepIndex} ${stepIndex % 4 === 0 ? 'beat-start' : ''} ${track.steps[stepIndex] === 1 ? 'active' : ''} ${isPlaying && visualStep === stepIndex ? 'current' : ''}`}
+                                                data-step-coordinate={`${trackIndex}-${stepIndex}`}
+                                                aria-label={t('beatbox.stepLabel', { instrument: instrumentName, step: stepIndex + 1 })}
+                                                aria-pressed={track.steps[stepIndex] === 1}
+                                                tabIndex={focusedStep.trackIndex === trackIndex && focusedStep.stepIndex === stepIndex ? 0 : -1}
+                                                onFocus={() => setFocusedStep({ trackIndex, stepIndex })}
+                                                onKeyDown={(event) => handleStepKeyDown(event, trackIndex, stepIndex)}
                                                 onClick={() => toggleStep(trackIndex, stepIndex)}
                                             />
                                         ))}
@@ -513,16 +580,23 @@ const Beatbox = ({ initialState, onStateChange }) => {
                                 </div>
 
                                 {openAdsrPanel === trackIndex && (
-                                    <div className="adsr-panel visible">
+                                    <div
+                                        id={`${instanceId}-adsr-${trackIndex}`}
+                                        className="adsr-panel visible"
+                                        role="group"
+                                        aria-label={t('beatbox.adsrSettings')}
+                                    >
                                         {Object.keys(track.adsr).map(param => {
                                             const limits = ADSR_LIMITS[param] || ADSR_LIMITS.decay;
+                                            const inputId = `${instanceId}-adsr-${trackIndex}-${param}`;
                                             return (
                                                 <div key={param} className="adsr-control">
-                                                    <label>
+                                                    <label htmlFor={inputId}>
                                                         <span>{t(`beatbox.adsr.${param}`)}</span>
                                                         <span>{track.adsr[param].toFixed(3)}s</span>
                                                     </label>
                                                     <input
+                                                        id={inputId}
                                                         type="range"
                                                         min={limits.min}
                                                         max={limits.max}
@@ -545,7 +619,7 @@ const Beatbox = ({ initialState, onStateChange }) => {
                 </div>
 
                 <footer className="beatbox-footer">
-                    <button className="add-track-button" onClick={addTrack}>
+                    <button type="button" className="add-track-button" onClick={addTrack}>
                         <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
                         <span>{t('beatbox.addTrack')}</span>
                     </button>
@@ -554,7 +628,12 @@ const Beatbox = ({ initialState, onStateChange }) => {
                 {}
                 {instrumentPanel.isOpen && (
                     <div
+                        id={instrumentPanelId}
                         className="instrument-panel"
+                        role="group"
+                        aria-label={t('beatbox.selectInstrument', {
+                            instrument: t(INSTRUMENT_MAP[tracks[instrumentPanel.trackIndex]?.drum]?.labelKey || INSTRUMENT_MAP.kick.labelKey)
+                        })}
                         style={{
                             position: 'absolute',
                             top: `${instrumentPanel.top}px`,
@@ -565,7 +644,9 @@ const Beatbox = ({ initialState, onStateChange }) => {
                         {DRUM_TYPES.map(type => (
                             <button
                                 key={type}
+                                type="button"
                                 className={`instrument-item ${tracks[instrumentPanel.trackIndex]?.drum === type ? 'active' : ''}`}
+                                aria-pressed={tracks[instrumentPanel.trackIndex]?.drum === type}
                                 onClick={() => changeInstrument(type)}
                             >
                                 <img

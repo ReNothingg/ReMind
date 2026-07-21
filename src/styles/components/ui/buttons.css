@@ -43,7 +43,6 @@ html[data-theme='light'] .btn-primary {
 
 html[data-theme='light'] .btn-primary:hover {
   background-color: var(--color-accent);
-  opacity: 0.9;
 }
 
 html[data-theme='light'] .btn-primary:disabled {
@@ -53,10 +52,9 @@ html[data-theme='light'] .btn-primary:disabled {
 
 .btn-primary:hover {
   background-color: var(--color-accent);
-  opacity: 0.85;
   color: var(--color-text-on-accent-bg);
-  transform: translateY(-1px);
-  filter: brightness(1.05);
+  transform: none;
+  filter: contrast(1.04);
 }
 
 .btn-primary:disabled {
@@ -84,8 +82,8 @@ html[data-theme='light'] .btn-primary:disabled {
 .btn-danger:hover {
   background-color: color-mix(in srgb, var(--color-danger), black 5%);
   color: white;
-  transform: translateY(-1px);
-  filter: brightness(1.02);
+  transform: none;
+  filter: contrast(1.04);
 }
 
 .btn-block {

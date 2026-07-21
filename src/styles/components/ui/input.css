@@ -149,10 +149,14 @@
 }
 
 .attach-button:focus,
+.send-button:focus {
+  box-shadow: none;
+}
+
 .attach-button:focus-visible,
-.send-button:focus,
 .send-button:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 3px;
   box-shadow: none;
 }
 
@@ -160,7 +164,7 @@
   --composer-icon-url: var(--icon-send-url);
 
   background-color: var(--input-send-button-bg);
-  color: var(--icon-color-on-solid) !important;
+  color: var(--icon-color-on-solid);
 }
 
 .send-button.stop-button {

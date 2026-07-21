@@ -24,6 +24,8 @@ const FOCUSABLE_SELECTOR = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+let openModalCount = 0;
+
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
     if (!ref) return;
     if (typeof ref === 'function') {
@@ -50,6 +52,9 @@ const ModalShell = ({
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
+        openModalCount += 1;
+        document.documentElement.classList.add('modal-open');
+        document.body.classList.add('modal-open');
         previouslyFocusedRef.current = document.activeElement instanceof HTMLElement
             ? document.activeElement
             : null;
@@ -67,6 +72,11 @@ const ModalShell = ({
 
         return () => {
             window.cancelAnimationFrame(frame);
+            openModalCount = Math.max(0, openModalCount - 1);
+            if (openModalCount === 0) {
+                document.documentElement.classList.remove('modal-open');
+                document.body.classList.remove('modal-open');
+            }
             previouslyFocusedRef.current?.focus?.({ preventScroll: true });
         };
     }, []);

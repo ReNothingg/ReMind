@@ -1,9 +1,11 @@
-let chartInstance = null;
+type ChartConstructor = typeof import('chart.js/auto').Chart;
+
+let chartInstance: ChartConstructor | null = null;
 
 export const getChart = async () => {
     if (!chartInstance) {
-        const mod = await import('chart.js/auto');
-        chartInstance = mod.Chart || mod.default || mod;
+        const { Chart } = await import('chart.js/auto');
+        chartInstance = Chart;
     }
     return chartInstance;
 };

@@ -158,13 +158,14 @@ const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
     }, [originalText, targetLang, translateText]);
 
     return (
-        <div className="translation-panel active ui-inline-panel px-4 py-4 text-foreground shadow-[var(--shadow-sm)]">
+        <div className="translation-panel active ui-inline-panel px-4 py-4 text-foreground">
             <div className="translation-header ui-panel-header">
                 <select
                     className="language-select ui-select-control"
                     value={targetLang}
                     onChange={(event) => setTargetLang(event.target.value)}
                     disabled={isLoading}
+                    aria-label={t('translationPanel.translateAction')}
                 >
                     {LANGUAGE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>

@@ -19,6 +19,7 @@ from flask import (
     send_from_directory,
     session,
 )
+from sqlalchemy import and_
 from werkzeug.utils import secure_filename
 
 from ai_engine import get_model_function
@@ -44,7 +45,11 @@ from services.chat_history import (
     persist_chat_operation,
     resolve_session_identifier,
 )
-from services.files import handle_file_upload, restore_stored_file_for_model
+from services.files import (
+    handle_file_upload,
+    restore_stored_file_for_model,
+    validate_chat_uploads,
+)
 from services.model_access import can_user_access_model, get_model_stage, model_exists
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
@@ -58,7 +63,7 @@ from services.web_search import (
     run_web_search,
     web_search_requested,
 )
-from utils.auth import UserChatHistory, UserSettings
+from utils.auth import ChatShare, UserChatHistory, UserSettings
 from utils.input_validation import InputValidator, ValidationError
 from utils.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
 from utils.rate_limiting import RateLimiter, anonymous_rate_limit, rate_limit
@@ -88,6 +93,60 @@ def _resolve_db_user_id() -> int | None:
         return int(raw_user_id)
     except (TypeError, ValueError):
         return None
+
+
+def _find_uploaded_file_reference(value: Any, url_path: str) -> dict[str, Any] | None:
+    if isinstance(value, list):
+        for item in value:
+            if reference := _find_uploaded_file_reference(item, url_path):
+                return reference
+        return None
+    if not isinstance(value, dict):
+        return None
+
+    for attachment_key in ("file", "image"):
+        attachment = value.get(attachment_key)
+        if isinstance(attachment, dict) and attachment.get("url_path") == url_path:
+            return attachment
+    for item in value.values():
+        if reference := _find_uploaded_file_reference(item, url_path):
+            return reference
+    return None
+
+
+def _chat_uploaded_file_reference(chat: UserChatHistory, url_path: str) -> dict[str, Any] | None:
+    return _find_uploaded_file_reference(chat.get_messages(), url_path)
+
+
+def _uploaded_file_access(filename: str, user_id: int | None) -> tuple[str, dict[str, Any]] | None:
+    url_path = f"/uploads/{filename}"
+    if user_id is not None:
+        owner_candidates = UserChatHistory.query.filter(
+            UserChatHistory.user_id == user_id,
+            UserChatHistory.messages_data.contains(url_path),
+        ).all()
+        for chat in owner_candidates:
+            if reference := _chat_uploaded_file_reference(chat, url_path):
+                return "owner", reference
+
+    public_candidates = (
+        UserChatHistory.query.join(
+            ChatShare,
+            and_(
+                ChatShare.user_id == UserChatHistory.user_id,
+                ChatShare.session_id == UserChatHistory.session_id,
+            ),
+        )
+        .filter(
+            ChatShare.is_public.is_(True),
+            UserChatHistory.messages_data.contains(url_path),
+        )
+        .all()
+    )
+    for chat in public_candidates:
+        if reference := _chat_uploaded_file_reference(chat, url_path):
+            return "public", reference
+    return None
 
 
 def _resolve_chat_mind_context(
@@ -192,6 +251,31 @@ def _cleanup_temporary_uploads(user_data: dict[str, Any]) -> None:
             logger.warning("Could not remove a temporary chat upload", exc_info=True)
 
 
+def _persist_pending_uploads(user_data: dict[str, Any], session_id: str) -> list[dict[str, Any]]:
+    pending_uploads = user_data.pop("_pending_uploads", [])
+    processed_files: list[dict[str, Any]] = []
+    for file_storage in pending_uploads:
+        try:
+            file_info = handle_file_upload(file_storage, session_id)
+        except Exception as exc:
+            _cleanup_temporary_uploads({"files": processed_files})
+            raise ApiError(
+                "The attachment could not be processed.",
+                status=400,
+                code="attachment_processing_failed",
+            ) from exc
+        if file_info is None:
+            _cleanup_temporary_uploads({"files": processed_files})
+            raise ApiError(
+                "The attachment could not be processed.",
+                status=400,
+                code="attachment_processing_failed",
+            )
+        processed_files.append(file_info)
+    user_data["files"] = processed_files
+    return processed_files
+
+
 def process_request_data() -> tuple[str, dict[str, Any], str]:
     auth_user_id = session.get("user_id")
 
@@ -224,13 +308,19 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         data["session_id"] = session_id
         data["canvas_textdoc"] = normalize_canvas_textdoc(data.get("canvas_textdoc"))
         data["beatbox_state"] = normalize_beatbox_state(data.get("beatbox_state"))
-        data.setdefault("files", [])
-        if auth_user_id is None and _has_files_payload(data.get("files")):
+        if _has_files_payload(data.get("files")):
+            if auth_user_id is None:
+                raise ApiError(
+                    "File uploads are unavailable in guest mode.",
+                    status=403,
+                    code="guest_file_upload_disabled",
+                )
             raise ApiError(
-                "File uploads are unavailable in guest mode.",
-                status=403,
-                code="guest_file_upload_disabled",
+                "Attachment metadata cannot be supplied directly.",
+                status=400,
+                code="inline_attachment_metadata_not_allowed",
             )
+        data["files"] = []
         _validate_message_in_payload(data)
         return session_id, data, model_name
 
@@ -260,10 +350,18 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             status=403,
             code="guest_file_upload_disabled",
         )
-    processed_files = [
-        handle_file_upload(file_storage, session_id) for file_storage in uploaded_files
-    ]
-    user_data["files"] = [file_info for file_info in processed_files if file_info is not None]
+    uploads_valid, upload_error_code, upload_error = validate_chat_uploads(uploaded_files)
+    if not uploads_valid:
+        raise ApiError(
+            upload_error or "Invalid attachment.",
+            status=400,
+            code=upload_error_code or "invalid_attachment",
+        )
+
+    # Persistence is intentionally deferred until chat/session/model/idempotency
+    # validation has completed. Invalid requests must never leave orphan files.
+    user_data["_pending_uploads"] = uploaded_files
+    user_data["files"] = []
 
     if "meta" in user_data and isinstance(user_data["meta"], str):
         try:
@@ -358,7 +456,10 @@ def _merge_web_sources(
     merged: list[dict[str, Any]] = []
     positions: dict[str, int] = {}
 
-    for source in [*(existing if isinstance(existing, list) else []), *(incoming if isinstance(incoming, list) else [])]:
+    for source in [
+        *(existing if isinstance(existing, list) else []),
+        *(incoming if isinstance(incoming, list) else []),
+    ]:
         if not isinstance(source, dict):
             continue
         url = str(source.get("url") or source.get("final_url") or "").strip()
@@ -641,6 +742,7 @@ def _stream_chat_response(
     allow_guest_file_persistence: bool,
     temporary_chat: bool,
     mind_context: dict[str, Any] | None,
+    newly_uploaded_files: list[dict[str, Any]],
 ):
     captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
 
@@ -730,9 +832,7 @@ def _stream_chat_response(
                             continue
 
                         if "internal_reply_part" in chunk:
-                            internal_reply_parts.append(
-                                str(chunk.get("internal_reply_part") or "")
-                            )
+                            internal_reply_parts.append(str(chunk.get("internal_reply_part") or ""))
                             continue
 
                         if "canvas_update" in chunk:
@@ -792,9 +892,7 @@ def _stream_chat_response(
                 final_data["request_id"] = user_data.get("request_id")
                 final_data["delivery_status"] = "complete"
                 final_data["sessionId"] = resolved_session_id
-                final_data["uploaded_files"] = (
-                    [] if temporary_chat else user_data.get("files", [])
-                )
+                final_data["uploaded_files"] = [] if temporary_chat else user_data.get("files", [])
                 stream_completed = True
                 final_data["history"] = persist_delivery("complete")
                 if allow_guest_file_persistence and not temporary_chat:
@@ -813,8 +911,8 @@ def _stream_chat_response(
                         persist_delivery("complete" if stream_completed else "interrupted")
                     except Exception as exc:
                         logger.exception("Failed to persist chat operation: %s", exc)
-                if temporary_chat:
-                    _cleanup_temporary_uploads(user_data)
+                if temporary_chat or not persisted:
+                    _cleanup_temporary_uploads({"files": newly_uploaded_files})
 
     response = Response(stream_generator(), mimetype="text/event-stream")
     response.headers["Cache-Control"] = "no-cache"
@@ -874,9 +972,9 @@ def register_chat_routes(api_bp):
         user_message_id = _validated_message_id(user_data.get("user_message_id")) or (
             f"u_{uuid.uuid4().hex}"
         )
-        assistant_message_id = _validated_message_id(
-            user_data.get("assistant_message_id")
-        ) or f"a_{uuid.uuid4().hex}"
+        assistant_message_id = (
+            _validated_message_id(user_data.get("assistant_message_id")) or f"a_{uuid.uuid4().hex}"
+        )
         temporary_chat = _coerce_bool(user_data.get("temporary_chat"))
         allow_guest_file_persistence = _allow_guest_file_persistence(
             resolved_session_id, db_user_id
@@ -885,7 +983,8 @@ def register_chat_routes(api_bp):
         persisted_graph = load_chat_graph(
             resolved_session_id,
             db_user_id,
-            allow_file_fallback=db_user_id is None and has_valid_guest_session_token(resolved_session_id),
+            allow_file_fallback=db_user_id is None
+            and has_valid_guest_session_token(resolved_session_id),
             require_guest_token=db_user_id is None,
         )
         previous_delivery = _find_previous_delivery(persisted_graph, raw_request_id)
@@ -912,9 +1011,8 @@ def register_chat_routes(api_bp):
             incoming_message_ids = [assistant_message_id]
             if operation in {"send", "edit"}:
                 incoming_message_ids.append(user_message_id)
-            if (
-                len(set(incoming_message_ids)) != len(incoming_message_ids)
-                or any(message_id in existing_message_ids for message_id in incoming_message_ids)
+            if len(set(incoming_message_ids)) != len(incoming_message_ids) or any(
+                message_id in existing_message_ids for message_id in incoming_message_ids
             ):
                 raise ApiError(
                     "Message ID already exists",
@@ -960,8 +1058,14 @@ def register_chat_routes(api_bp):
         if mind_context:
             user_data["active_mind"] = mind_context
             user_data["mind_id"] = mind_context["public_id"]
+
+        model_func = get_model_function(model_name)
+        if not model_func:
+            raise ApiError(
+                f"Model '{model_name}' not supported.", status=400, code="model_not_supported"
+            )
+        is_streaming_model = inspect.isgeneratorfunction(model_func)
         original_user_message = str(user_data.get("message") or "")
-        uploaded_files_for_history = list(user_data.get("files") or [])
         inherited_attachment_parts: list[dict[str, Any]] = []
         if operation == "regenerate" and not temporary_chat:
             parent_user = next(
@@ -983,22 +1087,43 @@ def register_chat_routes(api_bp):
         elif operation == "edit" and not temporary_chat:
             inherited_attachment_parts = _stored_attachment_parts(target_message)
 
+        restored_inherited_files: list[dict[str, Any]] = []
         if operation in {"regenerate", "edit"} and not temporary_chat:
             restored_inherited_files = [
                 restored
                 for part in inherited_attachment_parts
                 if isinstance(part.get("image") or part.get("file"), dict)
                 and (
-                    restored := restore_stored_file_for_model(
-                        part.get("image") or part.get("file")
-                    )
+                    restored := restore_stored_file_for_model(part.get("image") or part.get("file"))
                 )
             ]
+
+        if not (
+            original_user_message or user_data.get("_pending_uploads") or restored_inherited_files
+        ):
+            raise ApiError("'message' or 'files' required", status=400, code="missing_input")
+
+        uploaded_files_for_history = _persist_pending_uploads(user_data, resolved_session_id)
+        if operation in {"regenerate", "edit"} and not temporary_chat:
             user_data["files"] = (
                 [*uploaded_files_for_history, *restored_inherited_files]
                 if operation == "edit"
                 else restored_inherited_files
             )
+
+        if uploaded_files_for_history:
+
+            @after_this_request
+            def cleanup_uncommitted_uploads(response):
+                streaming_response_will_own_cleanup = (
+                    is_streaming_model and response.status_code < 400
+                )
+                if not streaming_response_will_own_cleanup and (
+                    temporary_chat or response.status_code >= 400
+                ):
+                    _cleanup_temporary_uploads({"files": uploaded_files_for_history})
+                return response
+
         user_data["message"] = original_user_message
 
         user_data["history"] = history
@@ -1006,9 +1131,10 @@ def register_chat_routes(api_bp):
         user_data["privacy"] = _load_privacy_controls(db_user_id)
         user_data["temporary_chat"] = temporary_chat
 
-        user_message_parts = _build_user_message_parts(
-            original_user_message, uploaded_files_for_history
-        ) + inherited_attachment_parts
+        user_message_parts = (
+            _build_user_message_parts(original_user_message, uploaded_files_for_history)
+            + inherited_attachment_parts
+        )
         user_message_for_history = (
             normalize_message(
                 {
@@ -1026,15 +1152,7 @@ def register_chat_routes(api_bp):
         user_data["parent_message_id"] = parent_message_id
         user_data["assistant_message_id"] = assistant_message_id
 
-        model_func = get_model_function(model_name)
-        if not model_func:
-            raise ApiError(
-                f"Model '{model_name}' not supported.", status=400, code="model_not_supported"
-            )
-        if not (user_data.get("message") or user_data.get("files")):
-            raise ApiError("'message' or 'files' required", status=400, code="missing_input")
-
-        if inspect.isgeneratorfunction(model_func):
+        if is_streaming_model:
             return _stream_chat_response(
                 model_name=model_name,
                 model_func=model_func,
@@ -1046,13 +1164,8 @@ def register_chat_routes(api_bp):
                 allow_guest_file_persistence=allow_guest_file_persistence,
                 temporary_chat=temporary_chat,
                 mind_context=mind_context,
+                newly_uploaded_files=uploaded_files_for_history,
             )
-
-        if temporary_chat:
-            @after_this_request
-            def cleanup_temporary_uploads(response):
-                _cleanup_temporary_uploads(user_data)
-                return response
 
         _attach_web_search_context(user_data, str(original_user_message or ""), db_user_id)
         model_output = model_func(db_user_id, user_data)
@@ -1208,9 +1321,26 @@ def register_chat_routes(api_bp):
     @api_error_boundary("upload_not_found")
     def uploaded_file_route(filename):
         safe_name = secure_filename(filename)
-        if not PUBLIC_UPLOAD_NAME_RE.match(safe_name):
+        if safe_name != filename or not PUBLIC_UPLOAD_NAME_RE.fullmatch(safe_name):
             raise ApiError("Not found", status=404, code="not_found")
-        return send_from_directory(str(current_app.config["UPLOAD_FOLDER"]), safe_name)
+        access_and_reference = _uploaded_file_access(safe_name, _resolve_db_user_id())
+        if access_and_reference is None:
+            raise ApiError("Not found", status=404, code="not_found")
+
+        _access, attachment = access_and_reference
+        extension = Path(safe_name).suffix.lower().lstrip(".")
+        as_attachment = extension not in {"gif", "jpeg", "jpg", "png", "webp"}
+        original_name = str(attachment.get("original_name") or "").replace("\\", "/")
+        download_name = Path(original_name).name.replace("\r", "").replace("\n", "")[:255]
+        response = send_from_directory(
+            str(current_app.config["UPLOAD_FOLDER"]),
+            safe_name,
+            as_attachment=as_attachment,
+            download_name=(download_name or safe_name) if as_attachment else None,
+        )
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @api_bp.route("/images/<path:filename>")
     @api_error_boundary("image_not_found")

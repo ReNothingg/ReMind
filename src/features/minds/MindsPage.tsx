@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, useDeferredValue } from 'react';
+import {
+    useCallback,
+    useDeferredValue,
+    useEffect,
+    useId,
+    useMemo,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     BadgeCheck,
@@ -24,6 +32,8 @@ type MindsPageProps = {
     onPinnedChange?: () => void;
     onStartMind: (mind: Mind) => void;
 };
+
+type MindTab = 'store' | 'mine';
 
 const FALLBACK_CATEGORIES: MindCategory[] = [
     { id: 'all', label: 'all' },
@@ -160,13 +170,57 @@ export default function MindsPage({
     const mindErrorMessages = useMindErrorMessages();
     const [categories, setCategories] = useState<MindCategory[]>(FALLBACK_CATEGORIES);
     const [activeCategory, setActiveCategory] = useState('all');
-    const [activeTab, setActiveTab] = useState<'store' | 'mine'>('store');
+    const [activeTab, setActiveTab] = useState<MindTab>('store');
     const [searchQuery, setSearchQuery] = useState('');
     const [storeMinds, setStoreMinds] = useState<Mind[]>([]);
     const [myMinds, setMyMinds] = useState<Mind[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const deferredSearch = useDeferredValue(searchQuery.trim());
+    const tabGroupId = useId();
+
+    const tabId = (tab: MindTab) => `${tabGroupId}-${tab}-tab`;
+    const panelId = (tab: MindTab) => `${tabGroupId}-${tab}-panel`;
+
+    const activateTab = useCallback((tab: MindTab) => {
+        if (tab === 'mine' && !isAuthenticated) {
+            onOpenAuth();
+            return false;
+        }
+        setActiveTab(tab);
+        return true;
+    }, [isAuthenticated, onOpenAuth]);
+
+    const handleTabsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        const tabs = Array.from(
+            event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+        );
+        const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
+        if (currentIndex < 0) return;
+
+        const isRtl = window.getComputedStyle(event.currentTarget).direction === 'rtl';
+        let nextIndex = currentIndex;
+
+        if (event.key === 'ArrowRight') {
+            nextIndex = (currentIndex + (isRtl ? -1 : 1) + tabs.length) % tabs.length;
+        } else if (event.key === 'ArrowLeft') {
+            nextIndex = (currentIndex + (isRtl ? 1 : -1) + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = tabs.length - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        const nextTab = tabs[nextIndex];
+        const nextValue = nextTab?.dataset.mindTab as MindTab | undefined;
+        if (!nextTab || !nextValue) return;
+        if (activateTab(nextValue)) {
+            nextTab.focus();
+        }
+    };
 
     const categoryTabs = useMemo(() => {
         const normalized = categories.some((category) => category.id === 'all')
@@ -282,91 +336,112 @@ export default function MindsPage({
                         maxLength={80}
                     />
                 </div>
-                <div className="minds-tabs" role="tablist" aria-label={t('minds.tabsAria')}>
+                <div
+                    className="minds-tabs"
+                    role="tablist"
+                    aria-label={t('minds.tabsAria')}
+                    aria-orientation="horizontal"
+                    onKeyDown={handleTabsKeyDown}
+                >
                     <button
                         type="button"
                         className={cn(activeTab === 'store' && 'active')}
-                        onClick={() => setActiveTab('store')}
+                        id={tabId('store')}
+                        data-mind-tab="store"
+                        role="tab"
+                        aria-controls={panelId('store')}
+                        aria-selected={activeTab === 'store'}
+                        tabIndex={activeTab === 'store' ? 0 : -1}
+                        onClick={() => activateTab('store')}
                     >
                         {t('minds.tabs.store')}
                     </button>
                     <button
                         type="button"
                         className={cn(activeTab === 'mine' && 'active')}
-                        onClick={() => {
-                            if (!isAuthenticated) {
-                                onOpenAuth();
-                                return;
-                            }
-                            setActiveTab('mine');
-                        }}
+                        id={tabId('mine')}
+                        data-mind-tab="mine"
+                        role="tab"
+                        aria-controls={panelId('mine')}
+                        aria-selected={activeTab === 'mine'}
+                        tabIndex={activeTab === 'mine' ? 0 : -1}
+                        onClick={() => activateTab('mine')}
                     >
                         {t('minds.tabs.mine')}
                     </button>
                 </div>
             </div>
 
-            <div className="mind-category-tabs" aria-label={t('minds.categoriesAria')}>
-                {categoryTabs.map((category) => (
-                    <button
-                        key={category.id}
-                        type="button"
-                        className={cn(activeCategory === category.id && 'active')}
-                        onClick={() => setActiveCategory(category.id)}
-                    >
-                        {categoryLabel(t, categories, category.id)}
-                    </button>
-                ))}
-            </div>
-
-            {error && <div className="mind-error">{error}</div>}
-
-            {loading ? (
-                <div className="mind-empty-state">{t('minds.loading')}</div>
-            ) : visibleMinds.length === 0 ? (
-                <div className="mind-empty-state">
-                    <ShieldCheck size={24} />
-                    {activeTab === 'mine'
-                        ? t('minds.emptyMine')
-                        : t('minds.emptyStore')}
-                </div>
-            ) : (
-                <div className="minds-grid">
-                    {visibleMinds.map((mind) => (
-                        <div key={mind.public_id} className="mind-card-wrap">
-                            <MindCard
-                                categories={categories}
-                                isAuthenticated={isAuthenticated}
-                                mind={mind}
-                                onEdit={onEditMind}
-                                onOpenAuth={onOpenAuth}
-                                onPinToggle={handlePinToggle}
-                                onStart={onStartMind}
-                            />
-
-                            {activeTab === 'mine' && (
-                                <div className="mind-management-row">
-                                    <span>{visibilityLabel(t, mind.visibility)}</span>
-                                    <div>
-                                        <button type="button" onClick={() => onEditMind(mind)}>
-                                            <Edit3 size={15} />
-                                            {t('minds.edit')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="danger"
-                                            onClick={() => void handleDeleteMind(mind)}
-                                        >
-                                            <Trash2 size={15} />
-                                            {t('minds.delete')}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+            <div
+                className="minds-tab-panel"
+                role="tabpanel"
+                id={panelId(activeTab)}
+                aria-labelledby={tabId(activeTab)}
+                aria-busy={loading}
+                tabIndex={0}
+            >
+                <div className="mind-category-tabs" aria-label={t('minds.categoriesAria')}>
+                    {categoryTabs.map((category) => (
+                        <button
+                            key={category.id}
+                            type="button"
+                            className={cn(activeCategory === category.id && 'active')}
+                            onClick={() => setActiveCategory(category.id)}
+                        >
+                            {categoryLabel(t, categories, category.id)}
+                        </button>
                     ))}
                 </div>
-            )}
+
+                {error && <div className="mind-error">{error}</div>}
+
+                {loading ? (
+                    <div className="mind-empty-state">{t('minds.loading')}</div>
+                ) : visibleMinds.length === 0 ? (
+                    <div className="mind-empty-state">
+                        <ShieldCheck size={24} />
+                        {activeTab === 'mine'
+                            ? t('minds.emptyMine')
+                            : t('minds.emptyStore')}
+                    </div>
+                ) : (
+                    <div className="minds-grid">
+                        {visibleMinds.map((mind) => (
+                            <div key={mind.public_id} className="mind-card-wrap">
+                                <MindCard
+                                    categories={categories}
+                                    isAuthenticated={isAuthenticated}
+                                    mind={mind}
+                                    onEdit={onEditMind}
+                                    onOpenAuth={onOpenAuth}
+                                    onPinToggle={handlePinToggle}
+                                    onStart={onStartMind}
+                                />
+
+                                {activeTab === 'mine' && (
+                                    <div className="mind-management-row">
+                                        <span>{visibilityLabel(t, mind.visibility)}</span>
+                                        <div>
+                                            <button type="button" onClick={() => onEditMind(mind)}>
+                                                <Edit3 size={15} />
+                                                {t('minds.edit')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="danger"
+                                                onClick={() => void handleDeleteMind(mind)}
+                                            >
+                                                <Trash2 size={15} />
+                                                {t('minds.delete')}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </section>
     );
 }

@@ -1,5 +1,4 @@
 import hashlib
-import mimetypes
 import os
 import uuid
 from pathlib import Path
@@ -16,6 +15,7 @@ ALLOWED_EXTENSIONS = {
     "bmp",
     "svg",
     "pdf",
+    "md",
     "txt",
     "doc",
     "docx",
@@ -82,6 +82,7 @@ ALLOWED_MIME_TYPES = {
     "image/svg+xml": "svg",
     "image/bmp": "bmp",
     "application/pdf": "pdf",
+    "text/markdown": "md",
     "text/plain": "txt",
     "application/msword": "doc",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
@@ -114,7 +115,7 @@ def get_file_type_category(extension):
 
     if extension in {"png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"}:
         return "image"
-    elif extension in {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt"}:
+    elif extension in {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "md", "txt"}:
         return "document"
     elif extension in {"zip", "tar", "gz", "7z", "rar"}:
         return "archive"
@@ -170,18 +171,16 @@ def validate_file_content(file_path):
 
 
 def validate_mime_type(file_path):
-    mime_type, _ = mimetypes.guess_type(file_path)
-
-    if not mime_type:
-        mime_type = guess_mime_from_content(file_path)
-
+    """Return a MIME type derived from bytes, never from the filename."""
+    mime_type = detect_mime_from_content(file_path)
     return mime_type is not None, mime_type
 
 
 def guess_mime_from_content(file_path):
     try:
         with open(file_path, "rb") as f:
-            magic = f.read(12)
+            sample = f.read(8192)
+        magic = sample[:12]
         if magic.startswith(b"\x89PNG"):
             return "image/png"
         elif magic.startswith(b"\xff\xd8\xff"):
@@ -196,16 +195,39 @@ def guess_mime_from_content(file_path):
             return "application/json"
         elif magic.startswith(b"PK"):
             return "application/zip"
-        elif all(
-            chr(b) in " \t\n\r" + chr(0x20) + "".join(chr(i) for i in range(32, 127))
-            for b in magic[: min(12, len(magic))]
-        ):
+
+        text = sample.decode("utf-8-sig")
+        if "\x00" in text:
+            return None
+        control_count = sum(
+            1 for character in text if ord(character) < 32 and character not in "\t\n\r"
+        )
+        if control_count <= max(4, len(text) // 100):
             return "text/plain"
 
-    except Exception:
+    except (OSError, UnicodeError):
         pass
 
     return None
+
+
+def detect_mime_from_content(file_path):
+    """Best-effort byte-based MIME detection with a deterministic fallback."""
+    try:
+        import magic
+
+        detected_mime = magic.Magic(mime=True).from_file(file_path)
+        if isinstance(detected_mime, str) and detected_mime.strip():
+            return detected_mime.split(";", 1)[0].strip().lower()
+    except (ImportError, OSError, RuntimeError):
+        pass
+    except Exception:
+        # Third-party libmagic bindings raise several platform-specific errors.
+        # Falling back to the conservative built-in signature reader keeps
+        # validation behavior consistent when the native library is missing.
+        pass
+
+    return guess_mime_from_content(file_path)
 
 
 def secure_upload_file(file: FileStorage, upload_dir: Path, original_user_id: str | None = None):
@@ -326,21 +348,12 @@ def calculate_file_hash(file_path, algorithm="sha256"):
 
 
 def validate_mime_with_magic(file_path):
-    try:
-        import magic
-
-        mime = magic.Magic(mime=True)
-        detected_mime = mime.from_file(file_path)
-        if detected_mime in ALLOWED_MIME_TYPES:
-            return detected_mime
-        if detected_mime.startswith("text/") and "text/plain" in ALLOWED_MIME_TYPES:
-            return detected_mime
-
-        return None
-    except ImportError:
-        return guess_mime_from_content(file_path)
-    except Exception:
-        return None
+    detected_mime = detect_mime_from_content(file_path)
+    if detected_mime in ALLOWED_MIME_TYPES:
+        return detected_mime
+    if detected_mime and detected_mime.startswith("text/"):
+        return detected_mime
+    return None
 
 
 def is_mime_extension_match(mime_type, extension):
@@ -357,6 +370,7 @@ def is_mime_extension_match(mime_type, extension):
         "svg": ["image/svg+xml", "text/xml", "application/xml"],
         "bmp": ["image/bmp", "image/x-bmp"],
         "pdf": ["application/pdf"],
+        "md": ["text/markdown", "text/plain"],
         "txt": ["text/plain"],
         "json": ["application/json", "text/plain"],
         "csv": ["text/csv", "text/plain", "application/csv"],

@@ -1,28 +1,12 @@
 import logging
-from logging.config import dictConfig
 from typing import Any, Optional, Union
 
 from flask import g, has_request_context, jsonify
 
-dictConfig(
-    {
-        "version": 1,
-        "formatters": {
-            "default": {
-                "format": "[%(asctime)s] %(levelname)s in %(module)s.%(funcName)s: %(message)s"
-            }
-        },
-        "handlers": {
-            "wsgi": {
-                "class": "logging.StreamHandler",
-                "stream": "ext://flask.logging.wsgi_errors_stream",
-                "formatter": "default",
-            }
-        },
-        "root": {"level": "INFO", "handlers": ["wsgi"]},
-    }
-)
-logger = logging.getLogger(__name__)
+# Keep response and API-boundary logs inside the application's filtered logger
+# hierarchy. Configuring the process-wide root logger from this utility module
+# would let these records bypass the PII filter installed by setup_logging().
+logger = logging.getLogger("remind.responses")
 
 
 def _current_request_id() -> Optional[str]:

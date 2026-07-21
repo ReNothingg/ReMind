@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
@@ -131,17 +131,6 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     })();
 
     useEffect(() => {
-        const handleEscapeKey = (event) => {
-            if (event.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        document.addEventListener('keydown', handleEscapeKey);
-        return () => document.removeEventListener('keydown', handleEscapeKey);
-    }, [onClose]);
-
-    useEffect(() => {
         const loadAuthConfig = async () => {
             try {
                 const resp = await fetch(`${apiService.baseURL}/api/auth/config`, {
@@ -178,7 +167,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
         const initTurnstile = async () => {
             const loaded = await waitForTurnstile();
-            if (cancelled || !loaded || !window.turnstile) return;
+            if (cancelled) return;
+            if (!loaded || !window.turnstile) {
+                setMessage({ type: 'error', text: t('authModal.messages.turnstileLoadError') });
+                return;
+            }
             const targetRef = isLoginView ? loginContainerRef : registerContainerRef;
             const idRef = isLoginView ? loginTurnstileIdRef : registerTurnstileIdRef;
             const renderTurnstile = () => {
@@ -207,6 +200,9 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                         console.warn('Failed to render login Turnstile:', err);
                     } else {
                         console.warn('Failed to render register Turnstile:', err);
+                    }
+                    if (!cancelled) {
+                        setMessage({ type: 'error', text: t('authModal.messages.turnstileLoadError') });
                     }
                 }
             };
@@ -379,7 +375,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         <ModalShell
             ariaLabel={t(isLoginView ? 'authModal.loginTitle' : 'authModal.registerTitle')}
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-            contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-xl border-border bg-surface px-5 pb-6 pt-5 text-foreground shadow-[var(--shadow-xl)] sm:rounded-xl sm:px-6 sm:pb-6 sm:pt-6"
+            contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-xl border-border bg-surface px-5 pb-6 pt-5 text-foreground sm:rounded-xl sm:px-6 sm:pb-6 sm:pt-6"
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
@@ -389,7 +385,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                 aria-label={t('translationPanel.close')}
                 type="button"
             >
-                x
+                <X size={20} strokeWidth={1.9} aria-hidden="true" />
             </button>
 
             {isLoginView ? (
@@ -460,9 +456,9 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
                     <p className="auth-switch-link text-center text-sm text-muted">
                         {t('authModal.switch.noAccount')}{' '}
-                        <a className="font-semibold text-[var(--color-text-link)] hover:underline" href="#" onClick={switchView}>
+                        <button className="auth-switch-action font-semibold text-[var(--color-text-link)] hover:underline" type="button" onClick={switchView}>
                             {t('auth.register')}
-                        </a>
+                        </button>
                     </p>
                 </div>
             ) : (
@@ -624,9 +620,9 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
 
                     <p className="auth-switch-link text-center text-sm text-muted">
                         {t('authModal.switch.haveAccount')}{' '}
-                        <a className="font-semibold text-[var(--color-text-link)] hover:underline" href="#" onClick={switchView}>
+                        <button className="auth-switch-action font-semibold text-[var(--color-text-link)] hover:underline" type="button" onClick={switchView}>
                             {t('auth.login')}
-                        </a>
+                        </button>
                     </p>
                 </div>
             )}

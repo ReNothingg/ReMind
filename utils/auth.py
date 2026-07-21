@@ -27,13 +27,15 @@ OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 180
 ROOT_ADMIN_USER_ID = 1
-REMOVED_SETTINGS_DATA_KEYS = frozenset({
-    "personalization_nickname",
-    "autocomplete",
-    "autoscroll",
-    "renderUserMarkdown",
-    "autoSave",
-})
+REMOVED_SETTINGS_DATA_KEYS = frozenset(
+    {
+        "personalization_nickname",
+        "autocomplete",
+        "autoscroll",
+        "renderUserMarkdown",
+        "autoSave",
+    }
+)
 CHAT_SESSION_UNIQUE_INDEX = "uq_user_chat_history_user_session"
 
 
@@ -41,9 +43,7 @@ def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
     if not isinstance(raw_settings, dict):
         return {}
     return {
-        key: value
-        for key, value in raw_settings.items()
-        if key not in REMOVED_SETTINGS_DATA_KEYS
+        key: value for key, value in raw_settings.items() if key not in REMOVED_SETTINGS_DATA_KEYS
     }
 
 
@@ -59,8 +59,7 @@ def ensure_chat_session_uniqueness(engine) -> None:
         for constraint in inspector.get_unique_constraints("user_chat_history")
     )
     index_exists = any(
-        bool(index.get("unique"))
-        and set(index.get("column_names") or []) == unique_columns
+        bool(index.get("unique")) and set(index.get("column_names") or []) == unique_columns
         for index in inspector.get_indexes("user_chat_history")
     )
     if constraint_exists or index_exists:
@@ -69,12 +68,16 @@ def ensure_chat_session_uniqueness(engine) -> None:
     from migrations.versions.dedupe_chat_sessions import _merged_messages
 
     with engine.begin() as connection:
-        duplicate_keys = connection.execute(
-            text(
-                "SELECT user_id, session_id FROM user_chat_history "
-                "GROUP BY user_id, session_id HAVING COUNT(*) > 1"
+        duplicate_keys = (
+            connection.execute(
+                text(
+                    "SELECT user_id, session_id FROM user_chat_history "
+                    "GROUP BY user_id, session_id HAVING COUNT(*) > 1"
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         for key in duplicate_keys:
             duplicates = [
                 dict(row)
@@ -86,7 +89,9 @@ def ensure_chat_session_uniqueness(engine) -> None:
                         "ORDER BY updated_at DESC, id DESC"
                     ),
                     {"user_id": key["user_id"], "session_id": key["session_id"]},
-                ).mappings().all()
+                )
+                .mappings()
+                .all()
             ]
             keeper = duplicates[0]
             best_title = next(
@@ -1009,7 +1014,6 @@ def register_auth_routes(app):
 
             return redirect(url_for("good"))
         try:
-            app.logger.debug(f"Login route GET args: {request.args}")
             if "code" in request.args:
                 app.logger.info(
                     "Detected OAuth 'code' on /login; processing via /login/google/callback"
@@ -1020,9 +1024,7 @@ def register_auth_routes(app):
                 "error_description"
             )
             if oauth_error:
-                app.logger.warning(
-                    f"OAuth provider returned error on /login: {oauth_error} - {oauth_error_description}"
-                )
+                app.logger.warning("OAuth provider returned an error on /login")
                 flash(
                     f"Ошибка авторизации: {oauth_error_description or oauth_error}",
                     "danger",
@@ -1220,18 +1222,14 @@ def register_auth_routes(app):
                 )
             return response
         except Exception as exc:
-            app.logger.exception(f"Failed to start Google OAuth redirect: {exc}")
+            app.logger.error("Failed to start Google OAuth redirect (%s)", type(exc).__name__)
             return make_error("Failed to start Google OAuth", status=500, code="oauth_start_failed")
 
     @app.route("/login/google/callback")
     def authorize_google():
         mobile_redirect_uri = None
         try:
-            app.logger.debug(f"authorize_google request args: {request.args}")
-            app.logger.debug(f"authorize_google request url: {request.url}")
-            app.logger.info(f"authorize_google Host: {request.host}")
-            app.logger.info(f"authorize_google Scheme: {request.scheme}")
-            app.logger.info(f"authorize_google Base URL: {request.base_url}")
+            app.logger.info("Processing Google OAuth callback")
             from config import ALLOWED_HOSTS
 
             redirect_to = session.pop("oauth_redirect_to", None)
@@ -1240,12 +1238,10 @@ def register_auth_routes(app):
                 app.logger.info("Attempting to exchange code for access token...")
                 token = oauth.google.authorize_access_token()
                 app.logger.debug("Token obtained successfully")
-            except MismatchingStateError as token_err:
+            except MismatchingStateError:
                 from config import SECRET_KEY
 
-                app.logger.warning(
-                    f"OAuth state mismatch. Trying signed fallback state cookie: {token_err}"
-                )
+                app.logger.warning("OAuth state mismatch. Trying signed fallback state cookie.")
                 fallback_state_raw = request.cookies.get(OAUTH_FALLBACK_STATE_COOKIE, "")
                 fallback_state = _decode_oauth_fallback_state(SECRET_KEY, fallback_state_raw)
                 request_state = request.args.get("state", "")
@@ -1276,10 +1272,7 @@ def register_auth_routes(app):
                     app.logger.error("Fallback state validation failed")
                     raise
             except Exception as token_err:
-                app.logger.error(f"Failed to get access token: {token_err}")
-                app.logger.error(f"Request args: {dict(request.args)}")
-                if hasattr(token_err, "description"):
-                    app.logger.error(f"Error description: {token_err.description}")
+                app.logger.error("Failed to get Google access token (%s)", type(token_err).__name__)
                 raise
             if not isinstance(token, dict) or not token.get("access_token"):
                 app.logger.error(
@@ -1292,7 +1285,7 @@ def register_auth_routes(app):
             oauth.google.token = token
             resp = oauth.google.get("https://www.googleapis.com/oauth2/v3/userinfo", token=token)
             user_info = resp.json()
-            app.logger.debug(f"User info obtained: {user_info.get('email')}")
+            app.logger.debug("Google user info obtained")
             if "email" not in user_info:
                 flash("Не удалось получить email из Google аккаунта", "danger")
                 return redirect(url_for("login"))
@@ -1376,7 +1369,7 @@ def register_auth_routes(app):
             return response
 
         except Exception as e:
-            app.logger.exception(f"OAuth error in authorize_google(): {e}")
+            app.logger.error("OAuth error in authorize_google() (%s)", type(e).__name__)
             flash("Ошибка при входе через Google", "danger")
             if mobile_redirect_uri:
                 response = redirect(
@@ -1545,16 +1538,33 @@ def register_auth_routes(app):
                 "confirmation_link": confirmation_link,
             }
 
+            email_sent = False
             try:
-                send_email(
-                    to_email=email,
-                    subject="Подтвердите вашу регистрацию",
-                    body="",
-                    template_name="confirmation",
-                    template_data=template_data,
+                email_sent = bool(
+                    send_email(
+                        to_email=email,
+                        subject="Подтвердите вашу регистрацию",
+                        body="",
+                        template_name="confirmation",
+                        template_data=template_data,
+                    )
                 )
             except Exception as e:
                 app.logger.warning(f"Email sending error: {e}")
+
+            if not email_sent:
+                db.session.delete(settings)
+                db.session.delete(new_user)
+                db.session.commit()
+                return (
+                    jsonify(
+                        {
+                            "error": "confirmation_delivery_failed",
+                            "code": "confirmation_delivery_failed",
+                        }
+                    ),
+                    503,
+                )
 
             return (
                 jsonify(
@@ -1739,7 +1749,10 @@ def register_auth_routes(app):
             elif data:
                 current_settings = settings.get_settings()
                 for key, value in data.items():
-                    if key not in ["theme", "language", "automatic_web_search"] and key not in REMOVED_SETTINGS_DATA_KEYS:
+                    if (
+                        key not in ["theme", "language", "automatic_web_search"]
+                        and key not in REMOVED_SETTINGS_DATA_KEYS
+                    ):
                         current_settings[key] = value
                 settings.settings_data = json.dumps(current_settings, ensure_ascii=False)
 

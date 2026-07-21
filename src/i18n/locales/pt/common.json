@@ -22,7 +22,7 @@
     "loginTitle": "Entrar na sua conta",
     "registerTitle": "Criar uma conta",
     "fields": {
-      "email": "Email:",
+      "email": "E-mail:",
       "password": "Senha:",
       "username": "Nome de usuário:",
       "confirmPassword": "Confirme a senha:",
@@ -50,6 +50,7 @@
       "emailTooLong": "O email não deve exceder 100 caracteres",
       "passwordTooLong": "A senha não deve exceder 100 caracteres",
       "turnstileRequired": "Confirme que você não é um robô e tente novamente.",
+      "turnstileLoadError": "A verificação da Cloudflare não foi carregada. Atualize a página ou desative os bloqueadores para este site.",
       "requestError": "Erro de rede ou do servidor"
     },
     "passwordStrength": {
@@ -67,8 +68,8 @@
     "loading": "A carregar...",
     "closeEsc": "Fechar (Esc)",
     "selectOption": "Selecione uma opção",
-    "copy": "Copy",
-    "close": "Close"
+    "copy": "Copiar",
+    "close": "Fechar"
   },
   "think": {
     "label": "Pensamentos",
@@ -97,36 +98,36 @@
   "chat": {
     "readOnly": "O chat é só leitura",
     "editUserMessage": {
-      "placeholder": "Edit your message...",
-      "ariaLabel": "Edit your message",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit"
+      "placeholder": "Edite a sua mensagem...",
+      "ariaLabel": "Editar a sua mensagem",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "edit": "Editar"
     },
     "githubDiff": {
-      "title": "Pull request changes",
-      "branch": "Branch",
-      "filesChanged": "{{count}} files changed",
-      "additions": "{{count}} additions",
-      "deletions": "{{count}} deletions",
-      "copy": "Copy diff",
-      "copied": "Copied",
-      "download": "Download diff",
-      "expandFile": "Expand file",
-      "collapseFile": "Collapse file",
-      "openPullRequest": "Open pull request",
-      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "title": "Alterações do pull request",
+      "branch": "Ramo",
+      "filesChanged": "{{count}} ficheiros alterados",
+      "additions": "{{count}} adições",
+      "deletions": "{{count}} eliminações",
+      "copy": "Copiar diff",
+      "copied": "Copiado",
+      "download": "Descarregar diff",
+      "expandFile": "Expandir ficheiro",
+      "collapseFile": "Recolher ficheiro",
+      "openPullRequest": "Abrir pull request",
+      "truncated": "A mostrar {{shown}} de {{total}} linhas do diff",
       "status": {
-        "added": "Added",
-        "deleted": "Deleted",
-        "modified": "Modified",
-        "renamed": "Renamed"
+        "added": "Adicionado",
+        "deleted": "Eliminado",
+        "modified": "Modificado",
+        "renamed": "Renomeado"
       }
     },
-    "ariaLog": "Conversation messages",
-    "userMessageAria": "Your message",
-    "assistantMessageAria": "Assistant message",
-    "regenerate": "Regenerate",
+    "ariaLog": "Mensagens da conversa",
+    "userMessageAria": "A sua mensagem",
+    "assistantMessageAria": "Mensagem do assistente",
+    "regenerate": "Gerar novamente",
     "generationFailed": "Não foi possível gerar a resposta.",
     "generationStopped": "Geração interrompida",
     "variantLimitReached": "Este turno atingiu o limite de versões.",
@@ -137,33 +138,33 @@
       "counter": "Versão {{current}} de {{total}}"
     },
     "audio": {
-      "speak": "Read aloud",
-      "label": "Audio",
-      "loading": "Loading audio...",
-      "play": "Play",
-      "pause": "Pause",
-      "progress": "Audio playback position",
-      "error": "Could not load audio."
+      "speak": "Ler em voz alta",
+      "label": "Áudio",
+      "loading": "A carregar áudio...",
+      "play": "Reproduzir",
+      "pause": "Pausar",
+      "progress": "Posição da reprodução de áudio",
+      "error": "Não foi possível carregar o áudio."
     },
     "feedback": {
-      "like": "Good answer",
-      "dislike": "Bad answer",
-      "panelTitle": "What was wrong with the answer?",
-      "reasonGroup": "Feedback reasons",
-      "commentLabel": "Additional feedback",
-      "commentPlaceholder": "Describe what should be improved",
-      "submit": "Send feedback",
-      "sending": "Sending...",
-      "sent": "Feedback sent",
-      "error": "Failed to send feedback",
-      "noSession": "Feedback is available only in saved chats.",
+      "like": "Boa resposta",
+      "dislike": "Má resposta",
+      "panelTitle": "O que estava errado na resposta?",
+      "reasonGroup": "Motivos da avaliação",
+      "commentLabel": "Comentário adicional",
+      "commentPlaceholder": "Descreva o que deve ser melhorado",
+      "submit": "Enviar avaliação",
+      "sending": "A enviar...",
+      "sent": "Avaliação enviada",
+      "error": "Não foi possível enviar a avaliação",
+      "noSession": "A avaliação está disponível apenas em chats guardados.",
       "reasons": {
-        "incorrect": "Incorrect",
-        "unsafe": "Unsafe",
-        "not_helpful": "Not helpful",
-        "too_long": "Too long",
-        "missing_context": "Missed context",
-        "other": "Other"
+        "incorrect": "Incorreta",
+        "unsafe": "Insegura",
+        "not_helpful": "Pouco útil",
+        "too_long": "Demasiado longa",
+        "missing_context": "Ignorou o contexto",
+        "other": "Outro"
       }
     }
   },
@@ -207,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}, passo {{step}}",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -231,8 +233,8 @@
     "attachUnavailableReadOnly": "Chat público: ficheiros indisponíveis",
     "removeQuote": "Remover citação",
     "dragDropTitle": "Largue ficheiros aqui",
-    "dragDropSubtitle": "Imagens, documentos e outros ficheiros são suportados",
-    "placeholder": "O que gostaria de aprender hoje?",
+    "dragDropSubtitle": "Imagens e arquivos de texto, até {{size}} no total",
+    "placeholder": "Pergunte o que quiser",
     "placeholderReadOnly": "Chat público: só leitura",
     "ariaInput": "Entrada de mensagem",
     "send": "Enviar",
@@ -247,8 +249,17 @@
   },
   "files": {
     "removeFile": "Remover ficheiro",
-    "fileFallback": "File",
-    "pastedImageName": "imagem"
+    "preview": "Pré-visualização",
+    "code": "Código",
+    "lines": "{{count}} linhas",
+    "previewAlt": "Pré-visualização de {{name}}",
+    "previewUnavailable": "A pré-visualização do ficheiro «{{name}}» não está disponível.",
+    "fileFallback": "Ficheiro",
+    "pastedImageName": "imagem",
+    "tooMany": "Pode anexar até {{count}} ficheiros.",
+    "unsupportedType": "O tipo do ficheiro «{{name}}» não é suportado.",
+    "emptyFile": "O ficheiro «{{name}}» está vazio.",
+    "sizeLimit": "Os anexos podem totalizar até {{size}}."
   },
   "share": {
     "title": "Partilha de chat",
@@ -302,13 +313,16 @@
     "publicChat": "Chat público",
     "emptyHistory": "O histórico está vazio",
     "noResults": "Sem resultados",
+    "statusGenerating": "A gerar a resposta",
+    "statusError": "Falha ao gerar a resposta",
+    "statusComplete": "A resposta está pronta",
     "settings": "Definições",
     "share": "Partilhar",
     "rename": "Renomear",
     "delete": "Eliminar",
-    "temporaryChat": "Temporary chat",
+    "temporaryChat": "Chat temporário",
     "minds": "Minds",
-    "admin": "Admin",
+    "admin": "Administração",
     "github": "GitHub"
   },
   "settings": {
@@ -321,7 +335,7 @@
       "interface": "Interface",
       "accessibility": "Acessibilidade",
       "about": "Sobre nós",
-      "privacy": "Privacy"
+      "privacy": "Privacidade"
     },
     "languages": {
       "en": "English",
@@ -386,20 +400,20 @@
         "emailTaken": "Este email já está registado"
       },
       "connectedApps": {
-        "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "title": "Aplicações ligadas",
+        "description": "Gira os serviços externos que o ReMind pode utilizar no chat.",
         "github": {
           "name": "GitHub",
-          "description": "Let ReMind plan code changes and open pull requests from chat.",
-          "connect": "Connect GitHub",
-          "manage": "Manage",
-          "error": "Failed to load GitHub status",
-          "repoCount": "Available repositories: {{count}}",
+          "description": "Permita que o ReMind planeie alterações de código e abra pull requests a partir do chat.",
+          "connect": "Ligar GitHub",
+          "manage": "Gerir",
+          "error": "Não foi possível carregar o estado do GitHub",
+          "repoCount": "Repositórios disponíveis: {{count}}",
           "status": {
-            "checking": "Checking",
-            "connected": "Connected",
-            "disconnected": "Not connected",
-            "configMissing": "Config missing"
+            "checking": "A verificar",
+            "connected": "Ligado",
+            "disconnected": "Não ligado",
+            "configMissing": "Configuração em falta"
           }
         }
       }
@@ -491,9 +505,9 @@
         "shortcut": {
           "label": "Atalho de teclado",
           "disabled": "Desativado",
-          "record": "Record shortcut (current: {{shortcut}})",
-          "recording": "Press a shortcut now, or Esc to cancel",
-          "invalid": "Press a keyboard shortcut with at least one modifier."
+          "record": "Gravar atalho (atual: {{shortcut}})",
+          "recording": "Prima agora um atalho ou Esc para cancelar",
+          "invalid": "Prima um atalho de teclado com pelo menos uma tecla modificadora."
         },
         "newChat": {
           "label": "Abrir novos chats",
@@ -501,8 +515,8 @@
           "browser": "No navegador"
         },
         "launchAtLogin": {
-          "title": "Launch at login",
-          "description": "Keep ReMind ready in the background after you sign in to your Mac."
+          "title": "Abrir ao iniciar sessão",
+          "description": "Mantenha o ReMind disponível em segundo plano depois de iniciar sessão no Mac."
         }
       }
     },
@@ -538,6 +552,11 @@
         "description": "Notícias, projetos, investigação e informação sobre a equipa.",
         "link": "Abrir site SynvexAI"
       },
+      "github": {
+        "title": "ReMind no GitHub",
+        "description": "Consulte o código-fonte e contribua para o projeto de código aberto.",
+        "link": "Abrir o repositório do ReMind no GitHub"
+      },
       "socials": {
         "title": "ReMind nas redes sociais",
         "description": "Canais oficiais do ReMind e da SynvexAI.",
@@ -557,20 +576,20 @@
       }
     },
     "privacy": {
-      "title": "Privacy and data",
-      "description": "Control data use according to the SynvexAI privacy policy.",
+      "title": "Privacidade e dados",
+      "description": "Controle a utilização dos dados de acordo com a política de privacidade da SynvexAI.",
       "serviceImprovement": {
-        "title": "Use my content to improve SynvexAI",
-        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+        "title": "Utilizar o meu conteúdo para melhorar a SynvexAI",
+        "description": "Desativado por predefinição. Quando ativado, os seus prompts, respostas, ficheiros e avaliações podem ser utilizados para melhorar a qualidade do serviço e os modelos."
       },
-      "exportAction": "Export my data",
-      "exportLoading": "Preparing export...",
-      "exportSuccess": "Data export is ready",
-      "exportError": "Failed to export data",
-      "signInForExport": "Sign in to export data",
+      "exportAction": "Exportar os meus dados",
+      "exportLoading": "A preparar a exportação...",
+      "exportSuccess": "A exportação de dados está pronta",
+      "exportError": "Não foi possível exportar os dados",
+      "signInForExport": "Inicie sessão para exportar os dados",
       "policyLink": {
-        "title": "Privacy policy",
-        "description": "Open the current SynvexAI policy."
+        "title": "Política de privacidade",
+        "description": "Abrir a política atual da SynvexAI."
       }
     }
   },
@@ -603,7 +622,7 @@
       "hindi": "Hindi",
       "bengali": "Bengali"
     },
-    "translateAction": "Translate"
+    "translateAction": "Traduzir"
   },
   "quiz": {
     "dataError": "Erro de dados do questionário",
@@ -612,10 +631,14 @@
     "tryAgain": "Tentar novamente",
     "question": "Pergunta {{current}}/{{total}}",
     "hint": "Dica",
-    "next": "Seguinte"
+    "next": "Seguinte",
+    "correctAnswer": "Resposta correta",
+    "incorrectAnswer": "Resposta incorreta"
   },
   "spinwheel": {
-    "spin": "Girar"
+    "spin": "Girar",
+    "spinning": "A girar",
+    "result": "Resultado: {{value}}"
   },
   "minds": {
     "subtitle": "Crie e gira minds de IA personalizados para diferentes tarefas e estilos de conversa.",
@@ -624,7 +647,7 @@
     "searchAria": "Pesquisar minds",
     "tabsAria": "Secções de minds",
     "tabs": {
-      "store": "Mind store",
+      "store": "Loja de Minds",
       "mine": "Os meus minds"
     },
     "categoriesAria": "Categorias de minds",
@@ -643,7 +666,7 @@
       "link": "Por link",
       "linkShort": "Por link",
       "linkLong": "Qualquer pessoa com o link",
-      "store": "Mind store"
+      "store": "Loja de Minds"
     },
     "verified": "Aprovado pelo criador",
     "startersAria": "Inícios de conversa",
@@ -732,9 +755,9 @@
     "queryLabel": "Consulta"
   },
   "temporaryChat": {
-    "title": "Temporary chat",
-    "badge": "Not saved to history",
-    "description": "This chat stays out of the main history and is not saved after the session."
+    "title": "Chat temporário",
+    "badge": "Não guardado no histórico",
+    "description": "Este chat não aparece no histórico principal e não é guardado após a sessão."
   },
   "github": {
     "title": "GitHub",
@@ -866,8 +889,49 @@
     }
   },
   "chatImage": {
-    "messageAlt": "Chat image {{number}}",
-    "generating": "Creating image: {{prompt}}"
+    "open": "Abrir",
+    "unavailableTitle": "Pré-visualização indisponível",
+    "unavailableDescription": "Não foi possível carregar a imagem.",
+    "messageAlt": "Imagem do chat {{number}}",
+    "generating": "A criar imagem: {{prompt}}"
+  },
+  "imageLightbox": {
+    "badge": "Pré-visualização",
+    "title": "Pré-visualização da imagem",
+    "demoTitle": "Imagem de demonstração do ReMind",
+    "subtitle": "Veja a imagem completa, volte a gerá-la noutro estilo ou descarregue o ficheiro.",
+    "previewAlt": "Pré-visualização da imagem",
+    "close": "Fechar",
+    "styleLabel": "Estilo",
+    "promptLabel": "Prompt original",
+    "promptFallback": "O prompt original não está disponível para esta imagem.",
+    "actions": {
+      "regenerate": "Gerar novamente",
+      "regenerating": "A gerar...",
+      "download": "Descarregar"
+    },
+    "styles": {
+      "realistic": "Realista",
+      "cartoon": "Desenho animado",
+      "anime": "Anime",
+      "oilPainting": "Pintura a óleo",
+      "watercolor": "Aguarela",
+      "pencilSketch": "Esboço a lápis"
+    },
+    "details": {
+      "style": "Estilo: {{style}}",
+      "resolution": "{{width}} × {{height}} px"
+    },
+    "errors": {
+      "missingSourceMessage": "Não foi possível encontrar a mensagem original do utilizador.",
+      "missingPrompt": "Não foi encontrado um prompt de origem para voltar a gerar a imagem.",
+      "missingResult": "O modelo não devolveu uma nova imagem.",
+      "missingImage": "Não existe nenhuma imagem disponível para descarregar.",
+      "regenerateFailed": "Não foi possível voltar a gerar a imagem: {{message}}",
+      "downloadFailed": "Não foi possível descarregar a imagem. O ficheiro original será aberto num novo separador.",
+      "previewTitle": "Pré-visualização da imagem indisponível",
+      "previewDescription": "Verifique o caminho do ficheiro ou volte a gerar a imagem."
+    }
   },
   "codeBlock": {
     "codeSnippet": "Code snippet",
@@ -897,9 +961,9 @@
   },
   "admin": {
     "aiFeedback": {
-      "likeRatio": "AI answer likes",
-      "dislikeRatio": "AI answer dislikes",
-      "total": "AI answer ratings"
+      "likeRatio": "Gostos nas respostas da IA",
+      "dislikeRatio": "Não gostos nas respostas da IA",
+      "total": "Avaliações das respostas da IA"
     }
   }
 }

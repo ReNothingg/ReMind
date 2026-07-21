@@ -50,6 +50,7 @@
       "emailTooLong": "L'e-mail ne doit pas dépasser 100 caractères",
       "passwordTooLong": "Le mot de passe ne doit pas dépasser 100 caractères",
       "turnstileRequired": "Confirmez que vous n'êtes pas un robot, puis réessayez.",
+      "turnstileLoadError": "La vérification Cloudflare ne s’est pas chargée. Actualisez la page ou désactivez les bloqueurs pour ce site.",
       "requestError": "Erreur réseau ou serveur"
     },
     "passwordStrength": {
@@ -67,8 +68,8 @@
     "loading": "Chargement...",
     "closeEsc": "Fermer (Esc)",
     "selectOption": "Sélectionnez une option",
-    "copy": "Copy",
-    "close": "Close"
+    "copy": "Copier",
+    "close": "Fermer"
   },
   "think": {
     "label": "Pensées",
@@ -97,36 +98,36 @@
   "chat": {
     "readOnly": "Le chat est en lecture seule",
     "editUserMessage": {
-      "placeholder": "Edit your message...",
-      "ariaLabel": "Edit your message",
-      "save": "Save",
-      "cancel": "Cancel",
-      "edit": "Edit"
+      "placeholder": "Modifiez votre message...",
+      "ariaLabel": "Modifier votre message",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "edit": "Modifier"
     },
     "githubDiff": {
-      "title": "Pull request changes",
-      "branch": "Branch",
-      "filesChanged": "{{count}} files changed",
-      "additions": "{{count}} additions",
-      "deletions": "{{count}} deletions",
-      "copy": "Copy diff",
-      "copied": "Copied",
-      "download": "Download diff",
-      "expandFile": "Expand file",
-      "collapseFile": "Collapse file",
-      "openPullRequest": "Open pull request",
-      "truncated": "Showing {{shown}} of {{total}} diff lines",
+      "title": "Modifications de la pull request",
+      "branch": "Branche",
+      "filesChanged": "{{count}} fichiers modifiés",
+      "additions": "{{count}} ajouts",
+      "deletions": "{{count}} suppressions",
+      "copy": "Copier le diff",
+      "copied": "Copié",
+      "download": "Télécharger le diff",
+      "expandFile": "Développer le fichier",
+      "collapseFile": "Réduire le fichier",
+      "openPullRequest": "Ouvrir la pull request",
+      "truncated": "Affichage de {{shown}} lignes sur {{total}} dans le diff",
       "status": {
-        "added": "Added",
-        "deleted": "Deleted",
-        "modified": "Modified",
-        "renamed": "Renamed"
+        "added": "Ajouté",
+        "deleted": "Supprimé",
+        "modified": "Modifié",
+        "renamed": "Renommé"
       }
     },
-    "ariaLog": "Conversation messages",
-    "userMessageAria": "Your message",
-    "assistantMessageAria": "Assistant message",
-    "regenerate": "Regenerate",
+    "ariaLog": "Messages de la conversation",
+    "userMessageAria": "Votre message",
+    "assistantMessageAria": "Message de l’assistant",
+    "regenerate": "Régénérer",
     "generationFailed": "La réponse n’a pas pu être générée.",
     "generationStopped": "Génération arrêtée",
     "variantLimitReached": "Ce tour a atteint sa limite de versions.",
@@ -137,33 +138,33 @@
       "counter": "Version {{current}} sur {{total}}"
     },
     "audio": {
-      "speak": "Read aloud",
+      "speak": "Lire à voix haute",
       "label": "Audio",
-      "loading": "Loading audio...",
-      "play": "Play",
-      "pause": "Pause",
-      "progress": "Audio playback position",
-      "error": "Could not load audio."
+      "loading": "Chargement de l’audio...",
+      "play": "Lire",
+      "pause": "Mettre en pause",
+      "progress": "Position de lecture audio",
+      "error": "Impossible de charger l’audio."
     },
     "feedback": {
-      "like": "Good answer",
-      "dislike": "Bad answer",
-      "panelTitle": "What was wrong with the answer?",
-      "reasonGroup": "Feedback reasons",
-      "commentLabel": "Additional feedback",
-      "commentPlaceholder": "Describe what should be improved",
-      "submit": "Send feedback",
-      "sending": "Sending...",
-      "sent": "Feedback sent",
-      "error": "Failed to send feedback",
-      "noSession": "Feedback is available only in saved chats.",
+      "like": "Bonne réponse",
+      "dislike": "Mauvaise réponse",
+      "panelTitle": "Quel était le problème avec la réponse ?",
+      "reasonGroup": "Motifs de l’évaluation",
+      "commentLabel": "Commentaire supplémentaire",
+      "commentPlaceholder": "Décrivez ce qui devrait être amélioré",
+      "submit": "Envoyer l’évaluation",
+      "sending": "Envoi...",
+      "sent": "Évaluation envoyée",
+      "error": "Impossible d’envoyer l’évaluation",
+      "noSession": "L’évaluation est disponible uniquement dans les chats enregistrés.",
       "reasons": {
-        "incorrect": "Incorrect",
-        "unsafe": "Unsafe",
-        "not_helpful": "Not helpful",
-        "too_long": "Too long",
-        "missing_context": "Missed context",
-        "other": "Other"
+        "incorrect": "Incorrecte",
+        "unsafe": "Dangereuse",
+        "not_helpful": "Peu utile",
+        "too_long": "Trop longue",
+        "missing_context": "Contexte ignoré",
+        "other": "Autre"
       }
     }
   },
@@ -207,6 +208,7 @@
     "deleteTrack": "Delete track",
     "adsrSettings": "ADSR settings",
     "selectInstrument": "Select instrument: {{instrument}}",
+    "stepLabel": "{{instrument}}, étape {{step}}",
     "adsr": {
       "attack": "Attack",
       "decay": "Decay",
@@ -231,8 +233,8 @@
     "attachUnavailableReadOnly": "Chat public : fichiers indisponibles",
     "removeQuote": "Retirer la citation",
     "dragDropTitle": "Déposez des fichiers ici",
-    "dragDropSubtitle": "Images, documents et autres fichiers pris en charge",
-    "placeholder": "Que souhaitez-vous apprendre aujourd'hui ?",
+    "dragDropSubtitle": "Images et fichiers texte, {{size}} au total maximum",
+    "placeholder": "Posez votre question",
     "placeholderReadOnly": "Chat public : lecture seule",
     "ariaInput": "Saisie du message",
     "send": "Envoyer",
@@ -247,8 +249,17 @@
   },
   "files": {
     "removeFile": "Retirer le fichier",
-    "fileFallback": "File",
-    "pastedImageName": "image"
+    "preview": "Aperçu",
+    "code": "Code",
+    "lines": "{{count}} lignes",
+    "previewAlt": "Aperçu de {{name}}",
+    "previewUnavailable": "L’aperçu du fichier « {{name}} » n’est pas disponible.",
+    "fileFallback": "Fichier",
+    "pastedImageName": "image",
+    "tooMany": "Vous pouvez joindre jusqu’à {{count}} fichiers.",
+    "unsupportedType": "Le type du fichier « {{name}} » n’est pas pris en charge.",
+    "emptyFile": "Le fichier « {{name}} » est vide.",
+    "sizeLimit": "La taille totale des pièces jointes est limitée à {{size}}."
   },
   "share": {
     "title": "Partage du chat",
@@ -302,13 +313,16 @@
     "publicChat": "Chat public",
     "emptyHistory": "L'historique est vide",
     "noResults": "Aucun résultat",
+    "statusGenerating": "Génération de la réponse",
+    "statusError": "Échec de la génération",
+    "statusComplete": "La réponse est prête",
     "settings": "Paramètres",
     "share": "Partager",
     "rename": "Renommer",
     "delete": "Supprimer",
-    "temporaryChat": "Temporary chat",
+    "temporaryChat": "Chat temporaire",
     "minds": "Minds",
-    "admin": "Admin",
+    "admin": "Administration",
     "github": "GitHub"
   },
   "settings": {
@@ -321,7 +335,7 @@
       "interface": "Interface",
       "accessibility": "Accessibilité",
       "about": "À propos",
-      "privacy": "Privacy"
+      "privacy": "Confidentialité"
     },
     "languages": {
       "en": "English",
@@ -386,20 +400,20 @@
         "emailTaken": "Cette adresse e-mail est déjà enregistrée"
       },
       "connectedApps": {
-        "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "title": "Applications connectées",
+        "description": "Gérez les services externes que ReMind peut utiliser dans le chat.",
         "github": {
           "name": "GitHub",
-          "description": "Let ReMind plan code changes and open pull requests from chat.",
-          "connect": "Connect GitHub",
-          "manage": "Manage",
-          "error": "Failed to load GitHub status",
-          "repoCount": "Available repositories: {{count}}",
+          "description": "Permettez à ReMind de planifier des modifications de code et d’ouvrir des pull requests depuis le chat.",
+          "connect": "Connecter GitHub",
+          "manage": "Gérer",
+          "error": "Impossible de charger l’état de GitHub",
+          "repoCount": "Dépôts disponibles : {{count}}",
           "status": {
-            "checking": "Checking",
-            "connected": "Connected",
-            "disconnected": "Not connected",
-            "configMissing": "Config missing"
+            "checking": "Vérification",
+            "connected": "Connecté",
+            "disconnected": "Non connecté",
+            "configMissing": "Configuration manquante"
           }
         }
       }
@@ -491,9 +505,9 @@
         "shortcut": {
           "label": "Raccourci clavier",
           "disabled": "Désactivé",
-          "record": "Record shortcut (current: {{shortcut}})",
-          "recording": "Press a shortcut now, or Esc to cancel",
-          "invalid": "Press a keyboard shortcut with at least one modifier."
+          "record": "Enregistrer le raccourci (actuel : {{shortcut}})",
+          "recording": "Appuyez maintenant sur un raccourci, ou sur Esc pour annuler",
+          "invalid": "Utilisez un raccourci clavier avec au moins une touche de modification."
         },
         "newChat": {
           "label": "Ouvrir les nouvelles discussions",
@@ -501,8 +515,8 @@
           "browser": "Dans le navigateur"
         },
         "launchAtLogin": {
-          "title": "Launch at login",
-          "description": "Keep ReMind ready in the background after you sign in to your Mac."
+          "title": "Ouvrir à la connexion",
+          "description": "Gardez ReMind disponible en arrière-plan après votre connexion sur votre Mac."
         }
       }
     },
@@ -538,6 +552,11 @@
         "description": "Actualités, projets, recherche et informations sur l’équipe.",
         "link": "Ouvrir le site SynvexAI"
       },
+      "github": {
+        "title": "ReMind sur GitHub",
+        "description": "Consultez le code source et contribuez au projet open source.",
+        "link": "Ouvrir le dépôt ReMind sur GitHub"
+      },
       "socials": {
         "title": "ReMind sur les réseaux sociaux",
         "description": "Canaux officiels de ReMind et SynvexAI.",
@@ -557,20 +576,20 @@
       }
     },
     "privacy": {
-      "title": "Privacy and data",
-      "description": "Control data use according to the SynvexAI privacy policy.",
+      "title": "Confidentialité et données",
+      "description": "Contrôlez l’utilisation des données conformément à la politique de confidentialité de SynvexAI.",
       "serviceImprovement": {
-        "title": "Use my content to improve SynvexAI",
-        "description": "Off by default. When enabled, your prompts, responses, files, and feedback may be used to improve service quality and models."
+        "title": "Utiliser mon contenu pour améliorer SynvexAI",
+        "description": "Désactivé par défaut. Si cette option est activée, vos prompts, réponses, fichiers et évaluations peuvent servir à améliorer la qualité du service et les modèles."
       },
-      "exportAction": "Export my data",
-      "exportLoading": "Preparing export...",
-      "exportSuccess": "Data export is ready",
-      "exportError": "Failed to export data",
-      "signInForExport": "Sign in to export data",
+      "exportAction": "Exporter mes données",
+      "exportLoading": "Préparation de l’exportation...",
+      "exportSuccess": "L’exportation des données est prête",
+      "exportError": "Impossible d’exporter les données",
+      "signInForExport": "Connectez-vous pour exporter vos données",
       "policyLink": {
-        "title": "Privacy policy",
-        "description": "Open the current SynvexAI policy."
+        "title": "Politique de confidentialité",
+        "description": "Ouvrir la politique SynvexAI actuelle."
       }
     }
   },
@@ -603,7 +622,7 @@
       "hindi": "Hindi",
       "bengali": "Bengali"
     },
-    "translateAction": "Translate"
+    "translateAction": "Traduire"
   },
   "quiz": {
     "dataError": "Erreur de données du quiz",
@@ -612,10 +631,14 @@
     "tryAgain": "Réessayer",
     "question": "Question {{current}}/{{total}}",
     "hint": "Indice",
-    "next": "Suivant"
+    "next": "Suivant",
+    "correctAnswer": "Bonne réponse",
+    "incorrectAnswer": "Mauvaise réponse"
   },
   "spinwheel": {
-    "spin": "Tourner"
+    "spin": "Tourner",
+    "spinning": "Rotation en cours",
+    "result": "Résultat : {{value}}"
   },
   "minds": {
     "subtitle": "Créez et gérez des minds IA personnalisés pour différentes tâches et styles de conversation.",
@@ -624,7 +647,7 @@
     "searchAria": "Rechercher des minds",
     "tabsAria": "Sections minds",
     "tabs": {
-      "store": "Mind store",
+      "store": "Boutique Minds",
       "mine": "Mes minds"
     },
     "categoriesAria": "Catégories de minds",
@@ -643,7 +666,7 @@
       "link": "Par lien",
       "linkShort": "Par lien",
       "linkLong": "Toute personne avec le lien",
-      "store": "Mind store"
+      "store": "Boutique Minds"
     },
     "verified": "Approuvé par le créateur",
     "startersAria": "Amorces de conversation",
@@ -732,9 +755,9 @@
     "queryLabel": "Requête"
   },
   "temporaryChat": {
-    "title": "Temporary chat",
-    "badge": "Not saved to history",
-    "description": "This chat stays out of the main history and is not saved after the session."
+    "title": "Chat temporaire",
+    "badge": "Non enregistré dans l’historique",
+    "description": "Ce chat reste hors de l’historique principal et n’est pas enregistré à la fin de la session."
   },
   "github": {
     "title": "GitHub",
@@ -866,8 +889,49 @@
     }
   },
   "chatImage": {
-    "messageAlt": "Chat image {{number}}",
-    "generating": "Creating image: {{prompt}}"
+    "open": "Ouvrir",
+    "unavailableTitle": "Aperçu indisponible",
+    "unavailableDescription": "Impossible de charger l’image.",
+    "messageAlt": "Image du chat {{number}}",
+    "generating": "Création de l’image : {{prompt}}"
+  },
+  "imageLightbox": {
+    "badge": "Aperçu",
+    "title": "Aperçu de l’image",
+    "demoTitle": "Image de démonstration ReMind",
+    "subtitle": "Examinez l’image complète, régénérez-la dans un autre style ou téléchargez le fichier.",
+    "previewAlt": "Aperçu de l’image",
+    "close": "Fermer",
+    "styleLabel": "Style",
+    "promptLabel": "Prompt d’origine",
+    "promptFallback": "Le prompt d’origine n’est pas disponible pour cette image.",
+    "actions": {
+      "regenerate": "Régénérer",
+      "regenerating": "Génération...",
+      "download": "Télécharger"
+    },
+    "styles": {
+      "realistic": "Réaliste",
+      "cartoon": "Dessin animé",
+      "anime": "Anime",
+      "oilPainting": "Peinture à l’huile",
+      "watercolor": "Aquarelle",
+      "pencilSketch": "Croquis au crayon"
+    },
+    "details": {
+      "style": "Style : {{style}}",
+      "resolution": "{{width}} × {{height}} px"
+    },
+    "errors": {
+      "missingSourceMessage": "Impossible de retrouver le message d’origine de l’utilisateur.",
+      "missingPrompt": "Aucun prompt source n’a été trouvé pour régénérer l’image.",
+      "missingResult": "Le modèle n’a renvoyé aucune nouvelle image.",
+      "missingImage": "Aucune image n’est disponible au téléchargement.",
+      "regenerateFailed": "Impossible de régénérer l’image : {{message}}",
+      "downloadFailed": "Impossible de télécharger l’image. Le fichier d’origine sera ouvert dans un nouvel onglet.",
+      "previewTitle": "Aperçu de l’image indisponible",
+      "previewDescription": "Vérifiez le chemin du fichier ou régénérez l’image."
+    }
   },
   "codeBlock": {
     "codeSnippet": "Code snippet",
@@ -897,9 +961,9 @@
   },
   "admin": {
     "aiFeedback": {
-      "likeRatio": "AI answer likes",
-      "dislikeRatio": "AI answer dislikes",
-      "total": "AI answer ratings"
+      "likeRatio": "Réponses de l’IA aimées",
+      "dislikeRatio": "Réponses de l’IA non aimées",
+      "total": "Évaluations des réponses de l’IA"
     }
   }
 }

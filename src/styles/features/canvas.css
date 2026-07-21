@@ -276,7 +276,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 }
 
 .chat-canvas-dock-trigger:focus-visible {
-  outline: 2px solid rgba(var(--color-accent-raw), 0.62);
+  outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
@@ -451,7 +451,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 }
 
 .chat-canvas-icon-button:focus-visible {
-  outline: 2px solid rgba(var(--color-accent-raw), 0.62);
+  outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 
@@ -548,7 +548,8 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
 }
 
 .chat-canvas-markdown:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
 }
 
 .chat-canvas-markdown h1,

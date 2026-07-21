@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { fileService } from '../../services/fileService';
 import { Utils } from '../../utils/utils';
@@ -6,10 +12,46 @@ import { highlightCode } from '../../utils/formatting';
 import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
 
+type FileTab = 'preview' | 'code';
+
 const FileModal = ({ isOpen, onClose, file, content }) => {
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState('preview');
+    const [activeTab, setActiveTab] = useState<FileTab>('preview');
     const contentRef = useRef<HTMLDivElement | null>(null);
+    const tabGroupId = useId();
+
+    const tabId = (tab: FileTab) => `${tabGroupId}-${tab}-tab`;
+    const panelId = (tab: FileTab) => `${tabGroupId}-${tab}-panel`;
+
+    const handleTabsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        const tabs = Array.from(
+            event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+        );
+        const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
+        if (currentIndex < 0) return;
+
+        const isRtl = window.getComputedStyle(event.currentTarget).direction === 'rtl';
+        let nextIndex = currentIndex;
+
+        if (event.key === 'ArrowRight') {
+            nextIndex = (currentIndex + (isRtl ? -1 : 1) + tabs.length) % tabs.length;
+        } else if (event.key === 'ArrowLeft') {
+            nextIndex = (currentIndex + (isRtl ? 1 : -1) + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = tabs.length - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        const nextTab = tabs[nextIndex];
+        const nextValue = nextTab?.dataset.tab as FileTab | undefined;
+        if (!nextTab || !nextValue) return;
+        setActiveTab(nextValue);
+        nextTab.focus();
+    };
 
     useEffect(() => {
         if (!isOpen) return;
@@ -71,7 +113,7 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
         <ModalShell
             ariaLabel={t('files.previewAlt', { name: file.name })}
             className="file-modal active px-3 py-4 sm:px-4 sm:py-6"
-            contentClassName="file-modal-content flex h-[min(90vh,820px)] w-full max-w-5xl flex-col rounded-xl border-border bg-surface text-foreground shadow-[var(--shadow-xl)]"
+            contentClassName="file-modal-content flex h-[min(90vh,820px)] w-full max-w-5xl flex-col rounded-xl border-border bg-surface text-foreground"
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
@@ -115,7 +157,13 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
 
                 {isHtml && (
                     <>
-                        <div className="preview-tabs flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5" role="tablist" aria-label={t('files.preview')}>
+                        <div
+                            className="preview-tabs flex items-center gap-2 border-b border-border px-4 py-3 sm:px-5"
+                            role="tablist"
+                            aria-label={t('files.preview')}
+                            aria-orientation="horizontal"
+                            onKeyDown={handleTabsKeyDown}
+                        >
                             <button
                                 className={cn(
                                     'tab rounded-md px-4 py-2 text-sm font-medium transition duration-200 ease-out',
@@ -127,7 +175,10 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                                 onClick={() => setActiveTab('preview')}
                                 type="button"
                                 role="tab"
+                                id={tabId('preview')}
+                                aria-controls={panelId('preview')}
                                 aria-selected={activeTab === 'preview'}
+                                tabIndex={activeTab === 'preview' ? 0 : -1}
                             >
                                 {t('files.preview')}
                             </button>
@@ -142,14 +193,24 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                                 onClick={() => setActiveTab('code')}
                                 type="button"
                                 role="tab"
+                                id={tabId('code')}
+                                aria-controls={panelId('code')}
                                 aria-selected={activeTab === 'code'}
+                                tabIndex={activeTab === 'code' ? 0 : -1}
                             >
                                 {t('files.code')} ({t('files.lines', { count: lineCount })})
                             </button>
                         </div>
 
                         <div className="tab-content-wrapper min-h-0 flex-1">
-                            <div className={cn('preview-tab tab-pane h-full', activeTab === 'preview' ? 'active block' : 'hidden')} data-pane="preview" role="tabpanel" hidden={activeTab !== 'preview'}>
+                            <div
+                                className={cn('preview-tab tab-pane h-full', activeTab === 'preview' ? 'active block' : 'hidden')}
+                                data-pane="preview"
+                                role="tabpanel"
+                                id={panelId('preview')}
+                                aria-labelledby={tabId('preview')}
+                                hidden={activeTab !== 'preview'}
+                            >
                                 <iframe
                                     srcDoc={content}
                                     sandbox="allow-forms"
@@ -157,7 +218,14 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                                     title={t('files.previewAlt', { name: file.name })}
                                 />
                             </div>
-                            <div className={cn('code-tab tab-pane h-full', activeTab === 'code' ? 'active block' : 'hidden')} data-pane="code" role="tabpanel" hidden={activeTab !== 'code'}>
+                            <div
+                                className={cn('code-tab tab-pane h-full', activeTab === 'code' ? 'active block' : 'hidden')}
+                                data-pane="code"
+                                role="tabpanel"
+                                id={panelId('code')}
+                                aria-labelledby={tabId('code')}
+                                hidden={activeTab !== 'code'}
+                            >
                                 <pre className="line-numbers ui-scrollbar-thin h-full overflow-auto p-4 sm:p-5">
                                     <code className="language-html">{content}</code>
                                 </pre>

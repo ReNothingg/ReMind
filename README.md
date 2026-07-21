@@ -76,6 +76,7 @@
 - Регистрация, логин, профиль, настройки, избранное и Google OAuth.
 - Безопасная загрузка файлов с проверкой имени, MIME-типа и содержимого.
 - Перевод текста и text-to-speech через отдельные API endpoints.
+- При запросе озвучивания выбранный текст передаётся внешнему Google Translate TTS endpoint; не используйте озвучивание для секретных данных.
 - Privacy flows: export/delete пользовательских данных.
 - HTML/JSON health check, Prometheus-style `/metrics` и audit logging.
 
@@ -87,7 +88,7 @@
 |---|---|
 | Frontend | React 19, TypeScript, Vite 7, i18next, Chart.js, D3, Mermaid, Nomnoml |
 | Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-Session, Authlib, Waitress, Gunicorn |
-| AI / Media | AI provider adapter, local `echo`, `demo_image`, Pillow, gTTS |
+| AI / Media | AI provider adapter, local `echo`, `demo_image`, Pillow, server-side speech synthesis |
 | Storage / Queue | SQLite for local development, PostgreSQL for deployment, Redis, Celery |
 | Infra | Docker, Docker Compose, Nginx |
 | Quality | Ruff, Black, MyPy, Pytest, Vitest, Playwright, GitHub Actions |
@@ -183,13 +184,13 @@ celery -A celery_worker.celery worker --loglevel=info --concurrency=2
 
 ## 🐳 Docker
 
-В репозитории есть отдельные Compose-конфигурации для разработки и production-like проверки.
+В репозитории есть отдельные Compose-конфигурации для разработки и production-проверки.
 
 | Режим | Команда | Назначение |
 |---|---|---|
 | Dev | `docker compose -f docker-compose.dev.yml up --build` | Hot reload frontend, backend and worker |
 | Dev shortcut | `npm run docker:dev` | Запуск dev Compose stack |
-| Production-like | `docker compose up --build` | Nginx + Flask app + worker + PostgreSQL + Redis |
+| Production | `npm run docker:prod` | HTTPS Nginx + Flask app + worker + PostgreSQL + Redis |
 
 Dev URLs:
 

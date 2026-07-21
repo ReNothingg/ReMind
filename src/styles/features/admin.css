@@ -72,8 +72,8 @@
 
   .admin-refresh-button:hover,
   .admin-access-panel button:hover {
-    filter: brightness(1.08);
-    transform: translateY(-1px);
+    filter: contrast(1.04);
+    transform: none;
   }
 
   .admin-tabs,
@@ -870,6 +870,28 @@
       border-right: 0;
       border-bottom: 1px solid var(--color-border-subtle);
       padding: 4px 0 12px;
+    }
+
+    .admin-refresh-button,
+    .admin-access-panel button,
+    .admin-command-strip button,
+    .admin-pagination button,
+    .admin-restriction-editor button,
+    .admin-queue-grid button,
+    .admin-compact-list button,
+    .admin-filter-row button,
+    .admin-tabs button,
+    .admin-action-row button {
+      min-height: 44px;
+    }
+
+    .admin-action-row button {
+      width: 44px;
+      height: 44px;
+    }
+
+    .admin-restriction-editor input {
+      min-height: 44px;
     }
   }
 

@@ -35,6 +35,18 @@ def build_http_session() -> requests.Session:
 HTTP_SESSION = build_http_session()
 
 
+def _url_origin_for_logging(raw_url: str) -> str:
+    """Keep credentials, paths, and query parameters out of application logs."""
+    try:
+        parsed = urlparse(raw_url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return "[redacted-url]"
+        port = f":{parsed.port}" if parsed.port else ""
+        return f"{parsed.scheme}://{parsed.hostname}{port}"
+    except (TypeError, ValueError):
+        return "[redacted-url]"
+
+
 def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
     try:
         parsed = urlparse(url)
@@ -73,8 +85,8 @@ def is_safe_url(url: str) -> Tuple[bool, Optional[str]]:
         except socket.gaierror:
             logger.warning(f"DNS resolution failed for: {hostname}")
             return False, None
-    except Exception as e:
-        logger.error(f"SSRF Check Error: {e}")
+    except Exception as exc:
+        logger.error("SSRF check failed (%s)", type(exc).__name__)
         return False, None
 
 
@@ -88,7 +100,7 @@ def make_safe_http_request(
     for _redirect_count in range(max_redirects + 1):
         is_safe, resolved_ip = is_safe_url(current_url)
         if not is_safe:
-            logger.warning(f"Unsafe URL blocked: {current_url}")
+            logger.warning("Unsafe URL blocked: %s", _url_origin_for_logging(current_url))
             return None
 
         try:
@@ -124,9 +136,9 @@ def make_safe_http_request(
                 return None
 
             current_url = urljoin(current_url, location)
-        except Exception as e:
-            logger.error(f"HTTP request error: {e}")
+        except Exception as exc:
+            logger.error("HTTP request failed (%s)", type(exc).__name__)
             return None
 
-    logger.warning(f"Too many redirects blocked for URL: {url}")
+    logger.warning("Too many redirects blocked for URL: %s", _url_origin_for_logging(url))
     return None

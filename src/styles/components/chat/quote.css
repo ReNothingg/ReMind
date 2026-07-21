@@ -133,7 +133,7 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   word-break: break-word;
   font-style: italic;
   color: var(--color-text-secondary);
-  text-shadow: 0 1px 2px rgba(var(--color-black-raw), 0.1);
+  text-shadow: none;
 }
 
 .quote-item-dismiss {

@@ -144,6 +144,7 @@ const MainLayout = () => {
   );
   const [activeMind, setActiveMind] = useState<Mind | null>(null);
   const [pinnedMinds, setPinnedMinds] = useState<Mind[]>([]);
+  const mobileRailReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const { isSettingsView, clearHash } = useURLRouter();
   const { isAuthenticated, loading: isAuthLoading, user } = useAuth();
@@ -264,6 +265,72 @@ const MainLayout = () => {
     document.body.classList.toggle('rail-open', isDesktopRailOpen);
     document.body.classList.toggle('mobile-menu-open', isMobileOverlayOpen);
   }, [isAuthenticated, isMobileViewport, isMobileRailOpen, isRailExpandedDesktop]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isMobileViewport || !isMobileRailOpen) {
+      return undefined;
+    }
+
+    const rail = document.getElementById('appRail');
+    if (!rail) {
+      return undefined;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && !rail.contains(activeElement)) {
+      mobileRailReturnFocusRef.current = activeElement;
+    }
+
+    const getFocusableElements = () =>
+      Array.from(
+        rail.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => !element.hasAttribute('hidden'));
+
+    const frame = window.requestAnimationFrame(() => {
+      rail.querySelector<HTMLElement>('[data-rail-close]')?.focus();
+    });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMobileRailOpen(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusableElements = getFocusableElements();
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', handleKeyDown);
+      const returnTarget = mobileRailReturnFocusRef.current;
+      mobileRailReturnFocusRef.current = null;
+      if (returnTarget?.isConnected) {
+        window.requestAnimationFrame(() => returnTarget.focus());
+      }
+    };
+  }, [isAuthenticated, isMobileRailOpen, isMobileViewport]);
 
   useEffect(() => {
     return () => {
@@ -933,6 +1000,7 @@ const MainLayout = () => {
         <Suspense fallback={null}>
           <AppRail
             isExpanded={isRailExpanded}
+            isMobile={isMobileViewport}
             onToggle={handleRailToggle}
             sessions={visibleSessions}
             sessionActivity={sessionActivity}
@@ -941,7 +1009,10 @@ const MainLayout = () => {
             onNewChat={handleNewChat}
             onMindsClick={handleMindsClick}
             onAdminClick={handleAdminClick}
-            onSettingsClick={() => setSettingsOpen(true)}
+            onSettingsClick={() => {
+              setMobileRailOpen(false);
+              setSettingsOpen(true);
+            }}
             currentPath={routePath}
             activeMindId={activeMind?.public_id || null}
             pinnedMinds={pinnedMinds}
@@ -963,7 +1034,7 @@ const MainLayout = () => {
         style={{ '--canvas-visible-width': `${canvasWidth}px` } as CSSProperties}
       >
         <main
-          className={`ui-app-main-shell${isCanvasHtmlPreviewActive ? ' canvas-site-preview-mode' : ''}`}
+          className={`ui-app-main-shell${isChatSurface && history.length === 0 ? ' is-empty-conversation' : ''}${isCanvasHtmlPreviewActive ? ' canvas-site-preview-mode' : ''}`}
         >
           {isCanvasHtmlPreviewActive && canvasDockTextdoc ? (
             <Suspense fallback={null}>
@@ -1221,7 +1292,7 @@ const MainLayout = () => {
                   {canvasDockIsCode ? <FileCode2 size={18} /> : <FileText size={18} />}
                 </span>
                 <span className="chat-canvas-dock-copy">
-                  \ <strong>{canvasDockTextdoc.name}</strong>
+                  <strong>{canvasDockTextdoc.name}</strong>
                   <small>
                     {canvasDockTypeLabel} / {t('canvas.lines', { count: canvasDockLineCount })}
                   </small>

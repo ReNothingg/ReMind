@@ -16,16 +16,31 @@ const ToggleSwitch = ({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border outline-none transition duration-200 ease-out',
-        'focus-visible:ring-2 focus-visible:ring-[rgba(var(--color-accent-raw),0.28)] focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+        'relative inline-flex h-11 w-12 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 outline-none transition duration-200 ease-out',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-border-focus)]',
         'disabled:cursor-not-allowed disabled:opacity-60',
-        "after:pointer-events-none after:absolute after:left-0.5 after:top-0.5 after:size-[18px] after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 after:ease-out after:content-['']",
-        checked
-          ? 'border-accent-brand bg-accent-brand after:translate-x-5'
-          : 'border-border-strong bg-interactive hover:border-border-heavy hover:bg-surface-alt',
         className
       )}
-    />
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'relative inline-flex h-6 w-11 items-center rounded-full border transition duration-200 ease-out',
+          checked
+            ? 'border-accent-brand bg-accent-brand'
+            : 'border-border-strong bg-interactive'
+        )}
+      >
+        <span
+          className={cn(
+            'pointer-events-none absolute left-0.5 top-0.5 size-[18px] rounded-full transition-transform duration-200 ease-out',
+            checked
+              ? 'translate-x-5 bg-[var(--color-text-on-accent-bg)]'
+              : 'bg-[var(--color-toggle-thumb)]'
+          )}
+        />
+      </span>
+    </button>
   );
 };
 

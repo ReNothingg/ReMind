@@ -48,6 +48,19 @@ from utils.session_security import (
 from utils.user_agent_validator import UserAgentValidator, log_suspicious_user_agent
 
 
+class ReMindFlask(Flask):
+    """Flask application that never includes raw request targets in exception logs."""
+
+    def log_exception(self, exc_info):
+        safe_path = request.url_rule.rule if request.url_rule else "[unmatched-route]"
+        self.logger.error(
+            "Exception on %s [%s]",
+            safe_path,
+            request.method,
+            exc_info=exc_info,
+        )
+
+
 def create_app():
     dist_dir = BASE_PATH / "dist"
     public_dir = BASE_PATH / "public"
@@ -58,7 +71,7 @@ def create_app():
     else:
         static_folder = str(dist_dir)
 
-    app = Flask(
+    app = ReMindFlask(
         __name__,
         static_folder=static_folder,
         static_url_path="",
@@ -118,9 +131,10 @@ def create_app():
         folder.mkdir(parents=True, exist_ok=True)
 
     try:
-        retention_result = prune_guest_chat_files(chats_folder=CHATS_FOLDER)
-        if retention_result.get("deleted"):
-            logger.info("Privacy retention pruned guest chat files: %s", retention_result)
+        with app.app_context():
+            retention_result = prune_guest_chat_files(chats_folder=CHATS_FOLDER)
+            if retention_result.get("deleted"):
+                logger.info("Privacy retention pruned guest chat files: %s", retention_result)
     except Exception as exc:
         logger.warning("Privacy retention pruning skipped: %s", exc, exc_info=True)
 
@@ -144,15 +158,20 @@ def create_app():
         is_valid, error_message = user_agent_validator.validate_request()
 
         if not is_valid:
+            safe_endpoint = (
+                request.url_rule.rule
+                if request.url_rule
+                else (request.endpoint or "[unmatched-route]")
+            )
             log_suspicious_user_agent(
                 user_agent=request.headers.get("User-Agent"),
                 ip=anonymize_ip(request.remote_addr),
-                endpoint=request.path,
+                endpoint=safe_endpoint,
                 additional_info={"method": request.method},
             )
             log_audit_event(
                 AuditEvents.SECURITY_SUSPICIOUS_UA,
-                {"endpoint": request.path, "method": request.method},
+                {"endpoint": safe_endpoint, "method": request.method},
             )
             return make_error(error_message, status=403, code="invalid_user_agent")
         g.anonymized_ip = anonymize_ip(request.remote_addr)
@@ -229,7 +248,8 @@ def create_app():
 
     @app.errorhandler(500)
     def handle_500(e):
-        logger.error(f"Unhandled 500 error: {e}")
+        # Flask already records uncaught exceptions through app.logger before
+        # invoking this handler. Logging again here duplicates the event.
         return make_error("Internal server error", status=500, code="internal_error")
 
     @app.errorhandler(502)

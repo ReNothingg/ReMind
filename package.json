@@ -10,7 +10,7 @@
     "docker:dev": "docker compose -f docker-compose.dev.yml up",
     "docker:dev:build": "docker compose -f docker-compose.dev.yml up --build",
     "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
-    "docker:prod": "docker compose up --build",
+    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build",
     "build": "vite build",
     "typecheck:base": "tsc -p tsconfig.json --noEmit --noUnusedLocals --noUnusedParameters",
     "typecheck:strict": "tsc -p tsconfig.strict.json --noEmit",

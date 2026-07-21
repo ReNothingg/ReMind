@@ -105,6 +105,10 @@ export function localizeAccountError(
 
     const fieldErrors: AccountFieldErrors = {};
 
+    if (message === 'confirmation_delivery_failed') {
+        return { fieldErrors, message: t('authModal.messages.requestError') };
+    }
+
     if (field === 'username' || message.startsWith('Username')) {
         const localized = localizeUsernameError(message, t);
         fieldErrors.username = localized;

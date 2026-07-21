@@ -29,8 +29,7 @@ GEMINI_31_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite"
 HISTORY_ATTACHMENT_MAX_COUNT = 8
 HISTORY_ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024
 INTERNAL_SEND_ERROR_RESPONSE = (
-    "Внутренняя ошибка"
-    "Произошла внутренняя ошибка при отправке вашего сообщения модели."
+    "Внутренняя ошибка" "Произошла внутренняя ошибка при отправке вашего сообщения модели."
 )
 EMPTY_RESPONSE = (
     "Пустой ответ"
@@ -75,7 +74,8 @@ def _function_declarations(
         types.FunctionDeclaration(
             name=str(declaration.get("name") or ""),
             description=str(declaration.get("description") or ""),
-            parameters_json_schema=declaration.get("parameters") or {
+            parameters_json_schema=declaration.get("parameters")
+            or {
                 "type": "object",
                 "properties": {},
             },
@@ -225,7 +225,9 @@ def _prepare_new_message(user_message_data: dict[str, Any]) -> list[types.Part]:
             continue
         model_part = file_info.get("model_part")
         if not isinstance(model_part, dict):
-            logger.warning("Attachment is missing a model payload: %s", file_info.get("original_name"))
+            logger.warning(
+                "Attachment is missing a model payload: %s", file_info.get("original_name")
+            )
             continue
         converted = _part_from_legacy(model_part)
         if converted is not None:
@@ -243,8 +245,7 @@ def _history_for_client(user_message_data: dict[str, Any]) -> list[types.Content
         parts = [
             converted
             for part in message.get("parts", [])
-            if isinstance(part, dict)
-            and (converted := _part_from_legacy(part)) is not None
+            if isinstance(part, dict) and (converted := _part_from_legacy(part)) is not None
         ]
         if parts:
             history.append(types.Content(role=message.get("role"), parts=parts))
@@ -261,10 +262,7 @@ def _parts_from_chunk(chunk: Any) -> list[Any]:
 
 def _thought_block(content: str, opened_at: int, closed_at: int) -> str:
     safe_content = html.escape(content[:MAX_THOUGHT_SUMMARY_CHARS], quote=False)
-    return (
-        f'<think data-open="{opened_at}" data-close="{closed_at}">'
-        f"{safe_content}</think>"
-    )
+    return f'<think data-open="{opened_at}" data-close="{closed_at}">' f"{safe_content}</think>"
 
 
 def _thinking_update(
@@ -334,19 +332,23 @@ def _search_activity_token(
 
 
 def _thinking_level(user_message_data: dict[str, Any]) -> types.ThinkingLevel:
-    requested = str(
-        user_message_data.get("thinkingLevel")
-        or user_message_data.get("thinking_level")
-        or DEFAULT_THINKING_LEVEL
-    ).strip().lower()
+    requested = (
+        str(
+            user_message_data.get("thinkingLevel")
+            or user_message_data.get("thinking_level")
+            or DEFAULT_THINKING_LEVEL
+        )
+        .strip()
+        .lower()
+    )
     return THINKING_LEVELS.get(requested, THINKING_LEVELS[DEFAULT_THINKING_LEVEL])
 
 
-def gemini_stream(
-    user_id: str, user_message_data: dict[str, Any]
-) -> Generator[Any, None, None]:
+def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[Any, None, None]:
     if not GEMINI_API_KEY or GEMINI_API_KEY == "ВАШ_API_КЛЮЧ":
-        logger.error("Gemini 3.1 Flash-Lite is unavailable because GEMINI_API_KEY is not configured")
+        logger.error(
+            "Gemini 3.1 Flash-Lite is unavailable because GEMINI_API_KEY is not configured"
+        )
         yield INTERNAL_SEND_ERROR_RESPONSE
         return
 
@@ -402,7 +404,9 @@ def gemini_stream(
             thought_needs_separator = False
             return events
 
-        def append_thought_content(content: str, *, separate: bool = False) -> dict[str, Any] | None:
+        def append_thought_content(
+            content: str, *, separate: bool = False
+        ) -> dict[str, Any] | None:
             nonlocal thought_chars, thought_opened_at, thought_sequence, thought_id
             nonlocal thought_needs_separator
             if not content:
@@ -410,7 +414,9 @@ def gemini_stream(
             if thought_opened_at is None:
                 thought_opened_at = int(time.time() * 1000)
                 thought_sequence += 1
-                thought_id = f"{user_message_data.get('request_id') or 'thought'}-{thought_sequence}"
+                thought_id = (
+                    f"{user_message_data.get('request_id') or 'thought'}-{thought_sequence}"
+                )
             remaining_chars = MAX_THOUGHT_SUMMARY_CHARS - thought_chars
             if remaining_chars <= 0:
                 return None
@@ -504,9 +510,7 @@ def gemini_stream(
                         result_output = {"ok": False, "error": "tool_execution_failed"}
                         if name == "web_search":
                             search_failed = append_thought_content(
-                                _search_activity_token(
-                                    "web_search_failed", arguments.get("query")
-                                ),
+                                _search_activity_token("web_search_failed", arguments.get("query")),
                                 separate=True,
                             )
                             if search_failed:
@@ -516,9 +520,7 @@ def gemini_stream(
                         yield from result.events
                         if name == "web_search":
                             search_status = (
-                                "web_search_done"
-                                if result.sources
-                                else "web_search_no_results"
+                                "web_search_done" if result.sources else "web_search_no_results"
                             )
                             if not result.output.get("ok"):
                                 search_status = "web_search_failed"

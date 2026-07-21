@@ -61,7 +61,7 @@
 }
 
 .message-attachments .attachment-card-preview-button:focus-visible {
-  outline: 2px solid rgba(var(--color-accent-raw), 0.82);
+  outline: 2px solid var(--color-border-focus);
   outline-offset: -2px;
 }
 
