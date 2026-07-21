@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ShieldCheck, X } from 'lucide-react';
+import { ChevronRight, ShieldCheck, X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -169,6 +169,7 @@ const AppRail = ({
     const [editingTitle, setEditingTitle] = useState('');
     const [localSessions, setLocalSessions] = useState(sessions);
     const [searchQuery, setSearchQuery] = useState('');
+    const [arePinnedMindsExpanded, setArePinnedMindsExpanded] = useState(true);
     const menuTriggerRefs = useRef(new Map());
 
     useEffect(() => {
@@ -494,18 +495,72 @@ const AppRail = ({
                         <path d="M12 5v14M5 12h14" />
                     </svg>
                 </RailActionButton>
-                <RailActionButton
-                    active={currentPath === '/minds' || currentPath.startsWith('/minds/editor') || !!activeMindId}
-                    className="rail-icon-btn"
-                    expanded={isExpanded}
-                    id="railMinds"
-                    label={t('rail.minds')}
-                    onClick={onMindsClick}
-                    title={t('rail.minds')}
-                    aria-label={t('rail.minds')}
-                >
-                    <MindRailIcon />
-                </RailActionButton>
+                <div className="ui-rail-minds-section">
+                    <div className="ui-rail-minds-header">
+                        <RailActionButton
+                            active={currentPath === '/minds' || currentPath.startsWith('/minds/editor') || !!activeMindId}
+                            className="rail-icon-btn ui-rail-minds-action"
+                            expanded={isExpanded}
+                            id="railMinds"
+                            label={t('rail.minds')}
+                            onClick={onMindsClick}
+                            title={t('rail.minds')}
+                            aria-label={t('rail.minds')}
+                        >
+                            <MindRailIcon />
+                        </RailActionButton>
+                        {isExpanded && pinnedMinds.length > 0 && (
+                            <button
+                                type="button"
+                                className="ui-rail-pinned-minds-toggle"
+                                onClick={() => setArePinnedMindsExpanded((expanded) => !expanded)}
+                                aria-expanded={arePinnedMindsExpanded}
+                                aria-controls="railPinnedMinds"
+                                aria-label={arePinnedMindsExpanded ? t('rail.collapse') : t('rail.expand')}
+                                title={arePinnedMindsExpanded ? t('rail.collapse') : t('rail.expand')}
+                            >
+                                <ChevronRight aria-hidden="true" />
+                            </button>
+                        )}
+                    </div>
+
+                    {isExpanded && pinnedMinds.length > 0 && (
+                        <div
+                            id="railPinnedMinds"
+                            className={cn(
+                                'ui-rail-pinned-minds-disclosure',
+                                arePinnedMindsExpanded && 'ui-rail-pinned-minds-disclosure-expanded'
+                            )}
+                            aria-hidden={!arePinnedMindsExpanded}
+                            inert={!arePinnedMindsExpanded ? true : undefined}
+                        >
+                            <div className="ui-rail-pinned-minds-disclosure-inner">
+                                <div
+                                    className="ui-rail-pinned-minds ui-rail-pinned-minds-expanded"
+                                    aria-label={t('minds.pinnedAria')}
+                                >
+                                    {pinnedMinds.map((mind) => (
+                                        <button
+                                            key={mind.public_id}
+                                            type="button"
+                                            className={cn(
+                                                'ui-rail-pinned-mind ui-rail-pinned-mind-expanded',
+                                                activeMindId === mind.public_id && 'ui-rail-pinned-mind-active'
+                                            )}
+                                            title={mind.name}
+                                            onClick={() => onSelectMind?.(mind)}
+                                        >
+                                            <span className="ui-rail-pinned-mind-avatar">{getMindInitials(mind)}</span>
+                                            <span className="ui-rail-pinned-mind-label">
+                                                {mind.name}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
                 {user?.is_admin && (
                     <RailActionButton
                         active={currentPath === '/admin' || currentPath.startsWith('/admin/')}
@@ -521,31 +576,6 @@ const AppRail = ({
                     </RailActionButton>
                 )}
             </div>
-
-            {isExpanded && pinnedMinds.length > 0 && (
-                <div
-                    className="ui-rail-pinned-minds ui-rail-pinned-minds-expanded"
-                    aria-label={t('minds.pinnedAria')}
-                >
-                    {pinnedMinds.map((mind) => (
-                        <button
-                            key={mind.public_id}
-                            type="button"
-                            className={cn(
-                                'ui-rail-pinned-mind ui-rail-pinned-mind-expanded',
-                                activeMindId === mind.public_id && 'ui-rail-pinned-mind-active'
-                            )}
-                            title={mind.name}
-                            onClick={() => onSelectMind?.(mind)}
-                        >
-                            <span className="ui-rail-pinned-mind-avatar">{getMindInitials(mind)}</span>
-                            <span className="ui-rail-pinned-mind-label">
-                                {mind.name}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            )}
 
             {isExpanded && (
                 <div className="rail-search-container ui-rail-search-wrap">

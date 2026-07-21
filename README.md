@@ -15,7 +15,7 @@
     <a href="https://github.com/ReNothingg/ReMind/issues"><img src="https://img.shields.io/github/issues/ReNothingg/ReMind?color=2563eb" alt="Open issues" /></a>
   </p>
 
-  <!-- ## ⭐ Звезды -->
+  <!-- ## Звезды -->
   <p>
     <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11" />
     <img src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB" alt="React 19" />
@@ -51,7 +51,7 @@
 
 <!-- <a id="overview"></a> -->
 
-## ✨ Обзор
+## Обзор
 
 **ReMind** это AI-приложение на React/Vite и Flask, собранное как продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
 
@@ -67,7 +67,7 @@
 
 <a id="features"></a>
 
-## 🚀 Возможности
+## Возможности
 
 - Streaming AI chat через `POST /chat` с server-sent events.
 - История диалогов, список сессий, удаление и восстановление контекста.
@@ -82,7 +82,7 @@
 
 <a id="tech-stack"></a>
 
-## 🧱 Технологический стек
+## Технологический стек
 
 | Слой | Стек |
 |---|---|
@@ -201,7 +201,7 @@ Dev URLs:
 
 <a id="architecture"></a>
 
-## 🗺 Архитектура
+## Архитектура
 
 ```mermaid
 graph TD
@@ -231,7 +231,7 @@ graph TD
 
 <a id="api-contract"></a>
 
-## 🔌 API-контракт
+## API-контракт
 
 Полезные endpoints:
 
@@ -257,7 +257,7 @@ npm run openapi:check
 
 <a id="quality"></a>
 
-## ✅ Качество
+## Качество
 
 ### Backend
 
@@ -292,7 +292,7 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 
 <a id="contributing"></a>
 
-## 🤝 Участие в разработке
+## Участие в разработке
 
 Вклад приветствуется, если он помогает держать проект надежным, безопасным и поддерживаемым.
 
@@ -316,7 +316,7 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 
 <a id="current-status"></a>
 
-## 📌 Текущее состояние
+## Текущее состояние
 
 - `beta`: UX и внутренняя архитектура продолжают активно меняться.
 - Основной AI-флоу требует `AI_PROVIDER_API_KEY`.
@@ -325,7 +325,7 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 
 <a id="license"></a>
 
-## 📄 Лицензия
+## Лицензия
 
 ReMind распространяется под лицензией **GNU AGPL-3.0-only**. Подробности в [LICENSE](LICENSE).
 

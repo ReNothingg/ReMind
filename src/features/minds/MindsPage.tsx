@@ -76,6 +76,7 @@ function MindCard({
     categories,
     isAuthenticated,
     mind,
+    onDelete,
     onEdit,
     onOpenAuth,
     onPinToggle,
@@ -84,6 +85,7 @@ function MindCard({
     categories: MindCategory[];
     isAuthenticated: boolean;
     mind: Mind;
+    onDelete?: (mind: Mind) => Promise<void>;
     onEdit?: (mind: Mind) => void;
     onOpenAuth: () => void;
     onPinToggle: (mind: Mind) => Promise<void>;
@@ -142,7 +144,7 @@ function MindCard({
                 >
                     {mind.is_pinned ? <PinOff size={16} /> : <Pin size={16} />}
                 </button>
-                {mind.can_edit && onEdit && (
+                {mind.can_edit && onEdit && !onDelete && (
                     <button
                         type="button"
                         className="mind-icon-action"
@@ -154,6 +156,26 @@ function MindCard({
                     </button>
                 )}
             </div>
+
+            {mind.can_edit && onEdit && onDelete && (
+                <div className="mind-management-row">
+                    <span>{visibilityLabel(t, mind.visibility)}</span>
+                    <div>
+                        <button type="button" onClick={() => onEdit(mind)}>
+                            <Edit3 size={15} />
+                            {t('minds.edit')}
+                        </button>
+                        <button
+                            type="button"
+                            className="danger"
+                            onClick={() => void onDelete(mind)}
+                        >
+                            <Trash2 size={15} />
+                            {t('minds.delete')}
+                        </button>
+                    </div>
+                </div>
+            )}
         </article>
     );
 }
@@ -412,31 +434,13 @@ export default function MindsPage({
                                     categories={categories}
                                     isAuthenticated={isAuthenticated}
                                     mind={mind}
+                                    {...(activeTab === 'mine' ? { onDelete: handleDeleteMind } : {})}
                                     onEdit={onEditMind}
                                     onOpenAuth={onOpenAuth}
                                     onPinToggle={handlePinToggle}
                                     onStart={onStartMind}
                                 />
 
-                                {activeTab === 'mine' && (
-                                    <div className="mind-management-row">
-                                        <span>{visibilityLabel(t, mind.visibility)}</span>
-                                        <div>
-                                            <button type="button" onClick={() => onEditMind(mind)}>
-                                                <Edit3 size={15} />
-                                                {t('minds.edit')}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="danger"
-                                                onClick={() => void handleDeleteMind(mind)}
-                                            >
-                                                <Trash2 size={15} />
-                                                {t('minds.delete')}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>

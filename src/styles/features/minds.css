@@ -261,7 +261,11 @@
 
   .mind-description {
     margin: 0;
+    min-width: 0;
+    max-width: 100%;
     min-height: 66px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     color: var(--color-text-secondary);
     font-size: 0.9rem;
     line-height: 1.55;
@@ -333,7 +337,9 @@
 
   .mind-management-row {
     justify-content: space-between;
-    margin-top: 8px;
+    min-width: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border-subtle);
     color: var(--color-text-tertiary);
     font-size: 0.78rem;
   }
@@ -343,6 +349,8 @@
     align-items: center;
     gap: 6px;
     border: 0;
+    min-height: 36px;
+    padding: 6px 4px;
     background: transparent;
     color: var(--color-text-secondary);
     font-size: 0.8rem;
@@ -827,6 +835,10 @@
     .mind-management-row {
       align-items: flex-start;
       flex-direction: column;
+    }
+
+    .mind-management-row button {
+      min-height: 44px;
     }
 
     .mind-category-select-grid {

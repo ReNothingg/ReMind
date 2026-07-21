@@ -650,6 +650,57 @@
     @apply min-w-0 truncate;
   }
 
+  .ui-rail-minds-section {
+    @apply flex min-w-0 flex-col;
+  }
+
+  .ui-rail-minds-header {
+    @apply flex min-w-0 items-center gap-1;
+  }
+
+  .ui-rail-minds-action {
+    @apply min-w-0 flex-1;
+  }
+
+  .ui-rail-pinned-minds-toggle {
+    @apply flex size-10 shrink-0 items-center justify-center rounded-md border-0 bg-transparent text-muted transition duration-150 ease-out hover:bg-interactive hover:text-foreground;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .ui-rail-pinned-minds-toggle svg {
+    @apply size-4 transition-transform duration-200 ease-out;
+  }
+
+  .ui-rail-pinned-minds-toggle[aria-expanded='true'] svg {
+    transform: rotate(90deg);
+  }
+
+  .ui-rail-pinned-minds-disclosure {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 180ms ease,
+      visibility 0s linear 280ms;
+  }
+
+  .ui-rail-pinned-minds-disclosure-expanded {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  .ui-rail-pinned-minds-disclosure-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .ui-rail-search-wrap {
     @apply px-2 pt-0 pb-2;
     border-bottom: 1px solid var(--color-border-subtle);
@@ -670,8 +721,14 @@
   }
 
   .ui-rail-pinned-minds {
-    @apply flex flex-col gap-1 border-b px-2 pb-2;
-    border-color: var(--color-border-subtle);
+    @apply flex flex-col gap-1 py-1 pl-7;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ui-rail-pinned-minds-disclosure,
+    .ui-rail-pinned-minds-toggle svg {
+      transition-duration: 0.01ms;
+    }
   }
 
   .ui-rail-pinned-minds-collapsed {
@@ -1722,6 +1779,7 @@
     .ui-rail-action-button,
     .ui-rail-search-input,
     .ui-rail-pinned-mind,
+    .ui-rail-pinned-minds-toggle,
     .ui-rail-menu-trigger {
       min-height: 44px;
     }

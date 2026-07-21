@@ -23,6 +23,9 @@ import { hasEquivalentWidget } from './widgetUtils';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
 import { isActiveWebSearchStatus } from './webSearchStatus';
+import { getFeedbackActionVisibility } from './feedbackState';
+
+const LIKE_CONFETTI_PARTICLES = Array.from({ length: 8 }, (_, index) => index);
 
 const MessageActionButton = ({ className, title, onClick, children, disabled = false }) => (
     <button
@@ -762,6 +765,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState('');
     const [feedbackMessageType, setFeedbackMessageType] = useState('success');
+    const [likeConfettiBurst, setLikeConfettiBurst] = useState(0);
     const audio = useAudio(message.id);
     const formatLabels = useMemo(() => ({
         codeBlock: {
@@ -1466,6 +1470,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
             if (rating === 'like') {
                 setFeedbackReasons([]);
                 setFeedbackComment('');
+                setLikeConfettiBurst((current) => current + 1);
             }
             setFeedbackMessageType('success');
         } catch (error) {
@@ -1483,6 +1488,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         ));
     };
     const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
+    const feedbackActionVisibility = getFeedbackActionVisibility(feedbackRating);
     const isUserEditMode = isUser && isEditingUserMessage;
     const messageClassName = cn(
         'message ui-message-shell',
@@ -1844,25 +1850,42 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                         >
                             <img src="/icons/ui/translate.svg" alt="" aria-hidden="true" />
                         </MessageActionButton>
-                        <MessageActionButton
-                            className={cn('feedback-btn', feedbackRating === 'like' && 'active')}
-                            title={t('chat.feedback.like')}
-                            onClick={() => void submitFeedback('like')}
-                            disabled={feedbackSubmitting}
-                        >
-                            <img src="/icons/ui/like.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
-                        <MessageActionButton
-                            className={cn('feedback-btn', feedbackRating === 'dislike' && 'active')}
-                            title={t('chat.feedback.dislike')}
-                            onClick={() => {
-                                setFeedbackPanelOpen((current) => !current);
-                                setFeedbackMessage('');
-                            }}
-                            disabled={feedbackSubmitting}
-                        >
-                            <img src="/icons/ui/dislike.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
+                        <span className="feedback-actions">
+                            {feedbackActionVisibility.like && (
+                                <MessageActionButton
+                                    className="feedback-btn"
+                                    title={t('chat.feedback.like')}
+                                    onClick={() => void submitFeedback('like')}
+                                    disabled={feedbackSubmitting}
+                                >
+                                    <img src="/icons/ui/like.svg" alt="" aria-hidden="true" />
+                                </MessageActionButton>
+                            )}
+                            {feedbackActionVisibility.dislike && (
+                                <MessageActionButton
+                                    className="feedback-btn"
+                                    title={t('chat.feedback.dislike')}
+                                    onClick={() => {
+                                        setFeedbackPanelOpen((current) => !current);
+                                        setFeedbackMessage('');
+                                    }}
+                                    disabled={feedbackSubmitting}
+                                >
+                                    <img src="/icons/ui/dislike.svg" alt="" aria-hidden="true" />
+                                </MessageActionButton>
+                            )}
+                            {likeConfettiBurst > 0 && (
+                                <span
+                                    key={likeConfettiBurst}
+                                    className="feedback-like-confetti"
+                                    aria-hidden="true"
+                                >
+                                    {LIKE_CONFETTI_PARTICLES.map((particle) => (
+                                        <span key={particle} />
+                                    ))}
+                                </span>
+                            )}
+                        </span>
                         <WebSourcesPanel sources={displaySourceItems} />
                     </div>
                 )}
