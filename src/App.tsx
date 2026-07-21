@@ -525,6 +525,7 @@ const MainLayout = () => {
       sendMessage(text, files, selectedModel, {
         ...options,
         mindId: activeMind?.public_id || null,
+        _sessionMind: activeMind || null,
         thinkingLevel: selectedThinkingLevel,
       });
     },
@@ -696,8 +697,9 @@ const MainLayout = () => {
       }
       markSessionActivitySeen(id);
       setActiveMind(null);
-      setRoutePath('/');
-      void loadSession(id, { historyMode: 'push' }).then((data) => {
+      const pendingSession = loadSession(id, { historyMode: 'push' });
+      setRoutePath(normalizeAppPath(window.location.pathname));
+      void pendingSession.then((data) => {
         if (data) {
           setActiveMind(data.mind || null);
           setRoutePath(normalizeAppPath(window.location.pathname));

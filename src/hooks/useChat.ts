@@ -32,7 +32,9 @@ type HistoryMode = 'replace' | 'push' | 'none';
 type SyncSessionOptions = {
     previousSessionId?: string | null;
     historyMode?: HistoryMode;
+    registerSlug?: boolean;
     persistToGuestHistory?: boolean;
+    persistCurrentSession?: boolean;
     activate?: boolean;
 };
 
@@ -57,6 +59,7 @@ type SendMessageOptions = {
     _forcedSessionId?: string;
     _queueId?: string;
     _queuedHistory?: unknown[];
+    _sessionMind?: unknown;
     [key: string]: unknown;
 };
 
@@ -445,6 +448,7 @@ export const useChat = () => {
     const [queuedMessageCount, setQueuedMessageCount] = useState(0);
     const sessionActivityRef = useRef<Record<string, SessionActivity>>({});
     const sessionHistoryCacheRef = useRef(new Map());
+    const sessionDataCacheRef = useRef(new Map());
     const sessionAbortControllersRef = useRef(new Map());
     const sessionRequestIdsRef = useRef(new Map());
     const nextChatRequestIdRef = useRef(0);
@@ -558,40 +562,47 @@ export const useChat = () => {
         }
 
         const targetId = textdocId || current.id || null;
-        setHistory(prev => prev.map((message) => {
-            const messageTextdoc = normalizeCanvasTextdoc(message.canvasTextdoc || message.canvas_textdoc);
-            const isTarget = messageTextdoc && (
-                (targetId && messageTextdoc.id === targetId) ||
-                (!targetId && messageTextdoc.name === current.name && messageTextdoc.type === current.type)
-            );
+        setHistory(prev => {
+            const nextHistory = prev.map((message) => {
+                const messageTextdoc = normalizeCanvasTextdoc(message.canvasTextdoc || message.canvas_textdoc);
+                const isTarget = messageTextdoc && (
+                    (targetId && messageTextdoc.id === targetId) ||
+                    (!targetId && messageTextdoc.name === current.name && messageTextdoc.type === current.type)
+                );
 
-            if (!isTarget) {
-                return message;
+                if (!isTarget) {
+                    return message;
+                }
+
+                const nextTextdoc = {
+                    ...messageTextdoc,
+                    content,
+                    updated_at: updatedTextdoc.updated_at
+                };
+
+                return {
+                    ...message,
+                    canvasTextdoc: nextTextdoc,
+                    variants: Array.isArray(message.variants)
+                        ? message.variants.map((variant) => {
+                            const variantTextdoc = normalizeCanvasTextdoc(variant.canvasTextdoc || variant.canvas_textdoc);
+                            const variantIsTarget = variantTextdoc && (
+                                (targetId && variantTextdoc.id === targetId) ||
+                                (!targetId && variantTextdoc.name === current.name && variantTextdoc.type === current.type)
+                            );
+                            return variantIsTarget
+                                ? { ...variant, canvasTextdoc: { ...variantTextdoc, content, updated_at: updatedTextdoc.updated_at } }
+                                : variant;
+                        })
+                        : message.variants
+                };
+            });
+            const activeSessionId = currentSessionIdRef.current;
+            if (activeSessionId) {
+                sessionHistoryCacheRef.current.set(activeSessionId, nextHistory);
             }
-
-            const nextTextdoc = {
-                ...messageTextdoc,
-                content,
-                updated_at: updatedTextdoc.updated_at
-            };
-
-            return {
-                ...message,
-                canvasTextdoc: nextTextdoc,
-                variants: Array.isArray(message.variants)
-                    ? message.variants.map((variant) => {
-                        const variantTextdoc = normalizeCanvasTextdoc(variant.canvasTextdoc || variant.canvas_textdoc);
-                        const variantIsTarget = variantTextdoc && (
-                            (targetId && variantTextdoc.id === targetId) ||
-                            (!targetId && variantTextdoc.name === current.name && variantTextdoc.type === current.type)
-                        );
-                        return variantIsTarget
-                            ? { ...variant, canvasTextdoc: { ...variantTextdoc, content, updated_at: updatedTextdoc.updated_at } }
-                            : variant;
-                    })
-                    : message.variants
-            };
-        }));
+            return nextHistory;
+        });
     }, []);
 
     const setTemporaryChatMode = useCallback((enabled) => {
@@ -830,12 +841,6 @@ export const useChat = () => {
         loadSlugIndex();
     }, [loadSlugIndex]);
 
-    useEffect(() => {
-        if (currentSessionId) {
-            sessionHistoryCacheRef.current.set(currentSessionId, history);
-        }
-    }, [currentSessionId, history]);
-
     const resetConversationState = useCallback(() => {
         revokeLocalPreviewUrls(Array.from(localPreviewUrlsRef.current));
         setHistory([]);
@@ -854,11 +859,15 @@ export const useChat = () => {
         const {
             previousSessionId = null,
             historyMode = 'replace',
+            registerSlug = true,
             persistToGuestHistory = true,
+            persistCurrentSession = true,
             activate = true
         } = options;
 
-        registerSessionSlug(sessionId, slug);
+        if (registerSlug) {
+            registerSessionSlug(sessionId, slug);
+        }
 
         if (persistToGuestHistory) {
             addGuestSession(sessionId);
@@ -870,7 +879,9 @@ export const useChat = () => {
 
         if (activate) {
             updateSessionIdentity(sessionId, slug);
-            syncPersistedCurrentSession(sessionId, slug);
+            if (persistCurrentSession) {
+                syncPersistedCurrentSession(sessionId, slug);
+            }
             syncBrowserPath(`/c/${encodeURIComponent(slug)}`, historyMode);
         }
     }, [
@@ -898,25 +909,39 @@ export const useChat = () => {
         activeMindIdRef.current = null;
         const requestedSessionId = slugToSessionId(sessionIdOrSlug);
         const cachedHistory = sessionHistoryCacheRef.current.get(requestedSessionId);
+        const cachedData = sessionDataCacheRef.current.get(requestedSessionId);
         const cachedActivity = sessionActivityRef.current[requestedSessionId];
+        const requestedSlug = cachedData?.public_id || sessionIdToSlug(requestedSessionId);
+
+        // Activate the destination before changing visible state. Otherwise a late
+        // stream event from the previous session can be rendered into this view.
+        const hasTrustedCachedSession = Array.isArray(cachedHistory) || !!cachedData;
+        syncSessionIdentity(requestedSessionId, requestedSlug, {
+            historyMode,
+            registerSlug: hasTrustedCachedSession,
+            persistToGuestHistory: hasTrustedCachedSession,
+            persistCurrentSession: hasTrustedCachedSession
+        });
 
         if (clearHistory) {
             setHistory(Array.isArray(cachedHistory) ? cachedHistory : []);
             setCanvasTextdocState(extractLatestCanvasTextdoc(cachedHistory));
             updateBeatboxState(extractLatestBeatboxState(cachedHistory));
-            setSessionAccess(createDefaultSessionAccess());
-            setIsReadOnly(false);
+            const cachedAccess = cachedData?.accessState || createDefaultSessionAccess();
+            setSessionAccess(cachedAccess);
+            setIsReadOnly(!!cachedAccess.readOnly);
+            activeMindIdRef.current = cachedData?.mind?.public_id || null;
+            setTemporaryChatMode(false);
             temporaryBranchTailsRef.current.clear();
         }
         setIsLoading(cachedActivity?.status === 'generating');
 
         if (Array.isArray(cachedHistory) && cachedActivity?.status === 'generating') {
-            const slug = sessionIdToSlug(requestedSessionId);
-            syncSessionIdentity(requestedSessionId, slug, { historyMode });
             return {
+                ...(cachedData || {}),
                 session_id: requestedSessionId,
                 history: cachedHistory,
-                mind: null
+                mind: cachedData?.mind || null
             };
         }
 
@@ -938,18 +963,30 @@ export const useChat = () => {
                     shareUrl: data.share_url || (data.public_id ? `${window.location.origin}/c/${data.public_id}` : null),
                     readOnly: !!(data.read_only || (data.is_public && !data.is_owner))
                 };
+                const cachedSessionData = { ...data, accessState };
+                const liveCachedHistory = sessionHistoryCacheRef.current.get(resolvedSessionId)
+                    || sessionHistoryCacheRef.current.get(requestedSessionId);
+                const hasLiveGeneration = sessionActivityRef.current[resolvedSessionId]?.status === 'generating'
+                    || sessionActivityRef.current[requestedSessionId]?.status === 'generating';
+                const visibleHistory = hasLiveGeneration && Array.isArray(liveCachedHistory)
+                    ? liveCachedHistory
+                    : normalized;
 
-                setHistory(normalized);
-                setCanvasTextdocState(extractLatestCanvasTextdoc(normalized));
-                updateBeatboxState(extractLatestBeatboxState(normalized));
-                sessionHistoryCacheRef.current.set(resolvedSessionId, normalized);
+                setHistory(visibleHistory);
+                setCanvasTextdocState(extractLatestCanvasTextdoc(visibleHistory));
+                updateBeatboxState(extractLatestBeatboxState(visibleHistory));
+                sessionHistoryCacheRef.current.set(resolvedSessionId, visibleHistory);
+                sessionDataCacheRef.current.set(resolvedSessionId, cachedSessionData);
+                if (requestedSessionId !== resolvedSessionId) {
+                    sessionDataCacheRef.current.set(requestedSessionId, cachedSessionData);
+                }
                 setSessionAccess(accessState);
                 setIsReadOnly(accessState.readOnly);
                 setTemporaryChatMode(false);
                 activeMindIdRef.current = data.mind?.public_id || null;
                 syncSessionIdentity(resolvedSessionId, slug, { historyMode });
                 setIsLoading(sessionActivityRef.current[resolvedSessionId]?.status === 'generating');
-                return data;
+                return { ...data, history: visibleHistory };
             }
 
             resetConversationState();
@@ -1001,12 +1038,12 @@ export const useChat = () => {
             : null;
     }, []);
 
-    const buildHistoryForAPI = useCallback((untilIndex = null) => {
+    const buildHistoryForAPI = useCallback((untilIndex = null, sourceHistory = history) => {
         const historyArray = [];
-        const stopIndex = untilIndex !== null ? untilIndex : history.length;
+        const stopIndex = untilIndex !== null ? untilIndex : sourceHistory.length;
 
         for (let i = 0; i < stopIndex; i++) {
-            const msg = history[i];
+            const msg = sourceHistory[i];
             if (!msg || msg.isLoading) continue;
 
             const isUser = msg.role === 'user';
@@ -1122,6 +1159,7 @@ export const useChat = () => {
             _forcedSessionId,
             _queueId,
             _queuedHistory,
+            _sessionMind,
             ...metadata
         } = options;
         const autoWebSearch = requestedAutoWebSearch ?? !!settings?.automaticWebSearch;
@@ -1132,7 +1170,9 @@ export const useChat = () => {
             return;
         }
 
-        sessionLoadRequestIdRef.current += 1;
+        if (!_forcedSessionId) {
+            sessionLoadRequestIdRef.current += 1;
+        }
         let sessionId = _forcedSessionId || currentSessionIdRef.current;
         const path = window.location.pathname;
         const isNewChat = !_forcedSessionId && (path === '/' || !path.startsWith('/c/'));
@@ -1155,6 +1195,24 @@ export const useChat = () => {
                 syncBrowserPath(`/c/${encodeURIComponent(slug)}`, 'push');
             }
         }
+        const sourceHistory = _forcedSessionId
+            ? (sessionHistoryCacheRef.current.get(sessionId) || [])
+            : history;
+        const sourceCanvasTextdoc = _forcedSessionId
+            ? extractLatestCanvasTextdoc(sourceHistory)
+            : canvasTextdocRef.current;
+        const sourceBeatboxState = _forcedSessionId
+            ? extractLatestBeatboxState(sourceHistory)
+            : beatboxStateRef.current;
+        if (!_forcedSessionId) {
+            const cachedSessionData = sessionDataCacheRef.current.get(sessionId) || {};
+            sessionDataCacheRef.current.set(sessionId, {
+                ...cachedSessionData,
+                session_id: sessionId,
+                mind: _sessionMind !== undefined ? _sessionMind : cachedSessionData.mind,
+                accessState: sessionAccess
+            });
+        }
         if (!navigator.onLine && !_fromQueue) {
             const queueId = crypto.randomUUID();
             if (temporaryChat) {
@@ -1168,7 +1226,7 @@ export const useChat = () => {
                 setConnectionState('offline');
                 return { queued: false };
             }
-            const queuedHistory = buildHistoryForAPI(history.length);
+            const queuedHistory = buildHistoryForAPI(sourceHistory.length, sourceHistory);
             try {
                 await enqueueChatMessage({
                     id: queueId,
@@ -1220,15 +1278,59 @@ export const useChat = () => {
             if (!temporaryChat) upsertOptimisticSession(sessionId, text, files);
             return { queued: true, queueId };
         }
-        sessionHistoryCacheRef.current.set(sessionId, history);
+        sessionHistoryCacheRef.current.set(sessionId, sourceHistory);
         const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
         if (!temporaryChat) {
             upsertOptimisticSession(sessionId, text, files);
         }
+        const userMessageId = `u_${crypto.randomUUID()}`;
+        const assistantMessageId = `a_${crypto.randomUUID()}`;
+        const pendingFiles = files.map((file) => ({
+            file: {
+                original_name: file.name,
+                mime_type: file.type || 'application/octet-stream',
+                size: file.size || 0
+            }
+        }));
+        const userMsg = {
+            id: userMessageId,
+            role: 'user',
+            content: text,
+            images: [],
+            files: pendingFiles,
+            localAttachments: temporaryChat ? files : [],
+            timestamp: Date.now() / 1000
+        };
+        const aiMsgId = assistantMessageId;
+        const aiMsg = {
+            id: aiMsgId,
+            role: 'model',
+            content: '',
+            isLoading: true,
+            sources: [],
+            webSearchStatus: webSearch
+                ? getWebSearchStatus({ status: 'web_search_querying' }, t)
+                : null,
+            timestamp: Date.now() / 1000
+        };
+
+        // Show the conversation before inspecting or previewing attachments.
+        // File sniffing can be slow for large or non-image uploads.
+        updateSessionHistory(sessionId, prev => [
+            ...prev.filter((message) => !_queueId || message.queueId !== _queueId),
+            userMsg,
+            aiMsg,
+        ]);
+
         const optimisticImageUrls = [];
         const optimisticFiles = [];
         for (const file of files) {
-            const imageMime = await getImageUploadMime(file);
+            let imageMime = '';
+            try {
+                imageMime = await getImageUploadMime(file);
+            } catch {
+                imageMime = '';
+            }
             if (imageMime) {
                 const previewUrl = await createLocalPreviewUrl(file, imageMime);
                 if (previewUrl) {
@@ -1245,35 +1347,13 @@ export const useChat = () => {
                 }
             });
         }
-        const userMessageId = `u_${crypto.randomUUID()}`;
-        const assistantMessageId = `a_${crypto.randomUUID()}`;
-        const userMsg = {
-            id: userMessageId,
-            role: 'user',
-            content: text,
-            images: optimisticImageUrls,
-            files: optimisticFiles,
-            localAttachments: temporaryChat ? files : [],
-            timestamp: Date.now() / 1000
-        };
-        const aiMsgId = assistantMessageId;
-        const aiMsg = {
-            id: aiMsgId,
-            role: 'model',
-            content: '',
-            isLoading: true,
-            sources: [],
-            webSearchStatus: webSearch
-                ? getWebSearchStatus({ status: 'web_search_querying' }, t)
-                    : null,
-            timestamp: Date.now() / 1000
-        };
-
-        updateSessionHistory(sessionId, prev => [
-            ...prev.filter((message) => !_queueId || message.queueId !== _queueId),
-            userMsg,
-            aiMsg,
-        ]);
+        if (files.length > 0) {
+            updateSessionHistory(sessionId, prev => prev.map((message) => (
+                message.id === userMessageId
+                    ? { ...message, images: optimisticImageUrls, files: optimisticFiles }
+                    : message
+            )));
+        }
 
         const formData = new FormData();
         formData.append('message', text);
@@ -1285,26 +1365,34 @@ export const useChat = () => {
         formData.append('assistant_message_id', assistantMessageId);
         const apiHistoryForDelivery = Array.isArray(_queuedHistory)
             ? _queuedHistory
-            : buildHistoryForAPI(history.length);
+            : buildHistoryForAPI(sourceHistory.length, sourceHistory);
         formData.append('history', JSON.stringify(apiHistoryForDelivery));
         const deliveryRequestId = _queueId || crypto.randomUUID();
         formData.append('request_id', deliveryRequestId);
-        if (canvasTextdocRef.current) {
-            formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
+        if (sourceCanvasTextdoc) {
+            formData.append('canvas_textdoc', JSON.stringify(sourceCanvasTextdoc));
         }
-        if (beatboxStateRef.current) {
-            formData.append('beatbox_state', JSON.stringify(beatboxStateRef.current));
+        if (sourceBeatboxState) {
+            formData.append('beatbox_state', JSON.stringify(sourceBeatboxState));
         }
         formData.append('webSearch', String(webSearch));
         formData.append('autoWebSearch', String(autoWebSearch));
         formData.append('censorship', String(censorship));
         formData.append('temporary_chat', String(temporaryChat));
-        if (mindId !== undefined) {
-            activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
+        let effectiveMindId: string | null;
+        if (_forcedSessionId) {
+            const cachedMindId = sessionDataCacheRef.current.get(sessionId)?.mind?.public_id;
+            effectiveMindId = typeof mindId === 'string' && mindId.trim()
                 ? mindId.trim()
-                : null;
+                : (typeof cachedMindId === 'string' && cachedMindId.trim() ? cachedMindId.trim() : null);
+        } else {
+            if (mindId !== undefined) {
+                activeMindIdRef.current = typeof mindId === 'string' && mindId.trim()
+                    ? mindId.trim()
+                    : null;
+            }
+            effectiveMindId = activeMindIdRef.current;
         }
-        const effectiveMindId = activeMindIdRef.current;
         if (effectiveMindId) {
             formData.append('mind_id', effectiveMindId);
         }
@@ -1321,9 +1409,9 @@ export const useChat = () => {
             const device_type = /Mobi|Android|iPhone|iPad/i.test(user_agent) ? 'mobile' : 'desktop';
             const time_since_visit_seconds = Math.floor((Date.now() - (window.pageLoadTime || Date.now())) / 1000);
             const local_hour = new Date().getHours();
-            const avg_conversation_depth = history.length;
-            const avg_message_length = history.length > 0
-                ? Math.floor(history.reduce((sum, msg) => sum + (msg.content?.length || 0), 0) / history.length)
+            const avg_conversation_depth = sourceHistory.length;
+            const avg_message_length = sourceHistory.length > 0
+                ? Math.floor(sourceHistory.reduce((sum, msg) => sum + (msg.content?.length || 0), 0) / sourceHistory.length)
                 : 0;
             const personalizationFields = ['personalization_instructions', 'personalization_profession', 'personalization_more'];
             const personalizationData = {};
@@ -1718,6 +1806,7 @@ export const useChat = () => {
         isReadOnly,
         registerSessionSlug,
         reliabilityOwnerKey,
+        sessionAccess,
         sessionIdToSlug,
         settings?.automaticWebSearch,
         setCanvasTextdocState,
@@ -1936,7 +2025,9 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    applyCanvasUpdate(canvasUpdate);
+                    if (currentSessionIdRef.current === sessionId) {
+                        applyCanvasUpdate(canvasUpdate);
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
                             const nextCanvasUpdates = [...(msg.canvasUpdates || []), canvasUpdate];
@@ -1958,14 +2049,17 @@ export const useChat = () => {
                     }
                     const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
                     const finalCanvasTextdoc = normalizeCanvasTextdoc(finalData.canvas_textdoc || finalData.canvasTextdoc);
-                    if (finalCanvasTextdoc) {
+                    const isActiveSession = currentSessionIdRef.current === sessionId;
+                    if (finalCanvasTextdoc && isActiveSession) {
                         setCanvasTextdocState(finalCanvasTextdoc);
                     }
                     if (!temporaryChat && Array.isArray(finalData.history) && finalData.history.length > 0) {
                         const canonicalHistory = finalData.history.map(normalizeHistoryMessage);
                         updateSessionHistory(sessionId, canonicalHistory);
-                        setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
-                        updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        if (isActiveSession) {
+                            setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                            updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        }
                         completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
                         return;
                     }
@@ -2095,8 +2189,10 @@ export const useChat = () => {
                 if (Array.isArray(response.history)) {
                     const canonicalHistory = response.history.map(normalizeHistoryMessage);
                     updateSessionHistory(sessionId, canonicalHistory);
-                    setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
-                    updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                    if (currentSessionIdRef.current === sessionId) {
+                        setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                        updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                    }
                     return;
                 }
             } catch (error) {
@@ -2313,7 +2409,9 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
-                    applyCanvasUpdate(canvasUpdate);
+                    if (currentSessionIdRef.current === sessionId) {
+                        applyCanvasUpdate(canvasUpdate);
+                    }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
                             return {
@@ -2331,14 +2429,17 @@ export const useChat = () => {
                     }
                     const finalGitHubTool = finalData.github_tool || finalData.githubTool || null;
                     const finalCanvasTextdoc = normalizeCanvasTextdoc(finalData.canvas_textdoc || finalData.canvasTextdoc);
-                    if (finalCanvasTextdoc) {
+                    const isActiveSession = currentSessionIdRef.current === sessionId;
+                    if (finalCanvasTextdoc && isActiveSession) {
                         setCanvasTextdocState(finalCanvasTextdoc);
                     }
                     if (!temporaryChat && Array.isArray(finalData.history) && finalData.history.length > 0) {
                         const canonicalHistory = finalData.history.map(normalizeHistoryMessage);
                         updateSessionHistory(sessionId, canonicalHistory);
-                        setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
-                        updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        if (isActiveSession) {
+                            setCanvasTextdocState(extractLatestCanvasTextdoc(canonicalHistory));
+                            updateBeatboxState(extractLatestBeatboxState(canonicalHistory));
+                        }
                         completeSessionRequest(sessionId, chatRequestId, finalData?.aborted ? null : 'complete');
                         return;
                     }
