@@ -152,8 +152,8 @@
 .audio-progress-bar::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: var(--color-accent);
   border-radius: 50%;
   border: 2px solid var(--color-bg-surface);
@@ -170,8 +170,8 @@
 }
 
 .audio-progress-bar::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: var(--color-accent);
   border: 2px solid var(--color-bg-surface);
   border-radius: 50%;

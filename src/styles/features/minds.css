@@ -94,9 +94,10 @@
   }
 
   .minds-controls {
+    --minds-control-gap: 12px;
     display: grid;
     grid-template-columns: minmax(260px, 1fr) auto;
-    gap: 12px;
+    gap: var(--minds-control-gap);
     align-items: center;
     margin-bottom: 14px;
   }
@@ -147,6 +148,7 @@
 
   .minds-tabs {
     justify-content: flex-end;
+    gap: var(--minds-control-gap);
   }
 
   .minds-tabs button,

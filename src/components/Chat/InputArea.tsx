@@ -272,41 +272,52 @@ const InputArea = ({
         }
     }, []);
 
-    const addQuote = useCallback(
-        (quoteText) => {
-            if (quoteText && !quotes.includes(quoteText)) {
-                setQuotes((prev) => [...prev, quoteText]);
-            }
-        },
-        [quotes]
-    );
+    const addQuote = useCallback((quoteText) => {
+        if (!quoteText) return;
+
+        setQuotes((prev) => (
+            prev.includes(quoteText) ? prev : [...prev, quoteText]
+        ));
+    }, []);
 
     const showQuoteButton = useCallback(
         (range, selectedText) => {
-            if (!quoteButtonRef.current) {
+            if (!quoteButtonRef.current?.isConnected) {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'quote-action-button ui-selection-quote-button';
-                button.textContent = t('composer.quote');
-                button.onclick = (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    addQuote(selectedText);
-                    window.getSelection()?.removeAllRanges();
-                    hideQuoteButton();
-                };
                 document.body.appendChild(button);
                 quoteButtonRef.current = button;
             }
 
             const rect = range.getBoundingClientRect();
             const button = quoteButtonRef.current;
+            button.textContent = t('composer.quote');
+            button.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                addQuote(selectedText);
+                window.getSelection()?.removeAllRanges();
+                hideQuoteButton();
+            };
             button.style.position = 'fixed';
-            button.style.left = `${rect.left + rect.width / 2 - 60}px`;
-            button.style.top = `${rect.top - 40}px`;
             button.style.display = 'block';
             button.style.zIndex = '10000';
             button.classList.add('visible');
+
+            const viewportPadding = 8;
+            const buttonWidth = button.offsetWidth || 120;
+            const buttonHeight = button.offsetHeight || 32;
+            const centeredLeft = rect.left + rect.width / 2 - buttonWidth / 2;
+            const maxLeft = Math.max(viewportPadding, window.innerWidth - buttonWidth - viewportPadding);
+            const preferredTop = rect.top - buttonHeight - viewportPadding;
+            const fallbackTop = Math.min(
+                rect.bottom + viewportPadding,
+                window.innerHeight - buttonHeight - viewportPadding
+            );
+
+            button.style.left = `${Math.min(Math.max(centeredLeft, viewportPadding), maxLeft)}px`;
+            button.style.top = `${Math.max(viewportPadding, preferredTop >= viewportPadding ? preferredTop : fallbackTop)}px`;
         },
         [addQuote, hideQuoteButton, t]
     );
@@ -373,9 +384,9 @@ const InputArea = ({
         return () => {
             document.removeEventListener('mouseup', handleMouseUp);
             document.removeEventListener('selectionchange', handleSelectionChange);
-            if (quoteButtonRef.current) {
-                quoteButtonRef.current.remove();
-            }
+            const quoteButton = quoteButtonRef.current;
+            quoteButton?.remove();
+            if (quoteButtonRef.current === quoteButton) quoteButtonRef.current = null;
         };
     }, [handleMouseUp, hideQuoteButton]);
 

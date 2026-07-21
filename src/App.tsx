@@ -696,9 +696,11 @@ const MainLayout = () => {
       }
       markSessionActivitySeen(id);
       setActiveMind(null);
+      setRoutePath('/');
       void loadSession(id, { historyMode: 'push' }).then((data) => {
         if (data) {
           setActiveMind(data.mind || null);
+          setRoutePath(normalizeAppPath(window.location.pathname));
         }
       });
       setMobileRailOpen(false);

@@ -64,6 +64,8 @@ describe('InputArea', () => {
         root = null;
         container = null;
         addFilesMock.mockReset();
+        vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     it('adds a pasted PNG image to the composer', () => {
@@ -178,5 +180,81 @@ describe('InputArea', () => {
             })
         );
         expect(container.querySelector<HTMLTextAreaElement>('#promptInput')?.value).toBe('');
+    });
+
+    it('shows the quote action again for a second text selection', () => {
+        vi.useFakeTimers();
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(InputArea, {
+                initialPrompt: null,
+                isLoading: false,
+                onStop: vi.fn(),
+                onSendMessage: vi.fn(),
+                onOpenAuth: vi.fn(),
+            }));
+        });
+
+        const message = document.createElement('div');
+        message.className = 'ai-message';
+        const messageText = document.createElement('div');
+        messageText.className = 'message-text';
+        const selectedNode = document.createTextNode('First selection');
+        messageText.appendChild(selectedNode);
+        message.appendChild(messageText);
+        document.body.appendChild(message);
+
+        let selectedText = 'First selection';
+        const removeAllRanges = vi.fn();
+        vi.spyOn(window, 'getSelection').mockImplementation(() => ({
+            isCollapsed: false,
+            rangeCount: 1,
+            toString: () => selectedText,
+            getRangeAt: () => ({
+                commonAncestorContainer: selectedNode,
+                getBoundingClientRect: () => ({
+                    left: 100,
+                    right: 220,
+                    top: 100,
+                    bottom: 120,
+                    width: 120,
+                    height: 20,
+                    x: 100,
+                    y: 100,
+                    toJSON: () => ({}),
+                }),
+            }),
+            removeAllRanges,
+        } as unknown as Selection));
+
+        act(() => {
+            messageText.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            vi.advanceTimersByTime(10);
+        });
+
+        const firstQuoteButton = document.body.querySelector<HTMLButtonElement>('.quote-action-button');
+        expect(firstQuoteButton?.classList.contains('visible')).toBe(true);
+
+        act(() => firstQuoteButton?.click());
+        selectedText = 'Second selection';
+
+        act(() => {
+            messageText.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            vi.advanceTimersByTime(10);
+        });
+
+        const secondQuoteButton = document.body.querySelector<HTMLButtonElement>('.quote-action-button');
+        expect(secondQuoteButton?.isConnected).toBe(true);
+        expect(secondQuoteButton?.classList.contains('visible')).toBe(true);
+
+        act(() => secondQuoteButton?.click());
+
+        expect(Array.from(container.querySelectorAll('.quote-item blockquote')).map((item) => item.textContent))
+            .toEqual(['First selection', 'Second selection']);
+
+        message.remove();
     });
 });

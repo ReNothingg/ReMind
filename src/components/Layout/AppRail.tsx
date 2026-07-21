@@ -562,15 +562,6 @@ const AppRail = ({
 
             <div
                 className={cn(
-                    'rail-divider ui-rail-section-label',
-                    isExpanded ? 'flex' : 'hidden'
-                )}
-            >
-                <span>{t('rail.yourChats')}</span>
-            </div>
-
-            <div
-                className={cn(
                     'rail-content-wrapper rail-chat-container ui-rail-content',
                     isExpanded ? 'ui-rail-content-visible' : 'ui-rail-content-hidden'
                 )}

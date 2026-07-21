@@ -26,11 +26,21 @@
   border-bottom: 1px solid rgba(var(--color-white-raw), 0.06);
 }
 
+.translation-header-controls {
+  --translation-control-height: 40px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1.5);
+  min-width: 0;
+}
+
 .translation-header .language-select {
+  height: var(--translation-control-height);
   background-color: var(--color-bg-interactive);
   color: var(--color-text-primary);
   border: 1px solid rgba(var(--color-white-raw), 0.12);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
   font-size: 0.875rem;
   font-weight: 500;
@@ -185,16 +195,6 @@
   gap: calc(var(--spacing-unit) * 1.5);
 }
 
-.translation-loader::before {
-  content: '';
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(var(--color-white-raw), 0.2);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
 .translation-error {
   color: var(--color-text-error);
   background: rgba(var(--color-error-raw), 0.1);
@@ -228,21 +228,83 @@
   border-top: 1px solid rgba(var(--color-error-raw), 0.2);
 }
 
-.translation-fallback-notice {
-  background: var(--color-bg-interactive);
-  border: 1px solid var(--color-border-medium);
-  border-radius: var(--radius-sm);
-  padding: calc(var(--spacing-unit) * 1.5);
-  margin-bottom: calc(var(--spacing-unit) * 2);
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing-unit) * 1);
-  font-size: 0.8rem;
-  color: var(--color-text-primary);
-  font-weight: 500;
+.translation-fallback-info {
+  position: static;
+  display: inline-flex;
+  flex: none;
 }
 
-.fallback-icon {
-  font-size: 1rem;
-  opacity: 0.8;
+.translation-fallback-trigger {
+  display: inline-flex;
+  width: var(--translation-control-height);
+  height: var(--translation-control-height);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-interactive);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.translation-fallback-trigger:hover,
+.translation-fallback-trigger:focus-visible {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-surface-alt);
+  outline: none;
+}
+
+.translation-fallback-trigger:active {
+  transform: none;
+}
+
+.translation-fallback-tooltip {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(320px, calc(100vw - 64px));
+  padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 2.5);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.45;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity var(--transition-fast),
+    visibility var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.translation-fallback-info:hover .translation-fallback-tooltip,
+.translation-fallback-info:focus-within .translation-fallback-tooltip,
+.translation-fallback-info.is-open .translation-fallback-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .translation-header-controls {
+    gap: var(--spacing-unit);
+  }
+
+  .translation-header .language-select {
+    min-width: 0;
+    width: min(180px, calc(100vw - 180px));
+  }
 }

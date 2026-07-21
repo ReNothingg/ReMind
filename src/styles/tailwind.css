@@ -444,7 +444,7 @@
   }
 
   .ui-audio-waveform {
-    @apply relative h-12 flex-1 overflow-hidden rounded-[var(--radius-md)] border;
+    @apply relative h-10 flex-1 overflow-hidden rounded-[var(--radius-md)] border;
     background: var(--color-bg-surface-alt);
     border-color: rgba(var(--color-white-raw), 0.06);
   }
@@ -703,10 +703,6 @@
 
   .ui-rail-pinned-mind-label {
     @apply min-w-0 flex-1 truncate text-left text-[0.82rem] font-medium;
-  }
-
-  .ui-rail-section-label {
-    @apply items-center gap-2 px-2.5 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.5px] text-subtle;
   }
 
   .ui-rail-content {

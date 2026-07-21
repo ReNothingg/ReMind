@@ -28,6 +28,15 @@ const estimateSpeechDuration = (segment: AudioSegmentPayload) => {
     return Math.min(Math.max(estimatedSeconds, 1), 300);
 };
 
+const createAudioObjectUrl = (audioBase64: string): string => {
+    const binary = atob(audioBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+    }
+    return URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+};
+
 export const useAudio = (_messageId) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +46,7 @@ export const useAudio = (_messageId) => {
     const [totalDuration, setTotalDuration] = useState(0);
     const [waveformPoints, setWaveformPoints] = useState(null);
     const audioSegmentsRef = useRef([]);
+    const audioObjectUrlsRef = useRef<string[]>([]);
     const currentSegmentIndexRef = useRef(0);
     const durationsRef = useRef([]);
     const updateIntervalRef = useRef(null);
@@ -92,6 +102,17 @@ export const useAudio = (_messageId) => {
             clearInterval(updateIntervalRef.current);
             updateIntervalRef.current = null;
         }
+    }, []);
+
+    const releaseAudioResources = useCallback(() => {
+        audioSegmentsRef.current.forEach((audio) => {
+            audio.pause();
+            audio.currentTime = 0;
+        });
+        audioSegmentsRef.current = [];
+        durationsRef.current = [];
+        audioObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+        audioObjectUrlsRef.current = [];
     }, []);
 
     const pauseAudio = useCallback((fullStop = false) => {
@@ -178,12 +199,7 @@ export const useAudio = (_messageId) => {
         const requestId = requestIdRef.current + 1;
         requestIdRef.current = requestId;
         clearUpdateInterval();
-        audioSegmentsRef.current.forEach((audio) => {
-            audio.pause();
-            audio.currentTime = 0;
-        });
-        audioSegmentsRef.current = [];
-        durationsRef.current = [];
+        releaseAudioResources();
         setCurrentTime(0);
         setTotalDuration(0);
         setWaveformPoints(null);
@@ -195,6 +211,7 @@ export const useAudio = (_messageId) => {
         setIsVisible(true);
         currentSegmentIndexRef.current = 0;
 
+        let pendingAudioObjectUrls: string[] = [];
         try {
             const data = await apiService.synthesize(text);
             if (requestId !== requestIdRef.current) return;
@@ -206,9 +223,12 @@ export const useAudio = (_messageId) => {
                 throw new Error(getSynthesizeError(data));
             }
 
-            const segments = validSegments.map((segment) => (
-                new Audio(`data:audio/mpeg;base64,${segment.audio_base64}`)
-            ));
+            for (const segment of validSegments) {
+                pendingAudioObjectUrls.push(createAudioObjectUrl(segment.audio_base64));
+            }
+            audioObjectUrlsRef.current = pendingAudioObjectUrls;
+            const segments = pendingAudioObjectUrls.map((url) => new Audio(url));
+            pendingAudioObjectUrls = [];
 
             if (segments.length === 0) {
                 throw new Error('Нет валидных аудио сегментов после обработки.');
@@ -268,8 +288,10 @@ export const useAudio = (_messageId) => {
             setIsError(true);
             setIsLoading(false);
             setIsPlaying(false);
+            pendingAudioObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+            releaseAudioResources();
         }
-    }, [pauseAudio, playAudio, generateWaveformPoints, calculateDurations, clearUpdateInterval, handlePlaybackEnd, updatePlayerUI]);
+    }, [pauseAudio, playAudio, generateWaveformPoints, calculateDurations, clearUpdateInterval, handlePlaybackEnd, releaseAudioResources, updatePlayerUI]);
 
     const stop = useCallback(() => {
         requestIdRef.current += 1;
@@ -284,11 +306,8 @@ export const useAudio = (_messageId) => {
     useEffect(() => () => {
         requestIdRef.current += 1;
         clearUpdateInterval();
-        audioSegmentsRef.current.forEach((audio) => {
-            audio.pause();
-            audio.currentTime = 0;
-        });
-    }, [clearUpdateInterval]);
+        releaseAudioResources();
+    }, [clearUpdateInterval, releaseAudioResources]);
 
     const formatTime = useCallback((seconds) => {
         const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;

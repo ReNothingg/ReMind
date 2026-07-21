@@ -27,7 +27,6 @@ from ai_engine.registry import DEFAULT_MODEL_ID
 from config import ALLOW_GUEST_CHATS_SAVE, CHAT_MAX_VARIANTS_PER_TURN, UPLOAD_FOLDER
 from routes.api_errors import ApiError, api_error_boundary
 from routes.features.minds import resolve_bound_mind_context_for_chat, resolve_mind_context_for_chat
-from services.ai_provider import generate_text, is_ai_provider_configured
 from services.beatbox_tools import normalize_beatbox_state
 from services.canvas_tools import (
     find_canmore_marker,
@@ -51,6 +50,7 @@ from services.files import (
     validate_chat_uploads,
 )
 from services.model_access import can_user_access_model, get_model_stage, model_exists
+from services.translation import TranslationUnavailableError, translate_text
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
     auto_web_search_requested,
@@ -1272,22 +1272,15 @@ def register_chat_routes(api_bp):
         if not re.match(r"^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$", target_lang.strip()):
             raise ApiError("Invalid target_lang", status=400, code="invalid_target_lang")
 
-        if not is_ai_provider_configured():
+        try:
+            translated_text, used_fallback = translate_text(text, target_lang.strip())
+        except TranslationUnavailableError as exc:
             raise ApiError(
-                "Translation is temporarily unavailable", status=503, code="translation_unavailable"
-            )
-
-        prompt = (
-            "Translate the following text to the target language.\n"
-            f"Target language: {target_lang.strip()}\n"
-            "Rules: Return ONLY the translated text. Do not add quotes, explanations, markdown, or extra lines.\n\n"
-            f"{text}"
-        )
-
-        translated_text = (generate_text(prompt, temperature=0) or "").strip()
-        if not translated_text:
-            raise ApiError("Translation failed", status=500, code="translation_failed")
-        return make_ok({"translated_text": translated_text})
+                "Translation is temporarily unavailable",
+                status=503,
+                code="translation_unavailable",
+            ) from exc
+        return make_ok({"translated_text": translated_text, "fallback": used_fallback})
 
     @api_bp.route("/get-link-metadata", methods=["POST"])
     @api_error_boundary("link_metadata_failed")

@@ -33,6 +33,10 @@ describe('useAudio', () => {
     beforeEach(() => {
         FakeAudio.instances = [];
         vi.stubGlobal('Audio', FakeAudio);
+        vi.stubGlobal('URL', {
+            createObjectURL: vi.fn((_blob: Blob) => `blob:audio-${FakeAudio.instances.length}`),
+            revokeObjectURL: vi.fn(),
+        });
         container = document.createElement('div');
         document.body.appendChild(container);
         root = createRoot(container);
@@ -58,8 +62,8 @@ describe('useAudio', () => {
         vi.spyOn(apiService, 'synthesize').mockResolvedValue({
             ok: true,
             segments: [
-                { audio_base64: 'segment-one' },
-                { audio_base64: 'segment-two' },
+                { audio_base64: 'c2VnbWVudC1vbmU=' },
+                { audio_base64: 'c2VnbWVudC10d28=' },
             ],
         });
 
@@ -70,7 +74,7 @@ describe('useAudio', () => {
         expect(latest.isLoading).toBe(false);
         expect(latest.isReady).toBe(true);
         expect(latest.totalDuration).toBe(4);
-        expect(FakeAudio.instances[0].src).toMatch(/^data:audio\/mpeg;base64,/);
+        expect(FakeAudio.instances[0].src).toBe('blob:audio-0');
         expect(FakeAudio.instances[0].play).toHaveBeenCalledOnce();
 
         await act(async () => {
@@ -86,5 +90,23 @@ describe('useAudio', () => {
         });
 
         expect(latest.currentTime).toBe(2.75);
+    });
+
+    it('rejects malformed audio without leaking created object URLs', async () => {
+        vi.spyOn(apiService, 'synthesize').mockResolvedValue({
+            ok: true,
+            segments: [
+                { audio_base64: 'dmFsaWQ=' },
+                { audio_base64: 'not-valid-base64!' },
+            ],
+        });
+
+        await act(async () => {
+            await latest.speak('Test speech');
+        });
+
+        expect(latest.isError).toBe(true);
+        expect(URL.createObjectURL).toHaveBeenCalledOnce();
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:audio-0');
     });
 });

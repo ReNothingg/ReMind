@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { apiService } from '../../services/api';
@@ -40,10 +40,13 @@ type TranslationError = Error & {
 
 const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
     const { t } = useTranslation();
+    const fallbackTooltipId = useId();
     const [targetLang, setTargetLang] = useState('ru');
     const [translatedText, setTranslatedText] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [usedFallback, setUsedFallback] = useState(false);
+    const [fallbackTooltipOpen, setFallbackTooltipOpen] = useState(false);
 
     const extractCleanText = (htmlText: string) => {
         if (!htmlText) return '';
@@ -86,6 +89,8 @@ const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
             setIsLoading(true);
             setError(null);
             setTranslatedText(null);
+            setUsedFallback(false);
+            setFallbackTooltipOpen(false);
 
             try {
                 const cleanText = extractCleanText(text);
@@ -106,18 +111,8 @@ const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
                     return;
                 }
 
-                let translatedContent = preserveTextFormatting(data.translated_text);
-                if (data.fallback) {
-                    translatedContent = `
-                        <div class="translation-fallback-notice ui-inline-notice">
-                            <span class="fallback-icon">!</span>
-                            ${t('translationPanel.fallbackNotice')}
-                        </div>
-                        ${translatedContent}
-                    `;
-                }
-
-                setTranslatedText(translatedContent);
+                setUsedFallback(Boolean(data.fallback));
+                setTranslatedText(preserveTextFormatting(data.translated_text));
             } catch (error) {
                 console.error('Translation API error:', error);
 
@@ -128,7 +123,7 @@ const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
                 if (typedError.status === 500) {
                     errorMessage = t('translationPanel.serverErrorTitle');
                     errorDetails = t('translationPanel.serverErrorDetails');
-                } else if (typedError.status === 404) {
+                } else if (typedError.status === 404 || typedError.status === 503) {
                     errorMessage = t('translationPanel.serviceUnavailableTitle');
                     errorDetails = t('translationPanel.serviceUnavailableDetails');
                 } else if (
@@ -160,19 +155,45 @@ const TranslationPanel = ({ originalText, onClose }: TranslationPanelProps) => {
     return (
         <div className="translation-panel active ui-inline-panel px-4 py-4 text-foreground">
             <div className="translation-header ui-panel-header">
-                <select
-                    className="language-select ui-select-control"
-                    value={targetLang}
-                    onChange={(event) => setTargetLang(event.target.value)}
-                    disabled={isLoading}
-                    aria-label={t('translationPanel.translateAction')}
-                >
-                    {LANGUAGE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                            {t(`translationPanel.languages.${option.labelKey}`)}
-                        </option>
-                    ))}
-                </select>
+                <div className="translation-header-controls">
+                    <select
+                        className="language-select ui-select-control"
+                        value={targetLang}
+                        onChange={(event) => setTargetLang(event.target.value)}
+                        disabled={isLoading}
+                        aria-label={t('translationPanel.translateAction')}
+                    >
+                        {LANGUAGE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {t(`translationPanel.languages.${option.labelKey}`)}
+                            </option>
+                        ))}
+                    </select>
+                    {usedFallback && (
+                        <span
+                            className={`translation-fallback-info${fallbackTooltipOpen ? ' is-open' : ''}`}
+                        >
+                            <button
+                                className="translation-fallback-trigger"
+                                type="button"
+                                aria-label={t('translationPanel.fallbackNotice')}
+                                aria-describedby={fallbackTooltipId}
+                                aria-expanded={fallbackTooltipOpen}
+                                onClick={() => setFallbackTooltipOpen(true)}
+                                onBlur={() => setFallbackTooltipOpen(false)}
+                            >
+                                !
+                            </button>
+                            <span
+                                className="translation-fallback-tooltip"
+                                id={fallbackTooltipId}
+                                role="tooltip"
+                            >
+                                {t('translationPanel.fallbackNotice')}
+                            </span>
+                        </span>
+                    )}
+                </div>
                 <button
                     className="translation-close-btn ui-icon-control ui-icon-dismiss size-9 rounded-md border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
                     onClick={onClose}

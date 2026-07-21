@@ -19,6 +19,7 @@ import { extractCompletedSearchSources } from '../Widgets/searchActivityUtils';
 import { useAudio } from '../../hooks/useAudio';
 import { Utils } from '../../utils/utils';
 import TranslationPanel from './TranslationPanel';
+import { hasEquivalentWidget } from './widgetUtils';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
 import { isActiveWebSearchStatus } from './webSearchStatus';
@@ -886,7 +887,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                             }
                             const state = JSON.parse(stateJson);
                             const existingId = `beatbox-${message.id}-${idx}`;
-                            if (!newWidgets.some(w => w.id === existingId)) {
+                            if (
+                                !hasEquivalentWidget(newWidgets, 'beatbox', state)
+                                && !newWidgets.some(w => w.id === existingId)
+                            ) {
                                 newWidgets.push({
                                     type: 'beatbox',
                                     id: existingId,
@@ -908,7 +912,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                             }
                             const state = JSON.parse(stateJson);
                             const existingId = `quiz-${message.id}-${idx}`;
-                            if (!newWidgets.some(w => w.id === existingId)) {
+                            if (
+                                !hasEquivalentWidget(newWidgets, 'quiz', state)
+                                && !newWidgets.some(w => w.id === existingId)
+                            ) {
                                 newWidgets.push({
                                     type: 'quiz',
                                     id: existingId,
@@ -930,7 +937,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                             }
                             const state = JSON.parse(stateJson);
                             const existingId = `spinwheel-${message.id}-${idx}`;
-                            if (!newWidgets.some(w => w.id === existingId)) {
+                            if (
+                                !hasEquivalentWidget(newWidgets, 'spinwheel', state)
+                                && !newWidgets.some(w => w.id === existingId)
+                            ) {
                                 newWidgets.push({
                                     type: 'spinwheel',
                                     id: existingId,
@@ -1174,20 +1184,55 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const { width, height } = canvas;
-        ctx.clearRect(0, 0, width, height);
-        const barWidth = width / audio.waveformPoints.length;
-        const progressRatio = audio.totalDuration > 0 ? audio.currentTime / audio.totalDuration : 0;
-        const progressPx = progressRatio * width;
-        const rootStyles = getComputedStyle(document.documentElement);
-        const playedColor = rootStyles.getPropertyValue('--color-accent').trim() || '#789cff';
-        const remainingColor = rootStyles.getPropertyValue('--color-text-tertiary').trim() || 'rgba(128, 128, 128, 0.45)';
+        const drawWaveform = () => {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            if (width <= 0 || height <= 0) return;
 
-        audio.waveformPoints.forEach((point, index) => {
-            const x = index * barWidth;
-            ctx.fillStyle = x < progressPx ? playedColor : remainingColor;
-            ctx.fillRect(x, (height - point * height) / 2, Math.max(1, barWidth * 0.8), point * height);
-        });
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.round(width * pixelRatio);
+            canvas.height = Math.round(height * pixelRatio);
+            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            ctx.clearRect(0, 0, width, height);
+
+            const horizontalPadding = 10;
+            const drawableWidth = Math.max(width - horizontalPadding * 2, 1);
+            const barCount = Math.max(18, Math.min(72, Math.floor(drawableWidth / 6)));
+            const barSpacing = barCount > 1 ? drawableWidth / (barCount - 1) : drawableWidth;
+            const progressRatio = audio.totalDuration > 0
+                ? Math.min(Math.max(audio.currentTime / audio.totalDuration, 0), 1)
+                : 0;
+            const progressPx = horizontalPadding + progressRatio * drawableWidth;
+            const rootStyles = getComputedStyle(document.documentElement);
+            const playedColor = rootStyles.getPropertyValue('--color-accent').trim() || '#789cff';
+            const remainingColor = rootStyles.getPropertyValue('--color-border-strong').trim() || 'rgba(128, 128, 128, 0.28)';
+            const maxBarHeight = Math.min(height * 0.55, 24);
+            const minBarHeight = 4;
+
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 2.5;
+            for (let index = 0; index < barCount; index += 1) {
+                const pointIndex = Math.round(
+                    index * (audio.waveformPoints.length - 1) / Math.max(barCount - 1, 1)
+                );
+                const point = audio.waveformPoints[pointIndex] || 0;
+                const barHeight = minBarHeight + point * (maxBarHeight - minBarHeight);
+                const x = horizontalPadding + index * barSpacing;
+
+                ctx.strokeStyle = x <= progressPx ? playedColor : remainingColor;
+                ctx.beginPath();
+                ctx.moveTo(x, (height - barHeight) / 2);
+                ctx.lineTo(x, (height + barHeight) / 2);
+                ctx.stroke();
+            }
+        };
+
+        drawWaveform();
+        if (typeof ResizeObserver === 'undefined') return;
+
+        const resizeObserver = new ResizeObserver(drawWaveform);
+        resizeObserver.observe(canvas);
+        return () => resizeObserver.disconnect();
     }, [audio.isVisible, audio.currentTime, audio.totalDuration, audio.waveformPoints, settings.theme]);
     useEffect(() => {
         if (!markdownEnabledForMessage || !contentRef.current) return;
@@ -1768,8 +1813,9 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                             )}
                             title={t('chat.audio.speak')}
                             onClick={() => {
-                                if (displayContent) {
-                                    audio.speak(displayContent);
+                                const speechContent = stripThinkingBlocks(displayContent);
+                                if (speechContent) {
+                                    audio.speak(speechContent);
                                 }
                             }}
                         >
@@ -1871,7 +1917,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 )}
                 {!isUser && showTranslation && (
                     <TranslationPanel
-                        originalText={displayContent || ''}
+                        originalText={stripThinkingBlocks(displayContent)}
                         onClose={() => setShowTranslation(false)}
                     />
                 )}

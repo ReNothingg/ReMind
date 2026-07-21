@@ -216,6 +216,8 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
   border: 1px solid var(--color-border-medium);
   border-radius: calc(var(--radius-md) + 2px);
   background: var(--color-bg-surface-alt);
+  transform-origin: left center;
+  transition: transform var(--transition-fast);
 }
 
 .user-message.has-user-actions .actions-bar {
@@ -227,6 +229,17 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
   z-index: 2;
   border-color: rgba(var(--color-accent-raw), 0.24);
   background: rgba(255, 255, 255, 0.22);
+  transform-origin: right center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .actions-bar.ui-message-actions .action-btn:hover {
+    transform: none;
+  }
+
+  .actions-bar.ui-message-actions .action-btn:active {
+    transform: scale(0.96);
+  }
 }
 
 .action-btn {
@@ -295,10 +308,6 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 .action-btn:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
-}
-
-.action-btn.speak-btn.loading img {
-  animation: spin 1s linear infinite;
 }
 
 .action-btn.speak-btn.active {
