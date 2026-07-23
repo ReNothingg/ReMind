@@ -175,7 +175,6 @@ describe('InputArea', () => {
             [],
             expect.objectContaining({
                 autoWebSearch: false,
-                censorship: false,
                 webSearch: false,
             })
         );

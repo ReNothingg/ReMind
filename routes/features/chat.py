@@ -53,7 +53,6 @@ from services.model_access import can_user_access_model, get_model_stage, model_
 from services.translation import TranslationUnavailableError, translate_text
 from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from services.web_search import (
-    auto_web_search_requested,
     build_web_search_augmented_message,
     classify_auto_web_search_intent,
     decide_auto_web_search,
@@ -83,6 +82,29 @@ ANONYMOUS_TRANSLATION_MAX_CHARS = 2000
 CHAT_OPERATIONS = {"send", "regenerate", "edit"}
 CHAT_MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 CANMORE_STREAM_HOLDBACK_CHARS = 32
+CHAT_REQUEST_FIELDS = frozenset(
+    {
+        "assistant_message_id",
+        "autoWebSearch",
+        "beatbox_state",
+        "canvas_textdoc",
+        "files",
+        "history",
+        "message",
+        "meta",
+        "mind_id",
+        "model",
+        "operation",
+        "request_id",
+        "session_id",
+        "target_message_id",
+        "temporary_chat",
+        "thinkingLevel",
+        "thinking_level",
+        "user_message_id",
+        "webSearch",
+    }
+)
 
 
 def _resolve_db_user_id() -> int | None:
@@ -186,7 +208,12 @@ def _extract_uploaded_files() -> list:
 
 
 def _extract_session_identifier(payload: dict[str, Any]) -> Any:
-    return payload.get("session_id") or payload.get("user_id")
+    return payload.get("session_id")
+
+
+def _allowed_chat_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    """Keep arbitrary client fields from becoming trusted model inputs later."""
+    return {key: value for key, value in payload.items() if key in CHAT_REQUEST_FIELDS}
 
 
 def _has_files_payload(value) -> bool:
@@ -298,7 +325,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         raw_data = request.get_json(silent=True)
         if raw_data is not None and not isinstance(raw_data, dict):
             raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
-        data: dict[str, Any] = raw_data or {}
+        data = _allowed_chat_fields(raw_data or {})
         operation = str(data.get("operation") or "send").strip().lower()
         if operation not in CHAT_OPERATIONS:
             raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
@@ -327,7 +354,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
     if not request.form and not request.files:
         raise ApiError("Empty request", status=400, code="empty_request")
 
-    user_data: dict[str, Any] = request.form.to_dict()
+    user_data = _allowed_chat_fields(request.form.to_dict())
     operation = str(user_data.get("operation") or "send").strip().lower()
     if operation not in CHAT_OPERATIONS:
         raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
@@ -598,10 +625,10 @@ def _load_privacy_controls(db_user_id: int | None) -> dict[str, bool]:
         return {"service_improvement_opt_in": False}
 
 
-def _auto_web_search_enabled(user_data: dict[str, Any], db_user_id: int | None) -> bool:
-    return auto_web_search_requested(user_data.get("autoWebSearch")) or _db_auto_web_search_enabled(
-        db_user_id
-    )
+def _auto_web_search_enabled(_user_data: dict[str, Any], db_user_id: int | None) -> bool:
+    # Automatic search is an account setting, not a request-level privilege.
+    # A modified multipart field must not silently enable extra server work.
+    return _db_auto_web_search_enabled(db_user_id)
 
 
 def _manual_web_search_requested(user_data: dict[str, Any], original_message: str) -> bool:
@@ -1130,6 +1157,7 @@ def register_chat_routes(api_bp):
         user_data["history_is_canonical"] = not temporary_chat
         user_data["privacy"] = _load_privacy_controls(db_user_id)
         user_data["temporary_chat"] = temporary_chat
+        user_data["autoWebSearch"] = _db_auto_web_search_enabled(db_user_id)
 
         user_message_parts = (
             _build_user_message_parts(original_user_message, uploaded_files_for_history)

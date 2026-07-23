@@ -51,7 +51,6 @@ type ClearChatOptions = {
 type SendMessageOptions = {
     webSearch?: boolean;
     autoWebSearch?: boolean;
-    censorship?: boolean;
     mindId?: string | null;
     temporaryChat?: boolean;
     thinkingLevel?: string;
@@ -1151,7 +1150,6 @@ export const useChat = () => {
         const {
             webSearch = false,
             autoWebSearch: requestedAutoWebSearch,
-            censorship = false,
             mindId = undefined,
             temporaryChat: requestedTemporaryChat,
             thinkingLevel,
@@ -1237,7 +1235,6 @@ export const useChat = () => {
                     options: {
                         webSearch,
                         autoWebSearch,
-                        censorship,
                         mindId,
                         temporaryChat,
                         thinkingLevel,
@@ -1377,7 +1374,6 @@ export const useChat = () => {
         }
         formData.append('webSearch', String(webSearch));
         formData.append('autoWebSearch', String(autoWebSearch));
-        formData.append('censorship', String(censorship));
         formData.append('temporary_chat', String(temporaryChat));
         let effectiveMindId: string | null;
         if (_forcedSessionId) {
@@ -1726,7 +1722,6 @@ export const useChat = () => {
                                         options: {
                                             webSearch,
                                             autoWebSearch,
-                                            censorship,
                                             mindId,
                                             temporaryChat,
                                             ...metadata,

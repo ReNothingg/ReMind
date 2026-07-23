@@ -60,6 +60,16 @@ def _operational_not_found():
     return make_error("Not found", status=404, code="not_found")
 
 
+def _blocked_static_path(path: str) -> bool:
+    normalized = (path or "").replace("\\", "/").lower()
+    segments = [segment for segment in normalized.split("/") if segment]
+    if not segments:
+        return False
+    if any(segment.startswith(".") for segment in segments):
+        return True
+    return any(segment.endswith((".php", ".phtml", ".phar")) for segment in segments)
+
+
 def _format_uptime(seconds: float) -> str:
     total_seconds = max(0, int(seconds))
     days, rem = divmod(total_seconds, 86400)
@@ -123,6 +133,8 @@ def register_system_routes(api_bp):
 
     @api_bp.route("/<path:path>")
     def serve_static(path):
+        if _blocked_static_path(path):
+            return _operational_not_found()
         return send_from_directory(current_app.static_folder, path)
 
     @api_bp.route("/")
@@ -308,3 +320,12 @@ def register_system_routes(api_bp):
     @api_bp.route("/.well-known/change-password", methods=["GET"])
     def well_known_change_password():
         return redirect("/forgot_password", code=302)
+
+    @api_bp.route("/.well-known/http-opportunistic", methods=["GET"])
+    def well_known_http_opportunistic():
+        # RFC 8164 is obsolete and this service does not opt into opportunistic
+        # HTTP. Return an explicit non-discovery response instead of involving
+        # the SPA/static-file fallback.
+        response, status = _operational_not_found()
+        response.headers["Cache-Control"] = "no-store"
+        return response, status

@@ -3,7 +3,7 @@ from functools import wraps
 
 from flask import current_app, request, session
 
-from utils.session_security import is_loopback_hostname
+from utils.session_security import is_loopback_hostname, is_sessionless_request
 
 CSRF_TOKEN_LENGTH = 32
 CSRF_SESSION_KEY = "_csrf_token"
@@ -83,6 +83,8 @@ def require_csrf_token(view_func):
 def setup_csrf_protection(app):
     @app.before_request
     def before_request():
+        if is_sessionless_request():
+            return
         generate_csrf_token()
         if request.method in ["GET", "HEAD", "OPTIONS"]:
             return
@@ -108,6 +110,8 @@ def setup_csrf_protection(app):
 
 
 def add_csrf_token_to_response(response):
+    if is_sessionless_request():
+        return response
     token = response.headers.get("X-CSRF-Token") or get_csrf_token() or generate_csrf_token()
     if token:
         response.headers.setdefault("X-CSRF-Token", token)

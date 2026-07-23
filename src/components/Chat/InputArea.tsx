@@ -209,7 +209,6 @@ const InputArea = ({
         onSendMessage(fullText, effectiveFiles, {
             webSearch: manualWebSearchEnabled,
             autoWebSearch: automaticWebSearch,
-            censorship: false,
         });
         onInitialPromptConsumed?.();
 

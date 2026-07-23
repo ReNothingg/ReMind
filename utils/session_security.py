@@ -7,6 +7,20 @@ from urllib.parse import urlparse
 from flask import current_app, has_request_context, request, session
 from flask.sessions import SecureCookieSessionInterface
 
+SESSIONLESS_REQUEST_PATHS = frozenset(
+    {
+        "/health",
+        "/metrics",
+        "/openapi.json",
+        "/.well-known/http-opportunistic",
+        "/.well-known/security.txt",
+    }
+)
+
+
+def is_sessionless_request() -> bool:
+    return has_request_context() and request.path in SESSIONLESS_REQUEST_PATHS
+
 
 def _extract_hostname(raw_host: str | None) -> str:
     host = (raw_host or "").strip()
@@ -50,6 +64,11 @@ class RequestAwareSessionInterface(SecureCookieSessionInterface):
         if has_request_context() and is_loopback_hostname(request.host):
             return False
         return super().get_cookie_secure(app)
+
+    def should_set_cookie(self, app, session):
+        if is_sessionless_request():
+            return False
+        return super().should_set_cookie(app, session)
 
 
 def regenerate_session():
@@ -153,4 +172,6 @@ def configure_session(app):
 
     @app.before_request
     def make_session_permanent():
+        if is_sessionless_request():
+            return
         session.permanent = True

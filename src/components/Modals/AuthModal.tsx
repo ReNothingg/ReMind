@@ -31,7 +31,7 @@ const getPasswordStrength = (value: string) => {
     const hasLower = /[a-z]/.test(value);
     const hasUpper = /[A-Z]/.test(value);
     const hasNumber = /\d/.test(value);
-    const hasSymbol = /[^A-Za-z0-9]/.test(value);
+    const hasSymbol = /[^\sA-Za-z0-9]/.test(value);
     const uniqueCharacters = new Set(value).size;
 
     if (value.length >= 8) score += 1;
@@ -376,7 +376,6 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
             ariaLabel={t(isLoginView ? 'authModal.loginTitle' : 'authModal.registerTitle')}
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
             contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-xl border-border bg-surface px-5 pb-6 pt-5 text-foreground sm:rounded-xl sm:px-6 sm:pb-6 sm:pt-6"
-            onBackdropClick={onClose}
             onRequestClose={onClose}
         >
             <button
