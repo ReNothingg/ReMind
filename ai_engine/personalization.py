@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import re
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -130,23 +131,22 @@ def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
         "USER_INSTRUCTIONS": settings.get("personalization_instructions")
         or metadata.get("personalization_instructions")
         or "",
-        "DIMENSIONS": _format_dimensions(
-            metadata.get("screen_dimensions") or metadata.get("page_dimensions")
-        ),
+        "SCREEN_DIMENSIONS": _format_dimensions(metadata.get("screen_dimensions")),
+        "PAGE_DIMENSIONS": _format_dimensions(metadata.get("page_dimensions")),
         "THEME": metadata.get("theme") or "",
         "PLATFORM_TYPE": metadata.get("platform_type") or "",
         "DEVICE_TYPE": metadata.get("device_type") or "",
         "USER_AGENT": metadata.get("user_agent") or "",
-        "LOCAL_HOUR": str(metadata.get("local_hour") or ""),
-        "AVG_MESSAGE_LENGTH": str(metadata.get("avg_message_length") or ""),
-        "AVG_CONVERSATION_DEPTH": str(metadata.get("avg_conversation_depth") or ""),
+        "TIME_SINCE_VISIT_SECONDS": _format_numeric_metadata(
+            metadata.get("time_since_visit_seconds"), default="0"
+        ),
+        "DEVICE_PIXEL_RATIO": _format_numeric_metadata(metadata.get("device_pixel_ratio")),
+        "LOCAL_HOUR": _format_numeric_metadata(metadata.get("local_hour")),
+        "AVG_MESSAGE_LENGTH": _format_numeric_metadata(metadata.get("avg_message_length")),
+        "CONVERSATION_DEPTH": _format_numeric_metadata(
+            metadata.get("avg_conversation_depth"), default="0"
+        ),
         "INTERFACE_LANGUAGE": metadata.get("interface_language") or "ru",
-        "HOUR": str(metadata.get("local_hour") or ""),
-        "FLOAT": str(metadata.get("avg_message_length") or 0),
-        "NUMBER": str(metadata.get("avg_conversation_depth") or 0),
-        "COUNTRY": metadata.get("country") or "",
-        "PLAN_TYPE": metadata.get("plan_type") or "",
-        "ACCOUNT_NAME": account_name or "",
     }
 
     return render_prompt("user.md", mapping)
@@ -237,14 +237,22 @@ def _truncate_prompt_value(value: str, max_chars: int) -> str:
 
 
 def _format_dimensions(dim: Optional[dict]) -> str:
-    if not dim:
+    if not isinstance(dim, dict):
         return ""
-    try:
-        w = dim.get("width")
-        h = dim.get("height")
-        return f"{w}x{h}" if w and h else ""
-    except Exception:
+
+    width = _format_numeric_metadata(dim.get("width"))
+    height = _format_numeric_metadata(dim.get("height"))
+    if not width or not height:
         return ""
+    return f"{width}x{height}"
+
+
+def _format_numeric_metadata(value: Any, default: str = "") -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    if isinstance(value, float) and not math.isfinite(value):
+        return default
+    return str(value)
 
 
 def _current_datetime() -> str:
