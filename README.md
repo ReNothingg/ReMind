@@ -10,7 +10,6 @@
   <p>
     <a href="https://github.com/ReNothingg/ReMind/actions/workflows/ci.yml"><img src="https://github.com/ReNothingg/ReMind/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-0f766e.svg" alt="License: AGPLv3" /></a>
-    <img src="https://img.shields.io/badge/status-beta-f59e0b" alt="Project status: beta" />
     <a href="https://github.com/ReNothingg/ReMind/stargazers"><img src="https://img.shields.io/github/stars/ReNothingg/ReMind?style=flat&color=111827" alt="GitHub stars" /></a>
     <a href="https://github.com/ReNothingg/ReMind/issues"><img src="https://img.shields.io/github/issues/ReNothingg/ReMind?color=2563eb" alt="Open issues" /></a>
   </p>
@@ -54,8 +53,6 @@
 ## Обзор
 
 **ReMind** это AI-приложение на React/Vite и Flask, собранное как продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
-
-Проект находится в статусе `beta`: основные пользовательские сценарии уже доступны, а UX и внутренняя архитектура продолжают развиваться.
 
 | Что важно | Как это устроено |
 |---|---|
@@ -313,15 +310,6 @@ CI покрывает secret scanning, backend checks, frontend checks, Playwrig
 - [Pull Request Template](.github/pull_request_template.md)
 - [Issue Templates](.github/ISSUE_TEMPLATE/)
 - [CODEOWNERS](.github/CODEOWNERS)
-
-<a id="current-status"></a>
-
-## Текущее состояние
-
-- `beta`: UX и внутренняя архитектура продолжают активно меняться.
-- Основной AI-флоу требует `AI_PROVIDER_API_KEY`.
-- SQLite удобен для локальной разработки.
-- Shared/public deployments лучше запускать на PostgreSQL + Redis.
 
 <a id="license"></a>
 
