@@ -171,7 +171,6 @@ def validate_file_content(file_path):
 
 
 def validate_mime_type(file_path):
-    """Return a MIME type derived from bytes, never from the filename."""
     mime_type = detect_mime_from_content(file_path)
     return mime_type is not None, mime_type
 
@@ -212,7 +211,6 @@ def guess_mime_from_content(file_path):
 
 
 def detect_mime_from_content(file_path):
-    """Best-effort byte-based MIME detection with a deterministic fallback."""
     try:
         import magic
 
@@ -222,9 +220,6 @@ def detect_mime_from_content(file_path):
     except (ImportError, OSError, RuntimeError):
         pass
     except Exception:
-        # Third-party libmagic bindings raise several platform-specific errors.
-        # Falling back to the conservative built-in signature reader keeps
-        # validation behavior consistent when the native library is missing.
         pass
 
     return guess_mime_from_content(file_path)

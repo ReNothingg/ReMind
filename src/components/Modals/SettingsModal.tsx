@@ -2,6 +2,7 @@ import {
     useState,
     useEffect,
     useCallback,
+    useRef,
     type FormEvent,
     type KeyboardEvent as ReactKeyboardEvent,
     type ReactNode,
@@ -10,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import {
     Accessibility,
     ArrowUpRight,
-    CheckCircle2,
     Download,
     FileText,
     Github,
@@ -35,11 +35,14 @@ import {
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
+import type { AuthConfig } from '../../services/auth';
+import { loadTelegramLoginSdk } from '../../services/telegramLogin';
 import { apiService, type GitHubStatus } from '../../services/api';
 import { useURLRouter } from '../../hooks/useURLRouter';
 import CustomSelect from '../UI/CustomSelect';
 import ModalShell from '../UI/ModalShell';
 import ToggleSwitch from '../UI/ToggleSwitch';
+import { GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
 import { requestNotificationPermission } from '../../utils/notifications';
 import { showToast } from '../../utils/toast';
 import { cn } from '../../utils/cn';
@@ -332,7 +335,7 @@ const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDi
 const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const { t, i18n } = useTranslation();
     const { settings, updateSetting } = useSettings();
-    const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
+    const { user, isAuthenticated, logout, checkAuth, updateProfile, deleteAccount } = useAuth();
     const { getSettingsTab, navigateToSettings } = useURLRouter();
 
     const FONT_SIZE_MIN_PX = 10;
@@ -371,7 +374,14 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
     const [profileMessage, setProfileMessage] = useState<ProfileMessage>(null);
+    const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
+    const [telegramSdkReady, setTelegramSdkReady] = useState(false);
+    const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
     const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
+    const authConfigRequestStartedRef = useRef(false);
+    const telegramLinkAttemptRef = useRef(0);
+    const telegramLinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const TELEGRAM_LINK_TIMEOUT_MS = 22000;
 
     useEffect(() => {
         setName(user?.name || '');
@@ -473,6 +483,175 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
             void loadGitHubStatus();
         }
     }, [activeTab, isAuthenticated, loadGitHubStatus]);
+
+    useEffect(() => {
+        if (activeTab !== 'account' || !isAuthenticated) return;
+        if (authConfigRequestStartedRef.current) return;
+        authConfigRequestStartedRef.current = true;
+
+        authService.getAuthConfig()
+            .then((config) => {
+                setAuthConfig(config);
+                if (config.telegram_available && config.telegram_client_id && config.telegram_nonce) {
+                    return loadTelegramLoginSdk().then(() => {
+                        setTelegramSdkReady(true);
+                    });
+                }
+                setTelegramSdkReady(false);
+                return undefined;
+            })
+            .catch(() => {
+                setAuthConfig(null);
+            });
+    }, [activeTab, isAuthenticated]);
+
+    useEffect(() => {
+        const result = new URLSearchParams(window.location.search).get('auth_link');
+        if (!result) return;
+        const messageKey = {
+            google_linked: 'settings.account.loginMethods.googleLinked',
+            identity_in_use: 'settings.account.loginMethods.identityInUse',
+            email_in_use: 'settings.account.loginMethods.emailInUse',
+            auth_required: 'settings.account.loginMethods.authRequired',
+            google_failed: 'settings.account.loginMethods.googleFailed',
+        }[result];
+        if (messageKey) {
+            setProfileMessage({
+                type: result === 'google_linked' ? 'success' : 'error',
+                text: t(messageKey),
+            });
+        }
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('auth_link');
+        const cleanQuery = cleanParams.toString();
+        const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, '', cleanUrl);
+    }, [t]);
+
+    useEffect(() => () => {
+        if (telegramLinkTimeoutRef.current) {
+            clearTimeout(telegramLinkTimeoutRef.current);
+            telegramLinkTimeoutRef.current = null;
+        }
+    }, []);
+
+    const authMethods = new Set(user?.auth_methods || (user?.oauth_provider ? [user.oauth_provider] : []));
+    const googleConnected = authMethods.has('google');
+    const telegramConnected = authMethods.has('telegram');
+    const telegramBotReady = telegramConnected && Boolean(user?.telegram_bot_ready);
+    const googleLinkHref = (() => {
+        if (!authConfig?.google_login_url) return '';
+        const url = new URL(authConfig.google_login_url, window.location.origin);
+        url.searchParams.set('mode', 'link');
+        url.searchParams.set('redirect_to', `${window.location.origin}/#settings/account`);
+        return url.toString();
+    })();
+
+    const finishTelegramLinkingAttempt = (attemptId: number) => {
+        if (telegramLinkAttemptRef.current !== attemptId) {
+            return;
+        }
+        if (telegramLinkTimeoutRef.current) {
+            clearTimeout(telegramLinkTimeoutRef.current);
+            telegramLinkTimeoutRef.current = null;
+        }
+        setIsLinkingTelegram(false);
+    };
+
+    const handleTelegramLink = () => {
+        if (
+            !authConfig?.telegram_client_id
+            || !authConfig.telegram_nonce
+            || !telegramSdkReady
+            || !window.Telegram?.Login
+            || isLinkingTelegram
+        ) return;
+
+        const clientId = Number(authConfig.telegram_client_id);
+        if (!Number.isSafeInteger(clientId) || clientId <= 0) return;
+        setIsLinkingTelegram(true);
+        setProfileMessage(null);
+        const attemptId = telegramLinkAttemptRef.current + 1;
+        telegramLinkAttemptRef.current = attemptId;
+        if (telegramLinkTimeoutRef.current) {
+            clearTimeout(telegramLinkTimeoutRef.current);
+            telegramLinkTimeoutRef.current = null;
+        }
+        telegramLinkTimeoutRef.current = setTimeout(() => {
+            if (telegramLinkAttemptRef.current !== attemptId) {
+                return;
+            }
+            setProfileMessage({
+                type: 'error',
+                text: t('settings.account.loginMethods.telegramFailed'),
+            });
+            finishTelegramLinkingAttempt(attemptId);
+        }, TELEGRAM_LINK_TIMEOUT_MS);
+        window.Telegram.Login.auth(
+            {
+                client_id: clientId,
+                scope: ['profile'],
+                lang: currentLanguage,
+                nonce: authConfig.telegram_nonce,
+            },
+            async (result) => {
+                if (telegramLinkAttemptRef.current !== attemptId) {
+                    return;
+                }
+                try {
+                    if (result.error || !result.id_token) {
+                        setProfileMessage({
+                            type: 'error',
+                            text: t('settings.account.loginMethods.telegramFailed'),
+                        });
+                        return;
+                    }
+                    const response = await authService.linkTelegram(result.id_token);
+                    if (response.success === false) {
+                        const conflict = ['auth_identity_in_use', 'auth_provider_already_linked'].includes(
+                            response.error
+                        );
+                        setProfileMessage({
+                            type: 'error',
+                            text: t(
+                                conflict
+                                    ? 'settings.account.loginMethods.identityInUse'
+                                    : 'settings.account.loginMethods.telegramFailed',
+                            ),
+                        });
+                        return;
+                    }
+                    const authState = await checkAuth();
+                    if (!authState.authenticated || !authState.user) {
+                        setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.authRequired') });
+                        return;
+                    }
+                    const authMethodsFromState = new Set(authState.user.auth_methods || []);
+                    const isTelegramLinked = authMethodsFromState.has('telegram') || authState.user.oauth_provider === 'telegram';
+                    if (!isTelegramLinked) {
+                        setProfileMessage({
+                            type: 'error',
+                            text: t('settings.account.loginMethods.telegramFailed'),
+                        });
+                        return;
+                    }
+                    setProfileMessage({
+                        type: 'success',
+                        text: t(
+                            telegramConnected
+                                ? 'settings.account.loginMethods.telegramSynced'
+                                : 'settings.account.loginMethods.telegramLinked',
+                        ),
+                    });
+                } catch (error) {
+                    console.warn('Telegram link failed', error);
+                    setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.telegramFailed') });
+                } finally {
+                    finishTelegramLinkingAttempt(attemptId);
+                }
+            }
+        );
+    };
 
     const handleTabChange = (tab: SettingsTabId) => {
         setActiveTab(tab);
@@ -687,7 +866,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const isGitHubConfigured = githubStatus?.configured ?? !githubStatusError;
     const isGitHubConnected = githubInstallations.length > 0;
     const githubConnectionError = githubStatusError || githubStatus?.connection_error || '';
-    const githubRepositoryCount = githubStatus?.repositories?.length || 0;
     const githubManagementUrl = safeGitHubUrl(
         githubStatus?.urls?.app_page || githubStatus?.app?.page_url
     );
@@ -730,18 +908,90 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
             <div className="account-connected-app-row">
                 <span className="account-connected-app-icon" aria-hidden="true">
+                    <GoogleLogo />
+                </span>
+                <div className="account-connected-app-copy">
+                    <strong>{t('settings.account.loginMethods.google')}</strong>
+                </div>
+                <div className="account-connected-app-controls">
+                    <span className={cn(
+                        'account-connected-app-status',
+                        googleConnected ? 'is-connected' : 'is-disconnected'
+                    )}>
+                        {t(googleConnected
+                            ? 'settings.account.loginMethods.connected'
+                            : 'settings.account.loginMethods.notConnected')}
+                    </span>
+                    {!googleConnected && (
+                        googleLinkHref && authConfig?.gauth_available ? (
+                            <a
+                                className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
+                                href={googleLinkHref}
+                            >
+                                <PlugZap size={15} strokeWidth={1.9} />
+                                {t('settings.account.loginMethods.linkGoogle')}
+                            </a>
+                        ) : (
+                            <button
+                                type="button"
+                                className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
+                                disabled
+                            >
+                                <PlugZap size={15} strokeWidth={1.9} />
+                                {t('settings.account.loginMethods.linkGoogle')}
+                            </button>
+                        )
+                    )}
+                </div>
+            </div>
+
+            <div className="account-connected-app-row">
+                <span className="account-connected-app-icon" aria-hidden="true">
+                    <TelegramLogo />
+                </span>
+                <div className="account-connected-app-copy">
+                    <strong>{t('settings.account.loginMethods.telegram')}</strong>
+                </div>
+                <div className="account-connected-app-controls">
+                    <span className={cn(
+                        'account-connected-app-status',
+                        telegramBotReady ? 'is-bot-ready' : (
+                            telegramConnected ? 'is-sync-required' : 'is-disconnected'
+                        )
+                    )}>
+                        {t(telegramBotReady
+                            ? 'settings.account.loginMethods.botReady'
+                            : (telegramConnected
+                                ? 'settings.account.loginMethods.syncRequired'
+                                : 'settings.account.loginMethods.notConnected'))}
+                    </span>
+                    {!telegramBotReady && (
+                        <button
+                            type="button"
+                            className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
+                            onClick={handleTelegramLink}
+                            disabled={!telegramSdkReady || isLinkingTelegram}
+                            aria-busy={!telegramSdkReady || isLinkingTelegram}
+                        >
+                            {isLinkingTelegram
+                                ? <Loader2 size={15} strokeWidth={1.9} className="animate-spin" />
+                                : <PlugZap size={15} strokeWidth={1.9} />}
+                            {isLinkingTelegram
+                                ? t('settings.account.loginMethods.linkingTelegram')
+                                : t(telegramConnected
+                                    ? 'settings.account.loginMethods.syncTelegram'
+                                    : 'settings.account.loginMethods.linkTelegram')}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="account-connected-app-row">
+                <span className="account-connected-app-icon" aria-hidden="true">
                     <Github size={21} strokeWidth={1.9} />
                 </span>
                 <div className="account-connected-app-copy">
                     <strong>{t('settings.account.connectedApps.github.name')}</strong>
-                    <p>{t('settings.account.connectedApps.github.description')}</p>
-                    {isGitHubConnected && githubRepositoryCount > 0 && (
-                        <span className="account-connected-app-meta">
-                            {t('settings.account.connectedApps.github.repoCount', {
-                                count: githubRepositoryCount
-                            })}
-                        </span>
-                    )}
                     {githubConnectionError && (
                         <span className="account-connected-app-error">
                             {githubConnectionError}
@@ -752,8 +1002,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                     <span className={cn('account-connected-app-status', githubStatusClass)}>
                         {isLoadingGitHubStatus ? (
                             <Loader2 size={14} strokeWidth={2} className="animate-spin" />
-                        ) : isGitHubConnected ? (
-                            <CheckCircle2 size={14} strokeWidth={2} />
                         ) : null}
                         {githubStatusLabel}
                     </span>
@@ -891,20 +1139,22 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                     )}
                                 </SettingField>
 
-                                <SettingField
-                                    label={t('settings.account.fields.email')}
-                                    hint={t('settings.account.emailReadonlyHint')}
-                                    className="account-field account-field-full"
-                                >
-                                    <input
-                                        className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
-                                        type="email"
-                                        id="accountEmailInput"
-                                        aria-label={t('settings.account.fields.email')}
-                                        value={user?.email || ''}
-                                        disabled
-                                    />
-                                </SettingField>
+                                {user?.email && (
+                                    <SettingField
+                                        label={t('settings.account.fields.email')}
+                                        hint={t('settings.account.emailReadonlyHint')}
+                                        className="account-field account-field-full"
+                                    >
+                                        <input
+                                            className={cn(settingsInputClass, 'cursor-not-allowed opacity-75')}
+                                            type="email"
+                                            id="accountEmailInput"
+                                            aria-label={t('settings.account.fields.email')}
+                                            value={user.email}
+                                            disabled
+                                        />
+                                    </SettingField>
+                                )}
                             </div>
 
                             <div className="account-actions">

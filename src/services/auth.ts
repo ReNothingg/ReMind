@@ -7,7 +7,7 @@ export type AuthUser = {
     id: number;
     username: string;
     name?: string | null;
-    email: string;
+    email: string | null;
     is_confirmed: boolean;
     is_admin?: boolean;
     is_super_admin?: boolean;
@@ -18,6 +18,18 @@ export type AuthUser = {
     blocked_until?: string | null;
     created_at?: string | null;
     oauth_provider?: string | null;
+    auth_methods?: string[];
+    telegram_bot_ready?: boolean;
+};
+
+export type AuthConfig = {
+    gauth_available?: boolean;
+    google_login_url?: string;
+    telegram_available?: boolean;
+    telegram_client_id?: string | null;
+    telegram_nonce?: string | null;
+    turnstile_required?: boolean;
+    turnstile_site_key?: string | null;
 };
 
 export type AuthCheckResult = {
@@ -28,6 +40,11 @@ export type AuthCheckResult = {
 type LoginResult =
     | { success: true; message: string; user: AuthUser }
     | { success: false; error: string };
+
+type TelegramLoginResponse = {
+    message: string;
+    user: AuthUser;
+};
 
 type RegisterResponse = {
     message?: string;
@@ -121,6 +138,32 @@ function extractOptionalErrorMessage(error: unknown, fallback: string): string |
     return message;
 }
 
+function extractApiErrorCode(error: unknown): string | undefined {
+    if (!(error instanceof ApiClientError) || !error.data || typeof error.data !== 'object') {
+        return undefined;
+    }
+
+    const data = error.data as {
+        code?: unknown;
+        error?: unknown;
+    };
+
+    if (typeof data.code === 'string' && data.code) {
+        return data.code;
+    }
+
+    const nestedError = data.error;
+    if (nestedError && typeof nestedError === 'object' && typeof (nestedError as { code?: unknown }).code === 'string') {
+        return String((nestedError as { code?: unknown }).code);
+    }
+
+    if (typeof nestedError === 'string') {
+        return nestedError;
+    }
+
+    return undefined;
+}
+
 async function requestAuthJson<TResponse>(
     path: string,
     options: RequestInit = {}
@@ -156,6 +199,46 @@ export const authService = {
             return {
                 success: false,
                 error: extractApiErrorMessage(error, 'Ошибка при входе'),
+            };
+        }
+    },
+
+    async loginWithTelegram(idToken: string): Promise<LoginResult> {
+        try {
+            const data = await requestAuthJson<TelegramLoginResponse>('/api/auth/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken }),
+            });
+            return { success: true, message: data.message, user: data.user };
+        } catch (error) {
+            logFailure('Telegram login', error);
+            const telegramCode = extractApiErrorCode(error);
+            return {
+                success: false,
+                error: telegramCode || extractApiErrorMessage(error, 'telegram_auth_failed'),
+            };
+        }
+    },
+
+    async getAuthConfig(): Promise<AuthConfig> {
+        return await requestAuthJson<AuthConfig>('/api/auth/config', { method: 'GET' });
+    },
+
+    async linkTelegram(idToken: string): Promise<LoginResult> {
+        try {
+            const data = await requestAuthJson<TelegramLoginResponse>('/api/auth/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken, mode: 'link' }),
+            });
+            return { success: true, message: data.message, user: data.user };
+        } catch (error) {
+            logFailure('Telegram link', error);
+            const telegramCode = extractApiErrorCode(error);
+            return {
+                success: false,
+                error: telegramCode || extractApiErrorMessage(error, 'telegram_link_failed'),
             };
         }
     },

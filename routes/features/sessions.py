@@ -276,6 +276,7 @@ def register_session_routes(api_bp):
                         "session_id": chat.session_id,
                         "last_updated": _session_timestamp(chat),
                         "title": chat.title or "Новый чат",
+                        "source": chat.source or "web",
                         "last_message": _safe_session_preview(
                             materialize_conversation_history(chat.get_messages())
                         ),

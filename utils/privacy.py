@@ -80,6 +80,7 @@ def export_user_data(user_id):
         UserChatHistory,
         UserSettings,
         db,
+        is_telegram_placeholder_email,
     )
 
     export_data = {
@@ -91,10 +92,11 @@ def export_user_data(user_id):
         export_data["profile"] = {
             "username": user.username,
             "name": user.name,
-            "email": user.email,
+            "email": None if is_telegram_placeholder_email(user) else user.email,
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "is_confirmed": user.is_confirmed,
             "oauth_provider": user.oauth_provider,
+            "auth_methods": user.to_dict().get("auth_methods", []),
         }
     settings = UserSettings.query.filter_by(user_id=user_id).first()
     if settings:
@@ -146,6 +148,7 @@ def delete_user_data(user_id, delete_account=False):
     from utils.audit_log import AuditEvents, log_audit_event
     from utils.auth import (
         AIResponseFeedback,
+        AuthIdentity,
         ChatShare,
         GitHubAgentTask,
         GitHubInstallation,
@@ -195,6 +198,8 @@ def delete_user_data(user_id, delete_account=False):
         settings_deleted = UserSettings.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["settings"] = settings_deleted
         if delete_account:
+            auth_identities_deleted = AuthIdentity.query.filter_by(user_id=user_id).delete()
+            results["items_deleted"]["auth_identities"] = auth_identities_deleted
             user = db.session.get(User, user_id)
             if user:
                 db.session.delete(user)
@@ -241,6 +246,7 @@ def delete_user_data(user_id, delete_account=False):
 def anonymize_user_data(user_id):
     from utils.auth import (
         AIResponseFeedback,
+        AuthIdentity,
         GitHubAgentTask,
         GitHubInstallation,
         User,
@@ -260,6 +266,8 @@ def anonymize_user_data(user_id):
     user.confirmation_token = None
     user.reset_token = None
     user.oauth_id = None
+    user.oauth_provider = None
+    AuthIdentity.query.filter_by(user_id=user_id).delete()
     GitHubAgentTask.query.filter_by(user_id=user_id).delete()
     GitHubInstallation.query.filter_by(user_id=user_id).delete()
     UserSettings.query.filter_by(user_id=user_id).delete()

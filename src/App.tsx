@@ -42,7 +42,7 @@ import {
 import { useSessionList, type SessionSummary } from './features/sessions/hooks/useSessionList';
 import type { CanvasHtmlPreviewHandle } from './features/canvas/CanvasHtmlPreview';
 
-type AuthModalState = false | 'login' | 'register';
+type AuthModalState = false | 'login' | 'register' | 'link';
 
 type ChatSessionActivity = {
   status?: 'generating' | 'complete' | 'error';
@@ -559,8 +559,9 @@ const MainLayout = () => {
 
     const authView = params.get('auth');
     if (authView && !isAuthLoading) {
-      if (!isAuthenticated && (authView === 'login' || authView === 'register')) {
-        setTimeout(() => setAuthOpen(authView), 0);
+      if (authView === 'login' || authView === 'register' || authView === 'link') {
+        const target = authView === 'link' && isAuthenticated ? 'link' : 'login';
+        setTimeout(() => setAuthOpen(target), 0);
       }
       shouldUpdateURL = true;
     }
@@ -1323,11 +1324,12 @@ const MainLayout = () => {
         </Suspense>
       )}
 
-      {(isAuthOpen === 'login' || isAuthOpen === 'register') && (
+      {(isAuthOpen === 'login' || isAuthOpen === 'register' || isAuthOpen === 'link') && (
         <Suspense fallback={null}>
           <AuthModal
             onClose={() => setAuthOpen(false)}
             initialView={isAuthOpen === 'register' ? 'register' : 'login'}
+            authMode={isAuthOpen}
           />
         </Suspense>
       )}

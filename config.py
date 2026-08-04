@@ -205,6 +205,25 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+TELEGRAM_CLIENT_ID = (os.getenv("TELEGRAM_CLIENT_ID") or "").strip()
+TELEGRAM_BOT_TOKEN = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+TELEGRAM_BOT_USERNAME = (os.getenv("TELEGRAM_BOT_USERNAME") or "").strip().lstrip("@")
+TELEGRAM_BOT_API_BASE = (
+    os.getenv("TELEGRAM_BOT_API_BASE", "https://api.telegram.org").strip().rstrip("/")
+    or "https://api.telegram.org"
+)
+try:
+    TELEGRAM_BOT_POLL_TIMEOUT_SECONDS = min(
+        50, max(5, int(os.getenv("TELEGRAM_BOT_POLL_TIMEOUT_SECONDS", "30")))
+    )
+except ValueError:
+    TELEGRAM_BOT_POLL_TIMEOUT_SECONDS = 30
+try:
+    TELEGRAM_BOT_REQUEST_TIMEOUT_SECONDS = min(
+        120, max(5, int(os.getenv("TELEGRAM_BOT_REQUEST_TIMEOUT_SECONDS", "45")))
+    )
+except ValueError:
+    TELEGRAM_BOT_REQUEST_TIMEOUT_SECONDS = 45
 IOS_OAUTH_REDIRECT_URI = (
     os.getenv("IOS_OAUTH_REDIRECT_URI", "remind://auth/google").strip() or "remind://auth/google"
 )

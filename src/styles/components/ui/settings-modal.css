@@ -1180,17 +1180,23 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
+  min-height: 70px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--color-bg-surface-alt);
+}
+
+.user-settings-modal .account-connected-app-row + .account-connected-app-row {
+  margin-top: 10px;
 }
 
 .user-settings-modal .account-connected-app-icon {
   display: inline-flex;
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(var(--color-accent-raw), 0.22);
-  border-radius: var(--radius-md);
-  background: rgba(var(--color-accent-raw), 0.1);
   color: var(--color-text-primary);
 }
 
@@ -1201,7 +1207,7 @@
 .user-settings-modal .account-connected-app-copy strong {
   display: block;
   color: var(--color-text-primary);
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   font-weight: 680;
   line-height: 1.35;
 }
@@ -1231,36 +1237,45 @@
 
 .user-settings-modal .account-connected-app-controls {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
   gap: 10px;
-  min-width: 150px;
+  min-width: 0;
 }
 
 .user-settings-modal .account-connected-app-status {
   display: inline-flex;
-  min-height: 32px;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 999px;
-  padding: 0 11px;
-  color: var(--color-text-secondary);
-  font-size: 0.77rem;
-  font-weight: 650;
+  color: var(--color-text-tertiary);
+  font-size: 0.8rem;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
 }
 
 .user-settings-modal .account-connected-app-status.is-connected {
-  border-color: rgba(var(--color-success-raw), 0.28);
-  background: rgba(var(--color-success-raw), 0.1);
+  color: var(--color-text-secondary);
+}
+
+.user-settings-modal .account-connected-app-status.is-bot-ready {
   color: var(--color-text-success);
+  font-weight: 650;
+}
+
+.user-settings-modal .account-connected-app-status.is-bot-ready::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.user-settings-modal .account-connected-app-status.is-sync-required {
+  color: var(--color-text-warning);
 }
 
 .user-settings-modal .account-connected-app-status.is-error {
-  border-color: rgba(var(--color-error-raw), 0.26);
-  background: rgba(var(--color-error-raw), 0.08);
   color: var(--color-text-error);
 }
 
@@ -1545,6 +1560,7 @@ html[data-theme='light'] .user-settings-modal .account-profile-summary {
   .user-settings-modal .account-connected-app-controls {
     grid-column: 1 / -1;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     min-width: 0;
@@ -1554,6 +1570,11 @@ html[data-theme='light'] .user-settings-modal .account-profile-summary {
   .user-settings-modal .account-connected-app-status,
   .user-settings-modal .account-connected-app-action {
     max-width: 100%;
+  }
+
+  .user-settings-modal .account-connected-app-action {
+    justify-content: center;
+    white-space: normal;
   }
 
   .user-settings-modal .account-danger-controls {

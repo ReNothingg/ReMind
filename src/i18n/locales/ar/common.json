@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "جارٍ تسجيل الدخول...",
       "loginWithGoogle": "سجّل الدخول باستخدام Google",
+      "loginWithTelegram": "المتابعة باستخدام Telegram",
       "registerLoading": "جارٍ إنشاء الحساب...",
       "registerWithGoogle": "سجّل باستخدام Google",
+      "registerWithTelegram": "التسجيل باستخدام Telegram",
+      "telegramLoading": "جارٍ فتح Telegram...",
       "showPassword": "إظهار كلمة المرور",
       "hidePassword": "إخفاء كلمة المرور"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "يجب ألا تتجاوز كلمة المرور 100 حرف",
       "turnstileRequired": "أكّد أنك لست روبوتًا ثم حاول مرة أخرى.",
       "turnstileLoadError": "تعذّر تحميل التحقق من Cloudflare. حدّث الصفحة أو عطّل أدوات الحظر لهذا الموقع.",
-      "requestError": "خطأ في الشبكة أو الخادم"
+      "requestError": "خطأ في الشبكة أو الخادم",
+      "telegramError": "تعذّر تسجيل الدخول باستخدام Telegram. حاول مرة أخرى.",
+      "telegramUnavailable": "تسجيل الدخول عبر Telegram غير متاح الآن. حدّث الصفحة وحاول مرة أخرى."
     },
     "passwordStrength": {
       "label": "قوة كلمة المرور",
@@ -300,6 +305,7 @@
     "searchHint": "تلميح: العنوان، الموضوع، آخر رسالة",
     "searchPlaceholder": "اكتب للبحث في الدردشات",
     "searchInput": "بحث الدردشات",
+    "channelFilter": { "label": "تصفية المحادثات حسب المصدر", "all": "الكل", "web": "الويب", "telegram": "Telegram", "private": "شخصي", "group": "مجموعة", "guest": "ضيف", "inline": "مضمن" },
     "yourChats": "دردشاتك",
     "untitled": "بدون عنوان",
     "expand": "توسيع",
@@ -376,6 +382,26 @@
       "signOut": "تسجيل الخروج",
       "profileUpdated": "تم تحديث الملف الشخصي",
       "updateError": "فشل التحديث",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "مرتبط",
+        "notConnected": "غير مرتبط",
+        "botReady": "البوت جاهز",
+        "syncRequired": "المزامنة مطلوبة",
+        "linkGoogle": "ربط حساب Google",
+        "linkTelegram": "ربط حساب Telegram",
+        "syncTelegram": "المزامنة مع البوت",
+        "linkingTelegram": "جارٍ ربط Telegram...",
+        "googleLinked": "تم ربط حساب Google بنجاح.",
+        "telegramLinked": "تم ربط حساب Telegram بنجاح.",
+        "telegramSynced": "تمت مزامنة حساب Telegram مع البوت.",
+        "identityInUse": "هذا الحساب مرتبط بالفعل بمستخدم آخر.",
+        "emailInUse": "بريد Google هذا مستخدم في حساب آخر.",
+        "authRequired": "انتهت الجلسة. سجّل الدخول وحاول الربط مجددًا.",
+        "googleFailed": "تعذر ربط حساب Google.",
+        "telegramFailed": "تعذر ربط حساب Telegram."
+      },
       "validation": {
         "nameRequired": "أدخل الاسم",
         "nameLength": "يجب أن يكون الاسم بين 1 و100 حرف",
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "التطبيقات المتصلة",
-        "description": "إدارة الخدمات الخارجية التي يمكن لـ ReMind استخدامها داخل الدردشة.",
+        "description": "أدر طرق تسجيل الدخول والخدمات الخارجية في ReMind.",
         "github": {
           "name": "GitHub",
           "description": "اسمح لـ ReMind بتخطيط تغييرات الشيفرة وفتح طلبات السحب من الدردشة.",

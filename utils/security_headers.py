@@ -21,7 +21,11 @@ def _origin_from_url(raw_url: str | None) -> str | None:
 
 
 def _configured_connect_sources() -> list[str]:
-    sources = ["'self'", "https://challenges.cloudflare.com"]
+    sources = [
+        "'self'",
+        "https://challenges.cloudflare.com",
+        "https://oauth.telegram.org",
+    ]
     for raw_origin in [BACKEND_URL, *CORS_ORIGINS]:
         origin = _origin_from_url(raw_origin)
         if origin and origin not in sources:
@@ -30,7 +34,12 @@ def _configured_connect_sources() -> list[str]:
 
 
 def _script_sources() -> list[str]:
-    sources = ["'self'", JSON_LD_SCRIPT_HASH, "https://challenges.cloudflare.com"]
+    sources = [
+        "'self'",
+        JSON_LD_SCRIPT_HASH,
+        "https://challenges.cloudflare.com",
+        "https://oauth.telegram.org",
+    ]
     if has_request_context():
         nonce = getattr(g, "csp_nonce", "")
         if nonce:
@@ -47,7 +56,7 @@ def get_csp_header():
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
         f"connect-src {' '.join(_configured_connect_sources())}",
-        "frame-src 'self' https://challenges.cloudflare.com",
+        "frame-src 'self' https://challenges.cloudflare.com https://oauth.telegram.org",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -128,7 +137,7 @@ def apply_security_headers(response):
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains; preload"
         )
-    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     content_type = (response.headers.get("Content-Type") or "").lower()
     is_json_response = "application/json" in content_type

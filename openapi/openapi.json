@@ -75,6 +75,61 @@
         }
       }
     },
+    "/api/auth/telegram": {
+      "post": {
+        "summary": "Login, register, or link a Telegram OIDC identity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TelegramLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Telegram login or registration",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthLoginResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or expired nonce",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid Telegram ID token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          },
+          "409": {
+            "description": "Telegram identity is already linked to another account",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate-limited",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/draft": {
       "get": {
         "summary": "Load the authenticated user's synchronized chat draft",
@@ -437,10 +492,15 @@
         "properties": {
           "id": { "type": "integer" },
           "username": { "type": "string" },
-          "email": { "type": "string" },
+          "email": { "type": ["string", "null"] },
           "is_confirmed": { "type": "boolean" },
           "created_at": { "type": ["string", "null"] },
-          "oauth_provider": { "type": ["string", "null"] }
+          "oauth_provider": { "type": ["string", "null"] },
+          "auth_methods": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["google", "password", "telegram"] }
+          },
+          "telegram_bot_ready": { "type": "boolean" }
         },
         "additionalProperties": false
       },
@@ -465,6 +525,15 @@
           "email": { "type": "string" },
           "password": { "type": "string" },
           "turnstile_response": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "TelegramLoginRequest": {
+        "type": "object",
+        "required": ["id_token"],
+        "properties": {
+          "id_token": { "type": "string", "minLength": 1, "maxLength": 16384 },
+          "mode": { "type": "string", "enum": ["login", "link"], "default": "login" }
         },
         "additionalProperties": false
       },
@@ -628,6 +697,10 @@
           "session_id": { "type": "string" },
           "last_updated": { "type": "number" },
           "title": { "type": "string" },
+          "source": {
+            "type": "string",
+            "enum": ["web", "telegram_private", "telegram_group", "telegram_guest", "telegram_inline"]
+          },
           "last_message": { "type": "string" },
           "is_public": { "type": "boolean" },
           "public_id": { "type": ["string", "null"] },

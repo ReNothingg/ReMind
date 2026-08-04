@@ -8,6 +8,7 @@ type AuthContextValue = {
     isAuthenticated: boolean;
     loading: boolean;
     login: typeof authService.login;
+    loginWithTelegram: typeof authService.loginWithTelegram;
     logout: typeof authService.logout;
     checkAuth: () => Promise<AuthCheckResult>;
     updateProfile: typeof authService.updateProfile;
@@ -54,6 +55,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     success: false,
                     error: 'Не удалось подтвердить сессию после входа. Проверьте, что cookies разрешены для этого сайта.',
                 };
+            }
+            window.location.reload();
+        }
+        return res;
+    };
+
+    const loginWithTelegram: typeof authService.loginWithTelegram = async (idToken) => {
+        const res = await authService.loginWithTelegram(idToken);
+        if (res.success) {
+            const authState = await checkAuth();
+            if (!authState.authenticated) {
+                return { success: false, error: 'telegram_session_failed' };
             }
             window.location.reload();
         }
@@ -110,6 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 isAuthenticated,
                 loading,
                 login,
+                loginWithTelegram,
                 logout,
                 checkAuth,
                 updateProfile,

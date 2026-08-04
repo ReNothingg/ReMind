@@ -49,8 +49,6 @@ from utils.user_agent_validator import UserAgentValidator, log_suspicious_user_a
 
 
 class ReMindFlask(Flask):
-    """Flask application that never includes raw request targets in exception logs."""
-
     def log_exception(self, exc_info):
         safe_path = request.url_rule.rule if request.url_rule else "[unmatched-route]"
         self.logger.error(

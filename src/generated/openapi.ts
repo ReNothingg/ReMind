@@ -210,6 +210,7 @@ export interface components {
       mind?: components["schemas"]["Mind"] | null;
       public_id?: string | null;
       session_id: string;
+      source?: "web" | "telegram_private" | "telegram_group" | "telegram_guest" | "telegram_inline";
       title: string;
     };
     SynthesizeRequest: {
@@ -220,6 +221,10 @@ export interface components {
       request_id?: string | null;
       segments: (string | Record<string, unknown>)[];
       [key: string]: unknown;
+    };
+    TelegramLoginRequest: {
+      id_token: string;
+      mode?: "login" | "link";
     };
     TranslateRequest: {
       target_lang: string;
@@ -232,11 +237,13 @@ export interface components {
       [key: string]: unknown;
     };
     User: {
+      auth_methods?: ("google" | "password" | "telegram")[];
       created_at?: string | null;
-      email: string;
+      email: string | null;
       id: number;
       is_confirmed: boolean;
       oauth_provider?: string | null;
+      telegram_bot_ready?: boolean;
       username: string;
     };
   };
@@ -278,6 +285,42 @@ export interface paths {
           };
         };
         "403": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/telegram": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["TelegramLoginRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AuthLoginResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "409": {
           content: {
             "application/json": components["schemas"]["AuthErrorResponse"];
           };

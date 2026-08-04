@@ -72,6 +72,7 @@ docker compose up --build
 | `nginx` | Public HTTP edge и static/API proxy |
 | `app` | Flask application из production image |
 | `worker` | Celery background worker |
+| `telegram-bot` | Опциональный Telegram Bot API worker (profile `telegram`) |
 | `db` | PostgreSQL database |
 | `redis` | Sessions, queue broker и runtime cache |
 
@@ -91,9 +92,76 @@ BACKEND_URL=https://your-domain.example
 ```env
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+TELEGRAM_CLIENT_ID=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_BOT_USERNAME=
 TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 ```
+
+Ниже переменные для тонкой настройки Telegram-бота:
+
+```env
+# Частота обновления draft-ответа в приватных чатах (секунды)
+TELEGRAM_DRAFT_INTERVAL_SECONDS=0.55
+
+# Размер истории диалога:
+TELEGRAM_MAX_CONTEXT_MESSAGES=4
+TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE=4
+
+# Уровень мыслительной нагрузки (от "minimal" до "high"):
+# - общий для всех Telegram-каналов
+TELEGRAM_THINKING_LEVEL=low
+# - отдельные режимы для обычных сообщений и inline
+TELEGRAM_THINKING_LEVEL_MESSAGE=medium
+TELEGRAM_THINKING_LEVEL_INLINE=minimal
+```
+
+Для нового Telegram Login откройте `@BotFather` → `Bot Settings` → `Web Login`,
+добавьте origin сайта в Allowed URLs и скопируйте выданный Client ID в
+`TELEGRAM_CLIENT_ID`. Имя и аватар бота используются Telegram на экране подтверждения
+входа, поэтому оформите их как профиль ReMind.
+
+Для Telegram-бота используйте тот же профиль бота, который связан с Web Login, и
+заполните `TELEGRAM_BOT_TOKEN` и `TELEGRAM_BOT_USERNAME`. В BotFather включите:
+
+- Groups и нужный режим Group Privacy;
+- Inline Mode (`/setinline`) и inline feedback, чтобы ReMind получал
+  `chosen_inline_result` и сохранял только действительно отправленные inline-ответы;
+- Guest Mode, чтобы бот отвечал по `@username`, даже не состоя в чате.
+
+После настройки запустите стек с профилем Telegram:
+
+```bash
+docker compose --profile telegram up --build
+```
+
+Compose сам формирует внутренние `DATABASE_URL`, `REDIS_URL` и Celery URL с хостами
+`db` и `redis` из `DB_PASSWORD`/`REDIS_PASSWORD`. Значения этих URL в `.env` относятся
+к запуску приложения напрямую на хосте и не подменяют адреса внутри контейнеров.
+
+Для локального запуска `GITHUB_OAUTH_ENCRYPTION_KEY` может быть пустым: ReMind
+детерминированно выводит совместимый Fernet-ключ из `SECRET_KEY`. Production Compose
+по-прежнему требует отдельный ключ. Его можно сгенерировать командой:
+
+```bash
+python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
+Worker сам проверяет `supports_inline_queries` и `supports_guest_queries`, публикует
+локализованные команды и использует `sendRichMessageDraft`/`sendRichMessage` с
+безопасным fallback на обычный текст для старых Bot API-серверов.
+
+Для временного внешнего тестирования можно дополнительно включить Cloudflare Quick
+Tunnel без открытия входящего порта и без Cloudflare-токена:
+
+```bash
+docker compose --profile telegram --profile tunnel up -d cloudflared
+docker compose logs cloudflared
+```
+
+Выданный домен `https://*.trycloudflare.com` временный и меняется при пересоздании
+контейнера. Quick Tunnel предназначен только для тестирования.
 
 ## Health Checks
 

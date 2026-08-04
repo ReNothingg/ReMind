@@ -9,12 +9,10 @@ from pathlib import Path
 try:
     import fcntl
 except ImportError:  # pragma: no cover - production images are Linux
-    fcntl = None  # type: ignore[assignment]
+    fcntl = None
 
 
 class ProcessSafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
-    """Size-bounded rotation serialized across Gunicorn/Celery processes."""
-
     def __init__(
         self,
         filename: str,

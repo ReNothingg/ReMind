@@ -74,12 +74,6 @@ CHAT_UPLOAD_EXTENSION_RE = re.compile(r"^[a-z0-9]{1,12}$")
 
 
 def _validate_chat_filename(filename: object) -> tuple[bool, str | None, str | None]:
-    """Validate a display name without transliterating legitimate Unicode names.
-
-    Chat files are stored under generated UUIDs, so the original name never
-    becomes a filesystem path. We still reject path separators, control
-    characters and malformed extensions before deriving the stored suffix.
-    """
     if not isinstance(filename, str) or not filename.strip():
         return False, "Invalid filename", None
 
@@ -170,7 +164,6 @@ def _read_model_text(filepath: Path) -> str | None:
 
 
 def _classify_chat_file(filepath: Path, extension: str) -> tuple[str, str | None] | None:
-    """Validate actual file bytes and return a stable MIME/model text pair."""
     is_valid, detected_mime = validate_mime_type(str(filepath))
 
     if extension in CHAT_IMAGE_MIME_TYPES:
@@ -278,7 +271,6 @@ def restore_stored_file_for_model(
     *,
     max_bytes: int | None = None,
 ) -> dict | None:
-    """Rebuild a provider payload for an already-authorized stored attachment."""
     if not isinstance(file_info, dict):
         return None
     url_path = str(file_info.get("url_path") or "").split("?", 1)[0]

@@ -26,6 +26,23 @@ interface Window {
     reset: (widgetId?: string | number) => void;
     remove: (widgetId?: string | number) => void;
   };
+  Telegram?: {
+    Login: {
+      auth: (
+        options: {
+          client_id: number;
+          scope: Array<'profile' | 'phone' | 'write'>;
+          lang?: string;
+          nonce: string;
+        },
+        callback: (result: {
+          id_token?: string;
+          error?: string;
+          user?: Record<string, unknown>;
+        }) => void
+      ) => void;
+    };
+  };
   webkit?: {
     messageHandlers?: {
       remindMacBridge?: {

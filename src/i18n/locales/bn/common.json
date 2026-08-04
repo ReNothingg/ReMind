@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "সাইন ইন করা হচ্ছে...",
       "loginWithGoogle": "Google দিয়ে সাইন ইন করুন",
+      "loginWithTelegram": "Telegram দিয়ে চালিয়ে যান",
       "registerLoading": "অ্যাকাউন্ট তৈরি করা হচ্ছে...",
       "registerWithGoogle": "Google দিয়ে সাইন আপ করুন",
+      "registerWithTelegram": "Telegram দিয়ে সাইন আপ করুন",
+      "telegramLoading": "Telegram খোলা হচ্ছে...",
       "showPassword": "পাসওয়ার্ড দেখান",
       "hidePassword": "পাসওয়ার্ড লুকান"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "পাসওয়ার্ড 100 অক্ষরের বেশি হতে পারবে না",
       "turnstileRequired": "আপনি যে রোবট নন তা নিশ্চিত করে আবার চেষ্টা করুন।",
       "turnstileLoadError": "Cloudflare যাচাইকরণ লোড হয়নি। পৃষ্ঠাটি রিফ্রেশ করুন অথবা এই সাইটের জন্য ব্লকার বন্ধ করুন।",
-      "requestError": "নেটওয়ার্ক অথবা সার্ভার ত্রুটি"
+      "requestError": "নেটওয়ার্ক অথবা সার্ভার ত্রুটি",
+      "telegramError": "Telegram দিয়ে সাইন ইন করা যায়নি। আবার চেষ্টা করুন।",
+      "telegramUnavailable": "Telegram Login এখন উপলভ্য নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।"
     },
     "passwordStrength": {
       "label": "পাসওয়ার্ডের শক্তি",
@@ -300,6 +305,7 @@
     "searchHint": "ইঙ্গিত: শিরোনাম, বিষয়, শেষ বার্তা",
     "searchPlaceholder": "চ্যাট খুঁজতে টাইপ করুন",
     "searchInput": "চ্যাট অনুসন্ধান",
+    "channelFilter": { "label": "উৎস অনুযায়ী চ্যাট ফিল্টার করুন", "all": "সব", "web": "ওয়েব", "telegram": "Telegram", "private": "ব্যক্তিগত", "group": "গ্রুপ", "guest": "অতিথি", "inline": "ইনলাইন" },
     "yourChats": "আপনার চ্যাট",
     "untitled": "শিরোনামহীন",
     "expand": "প্রসারিত",
@@ -376,6 +382,26 @@
       "signOut": "সাইন আউট",
       "profileUpdated": "প্রোফাইল আপডেট হয়েছে",
       "updateError": "আপডেট ব্যর্থ",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "যুক্ত",
+        "notConnected": "যুক্ত নয়",
+        "botReady": "বট প্রস্তুত",
+        "syncRequired": "সিঙ্ক প্রয়োজন",
+        "linkGoogle": "Google অ্যাকাউন্ট যুক্ত করুন",
+        "linkTelegram": "Telegram অ্যাকাউন্ট যুক্ত করুন",
+        "syncTelegram": "বটের সাথে সিঙ্ক করুন",
+        "linkingTelegram": "Telegram যুক্ত হচ্ছে...",
+        "googleLinked": "Google অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে।",
+        "telegramLinked": "Telegram অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে।",
+        "telegramSynced": "Telegram অ্যাকাউন্টটি বটের সাথে সিঙ্ক হয়েছে।",
+        "identityInUse": "এই অ্যাকাউন্টটি ইতিমধ্যে অন্য ব্যবহারকারীর সঙ্গে যুক্ত।",
+        "emailInUse": "এই Google ইমেইলটি অন্য অ্যাকাউন্টে ব্যবহৃত হচ্ছে।",
+        "authRequired": "আপনার সেশন শেষ হয়েছে। আবার সাইন ইন করে চেষ্টা করুন।",
+        "googleFailed": "Google অ্যাকাউন্ট যুক্ত করা যায়নি।",
+        "telegramFailed": "Telegram অ্যাকাউন্ট যুক্ত করা যায়নি।"
+      },
       "validation": {
         "nameRequired": "আপনার নাম লিখুন",
         "nameLength": "নামের দৈর্ঘ্য 1 থেকে 100 অক্ষরের মধ্যে হতে হবে",
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "সংযুক্ত অ্যাপ",
-        "description": "চ্যাটে ReMind যে বাহ্যিক পরিষেবাগুলো ব্যবহার করতে পারে সেগুলো পরিচালনা করুন।",
+        "description": "ReMind-এর সাইন-ইন পদ্ধতি ও বাহ্যিক পরিষেবা পরিচালনা করুন।",
         "github": {
           "name": "GitHub",
           "description": "চ্যাট থেকেই ReMind-কে কোড পরিবর্তনের পরিকল্পনা করতে এবং pull request খুলতে দিন।",

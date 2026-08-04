@@ -13,7 +13,6 @@ _MAX_SMTP_TIMEOUT_SECONDS = 60.0
 
 
 def _smtp_timeout_seconds() -> float:
-    """Return a finite SMTP socket timeout constrained to a safe range."""
     raw_timeout = os.getenv("SMTP_TIMEOUT_SECONDS", str(_DEFAULT_SMTP_TIMEOUT_SECONDS))
     try:
         timeout = float(raw_timeout)
@@ -107,20 +106,6 @@ EMAIL_TEMPLATES = {
 
 
 def send_email(to_email, subject, body, is_html=False, template_name=None, template_data=None):
-    """
-    Send an email using Gmail SMTP with direct credentials
-
-    Args:
-        to_email (str): Recipient email address
-        subject (str): Email subject
-        body (str): Email body content (used if template_name is None)
-        is_html (bool): Whether the body is HTML
-        template_name (str): Name of the template to use
-        template_data (dict): Data to fill in the template
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
     try:
         sender_email = os.getenv("EMAIL_SENDER")
         password = os.getenv("EMAIL_PASSWORD")
@@ -175,9 +160,6 @@ def send_email(to_email, subject, body, is_html=False, template_name=None, templ
 def save_email_to_file(
     to_email, subject, body, is_html=False, template_name=None, template_data=None
 ):
-    """
-    Сохраняет только безопасные метаданные ошибки доставки без тела письма и токенов.
-    """
     try:
         logger.warning(
             "Email delivery failed; recipient and content omitted (template=%s)",
@@ -190,9 +172,6 @@ def save_email_to_file(
 
 
 def test_email_sending():
-    """
-    Тестовая функция для проверки отправки почты
-    """
     recipient = os.getenv("TEST_EMAIL_RECIPIENT")
     if not recipient:
         print("TEST_EMAIL_RECIPIENT is not configured")

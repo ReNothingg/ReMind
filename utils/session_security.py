@@ -61,8 +61,15 @@ class RequestAwareSessionInterface(SecureCookieSessionInterface):
         return resolve_cookie_domain(configured_domain)
 
     def get_cookie_secure(self, app):
-        if has_request_context() and is_loopback_hostname(request.host):
-            return False
+        if has_request_context():
+            try:
+                if is_loopback_hostname(request.host):
+                    return False
+            except Exception:
+                # Some reverse-proxy setups (Cloudflare tunnels with rotating hostnames)
+                # can report untrusted/unparseable hosts during request finalization.
+                # Keep cookie security behavior conservative without crashing the request.
+                return False
         return super().get_cookie_secure(app)
 
     def should_set_cookie(self, app, session):

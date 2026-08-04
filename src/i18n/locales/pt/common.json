@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "Entrando...",
       "loginWithGoogle": "Entrar com Google",
+      "loginWithTelegram": "Continuar com Telegram",
       "registerLoading": "Criando conta...",
       "registerWithGoogle": "Registrar-se com Google",
+      "registerWithTelegram": "Registar-se com Telegram",
+      "telegramLoading": "A abrir o Telegram...",
       "showPassword": "Mostrar senha",
       "hidePassword": "Ocultar senha"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "A senha não deve exceder 100 caracteres",
       "turnstileRequired": "Confirme que você não é um robô e tente novamente.",
       "turnstileLoadError": "A verificação da Cloudflare não foi carregada. Atualize a página ou desative os bloqueadores para este site.",
-      "requestError": "Erro de rede ou do servidor"
+      "requestError": "Erro de rede ou do servidor",
+      "telegramError": "Não foi possível entrar com o Telegram. Tente novamente.",
+      "telegramUnavailable": "O Telegram Login não está disponível. Atualize a página e tente novamente."
     },
     "passwordStrength": {
       "label": "Segurança da senha",
@@ -300,6 +305,7 @@
     "searchHint": "Dica: título, tópico, última mensagem",
     "searchPlaceholder": "Escreva para pesquisar chats",
     "searchInput": "Pesquisa de chats",
+    "channelFilter": { "label": "Filtrar conversas por origem", "all": "Todos", "web": "Web", "telegram": "Telegram", "private": "Pessoal", "group": "Grupo", "guest": "Convidado", "inline": "Inline" },
     "yourChats": "Os seus chats",
     "untitled": "Sem título",
     "expand": "Expandir",
@@ -374,6 +380,26 @@
       "signOut": "Terminar sessão",
       "profileUpdated": "Perfil atualizado",
       "updateError": "Falha na atualização",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "Conectado",
+        "notConnected": "Não conectado",
+        "botReady": "Bot pronto",
+        "syncRequired": "Sincronização necessária",
+        "linkGoogle": "Vincular conta Google",
+        "linkTelegram": "Vincular conta Telegram",
+        "syncTelegram": "Sincronizar com o bot",
+        "linkingTelegram": "Conectando Telegram...",
+        "googleLinked": "Conta Google vinculada com sucesso.",
+        "telegramLinked": "Conta Telegram vinculada com sucesso.",
+        "telegramSynced": "A conta Telegram foi sincronizada com o bot.",
+        "identityInUse": "Esta conta já está vinculada a outro usuário.",
+        "emailInUse": "Este e-mail do Google já é usado por outra conta.",
+        "authRequired": "Sua sessão expirou. Entre novamente e repita a vinculação.",
+        "googleFailed": "Não foi possível vincular a conta Google.",
+        "telegramFailed": "Não foi possível vincular a conta Telegram."
+      },
       "nameHint": "Usado na personalização de IA.",
       "usernameHint": "3-50 caracteres: letras, números, underscore e hífen.",
       "delete": {
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "Aplicações ligadas",
-        "description": "Gira os serviços externos que o ReMind pode utilizar no chat.",
+        "description": "Gira os métodos de entrada e os serviços externos do ReMind.",
         "github": {
           "name": "GitHub",
           "description": "Permita que o ReMind planeie alterações de código e abra pull requests a partir do chat.",

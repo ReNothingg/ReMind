@@ -36,7 +36,6 @@ HTTP_SESSION = build_http_session()
 
 
 def _url_origin_for_logging(raw_url: str) -> str:
-    """Keep credentials, paths, and query parameters out of application logs."""
     try:
         parsed = urlparse(raw_url)
         if parsed.scheme not in ("http", "https") or not parsed.hostname:

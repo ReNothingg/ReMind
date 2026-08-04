@@ -66,8 +66,6 @@ _PII_SANITIZER = PIIFilter()
 
 
 class PIISafeFormatter(logging.Formatter):
-    """Sanitize the rendered message and exception text for every log format."""
-
     def formatMessage(self, record):
         return _PII_SANITIZER._sanitize(super().formatMessage(record))
 

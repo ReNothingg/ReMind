@@ -7,6 +7,7 @@ export interface SessionSummary {
     last_message?: string;
     is_public?: boolean;
     public_id?: string | null;
+    source?: 'web' | 'telegram_private' | 'telegram_group' | 'telegram_guest' | 'telegram_inline';
 }
 
 interface ListSessionsResponse {

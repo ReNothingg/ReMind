@@ -33,8 +33,7 @@ return value
 
 
 class GitHubOAuthFlowError(RuntimeError):
-    """A secure OAuth flow could not be completed without exposing its credential."""
-
+    """поток оауф не может быть завершен без раскрытия его данных."""
 
 @dataclass(frozen=True, slots=True)
 class GitHubOAuthStart:

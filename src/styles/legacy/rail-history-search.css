@@ -130,7 +130,100 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+.rail-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rail-source-filter {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.rail-source-filter-trigger {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.rail-source-filter-trigger:hover,
+.rail-source-filter-trigger:focus-visible,
+.rail-source-filter-trigger-active {
+  color: var(--color-text-primary);
+}
+
+.rail-source-filter-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.rail-source-filter-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: 156px;
+  padding: 5px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.rail-source-filter-option {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-source-filter-option:hover,
+.rail-source-filter-option:focus-visible,
+.rail-source-filter-option-active {
+  background: var(--color-bg-interactive);
+  color: var(--color-text-primary);
+}
+
+.rail-source-filter-option:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.ui-rail-source-chip {
+  flex: 0 0 auto;
+  max-width: 82px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rail-search-input {
+  min-width: 0;
+  flex: 1 1 auto;
   width: 100%;
   padding: 8px 12px;
   background: var(--color-bg-interactive);
@@ -161,4 +254,3 @@ body.reading-mode .main-input-area,
 body.reading-mode .global-controls {
   transition: all var(--animation-duration-slow) var(--animation-timing-smooth);
 }
-

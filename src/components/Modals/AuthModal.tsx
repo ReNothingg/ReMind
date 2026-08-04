@@ -4,6 +4,8 @@ import { Eye, EyeOff, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
+import { loadTelegramLoginSdk } from '../../services/telegramLogin';
+import SocialAuthButton, { GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
 import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
 import {
@@ -21,6 +23,14 @@ const PASSWORD_STRENGTH_COLORS = [
     'var(--color-accent)',
     'var(--color-success)',
 ];
+
+type AuthModalMode = 'login' | 'register' | 'link';
+
+type AuthModalProps = {
+    onClose: () => void;
+    initialView?: Exclude<AuthModalMode, 'link'>;
+    authMode?: AuthModalMode;
+};
 
 const getPasswordStrength = (value: string) => {
     if (!value) {
@@ -49,17 +59,21 @@ const getPasswordStrength = (value: string) => {
     return { score, level: 'weak' };
 };
 
-const AuthModal = ({ onClose, initialView = 'login' }) => {
-    const { t } = useTranslation();
-    const { login } = useAuth();
-    const [isLoginView, setIsLoginView] = useState(initialView === 'login');
+const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps) => {
+    const { t, i18n } = useTranslation();
+    const { login, loginWithTelegram, checkAuth, isAuthenticated } = useAuth();
+    const linkMode = authMode === 'link';
+    const [isLoginView, setIsLoginView] = useState(initialView === 'login' || linkMode);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState(null);
     const [authConfig, setAuthConfig] = useState(null);
     const [googleUrl, setGoogleUrl] = useState('/login/google');
     const [googleAvailable, setGoogleAvailable] = useState(false);
+    const [telegramSdkReady, setTelegramSdkReady] = useState(false);
+    const [telegramLoading, setTelegramLoading] = useState(false);
     const loginTurnstileIdRef = useRef(undefined);
     const registerTurnstileIdRef = useRef(undefined);
+    const authConfigRequestStartedRef = useRef(false);
     const loginContainerRef = useRef(null);
     const registerContainerRef = useRef(null);
     const [email, setEmail] = useState('');
@@ -74,7 +88,11 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     const fieldLabelClass = 'ui-field-label';
     const fieldInputClass = 'ui-input min-h-10 rounded-md bg-interactive px-4 py-2.5 text-[0.94rem]';
     const primaryButtonClass = 'btn-primary btn-block ui-button-primary min-h-10 w-full justify-center rounded-md px-4 py-2.5 text-[0.94rem] font-semibold';
-    const secondaryAuthButtonClass = 'btn btn-google flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-4 py-2.5 text-[0.94rem] font-medium text-foreground transition duration-200 ease-out hover:border-border-heavy hover:bg-interactive';
+    const telegramAvailable = Boolean(
+        authConfig?.telegram_available
+        && authConfig?.telegram_client_id
+        && authConfig?.telegram_nonce
+    );
     const shouldUseTurnstile = Boolean(authConfig?.turnstile_site_key) && authConfig?.turnstile_required !== false;
     const passwordStrength = getPasswordStrength(password);
     const passwordStrengthColor = PASSWORD_STRENGTH_COLORS[passwordStrength.score];
@@ -131,6 +149,19 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     })();
 
     useEffect(() => {
+        setIsLoginView(initialView === 'login' || linkMode);
+    }, [initialView, linkMode]);
+
+    useEffect(() => {
+        if (!linkMode) return;
+        if (isAuthenticated) return;
+        setMessage({ type: 'error', text: t('settings.account.loginMethods.authRequired') });
+    }, [isAuthenticated, linkMode, t]);
+
+    useEffect(() => {
+        if (authConfigRequestStartedRef.current) return;
+        authConfigRequestStartedRef.current = true;
+
         const loadAuthConfig = async () => {
             try {
                 const resp = await fetch(`${apiService.baseURL}/api/auth/config`, {
@@ -148,6 +179,137 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
         };
         loadAuthConfig();
     }, []);
+
+    useEffect(() => {
+        if (!telegramAvailable) {
+            setTelegramSdkReady(false);
+            return;
+        }
+
+        let cancelled = false;
+        loadTelegramLoginSdk()
+            .then(() => {
+                if (!cancelled) setTelegramSdkReady(true);
+            })
+            .catch((error) => {
+                console.warn('Telegram Login SDK failed to load', error);
+                if (!cancelled) {
+                    setTelegramSdkReady(false);
+                    setMessage({
+                        type: 'error',
+                        text: t('authModal.messages.telegramUnavailable'),
+                    });
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [telegramAvailable, t]);
+
+    const handleTelegramLogin = () => {
+        if (!telegramAvailable || !telegramSdkReady || telegramLoading) return;
+
+        setTelegramLoading(true);
+        setMessage(null);
+
+        try {
+            const clientId = Number(authConfig.telegram_client_id);
+            if (!Number.isSafeInteger(clientId) || clientId <= 0 || !window.Telegram?.Login) {
+                throw new Error('telegram_config_invalid');
+            }
+
+            window.Telegram.Login.auth(
+                {
+                    client_id: clientId,
+                    scope: ['profile'],
+                lang: String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0],
+                nonce: authConfig.telegram_nonce,
+            },
+            async (result) => {
+                try {
+                    if (result.error || !result.id_token) {
+                        setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
+                        return;
+                    }
+
+                    const response = linkMode
+                        ? await authService.linkTelegram(result.id_token)
+                        : await loginWithTelegram(result.id_token);
+                    if (!response.success) {
+                        if (linkMode) {
+                            const responseError = ('error' in response ? response.error : '') || '';
+                            const isConflict = responseError === 'auth_identity_in_use'
+                                || responseError === 'identity_in_use'
+                                || responseError === 'auth_provider_already_linked';
+                            const isSessionLost = responseError === 'auth_required';
+                            setMessage({
+                                type: 'error',
+                                text: isSessionLost
+                                    ? t('settings.account.loginMethods.authRequired')
+                                    : isConflict
+                                        ? t('settings.account.loginMethods.identityInUse')
+                                        : t('settings.account.loginMethods.telegramFailed'),
+                            });
+                        } else {
+                            setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
+                        }
+                        return;
+                    }
+
+                    if (linkMode) {
+                        const authState = await checkAuth();
+                        if (!authState.authenticated) {
+                            setMessage({
+                                type: 'error',
+                                text: t('settings.account.loginMethods.authRequired'),
+                            });
+                            return;
+                        }
+                        setMessage({
+                            type: 'success',
+                            text: t('settings.account.loginMethods.telegramLinked'),
+                        });
+                        setTimeout(() => {
+                            onClose();
+                        }, 1500);
+                    }
+                } catch (error) {
+                    console.warn('Telegram Login failed', error);
+                    setMessage({ type: 'error', text: t('authModal.messages.telegramUnavailable') });
+                } finally {
+                    setTelegramLoading(false);
+                }
+                }
+            );
+        } catch (error) {
+            console.warn('Telegram Login failed to start', error);
+            setMessage({ type: 'error', text: t('authModal.messages.telegramUnavailable') });
+            setTelegramLoading(false);
+        }
+    };
+
+    const renderTelegramLogin = () => {
+        if (!telegramAvailable) return null;
+        const labelKey = linkMode
+            ? 'settings.account.loginMethods.linkTelegram'
+            : isLoginView
+                ? 'authModal.actions.loginWithTelegram'
+                : 'authModal.actions.registerWithTelegram';
+        const loadingKey = linkMode ? 'settings.account.loginMethods.linkingTelegram' : 'authModal.actions.telegramLoading';
+
+        return (
+            <SocialAuthButton
+                onClick={handleTelegramLogin}
+                disabled={!telegramSdkReady || telegramLoading || isLoading}
+                busy={!telegramSdkReady || telegramLoading}
+                label={t(labelKey)}
+                icon={<TelegramLogo />}
+            >
+                {!telegramSdkReady || telegramLoading ? t(loadingKey) : t(labelKey)}
+            </SocialAuthButton>
+        );
+    };
 
     const waitForTurnstile = async (maxRetries = 50, delayMs = 100) => {
         for (let i = 0; i < maxRetries; i++) {
@@ -358,6 +520,7 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
     };
 
     const switchView = (e) => {
+        if (linkMode) return;
         e.preventDefault();
         setIsLoginView(!isLoginView);
         setMessage(null);
@@ -443,22 +606,30 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             {isLoading ? t('authModal.actions.loginLoading') : t('auth.login')}
                         </button>
 
-                        {googleAvailable && (
-                            <div className="pt-1">
-                                <a className={secondaryAuthButtonClass} href={googleHref}>
-                                    <i className="fab fa-google text-[18px] text-[#ea4335]" />
-                                    <span>{t('authModal.actions.loginWithGoogle')}</span>
-                                </a>
+                        {(googleAvailable || telegramAvailable) && (
+                            <div className="space-y-2 pt-1">
+                                {googleAvailable && (
+                                    <SocialAuthButton
+                                        href={googleHref}
+                                        label={t('authModal.actions.loginWithGoogle')}
+                                        icon={<GoogleLogo />}
+                                    >
+                                        {t('authModal.actions.loginWithGoogle')}
+                                    </SocialAuthButton>
+                                )}
+                                {renderTelegramLogin()}
                             </div>
                         )}
                     </form>
 
-                    <p className="auth-switch-link text-center text-sm text-muted">
-                        {t('authModal.switch.noAccount')}{' '}
-                        <button className="auth-switch-action font-semibold text-[var(--color-text-link)] hover:underline" type="button" onClick={switchView}>
-                            {t('auth.register')}
-                        </button>
-                    </p>
+                    {!linkMode && (
+                        <p className="auth-switch-link text-center text-sm text-muted">
+                            {t('authModal.switch.noAccount')}{' '}
+                            <button className="auth-switch-action font-semibold text-[var(--color-text-link)] hover:underline" type="button" onClick={switchView}>
+                                {t('auth.register')}
+                            </button>
+                        </p>
+                    )}
                 </div>
             ) : (
                 <div className="auth-form auth-register-panel space-y-4">
@@ -607,22 +778,30 @@ const AuthModal = ({ onClose, initialView = 'login' }) => {
                             {isLoading ? t('authModal.actions.registerLoading') : t('auth.register')}
                         </button>
 
-                        {googleAvailable && (
-                            <div className="auth-field-full pt-1">
-                                <a className={secondaryAuthButtonClass} href={googleHref}>
-                                    <i className="fab fa-google text-[18px] text-[#ea4335]" />
-                                    <span>{t('authModal.actions.registerWithGoogle')}</span>
-                                </a>
+                        {(googleAvailable || telegramAvailable) && (
+                            <div className="auth-field-full space-y-2 pt-1">
+                                {googleAvailable && (
+                                    <SocialAuthButton
+                                        href={googleHref}
+                                        label={t('authModal.actions.registerWithGoogle')}
+                                        icon={<GoogleLogo />}
+                                    >
+                                        {t('authModal.actions.registerWithGoogle')}
+                                    </SocialAuthButton>
+                                )}
+                                {renderTelegramLogin()}
                             </div>
                         )}
                     </form>
 
-                    <p className="auth-switch-link text-center text-sm text-muted">
-                        {t('authModal.switch.haveAccount')}{' '}
-                        <button className="auth-switch-action font-semibold text-[var(--color-text-link)] hover:underline" type="button" onClick={switchView}>
-                            {t('auth.login')}
-                        </button>
-                    </p>
+                    {!linkMode && (
+                        <p className="auth-switch-link text-center text-sm text-muted">
+                            {t('authModal.switch.haveAccount')}{' '}
+                            <button className="auth-switch-action font-semibold text-[var(--color-text-link)] hover:underline" type="button" onClick={switchView}>
+                                {t('auth.login')}
+                            </button>
+                        </p>
+                    )}
                 </div>
             )}
 

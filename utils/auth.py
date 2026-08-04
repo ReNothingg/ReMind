@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+import jwt
 import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.flask_client import OAuth
@@ -13,6 +14,7 @@ from flask import current_app, flash, jsonify, redirect, render_template, reques
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import BadData, URLSafeTimedSerializer
 from sqlalchemy import bindparam, func, inspect, text
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .input_validation import InputValidator, ValidationError
@@ -37,6 +39,27 @@ REMOVED_SETTINGS_DATA_KEYS = frozenset(
     }
 )
 CHAT_SESSION_UNIQUE_INDEX = "uq_user_chat_history_user_session"
+TELEGRAM_ISSUER = "https://oauth.telegram.org"
+TELEGRAM_JWKS_URL = "https://oauth.telegram.org/.well-known/jwks.json"
+TELEGRAM_LOGIN_NONCE_SESSION_KEY = "telegram_login_nonce"
+TELEGRAM_LOGIN_NONCE_TTL_SECONDS = 600
+TELEGRAM_ID_TOKEN_MAX_LENGTH = 16_384
+TELEGRAM_ALLOWED_SIGNING_ALGORITHMS = ("RS256", "ES256")
+TELEGRAM_BOT_USER_ID_MAX = 0xFFFFFFFFFF
+SUPPORTED_AUTH_PROVIDERS = frozenset({"google", "telegram"})
+_telegram_jwks_client = None
+
+
+class TelegramNonceMismatchError(jwt.InvalidTokenError):
+    pass
+
+
+class TelegramSubjectError(jwt.InvalidTokenError):
+    pass
+
+
+class AuthIdentityConflictError(ValueError):
+    pass
 
 
 def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
@@ -48,7 +71,6 @@ def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
 
 
 def ensure_chat_session_uniqueness(engine) -> None:
-    """Repair legacy duplicate chat rows before enforcing the canonical key."""
     inspector = inspect(engine)
     if "user_chat_history" not in inspector.get_table_names():
         return
@@ -157,6 +179,12 @@ class User(db.Model):
     block_reason = db.Column(db.String(280), nullable=True)
     banned_until = db.Column(db.DateTime, nullable=True)
     blocked_until = db.Column(db.DateTime, nullable=True)
+    auth_identities = db.relationship(
+        "AuthIdentity",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -168,7 +196,7 @@ class User(db.Model):
             "id": self.id,
             "username": self.username,
             "name": self.name,
-            "email": self.email,
+            "email": None if is_telegram_placeholder_email(self) else self.email,
             "is_confirmed": self.is_confirmed,
             "is_admin": bool(self.is_admin or is_super_admin),
             "is_super_admin": is_super_admin,
@@ -181,7 +209,117 @@ class User(db.Model):
             "blocked_until": self.blocked_until.isoformat() if self.blocked_until else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "oauth_provider": self.oauth_provider,
+            "auth_methods": _user_auth_methods(self),
+            "telegram_bot_ready": _telegram_bot_ready(self),
         }
+
+
+class AuthIdentity(db.Model):
+    __tablename__ = "auth_identity"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "provider", "provider_user_id", name="uq_auth_identity_provider_subject"
+        ),
+        db.UniqueConstraint("user_id", "provider", name="uq_auth_identity_user_provider"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    provider = db.Column(db.String(20), nullable=False)
+    provider_user_id = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user = db.relationship("User", back_populates="auth_identities")
+
+
+def _user_auth_methods(user: User | None) -> list[str]:
+    if not user:
+        return []
+    methods = {
+        identity.provider
+        for identity in user.auth_identities
+        if identity.provider in SUPPORTED_AUTH_PROVIDERS
+    }
+    if user.oauth_provider in SUPPORTED_AUTH_PROVIDERS and user.oauth_id:
+        methods.add(user.oauth_provider)
+    if user.password:
+        methods.add("password")
+    return sorted(methods)
+
+
+def _telegram_bot_ready(user: User | None) -> bool:
+    if not user:
+        return False
+    telegram_id = next(
+        (
+            identity.provider_user_id
+            for identity in user.auth_identities
+            if identity.provider == "telegram"
+        ),
+        None,
+    )
+    if not telegram_id and user.oauth_provider == "telegram":
+        telegram_id = user.oauth_id
+    normalized = str(telegram_id or "").strip()
+    if not re.fullmatch(r"[0-9]{1,16}", normalized):
+        return False
+    return 1 <= int(normalized) <= TELEGRAM_BOT_USER_ID_MAX
+
+
+def _find_auth_identity(provider: str, provider_user_id: str) -> AuthIdentity | None:
+    return AuthIdentity.query.filter_by(
+        provider=provider,
+        provider_user_id=str(provider_user_id),
+    ).first()
+
+
+def _link_auth_identity(user: User, provider: str, provider_user_id: str) -> AuthIdentity:
+    normalized_subject = str(provider_user_id or "").strip()
+    if provider not in SUPPORTED_AUTH_PROVIDERS or not normalized_subject:
+        raise ValueError("invalid_auth_identity")
+
+    existing_identity = _find_auth_identity(provider, normalized_subject)
+    if existing_identity:
+        if existing_identity.user_id != user.id:
+            raise AuthIdentityConflictError("auth_identity_in_use")
+        return existing_identity
+
+    provider_identity = AuthIdentity.query.filter_by(
+        user_id=user.id,
+        provider=provider,
+    ).first()
+    if provider_identity:
+        if secrets.compare_digest(provider_identity.provider_user_id, normalized_subject):
+            return provider_identity
+        raise AuthIdentityConflictError("auth_provider_already_linked")
+
+    identity = AuthIdentity(
+        user_id=user.id,
+        provider=provider,
+        provider_user_id=normalized_subject,
+    )
+    db.session.add(identity)
+    if not user.oauth_provider or not user.oauth_id:
+        user.oauth_provider = provider
+        user.oauth_id = normalized_subject
+    return identity
+
+
+def _ensure_auth_identity_backfill(app) -> None:
+    changed = False
+    for user in User.query.order_by(User.id.asc()).all():
+        if user.oauth_provider not in SUPPORTED_AUTH_PROVIDERS or not user.oauth_id:
+            continue
+        try:
+            identity = _link_auth_identity(user, user.oauth_provider, str(user.oauth_id))
+            changed = changed or identity in db.session.new
+        except AuthIdentityConflictError:
+            app.logger.error(
+                "Skipped conflicting legacy auth identity for user_id=%s provider=%s",
+                user.id,
+                user.oauth_provider,
+            )
+    if changed:
+        db.session.commit()
 
 
 def is_super_admin_user(user: User | None) -> bool:
@@ -277,6 +415,11 @@ class UserSettings(db.Model):
 class UserChatHistory(db.Model):
     __table_args__ = (
         db.UniqueConstraint("user_id", "session_id", name="uq_user_chat_history_user_session"),
+        db.UniqueConstraint(
+            "user_id",
+            "external_ref_hash",
+            name="uq_user_chat_history_user_external_ref",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -286,6 +429,11 @@ class UserChatHistory(db.Model):
         db.Integer, db.ForeignKey("mind.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title = db.Column(db.String(200), default="Новый чат")
+    source = db.Column(
+        db.String(32), default="web", server_default="web", nullable=False, index=True
+    )
+    external_ref_hash = db.Column(db.String(64), nullable=True, index=True)
+    source_context_data = db.Column(db.Text, default="{}", nullable=False)
     messages_data = db.Column(db.Text, default="[]")  # JSON array of messages
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -302,6 +450,18 @@ class UserChatHistory(db.Model):
     def set_messages(self, messages):
         self.messages_data = json.dumps(messages, ensure_ascii=False)
 
+    def get_source_context(self):
+        try:
+            parsed = json.loads(self.source_context_data) if self.source_context_data else {}
+            return parsed if isinstance(parsed, dict) else {}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+
+    def set_source_context(self, value):
+        self.source_context_data = json.dumps(
+            value if isinstance(value, dict) else {}, ensure_ascii=False
+        )
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -309,10 +469,25 @@ class UserChatHistory(db.Model):
             "session_id": self.session_id,
             "mind_id": self.mind_id,
             "title": self.title,
+            "source": self.source or "web",
             "messages": self.get_messages(),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class TelegramInlineResult(db.Model):
+    __tablename__ = "telegram_inline_result"
+
+    id = db.Column(db.Integer, primary_key=True)
+    result_id = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    telegram_user_id = db.Column(db.String(32), nullable=False, index=True)
+    query_text = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text, nullable=False)
+    language = db.Column(db.String(12), nullable=True)
+    selected_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
 class AIResponseFeedback(db.Model):
@@ -650,6 +825,203 @@ def _build_unique_username(*candidates: str | None) -> str:
                 return candidate
 
     return f"user_{secrets.token_hex(6)}"[:50]
+
+
+def _telegram_placeholder_email(telegram_subject: str) -> str:
+    return f"telegram-{telegram_subject}@users.remind.invalid"
+
+
+def is_telegram_placeholder_email(user: User | None) -> bool:
+    if not user:
+        return False
+    telegram_subject = next(
+        (
+            identity.provider_user_id
+            for identity in user.auth_identities
+            if identity.provider == "telegram"
+        ),
+        None,
+    )
+    if not telegram_subject and user.oauth_provider == "telegram" and user.oauth_id:
+        telegram_subject = str(user.oauth_id)
+    return bool(telegram_subject and user.email == _telegram_placeholder_email(telegram_subject))
+
+
+def _issue_telegram_login_nonce() -> str:
+    existing_nonce = _current_telegram_login_nonce()
+    if existing_nonce:
+        return existing_nonce
+
+    nonce = secrets.token_urlsafe(32)
+    session[TELEGRAM_LOGIN_NONCE_SESSION_KEY] = {
+        "value": nonce,
+        "issued_at": int(datetime.utcnow().timestamp()),
+    }
+    session.modified = True
+    return nonce
+
+
+def _current_telegram_login_nonce() -> str | None:
+    payload = session.get(TELEGRAM_LOGIN_NONCE_SESSION_KEY)
+    if not isinstance(payload, dict):
+        return None
+
+    nonce = payload.get("value")
+    issued_at = payload.get("issued_at")
+    if not isinstance(nonce, str) or not nonce or not isinstance(issued_at, int):
+        return None
+
+    now = int(datetime.utcnow().timestamp())
+    if issued_at > now + 60 or now - issued_at > TELEGRAM_LOGIN_NONCE_TTL_SECONDS:
+        session.pop(TELEGRAM_LOGIN_NONCE_SESSION_KEY, None)
+        return None
+    return nonce
+
+
+def _get_telegram_jwks_client():
+    global _telegram_jwks_client
+    if _telegram_jwks_client is None:
+        _telegram_jwks_client = jwt.PyJWKClient(
+            TELEGRAM_JWKS_URL,
+            cache_keys=True,
+            cache_jwk_set=True,
+            lifespan=300,
+            timeout=5,
+        )
+    return _telegram_jwks_client
+
+
+def _verify_telegram_id_token(id_token: str, client_id: str, expected_nonce: str) -> dict:
+    unverified_header = jwt.get_unverified_header(id_token)
+    algorithm = unverified_header.get("alg")
+    if algorithm not in TELEGRAM_ALLOWED_SIGNING_ALGORITHMS:
+        raise jwt.InvalidAlgorithmError("Unsupported Telegram signing algorithm")
+
+    signing_key = _get_telegram_jwks_client().get_signing_key_from_jwt(id_token)
+    claims = jwt.decode(
+        id_token,
+        key=signing_key.key,
+        algorithms=list(TELEGRAM_ALLOWED_SIGNING_ALGORITHMS),
+        audience=client_id,
+        issuer=TELEGRAM_ISSUER,
+        leeway=30,
+        options={
+            "require": ["aud", "exp", "iat", "iss", "nonce", "sub", "id"],
+        },
+    )
+
+    token_nonce = claims.get("nonce")
+    if not isinstance(token_nonce, str) or not secrets.compare_digest(token_nonce, expected_nonce):
+        raise TelegramNonceMismatchError("Invalid Telegram login nonce")
+
+    subject = str(claims.get("sub") or "").strip()
+    if not re.fullmatch(r"[0-9]{1,32}", subject):
+        raise TelegramSubjectError("Invalid Telegram subject")
+    _telegram_bot_user_id(claims)
+
+    return claims
+
+
+def _telegram_bot_user_id(claims: dict) -> str:
+    raw_user_id = claims.get("id")
+    if isinstance(raw_user_id, bool):
+        raise TelegramSubjectError("Invalid Telegram user ID")
+    user_id = str(raw_user_id or "").strip()
+    if not re.fullmatch(r"[0-9]{1,16}", user_id):
+        raise TelegramSubjectError("Invalid Telegram user ID")
+    numeric_user_id = int(user_id)
+    if numeric_user_id < 1 or numeric_user_id > TELEGRAM_BOT_USER_ID_MAX:
+        raise TelegramSubjectError("Invalid Telegram user ID")
+    return user_id
+
+
+def _sync_telegram_identity(user: User, claims: dict) -> AuthIdentity:
+    subject = str(claims["sub"]).strip()
+    telegram_user_id = _telegram_bot_user_id(claims)
+    current_identity = AuthIdentity.query.filter_by(
+        user_id=user.id,
+        provider="telegram",
+    ).first()
+    claimed_identity = _find_auth_identity("telegram", telegram_user_id)
+
+    if claimed_identity and claimed_identity.user_id != user.id:
+        raise AuthIdentityConflictError("auth_identity_in_use")
+    if current_identity and current_identity.provider_user_id not in {
+        subject,
+        telegram_user_id,
+    }:
+        raise AuthIdentityConflictError("auth_provider_already_linked")
+
+    identity = claimed_identity or current_identity
+    if identity:
+        identity.provider_user_id = telegram_user_id
+    else:
+        identity = _link_auth_identity(user, "telegram", telegram_user_id)
+
+    if user.oauth_provider == "telegram" and user.oauth_id in {subject, telegram_user_id}:
+        user.oauth_id = telegram_user_id
+    legacy_email = _telegram_placeholder_email(subject)
+    if subject != telegram_user_id and user.email == legacy_email:
+        user.email = _telegram_placeholder_email(telegram_user_id)
+    return identity
+
+
+def _clean_telegram_profile_name(value: Any, fallback: str) -> str:
+    if not isinstance(value, str):
+        return fallback
+    cleaned = "".join(char for char in value.strip() if unicodedata.category(char)[0] != "C")
+    return cleaned[:100] or fallback
+
+
+def _find_or_create_telegram_user(claims: dict) -> User:
+    subject = str(claims["sub"]).strip()
+    telegram_user_id = _telegram_bot_user_id(claims)
+    identity = _find_auth_identity("telegram", telegram_user_id)
+    if not identity and subject != telegram_user_id:
+        identity = _find_auth_identity("telegram", subject)
+    user = identity.user if identity else None
+    if not user:
+        user = User.query.filter_by(oauth_provider="telegram", oauth_id=telegram_user_id).first()
+    if not user and subject != telegram_user_id:
+        user = User.query.filter_by(oauth_provider="telegram", oauth_id=subject).first()
+    if user:
+        _sync_telegram_identity(user, claims)
+        if not user.name:
+            user.name = _clean_telegram_profile_name(claims.get("name"), user.username)
+        db.session.commit()
+        return user
+
+    username = _build_unique_username(
+        claims.get("preferred_username"),
+        claims.get("given_name"),
+        claims.get("name"),
+        f"telegram_{telegram_user_id[-8:]}",
+    )
+    account_name = _clean_telegram_profile_name(claims.get("name"), username)
+    placeholder_email = _telegram_placeholder_email(telegram_user_id)
+    user = User(
+        username=username,
+        name=account_name,
+        email=placeholder_email,
+        password=None,
+        is_confirmed=True,
+        oauth_provider="telegram",
+        oauth_id=telegram_user_id,
+    )
+
+    try:
+        db.session.add(user)
+        db.session.flush()
+        _sync_telegram_identity(user, claims)
+        db.session.add(UserSettings(user_id=user.id))
+        db.session.commit()
+        return user
+    except IntegrityError:
+        db.session.rollback()
+        raced_identity = _find_auth_identity("telegram", telegram_user_id)
+        if raced_identity:
+            return raced_identity.user
+        raise
 
 
 def _is_argon2_hash(stored_password: str) -> bool:
@@ -1151,10 +1523,25 @@ def register_auth_routes(app):
             SESSION_COOKIE_DOMAIN,
         )
 
+        link_requested = request.args.get("mode") == "link"
+        link_user = None
+        if link_requested:
+            link_user_id = session.get("user_id")
+            link_user = db.session.get(User, link_user_id) if link_user_id else None
+            if not link_user:
+                return make_error("auth_required", status=401, code="auth_required")
+            session["oauth_link_user_id"] = link_user.id
+
         mobile_redirect_uri = ""
         mobile_requested = request.args.get("client") == "ios" or bool(
             request.args.get("mobile_redirect_uri")
         )
+        if link_requested and mobile_requested:
+            return make_error(
+                "mobile_link_unsupported",
+                status=400,
+                code="mobile_link_unsupported",
+            )
         if mobile_requested:
             mobile_redirect_uri = request.args.get("mobile_redirect_uri") or IOS_OAUTH_REDIRECT_URI
             if not _is_allowed_mobile_oauth_redirect_uri(
@@ -1207,6 +1594,8 @@ def register_auth_routes(app):
                 }
                 if mobile_redirect_uri:
                     fallback_payload["mobile_redirect_uri"] = mobile_redirect_uri
+                if link_user:
+                    fallback_payload["link_user_id"] = link_user.id
                 fallback_cookie = _encode_oauth_fallback_state(SECRET_KEY, fallback_payload)
                 request_host = urlparse(request.host_url).hostname
                 secure_cookie = not _is_loopback_hostname(request_host)
@@ -1228,9 +1617,20 @@ def register_auth_routes(app):
     @app.route("/login/google/callback")
     def authorize_google():
         mobile_redirect_uri = None
+        link_user_id = session.pop("oauth_link_user_id", None)
         try:
             app.logger.info("Processing Google OAuth callback")
-            from config import ALLOWED_HOSTS
+            from config import ALLOWED_HOSTS, SESSION_COOKIE_DOMAIN
+
+            def finish_google_redirect(location: str):
+                response = redirect(location)
+                cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
+                response.delete_cookie(
+                    OAUTH_FALLBACK_STATE_COOKIE,
+                    domain=cookie_domain,
+                    path=url_for("authorize_google"),
+                )
+                return response
 
             redirect_to = session.pop("oauth_redirect_to", None)
             mobile_redirect_uri = session.pop("oauth_mobile_redirect_uri", None)
@@ -1251,6 +1651,7 @@ def register_auth_routes(app):
                 fallback_mobile_redirect_uri = str(
                     (fallback_state or {}).get("mobile_redirect_uri", "")
                 )
+                fallback_link_user_id = (fallback_state or {}).get("link_user_id")
                 if (
                     fallback_state
                     and request_state
@@ -1263,6 +1664,8 @@ def register_auth_routes(app):
                     )
                     if not mobile_redirect_uri and fallback_mobile_redirect_uri:
                         mobile_redirect_uri = fallback_mobile_redirect_uri
+                    if not link_user_id and isinstance(fallback_link_user_id, int):
+                        link_user_id = fallback_link_user_id
                     token = oauth.google.fetch_access_token(
                         code=request_code,
                         redirect_uri=fallback_redirect_uri or request.base_url,
@@ -1286,13 +1689,49 @@ def register_auth_routes(app):
             resp = oauth.google.get("https://www.googleapis.com/oauth2/v3/userinfo", token=token)
             user_info = resp.json()
             app.logger.debug("Google user info obtained")
-            if "email" not in user_info:
+            if (
+                not user_info.get("email")
+                or not user_info.get("sub")
+                or user_info.get("email_verified") is not True
+            ):
                 flash("Не удалось получить email из Google аккаунта", "danger")
                 return redirect(url_for("login"))
-            google_id = user_info.get("sub")
-            email = user_info.get("email")
+            google_id = str(user_info["sub"])
+            email = str(user_info["email"]).strip().lower()
 
-            user = User.query.filter_by(email=email).first()
+            if link_user_id:
+                user = db.session.get(User, link_user_id)
+                if not user or session.get("user_id") != user.id:
+                    app.logger.warning("Rejected Google link callback without matching session")
+                    return finish_google_redirect("/?auth_link=auth_required#settings/account")
+
+                linked_identity = _find_auth_identity("google", google_id)
+                if linked_identity and linked_identity.user_id != user.id:
+                    return finish_google_redirect("/?auth_link=identity_in_use#settings/account")
+
+                email_owner = User.query.filter(func.lower(User.email) == email).first()
+                if email_owner and email_owner.id != user.id:
+                    return finish_google_redirect("/?auth_link=email_in_use#settings/account")
+
+                try:
+                    _link_auth_identity(user, "google", google_id)
+                except AuthIdentityConflictError:
+                    db.session.rollback()
+                    return finish_google_redirect("/?auth_link=identity_in_use#settings/account")
+                if is_telegram_placeholder_email(user):
+                    user.email = email
+                user.is_confirmed = True
+                if not user.name:
+                    user.name = (
+                        user_info.get("name") or user_info.get("given_name") or user.username
+                    )
+                db.session.commit()
+                return finish_google_redirect("/?auth_link=google_linked#settings/account")
+
+            identity = _find_auth_identity("google", google_id)
+            user = identity.user if identity else None
+            if not user:
+                user = User.query.filter(func.lower(User.email) == email).first()
 
             if not user:
                 account_name = (
@@ -1313,19 +1752,21 @@ def register_auth_routes(app):
                     oauth_id=google_id,
                 )
                 db.session.add(new_user)
+                db.session.flush()
+                _link_auth_identity(new_user, "google", google_id)
                 db.session.commit()
                 user = new_user
                 flash("Аккаунт создан с помощью Google авторизации", "success")
-            elif not user.oauth_id:
-                user.oauth_provider = "google"
-                user.oauth_id = google_id
+            else:
+                _link_auth_identity(user, "google", google_id)
                 user.is_confirmed = True
                 if not user.name:
                     user.name = (
                         user_info.get("name") or user_info.get("given_name") or user.username
                     )
                 db.session.commit()
-                flash("Ваш аккаунт связан с Google", "success")
+                if not identity:
+                    flash("Ваш аккаунт связан с Google", "success")
 
             if mobile_redirect_uri:
                 from config import IOS_OAUTH_REDIRECT_URI, SECRET_KEY, SESSION_COOKIE_DOMAIN
@@ -1369,8 +1810,20 @@ def register_auth_routes(app):
             return response
 
         except Exception as e:
+            db.session.rollback()
             app.logger.error("OAuth error in authorize_google() (%s)", type(e).__name__)
             flash("Ошибка при входе через Google", "danger")
+            if link_user_id:
+                from config import SESSION_COOKIE_DOMAIN
+
+                response = redirect("/?auth_link=google_failed#settings/account")
+                cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
+                response.delete_cookie(
+                    OAUTH_FALLBACK_STATE_COOKIE,
+                    domain=cookie_domain,
+                    path=url_for("authorize_google"),
+                )
+                return response
             if mobile_redirect_uri:
                 response = redirect(
                     _append_url_query(mobile_redirect_uri, {"error": "oauth_failed"})
@@ -1413,8 +1866,11 @@ def register_auth_routes(app):
             IOS_OAUTH_CALLBACK_SCHEME,
             IOS_OAUTH_REDIRECT_URI,
             LOCALHOST_MODE,
+            TELEGRAM_CLIENT_ID,
             TURNSTILE_SITE_KEY,
         )
+
+        telegram_nonce = _issue_telegram_login_nonce() if TELEGRAM_CLIENT_ID else None
 
         return (
             jsonify(
@@ -1424,12 +1880,90 @@ def register_auth_routes(app):
                     "gauth_available": bool(GOOGLE_CLIENT_ID),
                     "google_login_url": url_for("login_google"),
                     "google_mobile_login_url": url_for("login_google", client="ios"),
+                    "telegram_available": bool(TELEGRAM_CLIENT_ID),
+                    "telegram_client_id": TELEGRAM_CLIENT_ID or None,
+                    "telegram_nonce": telegram_nonce,
                     "mobile_oauth_redirect_uri": IOS_OAUTH_REDIRECT_URI,
                     "mobile_oauth_callback_scheme": IOS_OAUTH_CALLBACK_SCHEME,
                 }
             ),
             200,
         )
+
+    @app.route("/api/auth/telegram", methods=["POST"])
+    @rate_limit(login_limiter, "Too many login attempts")
+    def api_telegram_login():
+        from config import TELEGRAM_CLIENT_ID
+        from utils.session_security import regenerate_session
+
+        if not TELEGRAM_CLIENT_ID:
+            return jsonify({"error": "telegram_unavailable", "code": "telegram_unavailable"}), 503
+
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "invalid_request", "code": "invalid_request"}), 400
+
+        mode = data.get("mode", "login")
+        if mode not in {"login", "link"}:
+            return jsonify({"error": "invalid_request", "code": "invalid_request"}), 400
+        link_user = None
+        if mode == "link":
+            link_user_id = session.get("user_id")
+            link_user = db.session.get(User, link_user_id) if link_user_id else None
+            if not link_user:
+                return jsonify({"error": "auth_required", "code": "auth_required"}), 401
+
+        id_token = data.get("id_token")
+        if (
+            not isinstance(id_token, str)
+            or not id_token
+            or len(id_token) > TELEGRAM_ID_TOKEN_MAX_LENGTH
+        ):
+            return jsonify({"error": "invalid_token", "code": "invalid_token"}), 400
+
+        expected_nonce = _current_telegram_login_nonce()
+        if not expected_nonce:
+            return jsonify({"error": "nonce_expired", "code": "nonce_expired"}), 400
+
+        try:
+            claims = _verify_telegram_id_token(id_token, TELEGRAM_CLIENT_ID, expected_nonce)
+            if link_user:
+                _sync_telegram_identity(link_user, claims)
+                db.session.commit()
+                session.pop(TELEGRAM_LOGIN_NONCE_SESSION_KEY, None)
+                return (
+                    jsonify({"message": "telegram_linked", "user": link_user.to_dict()}),
+                    200,
+                )
+            user = _find_or_create_telegram_user(claims)
+        except AuthIdentityConflictError as exc:
+            db.session.rollback()
+            code = str(exc) or "auth_identity_in_use"
+            return jsonify({"error": code, "code": code}), 409
+        except IntegrityError:
+            db.session.rollback()
+            return (
+                jsonify({"error": "auth_identity_in_use", "code": "auth_identity_in_use"}),
+                409,
+            )
+        except jwt.PyJWTError as exc:
+            app.logger.warning("Telegram ID token rejected (%s)", type(exc).__name__)
+            return jsonify({"error": "telegram_auth_failed", "code": "telegram_auth_failed"}), 401
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error("Telegram login failed (%s)", type(exc).__name__)
+            return jsonify({"error": "telegram_auth_failed", "code": "telegram_auth_failed"}), 503
+
+        if is_account_disabled(user):
+            return jsonify({"error": "account_disabled", "code": "account_disabled"}), 403
+
+        session.clear()
+        session["user_id"] = user.id
+        session["username"] = InputValidator.sanitize_output(user.username)
+        regenerate_session()
+        session.permanent = True
+
+        return jsonify({"message": "telegram_authenticated", "user": user.to_dict()}), 200
 
     @app.route("/api/auth/mobile/google/complete", methods=["POST"])
     @rate_limit(login_limiter, "Too many login attempts")
@@ -1811,7 +2345,6 @@ def setup_auth(app):
         app.logger.info("Google OAuth registered successfully")
     with app.app_context():
         db.create_all()
-        _remove_legacy_default_minds(app)
         inspector = inspect(db.engine)
         date_time_type = (
             "TIMESTAMP" if db.engine.dialect.name in {"postgresql", "postgres"} else "DATETIME"
@@ -1859,6 +2392,39 @@ def setup_auth(app):
                         )
                     )
                 app.logger.info("Added missing user_settings.automatic_web_search column")
+        if "user_chat_history" in inspector.get_table_names():
+            chat_columns = {column["name"] for column in inspector.get_columns("user_chat_history")}
+            chat_source_columns = {
+                "source": (
+                    "ALTER TABLE user_chat_history "
+                    "ADD COLUMN source VARCHAR(32) DEFAULT 'web' NOT NULL"
+                ),
+                "external_ref_hash": (
+                    "ALTER TABLE user_chat_history ADD COLUMN external_ref_hash VARCHAR(64)"
+                ),
+                "source_context_data": (
+                    "ALTER TABLE user_chat_history "
+                    "ADD COLUMN source_context_data TEXT DEFAULT '{}' NOT NULL"
+                ),
+            }
+            missing_chat_source_columns = [
+                ddl
+                for column_name, ddl in chat_source_columns.items()
+                if column_name not in chat_columns
+            ]
+            if missing_chat_source_columns:
+                with db.engine.begin() as connection:
+                    for ddl in missing_chat_source_columns:
+                        connection.execute(text(ddl))
+                app.logger.info("Added missing Telegram chat source columns")
+            with db.engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS "
+                        "uq_user_chat_history_user_external_ref "
+                        "ON user_chat_history (user_id, external_ref_hash)"
+                    )
+                )
         if "mind" in inspector.get_table_names():
             mind_columns = {column["name"] for column in inspector.get_columns("mind")}
             mind_admin_columns = {
@@ -1900,5 +2466,10 @@ def setup_auth(app):
                     )
                 app.logger.info("Added missing user_chat_history.mind_id column")
             ensure_chat_session_uniqueness(db.engine)
+        # ORM backfills must run only after every compatibility column above exists.
+        # Otherwise SQLAlchemy selects the full current model from a legacy table and
+        # fails before the schema upgrader gets a chance to add missing columns.
+        _ensure_auth_identity_backfill(app)
+        _remove_legacy_default_minds(app)
         app.logger.info("Database tables created successfully")
     register_auth_routes(app)

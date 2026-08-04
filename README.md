@@ -70,7 +70,8 @@
 - История диалогов, список сессий, удаление и восстановление контекста.
 - Public read-only share links через `/sessions/<id>/share` и `/c/<public_id>`.
 - Guest mode и auth mode в одном интерфейсе.
-- Регистрация, логин, профиль, настройки, избранное и Google OAuth.
+- Регистрация, логин, профиль, настройки, избранное, Google OAuth и Telegram Login OIDC.
+- Telegram-бот как синхронизированный канал ReMind: личные и групповые чаты, Guest Mode, inline-ответы, rich Markdown, streaming drafts и нативный Thinking-блок.
 - Безопасная загрузка файлов с проверкой имени, MIME-типа и содержимого.
 - Перевод текста и text-to-speech через отдельные API endpoints.
 - При запросе озвучивания выбранный текст передаётся внешнему Google Translate TTS endpoint; не используйте озвучивание для секретных данных.

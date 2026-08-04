@@ -228,6 +228,29 @@ def render_beatbox_state_prompt(user_data: dict[str, Any]) -> str:
     )
 
 
+def render_telegram_context_prompt(user_data: dict[str, Any]) -> str:
+    context = user_data.get("telegram_context") if isinstance(user_data, dict) else None
+    if not isinstance(context, dict):
+        return ""
+
+    def clean(key: str, max_chars: int = 200) -> str:
+        return re.sub(r"\s+", " ", str(context.get(key) or "")).strip()[:max_chars]
+
+    return render_prompt(
+        "context/telegram.md",
+        {
+            "CHANNEL": clean("channel", 40),
+            "TELEGRAM_FIRST_NAME": clean("first_name"),
+            "TELEGRAM_LAST_NAME": clean("last_name"),
+            "TELEGRAM_USERNAME": clean("username"),
+            "TELEGRAM_LANGUAGE": clean("language_code", 20),
+            "CHAT_TYPE": clean("chat_type", 40),
+            "CHAT_TITLE": clean("chat_title"),
+            "RESPONSE_MODE": clean("response_mode", 40),
+        },
+    )
+
+
 def _truncate_prompt_value(value: str, max_chars: int) -> str:
     if len(value) <= max_chars:
         return value
@@ -261,28 +284,34 @@ def _current_datetime() -> str:
 
 def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     base = render_prompt("prompt.md", {"currentDateTime": _current_datetime()})
+    tools_enabled = user_data.get("toolsEnabled", True) is not False
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
     user_md = render_user_md_with_settings(user_id, metadata)
     web_tool_prompt = (
         render_web_tool_prompt()
-        if str(user_data.get("webSearch") or user_data.get("autoWebSearch") or "").strip().lower()
+        if tools_enabled
+        and str(user_data.get("webSearch") or user_data.get("autoWebSearch") or "").strip().lower()
         in {"1", "true", "yes", "on"}
         else ""
     )
-    current_canvas_textdoc = render_current_canvas_textdoc(user_data)
-    beatbox_state_prompt = render_beatbox_state_prompt(user_data)
-    github_tool_prompt = render_github_tool_prompt(user_id)
+    widget_tool_prompt = render_prompt("tools/widgets.md") if tools_enabled else ""
+    current_canvas_textdoc = render_current_canvas_textdoc(user_data) if tools_enabled else ""
+    beatbox_state_prompt = render_beatbox_state_prompt(user_data) if tools_enabled else ""
+    github_tool_prompt = render_github_tool_prompt(user_id) if tools_enabled else ""
+    telegram_context_prompt = render_telegram_context_prompt(user_data)
     mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
     prompt = "\n\n".join(section for section in (base, user_md) if section)
 
     tool_prompts = [
         tool
         for tool in [
+            widget_tool_prompt,
             web_tool_prompt,
             current_canvas_textdoc,
             beatbox_state_prompt,
             github_tool_prompt,
+            telegram_context_prompt,
         ]
         if tool
     ]

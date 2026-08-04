@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "Signing in...",
       "loginWithGoogle": "Sign in with Google",
+      "loginWithTelegram": "Continue with Telegram",
       "registerLoading": "Creating account...",
       "registerWithGoogle": "Sign up with Google",
+      "registerWithTelegram": "Sign up with Telegram",
+      "telegramLoading": "Opening Telegram...",
       "showPassword": "Show password",
       "hidePassword": "Hide password"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "Password must not exceed 100 characters",
       "turnstileRequired": "Confirm that you are not a robot and try again.",
       "turnstileLoadError": "Cloudflare verification did not load. Refresh the page or disable blockers for this site.",
-      "requestError": "Network or server error"
+      "requestError": "Network or server error",
+      "telegramError": "Could not sign in with Telegram. Please try again.",
+      "telegramUnavailable": "Telegram Login is unavailable right now. Refresh the page and try again."
     },
     "passwordStrength": {
       "label": "Password strength",
@@ -300,6 +305,7 @@
     "searchHint": "Hint: title, topic, last message",
     "searchPlaceholder": "Type to search chats",
     "searchInput": "Chat search",
+    "channelFilter": { "label": "Filter chats by source", "all": "All", "web": "Web", "telegram": "Telegram", "private": "Personal", "group": "Group", "guest": "Guest", "inline": "Inline" },
     "yourChats": "Your chats",
     "untitled": "Untitled",
     "expand": "Expand",
@@ -376,6 +382,26 @@
       "signOut": "Sign out",
       "profileUpdated": "Profile updated",
       "updateError": "Update failed",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "Connected",
+        "notConnected": "Not connected",
+        "botReady": "Bot ready",
+        "syncRequired": "Sync required",
+        "linkGoogle": "Link Google account",
+        "linkTelegram": "Link Telegram account",
+        "syncTelegram": "Sync with bot",
+        "linkingTelegram": "Connecting Telegram...",
+        "googleLinked": "Google account linked successfully.",
+        "telegramLinked": "Telegram account linked successfully.",
+        "telegramSynced": "Telegram account synchronized with the bot.",
+        "identityInUse": "This account is already linked to another user.",
+        "emailInUse": "This Google email is already used by another account.",
+        "authRequired": "Your session expired. Sign in and try linking again.",
+        "googleFailed": "Failed to link the Google account.",
+        "telegramFailed": "Failed to link the Telegram account."
+      },
       "validation": {
         "nameRequired": "Enter your name",
         "nameLength": "Name must be 1-100 characters",
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "Connected apps",
-        "description": "Manage external services ReMind can use inside chat.",
+        "description": "Manage ReMind sign-in methods and external services.",
         "github": {
           "name": "GitHub",
           "description": "Let ReMind plan code changes and open pull requests from chat.",

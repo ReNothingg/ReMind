@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "साइन इन हो रहा है...",
       "loginWithGoogle": "Google से साइन इन करें",
+      "loginWithTelegram": "Telegram से जारी रखें",
       "registerLoading": "खाता बनाया जा रहा है...",
       "registerWithGoogle": "Google से साइन अप करें",
+      "registerWithTelegram": "Telegram से साइन अप करें",
+      "telegramLoading": "Telegram खोला जा रहा है...",
       "showPassword": "पासवर्ड दिखाएं",
       "hidePassword": "पासवर्ड छिपाएं"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "पासवर्ड 100 वर्णों से अधिक नहीं होना चाहिए",
       "turnstileRequired": "पुष्टि करें कि आप रोबोट नहीं हैं और फिर कोशिश करें।",
       "turnstileLoadError": "Cloudflare सत्यापन लोड नहीं हुआ। पेज रीफ़्रेश करें या इस साइट के लिए ब्लॉकर बंद करें।",
-      "requestError": "नेटवर्क या सर्वर त्रुटि"
+      "requestError": "नेटवर्क या सर्वर त्रुटि",
+      "telegramError": "Telegram से साइन इन नहीं हो सका। फिर से कोशिश करें।",
+      "telegramUnavailable": "Telegram Login अभी उपलब्ध नहीं है। पेज रीफ़्रेश करके फिर कोशिश करें।"
     },
     "passwordStrength": {
       "label": "पासवर्ड मजबूती",
@@ -300,6 +305,7 @@
     "searchHint": "संकेत: शीर्षक, विषय, अंतिम संदेश",
     "searchPlaceholder": "चैट खोजने के लिए टाइप करें",
     "searchInput": "चैट खोज",
+    "channelFilter": { "label": "स्रोत के अनुसार चैट फ़िल्टर करें", "all": "सभी", "web": "वेब", "telegram": "Telegram", "private": "निजी", "group": "समूह", "guest": "अतिथि", "inline": "इनलाइन" },
     "yourChats": "आपकी चैटें",
     "untitled": "शीर्षक नहीं",
     "expand": "विस्तार करें",
@@ -376,6 +382,26 @@
       "signOut": "साइन आउट",
       "profileUpdated": "प्रोफ़ाइल अपडेट हो गई",
       "updateError": "अपडेट विफल",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "जुड़ा हुआ",
+        "notConnected": "नहीं जुड़ा",
+        "botReady": "बॉट तैयार है",
+        "syncRequired": "सिंक आवश्यक है",
+        "linkGoogle": "Google खाता जोड़ें",
+        "linkTelegram": "Telegram खाता जोड़ें",
+        "syncTelegram": "बॉट के साथ सिंक करें",
+        "linkingTelegram": "Telegram जोड़ा जा रहा है...",
+        "googleLinked": "Google खाता सफलतापूर्वक जुड़ गया।",
+        "telegramLinked": "Telegram खाता सफलतापूर्वक जुड़ गया।",
+        "telegramSynced": "Telegram खाता बॉट के साथ सिंक हो गया।",
+        "identityInUse": "यह खाता पहले से किसी अन्य उपयोगकर्ता से जुड़ा है।",
+        "emailInUse": "यह Google ईमेल किसी अन्य खाते में उपयोग हो रहा है।",
+        "authRequired": "आपका सत्र समाप्त हो गया। फिर से साइन इन करके प्रयास करें।",
+        "googleFailed": "Google खाता नहीं जोड़ा जा सका।",
+        "telegramFailed": "Telegram खाता नहीं जोड़ा जा सका।"
+      },
       "validation": {
         "nameRequired": "अपना नाम दर्ज करें",
         "nameLength": "नाम 1 से 100 अक्षरों के बीच होना चाहिए",
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "कनेक्ट किए गए ऐप्स",
-        "description": "चैट में ReMind जिन बाहरी सेवाओं का उपयोग कर सकता है उन्हें प्रबंधित करें।",
+        "description": "ReMind के साइन-इन तरीके और बाहरी सेवाएँ प्रबंधित करें।",
         "github": {
           "name": "GitHub",
           "description": "चैट से ReMind को कोड बदलावों की योजना बनाने और pull request खोलने दें।",

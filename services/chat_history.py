@@ -213,7 +213,6 @@ def write_chat_file(safe_session_id: str, data: dict) -> None:
 
 
 def replace_canvas_textdoc_in_messages(messages: list, value: Any) -> tuple[list, dict | None]:
-    """Replace the newest matching Canvas document without rewriting older versions."""
     textdoc = normalize_canvas_textdoc(value)
     if not textdoc or not isinstance(messages, list):
         return messages, None
@@ -290,7 +289,6 @@ def save_canvas_textdoc_to_history(
     user_id: int | None = None,
     guest_file: bool = False,
 ) -> dict | None:
-    """Persist one Canvas edit after the route has authorized the caller."""
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
         return None
@@ -402,11 +400,6 @@ def normalize_message(msg: Any) -> dict:
 
 
 def ensure_conversation_graph(messages: list[Any]) -> list[dict]:
-    """Normalize legacy flat histories into a branch-aware message graph.
-
-    Consecutive messages with the same role are treated as historical alternatives.
-    This repairs the legacy regeneration bug that appended model replies as new turns.
-    """
     raw_messages = []
     for index, message in enumerate(messages):
         if not isinstance(message, dict):
@@ -510,7 +503,6 @@ def _active_path_graph(messages: list[Any]) -> list[dict]:
 def conversation_context_for_operation(
     messages: list[Any], operation: str, target_message_id: str | None
 ) -> tuple[list[dict], str | None]:
-    """Return canonical model context and the parent anchor for a chat operation."""
     path = _active_path_graph(messages)
     if operation == "send":
         return [normalize_message(message) for message in path], path[-1]["id"] if path else None

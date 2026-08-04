@@ -212,7 +212,6 @@ def _extract_session_identifier(payload: dict[str, Any]) -> Any:
 
 
 def _allowed_chat_fields(payload: dict[str, Any]) -> dict[str, Any]:
-    """Keep arbitrary client fields from becoming trusted model inputs later."""
     return {key: value for key, value in payload.items() if key in CHAT_REQUEST_FIELDS}
 
 

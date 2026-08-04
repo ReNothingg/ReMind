@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "登录中...",
       "loginWithGoogle": "使用 Google 登录",
+      "loginWithTelegram": "使用 Telegram 继续",
       "registerLoading": "注册中...",
       "registerWithGoogle": "使用 Google 注册",
+      "registerWithTelegram": "使用 Telegram 注册",
+      "telegramLoading": "正在打开 Telegram...",
       "showPassword": "显示密码",
       "hidePassword": "隐藏密码"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "密码不能超过 100 个字符",
       "turnstileRequired": "请确认你不是机器人，然后重试。",
       "turnstileLoadError": "Cloudflare 验证未能加载。请刷新页面，或为此网站停用拦截器。",
-      "requestError": "网络或服务器错误"
+      "requestError": "网络或服务器错误",
+      "telegramError": "无法通过 Telegram 登录，请重试。",
+      "telegramUnavailable": "Telegram 登录暂时不可用，请刷新页面后重试。"
     },
     "passwordStrength": {
       "label": "密码强度",
@@ -300,6 +305,7 @@
     "searchHint": "提示：标题、主题、最后一条消息",
     "searchPlaceholder": "输入以搜索聊天",
     "searchInput": "聊天搜索",
+    "channelFilter": { "label": "按来源筛选聊天", "all": "全部", "web": "网页", "telegram": "Telegram", "private": "私聊", "group": "群组", "guest": "访客", "inline": "内联" },
     "yourChats": "你的聊天",
     "untitled": "未命名",
     "expand": "展开",
@@ -376,6 +382,26 @@
       "signOut": "退出登录",
       "profileUpdated": "资料已更新",
       "updateError": "更新失败",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "已关联",
+        "notConnected": "未关联",
+        "botReady": "机器人已就绪",
+        "syncRequired": "需要同步",
+        "linkGoogle": "关联 Google 账户",
+        "linkTelegram": "关联 Telegram 账户",
+        "syncTelegram": "与机器人同步",
+        "linkingTelegram": "正在关联 Telegram...",
+        "googleLinked": "Google 账户关联成功。",
+        "telegramLinked": "Telegram 账户关联成功。",
+        "telegramSynced": "Telegram 账户已与机器人同步。",
+        "identityInUse": "此账户已关联到其他用户。",
+        "emailInUse": "此 Google 邮箱已被其他账户使用。",
+        "authRequired": "会话已过期，请重新登录后再试。",
+        "googleFailed": "无法关联 Google 账户。",
+        "telegramFailed": "无法关联 Telegram 账户。"
+      },
       "validation": {
         "nameRequired": "请输入姓名",
         "nameLength": "姓名长度必须为 1 到 100 个字符",
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "已连接的应用",
-        "description": "管理 ReMind 可在聊天中使用的外部服务。",
+        "description": "管理 ReMind 的登录方式和外部服务。",
         "github": {
           "name": "GitHub",
           "description": "允许 ReMind 在聊天中规划代码更改并打开拉取请求。",

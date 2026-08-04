@@ -356,9 +356,14 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
     client: genai.Client | None = None
     try:
         system_prompt = build_system_prompt(db_user_id, user_message_data)
-        declarations = model_tool_declarations(
-            db_user_id,
-            enable_web=_web_tool_enabled(user_message_data),
+        tools_enabled = user_message_data.get("toolsEnabled", True) is not False
+        declarations = (
+            model_tool_declarations(
+                db_user_id,
+                enable_web=_web_tool_enabled(user_message_data),
+            )
+            if tools_enabled
+            else []
         )
         client = genai.Client(api_key=GEMINI_API_KEY)
         chat = client.chats.create(
@@ -373,7 +378,9 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
         completed_tool_calls: set[str] = set()
         total_tool_calls = 0
         any_answer_generated = False
-        force_web_search = _manual_web_search_requested(user_message_data.get("webSearch"))
+        force_web_search = tools_enabled and _manual_web_search_requested(
+            user_message_data.get("webSearch")
+        )
         thought_chunks: list[str] = []
         thought_chars = 0
         thought_opened_at: int | None = None

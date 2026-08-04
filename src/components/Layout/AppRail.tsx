@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ShieldCheck, X } from 'lucide-react';
+import { Check, ChevronRight, ListFilter, ShieldCheck, X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -169,8 +169,11 @@ const AppRail = ({
     const [editingTitle, setEditingTitle] = useState('');
     const [localSessions, setLocalSessions] = useState(sessions);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sourceFilter, setSourceFilter] = useState('all');
+    const [isSourceFilterOpen, setIsSourceFilterOpen] = useState(false);
     const [arePinnedMindsExpanded, setArePinnedMindsExpanded] = useState(true);
     const menuTriggerRefs = useRef(new Map());
+    const sourceFilterRef = useRef(null);
 
     useEffect(() => {
         if (isExpanded) {
@@ -181,7 +184,29 @@ const AppRail = ({
         setEditingSessionId(null);
         setEditingTitle('');
         setSearchQuery('');
+        setSourceFilter('all');
+        setIsSourceFilterOpen(false);
     }, [isExpanded]);
+
+    useEffect(() => {
+        if (!isSourceFilterOpen) return undefined;
+        const handlePointerDown = (event) => {
+            if (!sourceFilterRef.current?.contains(event.target)) {
+                setIsSourceFilterOpen(false);
+            }
+        };
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setIsSourceFilterOpen(false);
+            }
+        };
+        document.addEventListener('pointerdown', handlePointerDown);
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isSourceFilterOpen]);
 
     useEffect(() => {
         const loadFavorites = async () => {
@@ -363,9 +388,15 @@ const AppRail = ({
     const effectiveQuery = searchQuery.trim();
 
     const filteredSessions = useMemo(() => {
-        if (!effectiveQuery) return sortedSessions;
+        const sourceSessions = sortedSessions.filter((session) => {
+            const source = session.source || 'web';
+            if (sourceFilter === 'telegram') return source.startsWith('telegram_');
+            if (sourceFilter === 'web') return source === 'web';
+            return true;
+        });
+        if (!effectiveQuery) return sourceSessions;
 
-        const scored = sortedSessions
+        const scored = sourceSessions
             .map((session, index) => {
                 const preview = (session.last_message && session.last_message.trim()) ? session.last_message.trim() : '';
                 const title = (session.title && session.title.trim()) || preview || (session.session_id || '').slice(0, 16) || t('rail.untitled');
@@ -376,7 +407,15 @@ const AppRail = ({
             .sort((a, b) => (b.score - a.score) || (a.index - b.index));
 
         return scored.map(item => item.session);
-    }, [effectiveQuery, sortedSessions, t]);
+    }, [effectiveQuery, sortedSessions, sourceFilter, t]);
+
+    const getSourceLabel = (source) => {
+        if (source === 'telegram_private') return t('rail.channelFilter.private');
+        if (source === 'telegram_group') return t('rail.channelFilter.group');
+        if (source === 'telegram_guest') return t('rail.channelFilter.guest');
+        if (source === 'telegram_inline') return t('rail.channelFilter.inline');
+        return '';
+    };
 
     const getSessionActivityLabel = (activity) => {
         if (!activity?.status) return '';
@@ -579,14 +618,60 @@ const AppRail = ({
 
             {isExpanded && (
                 <div className="rail-search-container ui-rail-search-wrap">
-                    <input
-                        type="text"
-                        className="rail-search-input ui-rail-search-input"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={t('rail.searchPlaceholder')}
-                        aria-label={t('rail.searchInput')}
-                    />
+                    <div className="rail-search-row">
+                        <input
+                            type="text"
+                            className="rail-search-input ui-rail-search-input"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={t('rail.searchPlaceholder')}
+                            aria-label={t('rail.searchInput')}
+                        />
+                        <div className="rail-source-filter" ref={sourceFilterRef}>
+                            <button
+                                type="button"
+                                className={cn(
+                                    'rail-source-filter-trigger',
+                                    sourceFilter !== 'all' && 'rail-source-filter-trigger-active'
+                                )}
+                                aria-label={t('rail.channelFilter.label')}
+                                aria-haspopup="menu"
+                                aria-expanded={isSourceFilterOpen}
+                                onClick={() => setIsSourceFilterOpen((open) => !open)}
+                            >
+                                <ListFilter size={19} strokeWidth={2} aria-hidden="true" />
+                            </button>
+                            {isSourceFilterOpen && (
+                                <div
+                                    className="rail-source-filter-menu"
+                                    role="menu"
+                                    aria-label={t('rail.channelFilter.label')}
+                                >
+                                    {['all', 'web', 'telegram'].map((filter) => (
+                                        <button
+                                            key={filter}
+                                            type="button"
+                                            role="menuitemradio"
+                                            className={cn(
+                                                'rail-source-filter-option',
+                                                sourceFilter === filter && 'rail-source-filter-option-active'
+                                            )}
+                                            aria-checked={sourceFilter === filter}
+                                            onClick={() => {
+                                                setSourceFilter(filter);
+                                                setIsSourceFilterOpen(false);
+                                            }}
+                                        >
+                                            <span>{t(`rail.channelFilter.${filter}`)}</span>
+                                            {sourceFilter === filter && (
+                                                <Check size={16} strokeWidth={2.2} aria-hidden="true" />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -644,6 +729,11 @@ const AppRail = ({
                                     >
                                         <span className="chat-item-title-row ui-rail-title-row">
                                             <span className="chat-item-title ui-rail-title">{title}</span>
+                                            {session.source?.startsWith('telegram_') && (
+                                                <span className="ui-rail-source-chip">
+                                                    {getSourceLabel(session.source)}
+                                                </span>
+                                            )}
                                             {session.is_public && (
                                                 <span
                                                     className="chat-public-chip ui-rail-public-chip"

@@ -31,8 +31,11 @@
     "actions": {
       "loginLoading": "Вход...",
       "loginWithGoogle": "Войти с Google",
+      "loginWithTelegram": "Войти через Telegram",
       "registerLoading": "Регистрация...",
       "registerWithGoogle": "Зарегистрироваться с Google",
+      "registerWithTelegram": "Продолжить с Telegram",
+      "telegramLoading": "Открываем Telegram...",
       "showPassword": "Показать пароль",
       "hidePassword": "Скрыть пароль"
     },
@@ -51,7 +54,9 @@
       "passwordTooLong": "Пароль не должен превышать 100 символов",
       "turnstileRequired": "Подтвердите, что вы не робот, и попробуйте снова.",
       "turnstileLoadError": "Антикапча не загрузилась. Обновите страницу или отключите блокировщики для этого сайта.",
-      "requestError": "Ошибка сети или сервера"
+      "requestError": "Ошибка сети или сервера",
+      "telegramError": "Не удалось войти через Telegram. Попробуйте ещё раз.",
+      "telegramUnavailable": "Telegram Login сейчас недоступен. Обновите страницу и попробуйте снова."
     },
     "passwordStrength": {
       "label": "Надёжность пароля",
@@ -300,6 +305,7 @@
     "searchHint": "Подсказка: название, тема, последнее сообщение",
     "searchPlaceholder": "Введите запрос для поиска",
     "searchInput": "Поиск чатов",
+    "channelFilter": { "label": "Фильтр чатов по источнику", "all": "Все", "web": "Веб", "telegram": "Telegram", "private": "Личный", "group": "Группа", "guest": "Guest", "inline": "Inline" },
     "yourChats": "Ваши чаты",
     "untitled": "Без названия",
     "expand": "Развернуть",
@@ -376,6 +382,26 @@
       "signOut": "Выйти из аккаунта",
       "profileUpdated": "Профиль обновлён",
       "updateError": "Ошибка обновления",
+      "loginMethods": {
+        "google": "Google",
+        "telegram": "Telegram",
+        "connected": "Подключён",
+        "notConnected": "Не подключён",
+        "botReady": "Бот готов",
+        "syncRequired": "Нужна синхронизация",
+        "linkGoogle": "Привязать Google аккаунт",
+        "linkTelegram": "Привязать Telegram аккаунт",
+        "syncTelegram": "Синхронизировать с ботом",
+        "linkingTelegram": "Подключаем Telegram...",
+        "googleLinked": "Google аккаунт успешно привязан.",
+        "telegramLinked": "Telegram аккаунт успешно привязан.",
+        "telegramSynced": "Telegram аккаунт синхронизирован с ботом.",
+        "identityInUse": "Этот аккаунт уже привязан к другому пользователю.",
+        "emailInUse": "Этот Google email уже используется другим аккаунтом.",
+        "authRequired": "Сессия истекла. Войдите снова и повторите привязку.",
+        "googleFailed": "Не удалось привязать Google аккаунт.",
+        "telegramFailed": "Не удалось привязать Telegram аккаунт."
+      },
       "validation": {
         "nameRequired": "Укажите имя",
         "nameLength": "Имя должно содержать от 1 до 100 символов",
@@ -401,7 +427,7 @@
       },
       "connectedApps": {
         "title": "Подключенные приложения",
-        "description": "Управляйте внешними сервисами, которые ReMind может использовать прямо в чате.",
+        "description": "Управляйте способами входа и внешними сервисами ReMind.",
         "github": {
           "name": "GitHub",
           "description": "Позволяет ReMind планировать изменения в коде и открывать Pull Request из чата.",

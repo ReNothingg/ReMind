@@ -42,15 +42,16 @@ services:
       - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME:?Set AI_PROVIDER_MODEL_NAME}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - TELEGRAM_CLIENT_ID=${TELEGRAM_CLIENT_ID:-}
       - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
       - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL}
       - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
       - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
-      - DATABASE_URL=${DATABASE_URL:?Set URL-encoded DATABASE_URL}
-      - REDIS_URL=${REDIS_URL:?Set URL-encoded REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:?Set URL-encoded CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:?Set URL-encoded CELERY_RESULT_BACKEND}
+      - DATABASE_URL=postgresql://remind:${DB_PASSWORD:?Set DB_PASSWORD}@db:5432/remind_db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
       - EMAIL_SENDER=${EMAIL_SENDER:?Set EMAIL_SENDER}
       - EMAIL_PASSWORD=${EMAIL_PASSWORD:?Set EMAIL_PASSWORD}
       - GITHUB_APP_ID=${GITHUB_APP_ID:?Set GITHUB_APP_ID}
@@ -58,7 +59,7 @@ services:
       - GITHUB_APP_CLIENT_SECRET=${GITHUB_APP_CLIENT_SECRET:?Set GITHUB_APP_CLIENT_SECRET}
       - GITHUB_APP_SLUG=${GITHUB_APP_SLUG:?Set GITHUB_APP_SLUG}
       - GITHUB_PUBLIC_BASE_URL=${GITHUB_PUBLIC_BASE_URL:?Set GITHUB_PUBLIC_BASE_URL}
-      - GITHUB_OAUTH_ENCRYPTION_KEY=${GITHUB_OAUTH_ENCRYPTION_KEY:?Set GITHUB_OAUTH_ENCRYPTION_KEY}
+      - GITHUB_OAUTH_ENCRYPTION_KEY=${GITHUB_OAUTH_ENCRYPTION_KEY:-}
       - LOCALHOST_MODE=False
       - CORS_ALLOW_LOCAL_ORIGINS=False
       - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
@@ -102,6 +103,85 @@ services:
       - backend
       - edge
 
+  telegram-bot:
+    image: remind-app:latest
+    command: python telegram_bot.py
+    profiles: ["telegram"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
+      - SECRET_ROTATION_EPOCH=${SECRET_ROTATION_EPOCH:-0}
+      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY:?Set AI_PROVIDER_API_KEY}
+      - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME:?Set AI_PROVIDER_MODEL_NAME}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
+      - TELEGRAM_BOT_API_BASE=${TELEGRAM_BOT_API_BASE:-https://api.telegram.org}
+      - TELEGRAM_DRAFT_INTERVAL_SECONDS=${TELEGRAM_DRAFT_INTERVAL_SECONDS:-0.55}
+      - TELEGRAM_MAX_CONTEXT_MESSAGES=${TELEGRAM_MAX_CONTEXT_MESSAGES:-4}
+      - TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE=${TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE:-4}
+      - TELEGRAM_THINKING_LEVEL=${TELEGRAM_THINKING_LEVEL:-low}
+      - TELEGRAM_THINKING_LEVEL_MESSAGE=${TELEGRAM_THINKING_LEVEL_MESSAGE:-medium}
+      - TELEGRAM_THINKING_LEVEL_INLINE=${TELEGRAM_THINKING_LEVEL_INLINE:-}
+      - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL}
+      - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      - DATABASE_URL=postgresql://remind:${DB_PASSWORD:?Set DB_PASSWORD}@db:5432/remind_db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
+      - ENABLE_STRICT_HTTPS=False
+      - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
+      - PUBLIC_METRICS_ENABLED=False
+      - PUBLIC_OPENAPI_ENABLED=False
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      init-storage:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    logging: *default-logging
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.80'
+          memory: 2G
+    networks:
+      - backend
+      - edge
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://nginx:80
+    profiles: ["tunnel"]
+    depends_on:
+      nginx:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+
   worker:
     image: remind-app:latest
     command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
@@ -117,10 +197,10 @@ services:
       - AI_PROVIDER_MODEL_NAME=${AI_PROVIDER_MODEL_NAME:?Set AI_PROVIDER_MODEL_NAME}
       - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
       - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
-      - DATABASE_URL=${DATABASE_URL:?Set URL-encoded DATABASE_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:?Set URL-encoded CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:?Set URL-encoded CELERY_RESULT_BACKEND}
-      - REDIS_URL=${REDIS_URL:?Set URL-encoded REDIS_URL}
+      - DATABASE_URL=postgresql://remind:${DB_PASSWORD:?Set DB_PASSWORD}@db:5432/remind_db
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
       - ENABLE_STRICT_HTTPS=False
       - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
       - PUBLIC_METRICS_ENABLED=False
@@ -190,10 +270,10 @@ services:
       - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL}
       - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
       - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
-      - DATABASE_URL=${DATABASE_URL:?Set URL-encoded DATABASE_URL}
-      - REDIS_URL=${REDIS_URL:?Set URL-encoded REDIS_URL}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:?Set URL-encoded CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:?Set URL-encoded CELERY_RESULT_BACKEND}
+      - DATABASE_URL=postgresql://remind:${DB_PASSWORD:?Set DB_PASSWORD}@db:5432/remind_db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/1
       - EMAIL_SENDER=${EMAIL_SENDER:?Set EMAIL_SENDER}
       - EMAIL_PASSWORD=${EMAIL_PASSWORD:?Set EMAIL_PASSWORD}
       - LOCALHOST_MODE=False
