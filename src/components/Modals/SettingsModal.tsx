@@ -590,7 +590,7 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         window.Telegram.Login.auth(
             {
                 client_id: clientId,
-                scope: ['profile'],
+                scope: ['profile', 'write'],
                 lang: currentLanguage,
                 nonce: authConfig.telegram_nonce,
             },

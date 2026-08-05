@@ -113,7 +113,26 @@ def test_new_telegram_login_uses_bot_api_id_instead_of_oidc_subject():
         assert user.to_dict()["telegram_bot_ready"] is True
 
 
-@pytest.mark.parametrize("value", [None, True, 0, -1, 0x10000000000, "not-a-number"])
+def test_telegram_login_without_profile_id_uses_oidc_subject_without_bot_ready():
+    app = _test_app()
+    with app.app_context():
+        db.create_all()
+        oidc_subject = "1234567890123456789"
+        user = _find_or_create_telegram_user(
+            {
+                "sub": oidc_subject,
+                "name": "Telegram User",
+                "preferred_username": "telegram_user",
+            }
+        )
+
+        assert user.oauth_id == oidc_subject
+        assert user.auth_identities[0].provider_user_id == oidc_subject
+        assert user.email == _telegram_placeholder_email(oidc_subject)
+        assert user.to_dict()["telegram_bot_ready"] is False
+
+
+@pytest.mark.parametrize("value", [None, True, 0, -1, 1 << 52, "not-a-number"])
 def test_telegram_bot_user_id_rejects_invalid_claims(value):
     with pytest.raises(TelegramSubjectError):
         _telegram_bot_user_id({"id": value})

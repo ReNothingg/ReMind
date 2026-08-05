@@ -45,7 +45,7 @@ TELEGRAM_LOGIN_NONCE_SESSION_KEY = "telegram_login_nonce"
 TELEGRAM_LOGIN_NONCE_TTL_SECONDS = 600
 TELEGRAM_ID_TOKEN_MAX_LENGTH = 16_384
 TELEGRAM_ALLOWED_SIGNING_ALGORITHMS = ("RS256", "ES256")
-TELEGRAM_BOT_USER_ID_MAX = 0xFFFFFFFFFF
+TELEGRAM_BOT_USER_ID_MAX = (1 << 52) - 1
 SUPPORTED_AUTH_PROVIDERS = frozenset({"google", "telegram"})
 _telegram_jwks_client = None
 
@@ -906,7 +906,7 @@ def _verify_telegram_id_token(id_token: str, client_id: str, expected_nonce: str
         issuer=TELEGRAM_ISSUER,
         leeway=30,
         options={
-            "require": ["aud", "exp", "iat", "iss", "nonce", "sub", "id"],
+            "require": ["aud", "exp", "iat", "iss", "nonce", "sub"],
         },
     )
 
@@ -914,12 +914,18 @@ def _verify_telegram_id_token(id_token: str, client_id: str, expected_nonce: str
     if not isinstance(token_nonce, str) or not secrets.compare_digest(token_nonce, expected_nonce):
         raise TelegramNonceMismatchError("Invalid Telegram login nonce")
 
+    _telegram_oidc_subject(claims)
+    if claims.get("id") is not None:
+        _telegram_bot_user_id(claims)
+
+    return claims
+
+
+def _telegram_oidc_subject(claims: dict) -> str:
     subject = str(claims.get("sub") or "").strip()
     if not re.fullmatch(r"[0-9]{1,32}", subject):
         raise TelegramSubjectError("Invalid Telegram subject")
-    _telegram_bot_user_id(claims)
-
-    return claims
+    return subject
 
 
 def _telegram_bot_user_id(claims: dict) -> str:
@@ -935,9 +941,15 @@ def _telegram_bot_user_id(claims: dict) -> str:
     return user_id
 
 
+def _telegram_provider_user_id(claims: dict) -> str:
+    if claims.get("id") is not None:
+        return _telegram_bot_user_id(claims)
+    return _telegram_oidc_subject(claims)
+
+
 def _sync_telegram_identity(user: User, claims: dict) -> AuthIdentity:
-    subject = str(claims["sub"]).strip()
-    telegram_user_id = _telegram_bot_user_id(claims)
+    subject = _telegram_oidc_subject(claims)
+    telegram_user_id = _telegram_provider_user_id(claims)
     current_identity = AuthIdentity.query.filter_by(
         user_id=user.id,
         provider="telegram",
@@ -974,8 +986,8 @@ def _clean_telegram_profile_name(value: Any, fallback: str) -> str:
 
 
 def _find_or_create_telegram_user(claims: dict) -> User:
-    subject = str(claims["sub"]).strip()
-    telegram_user_id = _telegram_bot_user_id(claims)
+    subject = _telegram_oidc_subject(claims)
+    telegram_user_id = _telegram_provider_user_id(claims)
     identity = _find_auth_identity("telegram", telegram_user_id)
     if not identity and subject != telegram_user_id:
         identity = _find_auth_identity("telegram", subject)

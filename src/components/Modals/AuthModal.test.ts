@@ -153,7 +153,7 @@ describe('AuthModal dismissal', () => {
         expect(telegramAuth).toHaveBeenCalledWith(
             expect.objectContaining({
                 client_id: 8123456789,
-                scope: ['profile'],
+                scope: ['profile', 'write'],
                 nonce: 'server-nonce',
             }),
             expect.any(Function)
@@ -212,7 +212,7 @@ describe('AuthModal dismissal', () => {
         expect(telegramAuth).toHaveBeenCalledWith(
             expect.objectContaining({
                 client_id: 8123456789,
-                scope: ['profile'],
+                scope: ['profile', 'write'],
                 nonce: 'server-nonce',
             }),
             expect.any(Function)

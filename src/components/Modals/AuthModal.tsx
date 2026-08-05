@@ -222,64 +222,64 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
             window.Telegram.Login.auth(
                 {
                     client_id: clientId,
-                    scope: ['profile'],
-                lang: String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0],
-                nonce: authConfig.telegram_nonce,
-            },
-            async (result) => {
-                try {
-                    if (result.error || !result.id_token) {
-                        setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
-                        return;
-                    }
-
-                    const response = linkMode
-                        ? await authService.linkTelegram(result.id_token)
-                        : await loginWithTelegram(result.id_token);
-                    if (!response.success) {
-                        if (linkMode) {
-                            const responseError = ('error' in response ? response.error : '') || '';
-                            const isConflict = responseError === 'auth_identity_in_use'
-                                || responseError === 'identity_in_use'
-                                || responseError === 'auth_provider_already_linked';
-                            const isSessionLost = responseError === 'auth_required';
-                            setMessage({
-                                type: 'error',
-                                text: isSessionLost
-                                    ? t('settings.account.loginMethods.authRequired')
-                                    : isConflict
-                                        ? t('settings.account.loginMethods.identityInUse')
-                                        : t('settings.account.loginMethods.telegramFailed'),
-                            });
-                        } else {
+                    scope: ['profile', 'write'],
+                    lang: String(i18n.resolvedLanguage || i18n.language || 'en').split('-')[0],
+                    nonce: authConfig.telegram_nonce,
+                },
+                async (result) => {
+                    try {
+                        if (result.error || !result.id_token) {
                             setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
-                        }
-                        return;
-                    }
-
-                    if (linkMode) {
-                        const authState = await checkAuth();
-                        if (!authState.authenticated) {
-                            setMessage({
-                                type: 'error',
-                                text: t('settings.account.loginMethods.authRequired'),
-                            });
                             return;
                         }
-                        setMessage({
-                            type: 'success',
-                            text: t('settings.account.loginMethods.telegramLinked'),
-                        });
-                        setTimeout(() => {
-                            onClose();
-                        }, 1500);
+
+                        const response = linkMode
+                            ? await authService.linkTelegram(result.id_token)
+                            : await loginWithTelegram(result.id_token);
+                        if (!response.success) {
+                            if (linkMode) {
+                                const responseError = ('error' in response ? response.error : '') || '';
+                                const isConflict = responseError === 'auth_identity_in_use'
+                                    || responseError === 'identity_in_use'
+                                    || responseError === 'auth_provider_already_linked';
+                                const isSessionLost = responseError === 'auth_required';
+                                setMessage({
+                                    type: 'error',
+                                    text: isSessionLost
+                                        ? t('settings.account.loginMethods.authRequired')
+                                        : isConflict
+                                            ? t('settings.account.loginMethods.identityInUse')
+                                            : t('settings.account.loginMethods.telegramFailed'),
+                                });
+                            } else {
+                                setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
+                            }
+                            return;
+                        }
+
+                        if (linkMode) {
+                            const authState = await checkAuth();
+                            if (!authState.authenticated) {
+                                setMessage({
+                                    type: 'error',
+                                    text: t('settings.account.loginMethods.authRequired'),
+                                });
+                                return;
+                            }
+                            setMessage({
+                                type: 'success',
+                                text: t('settings.account.loginMethods.telegramLinked'),
+                            });
+                            setTimeout(() => {
+                                onClose();
+                            }, 1500);
+                        }
+                    } catch (error) {
+                        console.warn('Telegram Login failed', error);
+                        setMessage({ type: 'error', text: t('authModal.messages.telegramUnavailable') });
+                    } finally {
+                        setTelegramLoading(false);
                     }
-                } catch (error) {
-                    console.warn('Telegram Login failed', error);
-                    setMessage({ type: 'error', text: t('authModal.messages.telegramUnavailable') });
-                } finally {
-                    setTelegramLoading(false);
-                }
                 }
             );
         } catch (error) {
