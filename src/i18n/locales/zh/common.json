@@ -21,6 +21,8 @@
   "authModal": {
     "loginTitle": "登录账户",
     "registerTitle": "创建账户",
+    "telegramLinkTitle": "Connect Telegram",
+    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
     "fields": {
       "email": "电子邮箱：",
       "password": "密码:",

@@ -201,6 +201,11 @@ describe('AuthModal dismissal', () => {
             'button[aria-label="settings.account.loginMethods.linkTelegram"]'
         );
         expect(telegramButton).not.toBeNull();
+        expect(container.textContent).toContain('authModal.telegramLinkTitle');
+        expect(container.textContent).toContain('authModal.telegramLinkDescription');
+        expect(container.querySelector('#loginEmail')).toBeNull();
+        expect(container.querySelector('#loginPassword')).toBeNull();
+        expect(container.querySelector('#loginTurnstileContainer')).toBeNull();
 
         await act(async () => {
             telegramButton?.click();

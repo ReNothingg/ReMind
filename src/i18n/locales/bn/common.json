@@ -21,6 +21,8 @@
   "authModal": {
     "loginTitle": "আপনার অ্যাকাউন্টে সাইন ইন করুন",
     "registerTitle": "অ্যাকাউন্ট তৈরি করুন",
+    "telegramLinkTitle": "Connect Telegram",
+    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
     "fields": {
       "email": "ইমেইল:",
       "password": "পাসওয়ার্ড:",

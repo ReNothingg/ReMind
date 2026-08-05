@@ -93,6 +93,11 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         && authConfig?.telegram_client_id
         && authConfig?.telegram_nonce
     );
+    const authTitleKey = linkMode
+        ? 'authModal.telegramLinkTitle'
+        : isLoginView
+            ? 'authModal.loginTitle'
+            : 'authModal.registerTitle';
     const shouldUseTurnstile = Boolean(authConfig?.turnstile_site_key) && authConfig?.turnstile_required !== false;
     const passwordStrength = getPasswordStrength(password);
     const passwordStrengthColor = PASSWORD_STRENGTH_COLORS[passwordStrength.score];
@@ -536,9 +541,12 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
 
     return (
         <ModalShell
-            ariaLabel={t(isLoginView ? 'authModal.loginTitle' : 'authModal.registerTitle')}
+            ariaLabel={t(authTitleKey)}
             className="auth-modal items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-            contentClassName="auth-modal-content mx-auto w-full max-w-[460px] rounded-t-xl border-border bg-surface px-5 pb-6 pt-5 text-foreground sm:rounded-xl sm:px-6 sm:pb-6 sm:pt-6"
+            contentClassName={cn(
+                'auth-modal-content mx-auto w-full rounded-t-xl border-border bg-surface px-5 pb-6 pt-5 text-foreground sm:rounded-xl sm:px-6 sm:pb-6 sm:pt-6',
+                linkMode ? 'max-w-[420px]' : 'max-w-[460px]'
+            )}
             onRequestClose={onClose}
         >
             <button
@@ -550,7 +558,20 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                 <X size={20} strokeWidth={1.9} aria-hidden="true" />
             </button>
 
-            {isLoginView ? (
+            {linkMode ? (
+                <div className="auth-form space-y-5">
+                    <div className="space-y-2 pr-12">
+                        <h2 className="text-[1.45rem] font-bold tracking-normal text-foreground">
+                            {t('authModal.telegramLinkTitle')}
+                        </h2>
+                        <p className="text-sm leading-6 text-muted">
+                            {t('authModal.telegramLinkDescription')}
+                        </p>
+                    </div>
+
+                    {renderTelegramLogin()}
+                </div>
+            ) : isLoginView ? (
                 <div className="auth-form space-y-4">
                     <div className="space-y-1 pr-12">
                         <h2 className="text-[1.45rem] font-bold tracking-normal text-foreground">

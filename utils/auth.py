@@ -272,12 +272,28 @@ def _find_auth_identity(provider: str, provider_user_id: str) -> AuthIdentity | 
     ).first()
 
 
+def _discard_orphan_auth_identity(identity: AuthIdentity | None) -> AuthIdentity | None:
+    if not identity or identity.user is not None:
+        return identity
+    current_app.logger.warning(
+        "Discarding orphan auth identity provider=%s identity_id=%s user_id=%s",
+        identity.provider,
+        identity.id,
+        identity.user_id,
+    )
+    db.session.delete(identity)
+    db.session.flush()
+    return None
+
+
 def _link_auth_identity(user: User, provider: str, provider_user_id: str) -> AuthIdentity:
     normalized_subject = str(provider_user_id or "").strip()
     if provider not in SUPPORTED_AUTH_PROVIDERS or not normalized_subject:
         raise ValueError("invalid_auth_identity")
 
-    existing_identity = _find_auth_identity(provider, normalized_subject)
+    existing_identity = _discard_orphan_auth_identity(
+        _find_auth_identity(provider, normalized_subject)
+    )
     if existing_identity:
         if existing_identity.user_id != user.id:
             raise AuthIdentityConflictError("auth_identity_in_use")
@@ -954,7 +970,9 @@ def _sync_telegram_identity(user: User, claims: dict) -> AuthIdentity:
         user_id=user.id,
         provider="telegram",
     ).first()
-    claimed_identity = _find_auth_identity("telegram", telegram_user_id)
+    claimed_identity = _discard_orphan_auth_identity(
+        _find_auth_identity("telegram", telegram_user_id)
+    )
 
     if claimed_identity and claimed_identity.user_id != user.id:
         raise AuthIdentityConflictError("auth_identity_in_use")
@@ -988,9 +1006,11 @@ def _clean_telegram_profile_name(value: Any, fallback: str) -> str:
 def _find_or_create_telegram_user(claims: dict) -> User:
     subject = _telegram_oidc_subject(claims)
     telegram_user_id = _telegram_provider_user_id(claims)
-    identity = _find_auth_identity("telegram", telegram_user_id)
+    identity = _discard_orphan_auth_identity(
+        _find_auth_identity("telegram", telegram_user_id)
+    )
     if not identity and subject != telegram_user_id:
-        identity = _find_auth_identity("telegram", subject)
+        identity = _discard_orphan_auth_identity(_find_auth_identity("telegram", subject))
     user = identity.user if identity else None
     if not user:
         user = User.query.filter_by(oauth_provider="telegram", oauth_id=telegram_user_id).first()

@@ -21,6 +21,8 @@
   "authModal": {
     "loginTitle": "Connectez-vous à votre compte",
     "registerTitle": "Créer un compte",
+    "telegramLinkTitle": "Connect Telegram",
+    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
     "fields": {
       "email": "E-mail:",
       "password": "Mot de passe:",

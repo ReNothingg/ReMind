@@ -13,6 +13,7 @@ from utils.auth import (
     User,
     UserChatHistory,
     _find_or_create_telegram_user,
+    _sync_telegram_identity,
     _telegram_bot_user_id,
     _telegram_placeholder_email,
     db,
@@ -130,6 +131,43 @@ def test_telegram_login_without_profile_id_uses_oidc_subject_without_bot_ready()
         assert user.auth_identities[0].provider_user_id == oidc_subject
         assert user.email == _telegram_placeholder_email(oidc_subject)
         assert user.to_dict()["telegram_bot_ready"] is False
+
+
+def test_telegram_link_reclaims_orphan_identity_from_deleted_account():
+    app = _test_app()
+    with app.app_context():
+        db.create_all()
+        user = User(
+            username="current_user",
+            name="Current User",
+            email="current@example.com",
+            is_confirmed=True,
+        )
+        db.session.add(user)
+        db.session.flush()
+        db.session.add(
+            AuthIdentity(
+                user_id=999999,
+                provider="telegram",
+                provider_user_id="987654321",
+            )
+        )
+        db.session.commit()
+
+        identity = _sync_telegram_identity(
+            user,
+            {"sub": "1234567890123456789", "id": 987654321, "name": "Telegram User"},
+        )
+        db.session.commit()
+
+        assert identity.user_id == user.id
+        assert identity.provider_user_id == "987654321"
+        assert AuthIdentity.query.filter_by(
+            user_id=999999,
+            provider="telegram",
+            provider_user_id="987654321",
+        ).first() is None
+        assert user.to_dict()["telegram_bot_ready"] is True
 
 
 @pytest.mark.parametrize("value", [None, True, 0, -1, 1 << 52, "not-a-number"])

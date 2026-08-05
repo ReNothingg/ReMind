@@ -8,6 +8,8 @@ const qualityPassLocales = ['ar', 'bn', 'es', 'fr', 'hi', 'pt', 'zh'] as const;
 
 const requiredTextPaths = [
   ['authModal', 'fields', 'name'],
+  ['authModal', 'telegramLinkTitle'],
+  ['authModal', 'telegramLinkDescription'],
   ['settings', 'account', 'fields', 'name'],
   ['settings', 'account', 'nameHint'],
   ['settings', 'account', 'usernameHint'],

@@ -21,6 +21,8 @@
   "authModal": {
     "loginTitle": "Войти в аккаунт",
     "registerTitle": "Создать аккаунт",
+    "telegramLinkTitle": "Подключить Telegram",
+    "telegramLinkDescription": "Подтвердите аккаунт Telegram, чтобы ReMind связал сайт и бота.",
     "fields": {
       "email": "Email:",
       "name": "Имя:",
