@@ -67,6 +67,9 @@ _UNSUPPORTED_TOOL_BLOCK_RE = re.compile(
     re.IGNORECASE,
 )
 _TG_THINKING_TAG_RE = re.compile(r"</?tg-thinking\b[^>]*>", re.IGNORECASE)
+_RICH_MARKDOWN_MEDIA_RE = re.compile(
+    r"!\[([^\]\n]{0,500})\]\(([^)\n]{1,2000})\)", re.IGNORECASE
+)
 _MENTION_RE_TEMPLATE = r"(?<![\w@])@{username}(?!\w)"
 _MAX_INPUT_CHARS = 8_000
 _MAX_INLINE_INPUT_CHARS = 2_000
@@ -657,6 +660,29 @@ def _trim_inline_answer(value: str) -> str:
     return f"{shortened}…"
 
 
+def _sanitize_rich_markdown(value: str) -> str:
+    without_embedded_media = _RICH_MARKDOWN_MEDIA_RE.sub(
+        lambda match: f"[{match.group(1)}]({match.group(2)})",
+        str(value or ""),
+    )
+    return (
+        without_embedded_media.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def _trim_rich_answer(value: str, max_chars: int) -> str:
+    answer = str(value or "").strip()
+    if len(answer) <= max_chars:
+        return answer
+    shortened = answer[: max_chars - 1].rstrip()
+    boundary = max(shortened.rfind("\n\n"), shortened.rfind(". "))
+    if boundary > max_chars // 2:
+        shortened = shortened[: boundary + 1].rstrip()
+    return f"{shortened}…"
+
+
 def _generate_answer(
     linked: LinkedTelegramUser,
     question: str,
@@ -924,12 +950,23 @@ def _inline_answer_payload(text: str, *, force_plain: bool = False) -> dict[str,
     normalized = (text or "").strip()
     if not normalized:
         normalized = telegram_text("en", "generation_failed")
-    visible = _trim_inline_answer(normalized)
     if force_plain:
-        return {"message_text": visible[:_INLINE_RESULT_TEXT_CHARS]}
-    # Telegram inline results require plain sendable payload in answerInlineQuery.
-    # Use rich payload only as optional enhancement path, keep plain as primary.
-    return {"message_text": visible[:_INLINE_RESULT_TEXT_CHARS]}
+        return {"message_text": _trim_inline_answer(normalized)[:_INLINE_RESULT_TEXT_CHARS]}
+    rich_markdown = _trim_inline_answer(_sanitize_rich_markdown(normalized))
+    return {"rich_message": {"markdown": rich_markdown}}
+
+
+def _guest_answer_payload(text: str, *, force_plain: bool = False) -> dict[str, Any]:
+    normalized = (text or "").strip()
+    if not normalized:
+        normalized = telegram_text("en", "generation_failed")
+    if force_plain:
+        visible = _trim_rich_answer(normalized, _INLINE_RESULT_TEXT_CHARS)
+        return {"message_text": visible}
+    rich_markdown = _trim_rich_answer(
+        _sanitize_rich_markdown(normalized), _MAX_RICH_MESSAGE_CHARS
+    )
+    return {"rich_message": {"markdown": rich_markdown}}
 
 
 def _inline_result_text(text: str, limit: int) -> str:
@@ -1544,6 +1581,7 @@ def handle_guest_update(
     )
     if not session_chat:
         raise RuntimeError("Could not create Telegram guest session")
+    rich_answer: str | None = None
     try:
         answer = _generate_answer(
             linked,
@@ -1555,11 +1593,12 @@ def handle_guest_update(
             brief=False,
             persist=True,
         )
+        rich_answer = answer
         result = {
             "type": "article",
             "id": secrets.token_hex(8),
             "title": telegram_text(language, "inline_result_title"),
-            "input_message_content": _inline_answer_payload(answer),
+            "input_message_content": _guest_answer_payload(answer),
         }
     except Exception:
         logger.exception("Telegram guest generation failed for update_id=%s", update_id)
@@ -1569,7 +1608,24 @@ def handle_guest_update(
             "title": telegram_text(language, "inline_result_title"),
             "input_message_content": {"message_text": telegram_text(language, "generation_failed")},
         }
-    api.call("answerGuestQuery", {"guest_query_id": query_id, "result": result})
+    payload = {"guest_query_id": query_id, "result": result}
+    try:
+        api.call("answerGuestQuery", payload)
+    except TelegramAPIError:
+        if rich_answer is None:
+            raise
+        logger.warning(
+            "Telegram guest rich result was rejected; using plain fallback",
+            exc_info=True,
+        )
+        fallback_result = dict(result)
+        fallback_result["input_message_content"] = _guest_answer_payload(
+            rich_answer, force_plain=True
+        )
+        api.call(
+            "answerGuestQuery",
+            {"guest_query_id": query_id, "result": fallback_result},
+        )
 
 
 def handle_inline_query(api: TelegramBotAPI, inline_query: dict[str, Any]) -> None:
