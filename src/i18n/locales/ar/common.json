@@ -22,7 +22,19 @@
     "loginTitle": "سجّل الدخول إلى حسابك",
     "registerTitle": "أنشئ حسابًا",
     "telegramLinkTitle": "Connect Telegram",
-    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
+    "telegramLinkDescription": "افتح رابطك الشخصي واضغط بدء في البوت. لا حاجة للعودة إلى الموقع يدويًا.",
+    "telegramLink": {
+      "preparing": "جارٍ إنشاء رابط خاص...",
+      "openTelegram": "فتح البوت في Telegram",
+      "waiting": "في انتظار التأكيد...",
+      "privateHint": "هذا الرابط للاستخدام مرة واحدة وتنتهي صلاحيته خلال 10 دقائق. لا تشاركه.",
+      "waitingHint": "اضغط بدء في Telegram — ستتحدث هذه النافذة تلقائيًا.",
+      "expired": "انتهت صلاحية الرابط. أنشئ رابطًا جديدًا وحاول مرة أخرى.",
+      "retry": "إنشاء رابط جديد",
+      "failed": "تعذر إنشاء الرابط الخاص. حاول مرة أخرى.",
+      "unavailable": "الربط عبر البوت غير متاح حاليًا.",
+      "success": "تم ربط Telegram. البوت جاهز."
+    },
     "fields": {
       "email": "البريد الإلكتروني:",
       "password": "كلمة المرور:",

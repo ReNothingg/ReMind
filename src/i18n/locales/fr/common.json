@@ -22,7 +22,19 @@
     "loginTitle": "Connectez-vous à votre compte",
     "registerTitle": "Créer un compte",
     "telegramLinkTitle": "Connect Telegram",
-    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
+    "telegramLinkDescription": "Ouvrez votre lien personnel et appuyez sur Démarrer dans le bot. Inutile de revenir manuellement sur le site.",
+    "telegramLink": {
+      "preparing": "Création du lien privé...",
+      "openTelegram": "Ouvrir le bot dans Telegram",
+      "waiting": "En attente de confirmation...",
+      "privateHint": "Ce lien à usage unique expire dans 10 minutes. Ne le partagez pas.",
+      "waitingHint": "Appuyez sur Démarrer dans Telegram — cette fenêtre se mettra à jour automatiquement.",
+      "expired": "Le lien a expiré. Créez-en un nouveau et réessayez.",
+      "retry": "Créer un nouveau lien",
+      "failed": "Impossible de créer le lien privé. Réessayez.",
+      "unavailable": "La connexion via le bot est indisponible actuellement.",
+      "success": "Telegram est connecté. Le bot est prêt."
+    },
     "fields": {
       "email": "E-mail:",
       "password": "Mot de passe:",

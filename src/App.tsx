@@ -1315,9 +1315,9 @@ const MainLayout = () => {
               setSettingsOpen(false);
               clearHash();
             }}
-            onOpenAuth={() => {
+            onOpenAuth={(mode = 'login') => {
               setSettingsOpen(false);
-              setAuthOpen('login');
+              setAuthOpen(mode);
               clearHash();
             }}
           />

@@ -130,6 +130,48 @@
         }
       }
     },
+    "/api/auth/telegram/link": {
+      "post": {
+        "summary": "Create a one-time private Telegram bot link",
+        "responses": {
+          "201": {
+            "description": "One-time link created",
+            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/TelegramLinkResponse"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+          },
+          "503": {
+            "description": "Telegram bot linking unavailable",
+            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+          }
+        }
+      }
+    },
+    "/api/auth/telegram/link/status": {
+      "post": {
+        "summary": "Check a Telegram bot linking request",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json":{"schema":{"$ref":"#/components/schemas/TelegramLinkStatusRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Current linking status",
+            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/TelegramLinkStatusResponse"}}}
+          },
+          "400": {
+            "description": "Invalid request identifier",
+            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+          }
+        }
+      }
+    },
     "/api/user/draft": {
       "get": {
         "summary": "Load the authenticated user's synchronized chat draft",
@@ -534,6 +576,34 @@
         "properties": {
           "id_token": { "type": "string", "minLength": 1, "maxLength": 16384 },
           "mode": { "type": "string", "enum": ["login", "link"], "default": "login" }
+        },
+        "additionalProperties": false
+      },
+      "TelegramLinkResponse": {
+        "type": "object",
+        "required": ["url", "request_id", "expires_in"],
+        "properties": {
+          "url": {"type": "string", "format": "uri"},
+          "request_id": {"type": "string", "minLength": 24, "maxLength": 24},
+          "expires_in": {"type": "integer", "minimum": 1}
+        },
+        "additionalProperties": false
+      },
+      "TelegramLinkStatusRequest": {
+        "type": "object",
+        "required": ["request_id"],
+        "properties": {
+          "request_id": {"type": "string", "minLength": 24, "maxLength": 24}
+        },
+        "additionalProperties": false
+      },
+      "TelegramLinkStatusResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {"type": "string", "enum": ["pending", "linked", "expired", "failed"]},
+          "code": {"type": "string"},
+          "user": {"$ref": "#/components/schemas/User"}
         },
         "additionalProperties": false
       },

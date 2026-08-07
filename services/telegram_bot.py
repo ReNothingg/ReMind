@@ -54,6 +54,7 @@ from utils.auth import (
     TelegramInlineResult,
     User,
     UserChatHistory,
+    consume_telegram_link_token,
     db,
     is_account_disabled,
 )
@@ -1054,6 +1055,27 @@ def _handle_command(
     language = _profile_language(profile)
     chat_id = int(_as_dict(message.get("chat")).get("id") or 0)
     if command == "/start":
+        if argument.startswith("connect_"):
+            chat_type = str(_as_dict(message.get("chat")).get("type") or "")
+            if chat_type != "private":
+                api.send_text(chat_id, telegram_text(language, "link_private_only"))
+                return True
+            result = consume_telegram_link_token(
+                argument.removeprefix("connect_"), str(profile.get("id") or "")
+            )
+            message_key = {
+                "linked": "link_success",
+                "expired": "link_expired",
+                "identity_in_use": "link_identity_in_use",
+                "already_linked": "link_already_connected",
+                "restricted": "account_restricted",
+            }.get(result, "link_invalid")
+            api.send_text(
+                chat_id,
+                telegram_text(language, message_key),
+                reply_markup=_inline_keyboard(language) if result == "linked" else None,
+            )
+            return True
         if linked and not is_account_disabled(linked.user):
             keyboard = _inline_keyboard(language)
             if BACKEND_URL:

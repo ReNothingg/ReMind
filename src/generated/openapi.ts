@@ -222,6 +222,19 @@ export interface components {
       segments: (string | Record<string, unknown>)[];
       [key: string]: unknown;
     };
+    TelegramLinkResponse: {
+      expires_in: number;
+      request_id: string;
+      url: string;
+    };
+    TelegramLinkStatusRequest: {
+      request_id: string;
+    };
+    TelegramLinkStatusResponse: {
+      code?: string;
+      status: "pending" | "linked" | "expired" | "failed";
+      user?: components["schemas"]["User"];
+    };
     TelegramLoginRequest: {
       id_token: string;
       mode?: "login" | "link";
@@ -326,6 +339,53 @@ export interface paths {
           };
         };
         "429": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/telegram/link": {
+    post: {
+      responses: {
+        "201": {
+          content: {
+            "application/json": components["schemas"]["TelegramLinkResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "503": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/telegram/link/status": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["TelegramLinkStatusRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["TelegramLinkStatusResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "401": {
           content: {
             "application/json": components["schemas"]["AuthErrorResponse"];
           };

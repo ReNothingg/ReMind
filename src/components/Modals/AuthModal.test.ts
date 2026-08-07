@@ -13,6 +13,8 @@ const mockAuthContext = vi.hoisted(() => ({
 const mockAuthService = vi.hoisted(() => ({
     register: vi.fn(),
     linkTelegram: vi.fn(),
+    createTelegramLink: vi.fn(),
+    getTelegramLinkStatus: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -35,6 +37,8 @@ vi.mock('../../services/auth', () => ({
     authService: {
         register: mockAuthService.register,
         linkTelegram: mockAuthService.linkTelegram,
+        createTelegramLink: mockAuthService.createTelegramLink,
+        getTelegramLinkStatus: mockAuthService.getTelegramLinkStatus,
     },
 }));
 
@@ -160,28 +164,21 @@ describe('AuthModal dismissal', () => {
         );
     });
 
-    it('uses Telegram account linking flow in link mode', async () => {
-        const telegramAuth = vi.fn((_config, callback) => {
-            callback({
-                auth_date: '0',
-                hash: 'hash',
-                id_token: 'telegram-id-token',
-                id: 123,
-            });
-        });
+    it('uses a private bot deep link in link mode', async () => {
         const fetchAuthConfig = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
                 gauth_available: false,
-                telegram_available: true,
-                telegram_client_id: '8123456789',
-                telegram_nonce: 'server-nonce',
+                telegram_bot_link_available: true,
             }),
         });
-        vi.stubGlobal('Telegram', { Login: { auth: telegramAuth } });
         vi.stubGlobal('fetch', fetchAuthConfig);
-        mockAuthService.linkTelegram.mockResolvedValue({ success: true, message: 'ok', user: { id: 1 } });
-        mockAuthContext.checkAuth.mockResolvedValue({ authenticated: true, user: { id: 1 } });
+        mockAuthService.createTelegramLink.mockResolvedValue({
+            url: 'https://t.me/remind_bot?start=connect_private-token',
+            request_id: 'private-request-id',
+            expires_in: 600,
+        });
+        mockAuthService.getTelegramLinkStatus.mockResolvedValue({ status: 'pending' });
 
         container = document.createElement('div');
         document.body.appendChild(container);
@@ -197,30 +194,21 @@ describe('AuthModal dismissal', () => {
             );
         });
 
-        const telegramButton = container.querySelector<HTMLButtonElement>(
-            'button[aria-label="settings.account.loginMethods.linkTelegram"]'
+        const telegramLink = container.querySelector<HTMLAnchorElement>(
+            'a[aria-label="authModal.telegramLink.openTelegram"]'
         );
-        expect(telegramButton).not.toBeNull();
+        expect(telegramLink).not.toBeNull();
+        expect(telegramLink?.href).toBe('https://t.me/remind_bot?start=connect_private-token');
+        expect(telegramLink?.target).toBe('_blank');
         expect(container.textContent).toContain('authModal.telegramLinkTitle');
         expect(container.textContent).toContain('authModal.telegramLinkDescription');
+        expect(container.textContent).toContain('authModal.telegramLink.privateHint');
         expect(container.querySelector('#loginEmail')).toBeNull();
         expect(container.querySelector('#loginPassword')).toBeNull();
         expect(container.querySelector('#loginTurnstileContainer')).toBeNull();
-
-        await act(async () => {
-            telegramButton?.click();
-        });
-
-        expect(mockAuthService.linkTelegram).toHaveBeenCalledTimes(1);
-        expect(mockAuthService.linkTelegram).toHaveBeenCalledWith('telegram-id-token');
+        expect(mockAuthService.createTelegramLink).toHaveBeenCalledTimes(1);
+        expect(mockAuthService.getTelegramLinkStatus).toHaveBeenCalledWith('private-request-id');
+        expect(mockAuthService.linkTelegram).toHaveBeenCalledTimes(0);
         expect(mockAuthContext.loginWithTelegram).toHaveBeenCalledTimes(0);
-        expect(telegramAuth).toHaveBeenCalledWith(
-            expect.objectContaining({
-                client_id: 8123456789,
-                scope: ['profile', 'write'],
-                nonce: 'server-nonce',
-            }),
-            expect.any(Function)
-        );
     });
 });

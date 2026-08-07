@@ -36,7 +36,6 @@ import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import type { AuthConfig } from '../../services/auth';
-import { loadTelegramLoginSdk } from '../../services/telegramLogin';
 import { apiService, type GitHubStatus } from '../../services/api';
 import { useURLRouter } from '../../hooks/useURLRouter';
 import CustomSelect from '../UI/CustomSelect';
@@ -103,7 +102,7 @@ type SettingToggleProps = {
 
 type SettingsModalProps = {
     onClose: () => void;
-    onOpenAuth: () => void;
+    onOpenAuth: (mode?: 'login' | 'link') => void;
 };
 
 type ProfileMessage = {
@@ -335,7 +334,7 @@ const SettingToggle = ({ title, description, checked, onClick, ariaLabel, withDi
 const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const { t, i18n } = useTranslation();
     const { settings, updateSetting } = useSettings();
-    const { user, isAuthenticated, logout, checkAuth, updateProfile, deleteAccount } = useAuth();
+    const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
     const { getSettingsTab, navigateToSettings } = useURLRouter();
 
     const FONT_SIZE_MIN_PX = 10;
@@ -375,13 +374,8 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
     const [profileMessage, setProfileMessage] = useState<ProfileMessage>(null);
     const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null);
-    const [telegramSdkReady, setTelegramSdkReady] = useState(false);
-    const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
     const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
     const authConfigRequestStartedRef = useRef(false);
-    const telegramLinkAttemptRef = useRef(0);
-    const telegramLinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const TELEGRAM_LINK_TIMEOUT_MS = 22000;
 
     useEffect(() => {
         setName(user?.name || '');
@@ -460,12 +454,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const loadTelegramAuthConfig = useCallback(async () => {
         const config = await authService.getAuthConfig();
         setAuthConfig(config);
-        if (config.telegram_available && config.telegram_client_id && config.telegram_nonce) {
-            await loadTelegramLoginSdk();
-            setTelegramSdkReady(true);
-        } else {
-            setTelegramSdkReady(false);
-        }
         return config;
     }, []);
 
@@ -504,7 +492,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         loadTelegramAuthConfig()
             .catch(() => {
                 setAuthConfig(null);
-                setTelegramSdkReady(false);
             });
     }, [activeTab, isAuthenticated, loadTelegramAuthConfig]);
 
@@ -531,13 +518,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         window.history.replaceState({}, '', cleanUrl);
     }, [t]);
 
-    useEffect(() => () => {
-        if (telegramLinkTimeoutRef.current) {
-            clearTimeout(telegramLinkTimeoutRef.current);
-            telegramLinkTimeoutRef.current = null;
-        }
-    }, []);
-
     const authMethods = new Set(user?.auth_methods || (user?.oauth_provider ? [user.oauth_provider] : []));
     const googleConnected = authMethods.has('google');
     const telegramConnected = authMethods.has('telegram');
@@ -549,129 +529,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         url.searchParams.set('redirect_to', `${window.location.origin}/#settings/account`);
         return url.toString();
     })();
-
-    const finishTelegramLinkingAttempt = (attemptId: number) => {
-        if (telegramLinkAttemptRef.current !== attemptId) {
-            return;
-        }
-        if (telegramLinkTimeoutRef.current) {
-            clearTimeout(telegramLinkTimeoutRef.current);
-            telegramLinkTimeoutRef.current = null;
-        }
-        setIsLinkingTelegram(false);
-    };
-
-    const handleTelegramLink = async () => {
-        if (isLinkingTelegram) return;
-        setIsLinkingTelegram(true);
-        setProfileMessage(null);
-
-        let freshAuthConfig: AuthConfig;
-        try {
-            freshAuthConfig = await loadTelegramAuthConfig();
-        } catch {
-            setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.telegramFailed') });
-            setIsLinkingTelegram(false);
-            return;
-        }
-
-        if (
-            !freshAuthConfig.telegram_client_id
-            || !freshAuthConfig.telegram_nonce
-            || !window.Telegram?.Login
-        ) {
-            setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.telegramFailed') });
-            setIsLinkingTelegram(false);
-            return;
-        }
-
-        const clientId = Number(freshAuthConfig.telegram_client_id);
-        if (!Number.isSafeInteger(clientId) || clientId <= 0) {
-            setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.telegramFailed') });
-            setIsLinkingTelegram(false);
-            return;
-        }
-        const attemptId = telegramLinkAttemptRef.current + 1;
-        telegramLinkAttemptRef.current = attemptId;
-        if (telegramLinkTimeoutRef.current) {
-            clearTimeout(telegramLinkTimeoutRef.current);
-            telegramLinkTimeoutRef.current = null;
-        }
-        telegramLinkTimeoutRef.current = setTimeout(() => {
-            if (telegramLinkAttemptRef.current !== attemptId) {
-                return;
-            }
-            setProfileMessage({
-                type: 'error',
-                text: t('settings.account.loginMethods.telegramFailed'),
-            });
-            finishTelegramLinkingAttempt(attemptId);
-        }, TELEGRAM_LINK_TIMEOUT_MS);
-        window.Telegram.Login.auth(
-            {
-                client_id: clientId,
-                scope: ['profile', 'write'],
-                lang: currentLanguage,
-                nonce: freshAuthConfig.telegram_nonce,
-            },
-            async (result) => {
-                if (telegramLinkAttemptRef.current !== attemptId) {
-                    return;
-                }
-                try {
-                    if (result.error || !result.id_token) {
-                        setProfileMessage({
-                            type: 'error',
-                            text: t('settings.account.loginMethods.telegramFailed'),
-                        });
-                        return;
-                    }
-                    const response = await authService.linkTelegram(result.id_token);
-                    if (response.success === false) {
-                        const conflict = ['auth_identity_in_use', 'auth_provider_already_linked'].includes(
-                            response.error
-                        );
-                        setProfileMessage({
-                            type: 'error',
-                            text: t(
-                                conflict
-                                    ? 'settings.account.loginMethods.identityInUse'
-                                    : 'settings.account.loginMethods.telegramFailed',
-                            ),
-                        });
-                        return;
-                    }
-                    const authState = await checkAuth();
-                    if (!authState.authenticated || !authState.user) {
-                        setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.authRequired') });
-                        return;
-                    }
-                    const authMethodsFromState = new Set(authState.user.auth_methods || []);
-                    const isTelegramLinked = authMethodsFromState.has('telegram') || authState.user.oauth_provider === 'telegram';
-                    if (!isTelegramLinked) {
-                        setProfileMessage({
-                            type: 'error',
-                            text: t('settings.account.loginMethods.telegramFailed'),
-                        });
-                        return;
-                    }
-                    setProfileMessage({
-                        type: 'success',
-                        text: t(
-                            telegramConnected
-                                ? 'settings.account.loginMethods.telegramSynced'
-                                : 'settings.account.loginMethods.telegramLinked',
-                        ),
-                    });
-                } catch (error) {
-                    console.warn('Telegram link failed', error);
-                    setProfileMessage({ type: 'error', text: t('settings.account.loginMethods.telegramFailed') });
-                } finally {
-                    finishTelegramLinkingAttempt(attemptId);
-                }
-            }
-        );
-    };
 
     const handleTabChange = (tab: SettingsTabId) => {
         setActiveTab(tab);
@@ -989,18 +846,13 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                         <button
                             type="button"
                             className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
-                            onClick={handleTelegramLink}
-                            disabled={!telegramSdkReady || isLinkingTelegram}
-                            aria-busy={!telegramSdkReady || isLinkingTelegram}
+                            onClick={() => { onClose(); onOpenAuth('link'); }}
+                            disabled={!authConfig?.telegram_bot_link_available}
                         >
-                            {isLinkingTelegram
-                                ? <Loader2 size={15} strokeWidth={1.9} className="animate-spin" />
-                                : <PlugZap size={15} strokeWidth={1.9} />}
-                            {isLinkingTelegram
-                                ? t('settings.account.loginMethods.linkingTelegram')
-                                : t(telegramConnected
-                                    ? 'settings.account.loginMethods.syncTelegram'
-                                    : 'settings.account.loginMethods.linkTelegram')}
+                            <PlugZap size={15} strokeWidth={1.9} />
+                            {t(telegramConnected
+                                ? 'settings.account.loginMethods.syncTelegram'
+                                : 'settings.account.loginMethods.linkTelegram')}
                         </button>
                     )}
                 </div>

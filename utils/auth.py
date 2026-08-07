@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -47,6 +48,9 @@ TELEGRAM_LOGIN_NONCE_TTL_SECONDS = 600
 TELEGRAM_ID_TOKEN_MAX_LENGTH = 16_384
 TELEGRAM_ALLOWED_SIGNING_ALGORITHMS = ("RS256", "ES256")
 TELEGRAM_BOT_USER_ID_MAX = (1 << 52) - 1
+TELEGRAM_LINK_TOKEN_TTL_SECONDS = 600
+TELEGRAM_LINK_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
+TELEGRAM_LINK_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{24}$")
 SUPPORTED_AUTH_PROVIDERS = frozenset({"google", "telegram"})
 _telegram_jwks_client = None
 
@@ -186,6 +190,12 @@ class User(db.Model):
         cascade="all, delete-orphan",
         lazy="select",
     )
+    telegram_link_requests = db.relationship(
+        "TelegramLinkRequest",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -230,6 +240,99 @@ class AuthIdentity(db.Model):
     provider_user_id = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     user = db.relationship("User", back_populates="auth_identities")
+
+
+class TelegramLinkRequest(db.Model):
+    __tablename__ = "telegram_link_request"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.String(24), unique=True, nullable=False, index=True)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    consumed_at = db.Column(db.DateTime, nullable=True)
+    failure_code = db.Column(db.String(32), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user = db.relationship("User", back_populates="telegram_link_requests")
+
+
+def _telegram_link_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("ascii")).hexdigest()
+
+
+def _fail_telegram_link_request(request_id: int, code: str, now: datetime) -> str:
+    db.session.rollback()
+    link_request = db.session.get(TelegramLinkRequest, request_id)
+    if link_request and link_request.consumed_at is None:
+        link_request.consumed_at = now
+        link_request.failure_code = code
+        db.session.commit()
+    return code
+
+
+def consume_telegram_link_token(token: str, telegram_user_id: str) -> str:
+    """Consume an opaque bot deep-link token and attach the Telegram identity."""
+    normalized_token = str(token or "").strip()
+    normalized_telegram_id = str(telegram_user_id or "").strip()
+    if not TELEGRAM_LINK_TOKEN_RE.fullmatch(normalized_token):
+        return "invalid"
+    if not re.fullmatch(r"[0-9]{1,16}", normalized_telegram_id):
+        return "invalid"
+    if not 1 <= int(normalized_telegram_id) <= TELEGRAM_BOT_USER_ID_MAX:
+        return "invalid"
+
+    link_request = (
+        TelegramLinkRequest.query.filter_by(
+            token_hash=_telegram_link_token_hash(normalized_token)
+        )
+        .with_for_update()
+        .first()
+    )
+    now = datetime.utcnow()
+    if not link_request or link_request.consumed_at is not None:
+        return "invalid"
+    if link_request.expires_at <= now:
+        return "expired"
+    link_request_id = link_request.id
+
+    user = db.session.get(User, link_request.user_id)
+    if not user or is_account_disabled(user):
+        return _fail_telegram_link_request(link_request_id, "restricted", now)
+    try:
+        current_identity = AuthIdentity.query.filter_by(
+            user_id=user.id, provider="telegram"
+        ).first()
+        if current_identity and not secrets.compare_digest(
+            current_identity.provider_user_id, normalized_telegram_id
+        ):
+            current_value = str(current_identity.provider_user_id or "").strip()
+            if re.fullmatch(r"[0-9]{1,16}", current_value):
+                return _fail_telegram_link_request(link_request_id, "already_linked", now)
+            claimed_identity = _discard_orphan_auth_identity(
+                _find_auth_identity("telegram", normalized_telegram_id)
+            )
+            if claimed_identity and claimed_identity.user_id != user.id:
+                return _fail_telegram_link_request(link_request_id, "identity_in_use", now)
+            previous_value = current_identity.provider_user_id
+            current_identity.provider_user_id = normalized_telegram_id
+            if user.oauth_provider == "telegram" and user.oauth_id == previous_value:
+                user.oauth_id = normalized_telegram_id
+        else:
+            _link_auth_identity(user, "telegram", normalized_telegram_id)
+        link_request.consumed_at = now
+        db.session.commit()
+    except AuthIdentityConflictError as exc:
+        code = str(exc)
+        if code == "auth_identity_in_use":
+            return _fail_telegram_link_request(link_request_id, "identity_in_use", now)
+        if code == "auth_provider_already_linked":
+            return _fail_telegram_link_request(link_request_id, "already_linked", now)
+        return _fail_telegram_link_request(link_request_id, "invalid", now)
+    except IntegrityError:
+        return _fail_telegram_link_request(link_request_id, "identity_in_use", now)
+    return "linked"
 
 
 def _user_auth_methods(user: User | None) -> list[str]:
@@ -1924,6 +2027,7 @@ def register_auth_routes(app):
             IOS_OAUTH_CALLBACK_SCHEME,
             IOS_OAUTH_REDIRECT_URI,
             LOCALHOST_MODE,
+            TELEGRAM_BOT_USERNAME,
             TELEGRAM_CLIENT_ID,
             TURNSTILE_SITE_KEY,
         )
@@ -1941,6 +2045,7 @@ def register_auth_routes(app):
                     "telegram_available": bool(TELEGRAM_CLIENT_ID),
                     "telegram_client_id": TELEGRAM_CLIENT_ID or None,
                     "telegram_nonce": telegram_nonce,
+                    "telegram_bot_link_available": bool(TELEGRAM_BOT_USERNAME),
                     "mobile_oauth_redirect_uri": IOS_OAUTH_REDIRECT_URI,
                     "mobile_oauth_callback_scheme": IOS_OAUTH_CALLBACK_SCHEME,
                 }
@@ -2022,6 +2127,75 @@ def register_auth_routes(app):
         session.permanent = True
 
         return jsonify({"message": "telegram_authenticated", "user": user.to_dict()}), 200
+
+    @app.route("/api/auth/telegram/link", methods=["POST"])
+    @rate_limit(login_limiter, "Too many link attempts")
+    def api_create_telegram_link():
+        from config import TELEGRAM_BOT_USERNAME
+
+        user_id = session.get("user_id")
+        user = db.session.get(User, user_id) if user_id else None
+        if not user:
+            return jsonify({"error": "auth_required", "code": "auth_required"}), 401
+        bot_username = str(TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+        if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", bot_username):
+            return jsonify({"error": "telegram_unavailable", "code": "telegram_unavailable"}), 503
+
+        now = datetime.utcnow()
+        TelegramLinkRequest.query.filter(
+            TelegramLinkRequest.user_id == user.id,
+            TelegramLinkRequest.consumed_at.is_(None),
+            TelegramLinkRequest.expires_at > now,
+        ).update({"expires_at": now}, synchronize_session=False)
+
+        raw_token = secrets.token_urlsafe(24)
+        request_id = secrets.token_urlsafe(18)
+        link_request = TelegramLinkRequest(
+            request_id=request_id,
+            token_hash=_telegram_link_token_hash(raw_token),
+            user_id=user.id,
+            expires_at=now + timedelta(seconds=TELEGRAM_LINK_TOKEN_TTL_SECONDS),
+        )
+        db.session.add(link_request)
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({"error": "telegram_link_failed", "code": "telegram_link_failed"}), 503
+
+        return jsonify(
+            {
+                "url": f"https://t.me/{bot_username}?start=connect_{raw_token}",
+                "request_id": request_id,
+                "expires_in": TELEGRAM_LINK_TOKEN_TTL_SECONDS,
+            }
+        ), 201
+
+    @app.route("/api/auth/telegram/link/status", methods=["POST"])
+    def api_telegram_link_status():
+        user_id = session.get("user_id")
+        user = db.session.get(User, user_id) if user_id else None
+        if not user:
+            return jsonify({"error": "auth_required", "code": "auth_required"}), 401
+        data = request.get_json(silent=True)
+        request_id = data.get("request_id") if isinstance(data, dict) else None
+        if not isinstance(request_id, str) or not TELEGRAM_LINK_REQUEST_ID_RE.fullmatch(request_id):
+            return jsonify({"error": "invalid_request", "code": "invalid_request"}), 400
+
+        link_request = TelegramLinkRequest.query.filter_by(
+            request_id=request_id, user_id=user.id
+        ).first()
+        if not link_request:
+            return jsonify({"error": "not_found", "code": "not_found"}), 404
+        if link_request.consumed_at is not None:
+            if link_request.failure_code:
+                return jsonify(
+                    {"status": "failed", "code": link_request.failure_code}
+                ), 200
+            return jsonify({"status": "linked", "user": user.to_dict()}), 200
+        if link_request.expires_at <= datetime.utcnow():
+            return jsonify({"status": "expired"}), 200
+        return jsonify({"status": "pending"}), 200
 
     @app.route("/api/auth/mobile/google/complete", methods=["POST"])
     @rate_limit(login_limiter, "Too many login attempts")

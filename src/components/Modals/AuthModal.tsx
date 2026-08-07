@@ -71,6 +71,8 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     const [googleAvailable, setGoogleAvailable] = useState(false);
     const [telegramSdkReady, setTelegramSdkReady] = useState(false);
     const [telegramLoading, setTelegramLoading] = useState(false);
+    const [telegramLink, setTelegramLink] = useState<{ url: string; request_id: string } | null>(null);
+    const [telegramLinkWaiting, setTelegramLinkWaiting] = useState(false);
     const loginTurnstileIdRef = useRef(undefined);
     const registerTurnstileIdRef = useRef(undefined);
     const authConfigRequestStartedRef = useRef(false);
@@ -93,6 +95,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         && authConfig?.telegram_client_id
         && authConfig?.telegram_nonce
     );
+    const telegramBotLinkAvailable = Boolean(authConfig?.telegram_bot_link_available);
     const authTitleKey = linkMode
         ? 'authModal.telegramLinkTitle'
         : isLoginView
@@ -173,19 +176,23 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                     method: 'GET',
                     credentials: 'include'
                 });
-                if (!resp.ok) return;
+                if (!resp.ok) throw new Error(`Auth config request failed (${resp.status})`);
                 const cfg = await resp.json();
                 setAuthConfig(cfg);
                 setGoogleUrl(cfg.google_login_url || '/login/google');
                 setGoogleAvailable(cfg.gauth_available || false);
             } catch (err) {
                 console.warn('Failed to load auth config', err);
+                if (linkMode) {
+                    setMessage({ type: 'error', text: t('authModal.telegramLink.unavailable') });
+                }
             }
         };
         loadAuthConfig();
-    }, []);
+    }, [linkMode, t]);
 
     useEffect(() => {
+        if (linkMode) return;
         if (!telegramAvailable) {
             setTelegramSdkReady(false);
             return;
@@ -210,7 +217,92 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         return () => {
             cancelled = true;
         };
-    }, [telegramAvailable, t]);
+    }, [linkMode, telegramAvailable, t]);
+
+    const prepareTelegramLink = async () => {
+        if (!isAuthenticated || telegramLoading) return;
+        setTelegramLoading(true);
+        setTelegramLink(null);
+        setTelegramLinkWaiting(false);
+        setMessage(null);
+        try {
+            const result = await authService.createTelegramLink();
+            setTelegramLink(result);
+        } catch (error) {
+            console.warn('Telegram bot link creation failed', error);
+            setMessage({
+                type: 'error',
+                text: t('authModal.telegramLink.failed'),
+            });
+        } finally {
+            setTelegramLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!linkMode || !telegramBotLinkAvailable || !isAuthenticated || telegramLink || telegramLoading) {
+            return;
+        }
+        void prepareTelegramLink();
+        // The request is intentionally issued once when bot-link configuration becomes available.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [linkMode, telegramBotLinkAvailable, isAuthenticated]);
+
+    useEffect(() => {
+        if (!linkMode || !telegramLink?.request_id) return;
+        let cancelled = false;
+        let checking = false;
+        let closeTimeout: ReturnType<typeof setTimeout> | undefined;
+
+        const checkStatus = async () => {
+            if (checking || cancelled) return;
+            checking = true;
+            try {
+                const result = await authService.getTelegramLinkStatus(telegramLink.request_id);
+                if (cancelled || result.status === 'pending') return;
+                if (result.status === 'expired') {
+                    setTelegramLink(null);
+                    setTelegramLinkWaiting(false);
+                    setMessage({ type: 'error', text: t('authModal.telegramLink.expired') });
+                    return;
+                }
+                if (result.status === 'failed') {
+                    setTelegramLink(null);
+                    setTelegramLinkWaiting(false);
+                    setMessage({
+                        type: 'error',
+                        text: t(result.code === 'identity_in_use'
+                            ? 'settings.account.loginMethods.identityInUse'
+                            : 'authModal.telegramLink.failed'),
+                    });
+                    return;
+                }
+                const authState = await checkAuth();
+                if (cancelled) return;
+                if (!authState.authenticated) {
+                    setMessage({
+                        type: 'error',
+                        text: t('settings.account.loginMethods.authRequired'),
+                    });
+                    return;
+                }
+                setMessage({ type: 'success', text: t('authModal.telegramLink.success') });
+                closeTimeout = setTimeout(onClose, 1200);
+            } catch (error) {
+                if (!cancelled) console.warn('Telegram bot link status check failed', error);
+            } finally {
+                checking = false;
+            }
+        };
+
+        void checkStatus();
+        const interval = window.setInterval(checkStatus, 2000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(interval);
+            if (closeTimeout) clearTimeout(closeTimeout);
+        };
+    }, [checkAuth, linkMode, onClose, t, telegramLink?.request_id]);
 
     const handleTelegramLogin = () => {
         if (!telegramAvailable || !telegramSdkReady || telegramLoading) return;
@@ -238,46 +330,10 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                             return;
                         }
 
-                        const response = linkMode
-                            ? await authService.linkTelegram(result.id_token)
-                            : await loginWithTelegram(result.id_token);
+                        const response = await loginWithTelegram(result.id_token);
                         if (!response.success) {
-                            if (linkMode) {
-                                const responseError = ('error' in response ? response.error : '') || '';
-                                const isConflict = responseError === 'auth_identity_in_use'
-                                    || responseError === 'identity_in_use'
-                                    || responseError === 'auth_provider_already_linked';
-                                const isSessionLost = responseError === 'auth_required';
-                                setMessage({
-                                    type: 'error',
-                                    text: isSessionLost
-                                        ? t('settings.account.loginMethods.authRequired')
-                                        : isConflict
-                                            ? t('settings.account.loginMethods.identityInUse')
-                                            : t('settings.account.loginMethods.telegramFailed'),
-                                });
-                            } else {
-                                setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
-                            }
+                            setMessage({ type: 'error', text: t('authModal.messages.telegramError') });
                             return;
-                        }
-
-                        if (linkMode) {
-                            const authState = await checkAuth();
-                            if (!authState.authenticated) {
-                                setMessage({
-                                    type: 'error',
-                                    text: t('settings.account.loginMethods.authRequired'),
-                                });
-                                return;
-                            }
-                            setMessage({
-                                type: 'success',
-                                text: t('settings.account.loginMethods.telegramLinked'),
-                            });
-                            setTimeout(() => {
-                                onClose();
-                            }, 1500);
                         }
                     } catch (error) {
                         console.warn('Telegram Login failed', error);
@@ -295,13 +351,51 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     };
 
     const renderTelegramLogin = () => {
+        if (linkMode) {
+            if (!telegramBotLinkAvailable && authConfig) {
+                return (
+                    <div className="auth-message error" role="alert">
+                        {t('authModal.telegramLink.unavailable')}
+                    </div>
+                );
+            }
+            const labelKey = telegramLinkWaiting
+                ? 'authModal.telegramLink.waiting'
+                : telegramLink
+                    ? 'authModal.telegramLink.openTelegram'
+                    : message?.type === 'error'
+                        ? 'authModal.telegramLink.retry'
+                        : 'authModal.telegramLink.preparing';
+            return (
+                <div className="space-y-3">
+                    <SocialAuthButton
+                        href={telegramLink?.url}
+                        onClick={telegramLink
+                            ? () => setTelegramLinkWaiting(true)
+                            : () => void prepareTelegramLink()}
+                        newWindow
+                        disabled={telegramLoading || (!telegramLink && message?.type !== 'error')}
+                        busy={telegramLoading}
+                        label={t(labelKey)}
+                        icon={<TelegramLogo />}
+                    >
+                        {t(labelKey)}
+                    </SocialAuthButton>
+                    {telegramLink && (
+                        <p className="text-center text-xs leading-5 text-muted" aria-live="polite">
+                            {t(telegramLinkWaiting
+                                ? 'authModal.telegramLink.waitingHint'
+                                : 'authModal.telegramLink.privateHint')}
+                        </p>
+                    )}
+                </div>
+            );
+        }
         if (!telegramAvailable) return null;
-        const labelKey = linkMode
-            ? 'settings.account.loginMethods.linkTelegram'
-            : isLoginView
+        const labelKey = isLoginView
                 ? 'authModal.actions.loginWithTelegram'
                 : 'authModal.actions.registerWithTelegram';
-        const loadingKey = linkMode ? 'settings.account.loginMethods.linkingTelegram' : 'authModal.actions.telegramLoading';
+        const loadingKey = 'authModal.actions.telegramLoading';
 
         return (
             <SocialAuthButton

@@ -22,7 +22,19 @@
     "loginTitle": "登录账户",
     "registerTitle": "创建账户",
     "telegramLinkTitle": "Connect Telegram",
-    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
+    "telegramLinkDescription": "打开你的专属链接，然后在机器人中点击“开始”。无需手动返回网站。",
+    "telegramLink": {
+      "preparing": "正在创建私密链接...",
+      "openTelegram": "在 Telegram 中打开机器人",
+      "waiting": "等待确认...",
+      "privateHint": "此一次性链接将在 10 分钟后过期，请勿分享。",
+      "waitingHint": "在 Telegram 中点击“开始”，此窗口会自动更新。",
+      "expired": "链接已过期，请创建新链接后重试。",
+      "retry": "创建新链接",
+      "failed": "无法创建私密链接，请重试。",
+      "unavailable": "暂时无法通过机器人绑定。",
+      "success": "Telegram 已连接，机器人可以使用了。"
+    },
     "fields": {
       "email": "电子邮箱：",
       "password": "密码:",

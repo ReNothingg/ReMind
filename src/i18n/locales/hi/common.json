@@ -22,7 +22,19 @@
     "loginTitle": "अपने खाते में साइन इन करें",
     "registerTitle": "खाता बनाएं",
     "telegramLinkTitle": "Connect Telegram",
-    "telegramLinkDescription": "Confirm your Telegram account so ReMind can link the website and bot.",
+    "telegramLinkDescription": "अपना निजी लिंक खोलें और बॉट में Start दबाएँ। वेबसाइट पर खुद लौटने की ज़रूरत नहीं है।",
+    "telegramLink": {
+      "preparing": "निजी लिंक बनाया जा रहा है...",
+      "openTelegram": "Telegram में बॉट खोलें",
+      "waiting": "पुष्टि की प्रतीक्षा है...",
+      "privateHint": "यह एक बार उपयोग होने वाला लिंक 10 मिनट में समाप्त होगा। इसे साझा न करें।",
+      "waitingHint": "Telegram में Start दबाएँ — यह विंडो अपने आप अपडेट हो जाएगी।",
+      "expired": "लिंक समाप्त हो गया। नया लिंक बनाकर फिर कोशिश करें।",
+      "retry": "नया लिंक बनाएँ",
+      "failed": "निजी लिंक नहीं बन सका। फिर कोशिश करें।",
+      "unavailable": "बॉट से जोड़ना अभी उपलब्ध नहीं है।",
+      "success": "Telegram जुड़ गया है। बॉट तैयार है।"
+    },
     "fields": {
       "email": "ईमेल:",
       "password": "पासवर्ड:",

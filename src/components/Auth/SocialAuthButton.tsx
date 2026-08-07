@@ -8,6 +8,7 @@ type SocialAuthButtonProps = {
     onClick?: () => void;
     disabled?: boolean;
     busy?: boolean;
+    newWindow?: boolean;
 };
 
 const sharedClassName = 'flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-4 py-2.5 text-[0.94rem] font-medium text-foreground transition-colors duration-200 hover:border-border-heavy hover:bg-interactive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-wait disabled:opacity-70';
@@ -38,10 +39,18 @@ const SocialAuthButton = ({
     onClick,
     disabled = false,
     busy = false,
+    newWindow = false,
 }: SocialAuthButtonProps) => {
     if (href && !disabled) {
         return (
-            <a className={sharedClassName} href={href} aria-label={label}>
+            <a
+                className={sharedClassName}
+                href={href}
+                onClick={onClick}
+                target={newWindow ? '_blank' : undefined}
+                rel={newWindow ? 'noopener noreferrer' : undefined}
+                aria-label={label}
+            >
                 {icon}
                 <span>{children}</span>
             </a>

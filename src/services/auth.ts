@@ -28,6 +28,7 @@ export type AuthConfig = {
     telegram_available?: boolean;
     telegram_client_id?: string | null;
     telegram_nonce?: string | null;
+    telegram_bot_link_available?: boolean;
     turnstile_required?: boolean;
     turnstile_site_key?: string | null;
 };
@@ -44,6 +45,18 @@ type LoginResult =
 type TelegramLoginResponse = {
     message: string;
     user: AuthUser;
+};
+
+export type TelegramLinkRequest = {
+    url: string;
+    request_id: string;
+    expires_in: number;
+};
+
+export type TelegramLinkStatus = {
+    status: 'pending' | 'linked' | 'expired' | 'failed';
+    code?: string;
+    user?: AuthUser;
 };
 
 type RegisterResponse = {
@@ -241,6 +254,20 @@ export const authService = {
                 error: telegramCode || extractApiErrorMessage(error, 'telegram_link_failed'),
             };
         }
+    },
+
+    async createTelegramLink(): Promise<TelegramLinkRequest> {
+        return requestAuthJson<TelegramLinkRequest>('/api/auth/telegram/link', {
+            method: 'POST',
+        });
+    },
+
+    async getTelegramLinkStatus(requestId: string): Promise<TelegramLinkStatus> {
+        return requestAuthJson<TelegramLinkStatus>('/api/auth/telegram/link/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId }),
+        });
     },
 
     async register(
