@@ -52,14 +52,18 @@ def load_prompt_section(relative_path: str, heading: str) -> str:
     return markdown_section(prompt, heading)
 
 
-def render_prompt(relative_path: str, replacements: Mapping[str, object]) -> str:
-    return _render(load_prompt(relative_path), replacements)
+def render_prompt(
+    relative_path: str, replacements: Mapping[str, object] | None = None
+) -> str:
+    return _render(load_prompt(relative_path), replacements or {})
 
 
 def render_prompt_section(
-    relative_path: str, heading: str, replacements: Mapping[str, object]
+    relative_path: str,
+    heading: str,
+    replacements: Mapping[str, object] | None = None,
 ) -> str:
-    return _render(load_prompt_section(relative_path, heading), replacements)
+    return _render(load_prompt_section(relative_path, heading), replacements or {})
 
 
 def _render(template: str, replacements: Mapping[str, object]) -> str:

@@ -28,9 +28,6 @@ logger = logging.getLogger(__name__)
 GEMINI_31_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite"
 HISTORY_ATTACHMENT_MAX_COUNT = 8
 HISTORY_ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024
-INTERNAL_SEND_ERROR_RESPONSE = (
-    "Внутренняя ошибка. Произошла внутренняя ошибка при отправке вашего сообщения модели."
-)
 EMPTY_RESPONSE = (
     "Пустой ответ. "
     "Модель не сгенерировала ответ. Это могло произойти из-за внутренних правил "
@@ -349,8 +346,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
         logger.error(
             "Gemini 3.1 Flash-Lite is unavailable because GEMINI_API_KEY is not configured"
         )
-        yield INTERNAL_SEND_ERROR_RESPONSE
-        return
+        raise RuntimeError("gemini_api_key_not_configured")
 
     db_user_id = _db_user_id(user_id)
     client: genai.Client | None = None
@@ -559,10 +555,10 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             yield EMPTY_RESPONSE
     except errors.APIError as exc:
         logger.error("Gemini 3.1 Flash-Lite API request failed: %s", exc, exc_info=True)
-        yield INTERNAL_SEND_ERROR_RESPONSE
+        raise RuntimeError("gemini_api_request_failed") from exc
     except Exception as exc:
         logger.exception("Gemini 3.1 Flash-Lite request failed: %s", exc)
-        yield INTERNAL_SEND_ERROR_RESPONSE
+        raise RuntimeError("gemini_request_failed") from exc
     finally:
         if client is not None:
             try:

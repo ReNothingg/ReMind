@@ -295,7 +295,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         in {"1", "true", "yes", "on"}
         else ""
     )
-    widget_tool_prompt = render_prompt("tools/widgets.md") if tools_enabled else ""
+    widget_tool_prompt = render_prompt("tools/widgets.md", {}) if tools_enabled else ""
     current_canvas_textdoc = render_current_canvas_textdoc(user_data) if tools_enabled else ""
     beatbox_state_prompt = render_beatbox_state_prompt(user_data) if tools_enabled else ""
     github_tool_prompt = render_github_tool_prompt(user_id) if tools_enabled else ""
