@@ -22,6 +22,7 @@ from utils.auth import (
     User,
     UserChatHistory,
     db,
+    configured_root_admin_user_ids,
     get_account_restriction,
     is_account_disabled,
     is_admin_user,
@@ -295,7 +296,9 @@ def _dashboard_stats() -> dict[str, Any]:
         "users": {
             "total": User.query.count(),
             "confirmed": User.query.filter(User.is_confirmed.is_(True)).count(),
-            "admins": User.query.filter(or_(User.is_admin.is_(True), User.id == 1)).count(),
+            "admins": User.query.filter(
+                or_(User.is_admin.is_(True), User.id.in_(configured_root_admin_user_ids()))
+            ).count(),
             "banned": active_banned.count(),
             "blocked": active_blocked.count(),
             "new_24h": User.query.filter(User.created_at >= since).count(),
@@ -570,7 +573,9 @@ def register_admin_routes(api_bp):
             )
 
         if status == "admin":
-            query = query.filter(or_(User.is_admin.is_(True), User.id == 1))
+            query = query.filter(
+                or_(User.is_admin.is_(True), User.id.in_(configured_root_admin_user_ids()))
+            )
         elif status == "restricted":
             query = query.filter(
                 or_(

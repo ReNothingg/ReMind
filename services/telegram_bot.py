@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import hmac
+import io
 import logging
 import os
 import re
@@ -12,10 +15,13 @@ import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import quote
 
 import requests
 from sqlalchemy.exc import IntegrityError
+from werkzeug.datastructures import FileStorage
 
 from ai_engine import get_model_function
 from ai_engine.registry import DEFAULT_MODEL_ID
@@ -27,6 +33,7 @@ from config import (
     TELEGRAM_BOT_REQUEST_TIMEOUT_SECONDS,
     TELEGRAM_BOT_TOKEN,
     TELEGRAM_BOT_USERNAME,
+    UPLOAD_FOLDER,
 )
 from services.chat_history import (
     conversation_context_for_operation,
@@ -35,7 +42,13 @@ from services.chat_history import (
     normalize_message,
     persist_chat_operation,
 )
+from services.files import (
+    CHAT_UPLOAD_MAX_TOTAL_BYTES,
+    handle_file_upload,
+    restore_stored_file_for_model,
+)
 from services.telegram_i18n import language_from_telegram, telegram_text
+from services.voice import TTS_MAX_CHARS, synthesize_text_segments
 from utils.auth import (
     AuthIdentity,
     TelegramInlineResult,
@@ -62,6 +75,9 @@ _INLINE_RETENTION_DAYS = 2
 _INLINE_RESULT_TITLE_CHARS = 80
 _INLINE_RESULT_DESCRIPTION_CHARS = 140
 _INLINE_RESULT_TEXT_CHARS = 4_000
+_TELEGRAM_FILE_PATH_RE = re.compile(r"^[A-Za-z0-9_./-]{1,512}$")
+_CALLBACK_DATA_RE = re.compile(r"^(repeat|speak):(tg_[A-Za-z0-9_-]{1,52})$")
+_CALLBACK_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 
 
 def _int_env(name: str, default: int, *, min_value: int = 1, max_value: int = 1000) -> int:
@@ -76,7 +92,9 @@ def _int_env(name: str, default: int, *, min_value: int = 1, max_value: int = 10
     return value
 
 
-def _float_env(name: str, default: float, *, min_value: float = 0.1, max_value: float = 5.0) -> float:
+def _float_env(
+    name: str, default: float, *, min_value: float = 0.1, max_value: float = 5.0
+) -> float:
     try:
         value = float(os.environ.get(name, str(default)))
     except (TypeError, ValueError):
@@ -95,10 +113,17 @@ def _normalize_thinking_level(value: str, fallback: str = "minimal") -> str:
     return fallback
 
 
-_DRAFT_INTERVAL_SECONDS = _float_env("TELEGRAM_DRAFT_INTERVAL_SECONDS", 0.55, min_value=0.2, max_value=5.0)
-_TELEGRAM_MAX_CONTEXT_MESSAGES = _int_env("TELEGRAM_MAX_CONTEXT_MESSAGES", 4, min_value=1, max_value=20)
+_DRAFT_INTERVAL_SECONDS = _float_env(
+    "TELEGRAM_DRAFT_INTERVAL_SECONDS", 0.55, min_value=0.2, max_value=5.0
+)
+_TELEGRAM_MAX_CONTEXT_MESSAGES = _int_env(
+    "TELEGRAM_MAX_CONTEXT_MESSAGES", 4, min_value=1, max_value=20
+)
 _TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE = _int_env(
-    "TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE", _TELEGRAM_MAX_CONTEXT_MESSAGES, min_value=1, max_value=20
+    "TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE",
+    _TELEGRAM_MAX_CONTEXT_MESSAGES,
+    min_value=1,
+    max_value=20,
 )
 _TELEGRAM_THINKING_LEVEL_MESSAGE = _normalize_thinking_level(
     os.environ.get("TELEGRAM_THINKING_LEVEL_MESSAGE", ""),
@@ -119,7 +144,11 @@ if not _TELEGRAM_THINKING_LEVEL_INLINE:
 
 
 def _telegram_context_limit(source: str) -> int:
-    return _TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE if source == "telegram_inline" else _TELEGRAM_MAX_CONTEXT_MESSAGES
+    return (
+        _TELEGRAM_MAX_CONTEXT_MESSAGES_INLINE
+        if source == "telegram_inline"
+        else _TELEGRAM_MAX_CONTEXT_MESSAGES
+    )
 
 
 def _telegram_thinking_level(source: str) -> str:
@@ -157,11 +186,16 @@ def _safe_preview(payload: dict[str, Any] | None, *, max_len: int = 600) -> str:
         if message_text:
             first = message_text[0]
             if isinstance(first, dict):
-                input_message_content = first.get("input_message_content") if isinstance(first.get("input_message_content"), dict) else {}
+                raw_input_message_content = first.get("input_message_content")
+                input_message_content: dict[str, Any] = (
+                    raw_input_message_content if isinstance(raw_input_message_content, dict) else {}
+                )
                 if "message_text" in input_message_content:
                     message_text = str(input_message_content.get("message_text") or "")
                 elif "rich_message" in input_message_content:
-                    message_text = str(input_message_content.get("rich_message", {}).get("markdown") or "")
+                    message_text = str(
+                        input_message_content.get("rich_message", {}).get("markdown") or ""
+                    )
                 else:
                     message_text = ""
     if not isinstance(message_text, str):
@@ -178,6 +212,7 @@ class TelegramBotAPI:
         if not normalized or "/" in normalized:
             raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured")
         self._base_url = f"{TELEGRAM_BOT_API_BASE}/bot{normalized}"
+        self._file_base_url = f"{TELEGRAM_BOT_API_BASE}/file/bot{normalized}"
         self._session = requests.Session()
 
     def call(
@@ -215,6 +250,7 @@ class TelegramBotAPI:
             "limit": 25,
             "allowed_updates": [
                 "message",
+                "callback_query",
                 "guest_message",
                 "inline_query",
                 "chosen_inline_result",
@@ -228,6 +264,92 @@ class TelegramBotAPI:
             timeout=(10, TELEGRAM_BOT_POLL_TIMEOUT_SECONDS + 15),
         )
         return result if isinstance(result, list) else []
+
+    def download_file(self, file_id: str, *, max_bytes: int) -> bytes:
+        file_info = self.call("getFile", {"file_id": file_id})
+        file_path = str(file_info.get("file_path") or "") if isinstance(file_info, dict) else ""
+        if (
+            not _TELEGRAM_FILE_PATH_RE.fullmatch(file_path)
+            or file_path.startswith("/")
+            or ".." in file_path.split("/")
+        ):
+            raise TelegramAPIError("getFile", "invalid_file_path")
+        try:
+            response = self._session.get(
+                f"{self._file_base_url}/{quote(file_path, safe='/')}",
+                timeout=(10, TELEGRAM_BOT_REQUEST_TIMEOUT_SECONDS),
+                allow_redirects=False,
+                stream=True,
+            )
+        except requests.RequestException as exc:
+            raise TelegramAPIError("downloadFile", type(exc).__name__) from None
+        try:
+            if response.status_code != 200:
+                raise TelegramAPIError("downloadFile", "request_failed", response.status_code)
+            declared_size = response.headers.get("Content-Length")
+            if declared_size is not None:
+                try:
+                    parsed_size = int(declared_size)
+                    if parsed_size < 0:
+                        raise TelegramAPIError("downloadFile", "invalid_content_length")
+                    if parsed_size > max_bytes:
+                        raise TelegramAPIError("downloadFile", "file_too_large")
+                except ValueError:
+                    raise TelegramAPIError("downloadFile", "invalid_content_length") from None
+            body = bytearray()
+            for chunk in response.iter_content(chunk_size=64 * 1024):
+                if not chunk:
+                    continue
+                body.extend(chunk)
+                if len(body) > max_bytes:
+                    raise TelegramAPIError("downloadFile", "file_too_large")
+            if not body:
+                raise TelegramAPIError("downloadFile", "empty_file")
+            return bytes(body)
+        finally:
+            response.close()
+
+    def answer_callback(self, query_id: str, text: str = "", *, show_alert: bool = False) -> Any:
+        payload: dict[str, Any] = {
+            "callback_query_id": query_id,
+            "show_alert": show_alert,
+        }
+        if text:
+            payload["text"] = text[:200]
+        return self.call("answerCallbackQuery", payload)
+
+    def send_voice(
+        self,
+        chat_id: int,
+        audio: bytes,
+        *,
+        reply_to_message_id: int | None = None,
+    ) -> Any:
+        data: dict[str, str] = {"chat_id": str(chat_id)}
+        if reply_to_message_id:
+            data["reply_parameters"] = (
+                '{"message_id":%d,"allow_sending_without_reply":true}' % reply_to_message_id
+            )
+        try:
+            response = self._session.post(
+                f"{self._base_url}/sendVoice",
+                data=data,
+                files={"voice": ("remind-answer.mp3", audio, "audio/mpeg")},
+                timeout=(10, TELEGRAM_BOT_REQUEST_TIMEOUT_SECONDS),
+            )
+        except requests.RequestException as exc:
+            raise TelegramAPIError("sendVoice", type(exc).__name__) from None
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise TelegramAPIError("sendVoice", "invalid_json", response.status_code) from exc
+        if response.status_code >= 400 or not payload.get("ok"):
+            raise TelegramAPIError(
+                "sendVoice",
+                str(payload.get("description") or "request_failed"),
+                int(payload.get("error_code") or response.status_code or 0),
+            )
+        return payload.get("result")
 
     def send_text(
         self,
@@ -325,6 +447,7 @@ class _RequestWindow:
 
 _message_window = _RequestWindow(12, 60)
 _inline_window = _RequestWindow(8, 60)
+_voice_window = _RequestWindow(6, 60)
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -438,9 +561,70 @@ def _existing_delivery(session_id: str, user_id: int, request_id: str) -> str | 
     return None
 
 
+def _message_for_request(
+    graph: list[dict[str, Any]], request_id: str, role: str
+) -> dict[str, Any] | None:
+    for message in reversed(graph):
+        if (
+            isinstance(message, dict)
+            and message.get("request_id") == request_id
+            and message.get("role") == role
+        ):
+            return message
+    return None
+
+
+def _message_text(message: dict[str, Any] | None) -> str:
+    if not isinstance(message, dict):
+        return ""
+    return _visible_answer(
+        "\n".join(
+            str(part.get("text") or "")
+            for part in message.get("parts", [])
+            if isinstance(part, dict) and part.get("text")
+        )
+    )
+
+
+def _restored_message_files(message: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(message, dict):
+        return []
+    restored: list[dict[str, Any]] = []
+    for part in message.get("parts", []):
+        if not isinstance(part, dict) or not isinstance(part.get("image"), dict):
+            continue
+        file_info = restore_stored_file_for_model(
+            part["image"], max_bytes=CHAT_UPLOAD_MAX_TOTAL_BYTES
+        )
+        if file_info:
+            restored.append(file_info)
+    return restored
+
+
 def _visible_answer(value: str) -> str:
     without_thoughts = _THINK_RE.sub("", str(value or ""))
     return _UNSUPPORTED_TOOL_BLOCK_RE.sub("", without_thoughts).strip()
+
+
+def _history_parts_for_files(files: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    parts: list[dict[str, Any]] = []
+    for file_info in files or []:
+        if not isinstance(file_info, dict):
+            continue
+        mime_type = str(file_info.get("mime_type") or "")
+        url_path = str(file_info.get("url_path") or "")
+        if not mime_type.startswith("image/") or not url_path:
+            continue
+        parts.append(
+            {
+                "image": {
+                    "url_path": url_path,
+                    "mime_type": mime_type,
+                    "original_name": file_info.get("original_name"),
+                }
+            }
+        )
+    return parts
 
 
 def _trim_inline_answer(value: str) -> str:
@@ -464,6 +648,7 @@ def _generate_answer(
     request_id: str,
     brief: bool,
     persist: bool,
+    files: list[dict[str, Any]] | None = None,
     on_progress: Callable[[str, bool, str], None] | None = None,
 ) -> str:
     if session_chat:
@@ -482,7 +667,7 @@ def _generate_answer(
         "history": history[-max_context_messages:] if history else [],
         "history_is_canonical": history_is_canonical,
         "request_id": request_id,
-        "files": [],
+        "files": files or [],
         "privacy": {"service_improvement_opt_in": False},
         "webSearch": False,
         "autoWebSearch": False,
@@ -508,7 +693,9 @@ def _generate_answer(
             if isinstance(chunk, dict):
                 if "thinking_update" in chunk:
                     update = chunk.get("thinking_update")
-                    thinking_active = isinstance(update, dict) and update.get("status") != "complete"
+                    thinking_active = (
+                        isinstance(update, dict) and update.get("status") != "complete"
+                    )
                     if isinstance(update, dict) and update.get("contentDelta"):
                         thought_summary_chunks.append(str(update["contentDelta"]))
                     if on_progress:
@@ -559,7 +746,8 @@ def _generate_answer(
             {
                 "id": f"tg_u_{request_id}"[:120],
                 "role": "user",
-                "parts": [{"text": question}],
+                "parts": ([{"text": question}] if question else [])
+                + _history_parts_for_files(files),
                 "request_id": request_id,
                 "source": source,
             }
@@ -671,6 +859,29 @@ def _inline_keyboard(language: str) -> dict[str, Any]:
     }
 
 
+def _answer_keyboard(language: str, request_id: str) -> dict[str, Any] | None:
+    if not _CALLBACK_REQUEST_ID_RE.fullmatch(request_id):
+        return None
+    repeat_data = f"repeat:{request_id}"
+    speak_data = f"speak:{request_id}"
+    if len(repeat_data.encode("utf-8")) > 64 or len(speak_data.encode("utf-8")) > 64:
+        return None
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": telegram_text(language, "repeat_button"),
+                    "callback_data": repeat_data,
+                },
+                {
+                    "text": telegram_text(language, "speak_button"),
+                    "callback_data": speak_data,
+                },
+            ]
+        ]
+    }
+
+
 def _inline_answer_payload(text: str, *, force_plain: bool = False) -> dict[str, Any]:
     normalized = (text or "").strip()
     if not normalized:
@@ -717,7 +928,7 @@ def _answer_inline_query(
         }
     try:
         api.call("answerInlineQuery", base_payload)
-    except TelegramAPIError as exc:
+    except TelegramAPIError:
         if base_payload.get("button"):
             # Older payload can fail with unknown field name.
             legacy_payload = dict(base_payload)
@@ -757,7 +968,7 @@ def _is_addressed_to_bot(message: dict[str, Any], bot_username: str, bot_id: int
     chat = _as_dict(message.get("chat"))
     if chat.get("type") == "private":
         return True
-    text = str(message.get("text") or "")
+    text = str(message.get("text") or message.get("caption") or "")
     if bot_username and re.search(
         _MENTION_RE_TEMPLATE.format(username=re.escape(bot_username)), text, re.IGNORECASE
     ):
@@ -777,6 +988,57 @@ def _clean_group_question(text: str, bot_username: str) -> str:
             flags=re.IGNORECASE,
         )
     return re.sub(r"\s+", " ", cleaned).strip()
+
+
+def _remove_uncommitted_upload(file_info: dict[str, Any] | None) -> None:
+    if not isinstance(file_info, dict) or not file_info.get("path"):
+        return
+    try:
+        upload_root = UPLOAD_FOLDER.resolve()
+        path = Path(str(file_info["path"])).resolve()
+        if path.parent == upload_root and path.is_file():
+            path.unlink()
+    except OSError:
+        logger.warning("Could not remove an uncommitted Telegram upload", exc_info=True)
+
+
+def _download_message_photo(
+    api: TelegramBotAPI,
+    message: dict[str, Any],
+    *,
+    storage_owner: str,
+) -> dict[str, Any] | None:
+    photos = message.get("photo")
+    if not isinstance(photos, list) or not photos:
+        return None
+    candidates = [photo for photo in photos if isinstance(photo, dict) and photo.get("file_id")]
+    if not candidates:
+        raise TelegramAPIError("getFile", "missing_photo_file_id")
+
+    def safe_dimension(value: Any) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    photo = max(
+        candidates,
+        key=lambda item: safe_dimension(item.get("width")) * safe_dimension(item.get("height")),
+    )
+    declared_size = safe_dimension(photo.get("file_size"))
+    if declared_size > CHAT_UPLOAD_MAX_TOTAL_BYTES:
+        raise TelegramAPIError("getFile", "file_too_large")
+    raw = api.download_file(
+        str(photo.get("file_id")),
+        max_bytes=CHAT_UPLOAD_MAX_TOTAL_BYTES,
+    )
+    storage = FileStorage(
+        stream=io.BytesIO(raw),
+        filename=f"telegram-photo-{uuid.uuid4().hex}.jpg",
+        content_type="image/jpeg",
+        content_length=len(raw),
+    )
+    return handle_file_upload(storage, storage_owner)
 
 
 def _handle_command(
@@ -855,7 +1117,8 @@ def handle_message_update(
         return
     language = _profile_language(profile)
     linked = _linked_user(profile)
-    text = str(message.get("text") or "").strip()
+    text = str(message.get("text") or message.get("caption") or "").strip()
+    has_photo = isinstance(message.get("photo"), list) and bool(message.get("photo"))
     if text.startswith("/"):
         command, argument = _command_parts(text)
         if _handle_command(api, message, linked, command, argument):
@@ -877,7 +1140,7 @@ def handle_message_update(
             reply_to_message_id=message_id,
         )
         return
-    if not text:
+    if not text and not has_photo:
         api.send_text(
             chat_id,
             telegram_text(language, "unsupported_message"),
@@ -885,6 +1148,8 @@ def handle_message_update(
         )
         return
     question = _clean_group_question(text, bot_username)[:_MAX_INPUT_CHARS]
+    if not question and has_photo:
+        question = telegram_text(language, "photo_default_prompt")
     if not question:
         api.send_text(
             chat_id,
@@ -912,6 +1177,34 @@ def handle_message_update(
     if not session_chat:
         raise RuntimeError("Could not create Telegram chat session")
     request_id = f"tg_{update_id}"
+    existing_answer = _existing_delivery(session_chat.session_id, linked.user.id, request_id)
+    if existing_answer is not None:
+        _send_answer(
+            api,
+            chat_id,
+            existing_answer,
+            reply_to_message_id=message_id,
+            reply_markup=_answer_keyboard(language, request_id),
+        )
+        return
+    uploaded_photo: dict[str, Any] | None = None
+    if has_photo:
+        try:
+            uploaded_photo = _download_message_photo(
+                api,
+                message,
+                storage_owner=session_chat.session_id,
+            )
+            if uploaded_photo is None:
+                raise TelegramAPIError("getFile", "invalid_photo")
+        except TelegramAPIError as exc:
+            key = "photo_too_large" if exc.description == "file_too_large" else "photo_failed"
+            api.send_text(
+                chat_id,
+                telegram_text(language, key),
+                reply_to_message_id=message_id,
+            )
+            return
     draft_id = max(1, update_id)
     last_draft_at = 0.0
     last_draft_text = ""
@@ -950,9 +1243,11 @@ def handle_message_update(
             request_id=request_id,
             brief=False,
             persist=True,
+            files=[uploaded_photo] if uploaded_photo else [],
             on_progress=progress,
         )
     except Exception:
+        _remove_uncommitted_upload(uploaded_photo)
         logger.exception("Telegram message generation failed for update_id=%s", update_id)
         api.send_text(
             chat_id,
@@ -960,7 +1255,173 @@ def handle_message_update(
             reply_to_message_id=message_id,
         )
         return
-    _send_answer(api, chat_id, answer, reply_to_message_id=message_id)
+    _send_answer(
+        api,
+        chat_id,
+        answer,
+        reply_to_message_id=message_id,
+        reply_markup=_answer_keyboard(language, request_id),
+    )
+
+
+def handle_callback_query(api: TelegramBotAPI, callback: dict[str, Any]) -> None:
+    query_id = str(callback.get("id") or "")
+    profile = _as_dict(callback.get("from"))
+    language = _profile_language(profile)
+    match = _CALLBACK_DATA_RE.fullmatch(str(callback.get("data") or ""))
+    callback_message = _as_dict(callback.get("message"))
+    if not query_id or not profile or profile.get("is_bot") or not match or not callback_message:
+        if query_id:
+            api.answer_callback(
+                query_id,
+                telegram_text(language, "action_unavailable"),
+                show_alert=True,
+            )
+        return
+
+    linked = _linked_user(profile)
+    if not linked or is_account_disabled(linked.user):
+        api.answer_callback(
+            query_id,
+            telegram_text(
+                language,
+                "account_restricted" if linked else "not_connected",
+            ),
+            show_alert=True,
+        )
+        return
+
+    action, request_id = match.groups()
+    source, external_context = _message_source(callback_message)
+    chat_payload = _as_dict(callback_message.get("chat"))
+    session_chat = _chat_for_context(
+        linked,
+        source,
+        external_context,
+        _telegram_context(linked, source, chat_payload, brief=False),
+        create=False,
+    )
+    if not session_chat:
+        api.answer_callback(
+            query_id,
+            telegram_text(language, "action_unavailable"),
+            show_alert=True,
+        )
+        return
+
+    graph = load_chat_graph(session_chat.session_id, linked.user.id)
+    model_message = _message_for_request(graph, request_id, "model")
+    answer = _message_text(model_message)
+    if not answer:
+        api.answer_callback(
+            query_id,
+            telegram_text(language, "action_unavailable"),
+            show_alert=True,
+        )
+        return
+
+    chat_id = int(chat_payload.get("id") or 0)
+    reply_to_message_id = int(callback_message.get("message_id") or 0)
+    if action == "speak":
+        if not _voice_window.allow(str(profile.get("id"))):
+            api.answer_callback(
+                query_id,
+                telegram_text(language, "rate_limited"),
+                show_alert=True,
+            )
+            return
+        tts_text = answer[:TTS_MAX_CHARS]
+        status_key = "speak_truncated" if len(answer) > TTS_MAX_CHARS else "speak_started"
+        api.answer_callback(query_id, telegram_text(language, status_key))
+        try:
+            segments = synthesize_text_segments(tts_text)
+        except Exception:
+            logger.exception("Telegram speech synthesis failed: user_id=%s", linked.user.id)
+            segments = []
+        encoded_audio = segments[0].get("audio_base64") if segments else None
+        if not isinstance(encoded_audio, str):
+            api.send_text(
+                chat_id,
+                telegram_text(language, "speak_failed"),
+                reply_to_message_id=reply_to_message_id,
+            )
+            return
+        try:
+            audio = base64.b64decode(encoded_audio, validate=True)
+        except (binascii.Error, ValueError):
+            audio = b""
+        if not audio:
+            api.send_text(
+                chat_id,
+                telegram_text(language, "speak_failed"),
+                reply_to_message_id=reply_to_message_id,
+            )
+            return
+        try:
+            api.send_voice(
+                chat_id,
+                audio,
+                reply_to_message_id=reply_to_message_id,
+            )
+        except TelegramAPIError:
+            logger.warning("Telegram voice delivery failed", exc_info=True)
+            api.send_text(
+                chat_id,
+                telegram_text(language, "speak_failed"),
+                reply_to_message_id=reply_to_message_id,
+            )
+        return
+
+    if not _message_window.allow(str(profile.get("id"))):
+        api.answer_callback(
+            query_id,
+            telegram_text(language, "rate_limited"),
+            show_alert=True,
+        )
+        return
+    user_message = _message_for_request(graph, request_id, "user")
+    question = _message_text(user_message)
+    if not question:
+        api.answer_callback(
+            query_id,
+            telegram_text(language, "action_unavailable"),
+            show_alert=True,
+        )
+        return
+    files = _restored_message_files(user_message)
+    callback_request_id = "tg_cb_" + hashlib.sha256(query_id.encode("utf-8")).hexdigest()[:32]
+    api.answer_callback(query_id, telegram_text(language, "repeat_started"))
+    try:
+        repeated_answer = _generate_answer(
+            linked,
+            question,
+            source=source,
+            chat_payload=chat_payload,
+            session_chat=session_chat,
+            request_id=callback_request_id,
+            brief=False,
+            persist=True,
+            files=files,
+        )
+    except Exception:
+        logger.exception(
+            "Telegram callback generation failed: user_id=%s request_id=%s",
+            linked.user.id,
+            callback_request_id,
+        )
+        api.send_text(
+            chat_id,
+            telegram_text(language, "generation_failed"),
+            reply_to_message_id=reply_to_message_id,
+        )
+        return
+    _send_answer(
+        api,
+        chat_id,
+        repeated_answer,
+        reply_to_message_id=reply_to_message_id,
+        reply_markup=_answer_keyboard(language, callback_request_id),
+    )
 
 
 def handle_guest_update(
@@ -1268,6 +1729,8 @@ def dispatch_update(
             bot_username=bot_username,
             bot_id=bot_id,
         )
+    elif isinstance(update.get("callback_query"), dict):
+        handle_callback_query(api, update["callback_query"])
     elif isinstance(update.get("guest_message"), dict):
         handle_guest_update(
             api,

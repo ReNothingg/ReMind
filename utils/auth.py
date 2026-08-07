@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import secrets
 import unicodedata
@@ -28,7 +29,7 @@ oauth = OAuth()
 OAUTH_FALLBACK_STATE_COOKIE = "oauth_state_fallback"
 OAUTH_FALLBACK_STATE_TTL_SECONDS = 900
 MOBILE_GOOGLE_OAUTH_TOKEN_TTL_SECONDS = 180
-ROOT_ADMIN_USER_ID = 1
+DEFAULT_ROOT_ADMIN_USER_IDS = frozenset({1})
 REMOVED_SETTINGS_DATA_KEYS = frozenset(
     {
         "personalization_nickname",
@@ -190,7 +191,7 @@ class User(db.Model):
         return f"<User {self.username}>"
 
     def to_dict(self):
-        is_super_admin = self.id == ROOT_ADMIN_USER_ID
+        is_super_admin = is_super_admin_user(self)
         restriction = get_account_restriction(self)
         return {
             "id": self.id,
@@ -338,12 +339,37 @@ def _ensure_auth_identity_backfill(app) -> None:
         db.session.commit()
 
 
+def _parse_admin_user_ids(raw_value: str | None) -> frozenset[int]:
+    if raw_value is None:
+        return DEFAULT_ROOT_ADMIN_USER_IDS
+
+    admin_ids: set[int] = set()
+    for part in raw_value.split(","):
+        candidate = part.strip()
+        if not candidate:
+            continue
+        try:
+            user_id = int(candidate)
+        except ValueError:
+            continue
+        if user_id > 0:
+            admin_ids.add(user_id)
+    return frozenset(admin_ids)
+
+
+def configured_root_admin_user_ids() -> frozenset[int]:
+    raw_value = os.getenv("ADMIN_USER_IDS")
+    if raw_value is None:
+        raw_value = os.getenv("ROOT_ADMIN_USER_IDS")
+    return _parse_admin_user_ids(raw_value)
+
+
 def is_super_admin_user(user: User | None) -> bool:
-    return bool(user and user.id == ROOT_ADMIN_USER_ID)
+    return bool(user and user.id in configured_root_admin_user_ids())
 
 
 def is_admin_user(user: User | None) -> bool:
-    return bool(user and (user.id == ROOT_ADMIN_USER_ID or user.is_admin))
+    return bool(user and (is_super_admin_user(user) or user.is_admin))
 
 
 def _restriction_is_active(enabled: bool | None, expires_at: datetime | None) -> bool:
@@ -2282,7 +2308,15 @@ def register_auth_routes(app):
 
         settings = UserSettings.query.filter_by(user_id=session["user_id"]).first()
         if not settings:
-            return jsonify({"error": "Настройки не найдены"}), 404
+            settings = UserSettings(user_id=session["user_id"])
+            db.session.add(settings)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                settings = UserSettings.query.filter_by(user_id=session["user_id"]).first()
+                if not settings:
+                    raise
 
         return jsonify(settings.to_dict()), 200
 
