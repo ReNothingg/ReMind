@@ -575,6 +575,24 @@ def _message_for_request(
     return None
 
 
+def _parent_user_message(
+    graph: list[dict[str, Any]], model_message: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    if not isinstance(model_message, dict):
+        return None
+    parent_id = str(model_message.get("parent_id") or "")
+    if not parent_id:
+        return None
+    for message in graph:
+        if (
+            isinstance(message, dict)
+            and message.get("id") == parent_id
+            and message.get("role") == "user"
+        ):
+            return message
+    return None
+
+
 def _message_text(message: dict[str, Any] | None) -> str:
     if not isinstance(message, dict):
         return ""
@@ -651,7 +669,13 @@ def _generate_answer(
     persist: bool,
     files: list[dict[str, Any]] | None = None,
     on_progress: Callable[[str, bool, str], None] | None = None,
+    operation: str = "send",
+    target_message_id: str | None = None,
 ) -> str:
+    if operation not in {"send", "regenerate"}:
+        raise ValueError("invalid_telegram_chat_operation")
+    if operation == "regenerate" and (not session_chat or not target_message_id):
+        raise ValueError("invalid_regenerate_target")
     if session_chat:
         existing = _existing_delivery(session_chat.session_id, linked.user.id, request_id)
         if existing is not None:
@@ -661,7 +685,16 @@ def _generate_answer(
     thinking_level = _telegram_thinking_level(source)
     max_context_messages = _telegram_context_limit(source)
     history_is_canonical = _telegram_use_canonical_history(source)
-    history = load_chat_history(session_chat.session_id, linked.user.id) if session_chat else []
+    graph = load_chat_graph(session_chat.session_id, linked.user.id) if session_chat else []
+    parent_message_id: str | None = None
+    if operation == "regenerate":
+        history, parent_message_id = conversation_context_for_operation(
+            graph, operation, target_message_id
+        )
+    else:
+        history = (
+            load_chat_history(session_chat.session_id, linked.user.id) if session_chat else []
+        )
 
     user_data: dict[str, Any] = {
         "message": question,
@@ -740,19 +773,23 @@ def _generate_answer(
         raise RuntimeError("Model returned an empty Telegram answer")
 
     if persist and session_chat:
-        graph = load_chat_graph(session_chat.session_id, linked.user.id)
-        history_context, parent_message_id = conversation_context_for_operation(graph, "send", None)
-        del history_context
-        user_message = normalize_message(
-            {
-                "id": f"tg_u_{request_id}"[:120],
-                "role": "user",
-                "parts": ([{"text": question}] if question else [])
-                + _history_parts_for_files(files),
-                "request_id": request_id,
-                "source": source,
-            }
-        )
+        user_message = None
+        if operation == "send":
+            graph = load_chat_graph(session_chat.session_id, linked.user.id)
+            history_context, parent_message_id = conversation_context_for_operation(
+                graph, operation, None
+            )
+            del history_context
+            user_message = normalize_message(
+                {
+                    "id": f"tg_u_{request_id}"[:120],
+                    "role": "user",
+                    "parts": ([{"text": question}] if question else [])
+                    + _history_parts_for_files(files),
+                    "request_id": request_id,
+                    "source": source,
+                }
+            )
         model_message = normalize_message(
             {
                 "id": f"tg_a_{request_id}"[:120],
@@ -765,8 +802,8 @@ def _generate_answer(
         )
         persist_chat_operation(
             session_chat.session_id,
-            operation="send",
-            target_message_id=None,
+            operation=operation,
+            target_message_id=target_message_id,
             parent_message_id=parent_message_id,
             user_message=user_message,
             model_message=model_message,
@@ -1401,7 +1438,7 @@ def handle_callback_query(api: TelegramBotAPI, callback: dict[str, Any]) -> None
             show_alert=True,
         )
         return
-    user_message = _message_for_request(graph, request_id, "user")
+    user_message = _parent_user_message(graph, model_message)
     question = _message_text(user_message)
     if not question:
         api.answer_callback(
@@ -1424,6 +1461,8 @@ def handle_callback_query(api: TelegramBotAPI, callback: dict[str, Any]) -> None
             brief=False,
             persist=True,
             files=files,
+            operation="regenerate",
+            target_message_id=str(model_message.get("id") or ""),
         )
     except Exception:
         logger.exception(

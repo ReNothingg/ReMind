@@ -116,10 +116,27 @@ def _compute_avg_message_length(history: list) -> int:
         return 0
 
 
-def render_user_md_with_settings(user_id: Optional[int], metadata: dict) -> str:
+def render_user_md_with_settings(
+    user_id: Optional[int],
+    metadata: dict,
+    telegram_context: dict[str, Any] | None = None,
+) -> str:
     settings = get_user_settings_by_id(user_id)
     user_profile = get_user_profile_by_id(user_id)
-    account_name = user_profile.get("name") or user_profile.get("username") or ""
+    telegram_profile = telegram_context if isinstance(telegram_context, dict) else {}
+    telegram_first_name = re.sub(
+        r"\s+", " ", str(telegram_profile.get("first_name") or "")
+    ).strip()[:200]
+    telegram_username = re.sub(
+        r"\s+", " ", str(telegram_profile.get("username") or "")
+    ).strip()[:200]
+    account_name = (
+        user_profile.get("name")
+        or telegram_first_name
+        or user_profile.get("username")
+        or telegram_username
+        or ""
+    )
     mapping = {
         "PREFERRED_NAME": account_name or "",
         "ROLE": settings.get("personalization_profession")
@@ -287,7 +304,12 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
     tools_enabled = user_data.get("toolsEnabled", True) is not False
     history = user_data.get("history") or []
     metadata = build_interaction_metadata(user_data, history)
-    user_md = render_user_md_with_settings(user_id, metadata)
+    telegram_context = (
+        user_data.get("telegram_context")
+        if isinstance(user_data.get("telegram_context"), dict)
+        else None
+    )
+    user_md = render_user_md_with_settings(user_id, metadata, telegram_context)
     web_tool_prompt = (
         render_web_tool_prompt()
         if tools_enabled
