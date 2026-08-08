@@ -8,7 +8,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 
-FROM python:3.11-slim AS backend-dev
+FROM python:3.13-slim AS backend-dev
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
