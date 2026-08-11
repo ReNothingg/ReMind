@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from flask import request
 
-from ai_engine.prompt_templates import load_prompt, load_prompt_section, render_prompt
+from ai_engine.prompt_templates import load_prompt, render_prompt
 from config import PYTHON_RUNNER_ENABLED
 from utils.auth import User, UserSettings, db
 
@@ -196,21 +196,21 @@ def render_github_tool_prompt(user_id: Optional[int]) -> str:
 
 
 def render_web_tool_prompt() -> str:
-    tool_prompt = load_prompt_section("tools/web.md", "Instructions")
+    tool_prompt = load_prompt("tools/web.md")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
 
 
 def render_visualize_tool_prompt() -> str:
-    tool_prompt = load_prompt_section("tools/visualize.md", "Instructions")
+    tool_prompt = load_prompt("tools/visualize.md")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
 
 
 def render_python_tool_prompt() -> str:
-    tool_prompt = load_prompt_section("tools/python.md", "Instructions")
+    tool_prompt = load_prompt("tools/python.md")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()

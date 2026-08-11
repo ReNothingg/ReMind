@@ -16,7 +16,7 @@ import requests
 from bs4 import BeautifulSoup
 from defusedxml import ElementTree as ET
 
-from ai_engine.prompt_templates import render_prompt_section
+from ai_engine.prompt_templates import render_prompt
 from config import (
     USER_AGENT,
     WEB_SEARCH_ENABLED,
@@ -138,8 +138,8 @@ QUERY_MONTH_TERMS = {
 }
 
 
-def _render_web_tool_prompt_section(section: str, **replacements: str) -> str:
-    return render_prompt_section("tools/web.md", section, replacements)
+def _render_web_tool_prompt(**replacements: str) -> str:
+    return render_prompt("tools/web.md", replacements)
 
 
 @dataclass(frozen=True)
@@ -338,8 +338,7 @@ def decide_auto_web_search(query: str) -> dict[str, Any]:
         return fallback
 
     try:
-        prompt = _render_web_tool_prompt_section(
-            "Search Router Prompt",
+        prompt = _render_web_tool_prompt(
             USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
         if not prompt:
@@ -373,8 +372,7 @@ def rewrite_web_search_query(query: str) -> dict[str, Any]:
         return fallback
 
     try:
-        prompt = _render_web_tool_prompt_section(
-            "Search Query Writer Prompt",
+        prompt = _render_web_tool_prompt(
             CURRENT_UTC_DATE=datetime.now(timezone.utc).date().isoformat(),
             USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
