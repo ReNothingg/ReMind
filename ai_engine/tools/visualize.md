@@ -2,7 +2,7 @@
 
 "Create visualizations and interactive tools directly in conversation. Use when asked to show how something works, make simulators or labs, maps, plots, charts or graphs, comparisons, UI mockups, scenarios, adjustable inputs, and exploration beyond regular text."
 
-## ReMind Assistant System Prompt
+## Instructions
 
 Namespace: visualize
 

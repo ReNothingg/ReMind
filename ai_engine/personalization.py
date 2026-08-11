@@ -196,21 +196,21 @@ def render_github_tool_prompt(user_id: Optional[int]) -> str:
 
 
 def render_web_tool_prompt() -> str:
-    tool_prompt = load_prompt_section("tools/web.md", "Assistant System Prompt")
+    tool_prompt = load_prompt_section("tools/web.md", "Instructions")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
 
 
 def render_visualize_tool_prompt() -> str:
-    tool_prompt = load_prompt_section("tools/visualize.md", "ReMind Assistant System Prompt")
+    tool_prompt = load_prompt_section("tools/visualize.md", "Instructions")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
 
 
 def render_python_tool_prompt() -> str:
-    tool_prompt = load_prompt_section("tools/python.md", "ReMind Assistant System Prompt")
+    tool_prompt = load_prompt_section("tools/python.md", "Instructions")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
