@@ -223,6 +223,11 @@ const highlightCodeContent = (codeContent: string, prismLanguage: string) => {
     }
 };
 
+const renderCodeLineNumberRows = (codeContent: string) => {
+    const lineCount = Math.max(1, codeContent.split('\n').length);
+    return `<span class="line-numbers-rows" aria-hidden="true">${'<span></span>'.repeat(lineCount)}</span>`;
+};
+
 const resizeCodeLineNumbers = (root: ParentNode) => {
     root.querySelectorAll('pre.line-numbers').forEach((pre) => {
         if (window.Prism?.plugins?.lineNumbers) {
@@ -625,7 +630,7 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }: DiagramB
         </div>
         <div class="code-block-pane code-block-scroll-wrapper" data-pane="code" role="tabpanel" hidden>
             <div class="code-block-content">
-                <pre class="line-numbers language-${codeLanguage}"><code class="language-${codeLanguage}">${highlightedContent}</code></pre>
+                <pre class="line-numbers language-${codeLanguage}"><code class="language-${codeLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
             </div>
         </div>
     </div>`;
@@ -696,7 +701,7 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code></pre>
+                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
             </div>
         </div>
     </div>`;
@@ -918,7 +923,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code></pre>
+                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
             </div>
         </div>
     </div>`;

@@ -207,6 +207,11 @@
   color: var(--color-text-primary);
 }
 
+.think-block-python-toggle:active,
+.think-block-python-output-toggle:active {
+  transform: none;
+}
+
 .think-block-python-toggle .think-block-step-title {
   min-width: 0;
   flex: 1;
@@ -272,6 +277,23 @@
   line-height: 1.6;
   tab-size: 4;
   white-space: pre;
+  scrollbar-color: var(--color-border-medium) transparent;
+  scrollbar-width: thin;
+}
+
+.think-block-python-code::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.think-block-python-code::-webkit-scrollbar-track,
+.think-block-python-code::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.think-block-python-code::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: var(--color-border-medium);
 }
 
 .think-block-python-code code {
@@ -280,6 +302,103 @@
   min-width: 100%;
   color: inherit;
   font: inherit;
+}
+
+.think-block-python-output {
+  margin: calc(var(--spacing-unit) * 1.5) 0 calc(var(--spacing-unit) * 2);
+}
+
+.think-block-python-output-toggle {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.think-block-python-output-toggle:hover {
+  color: var(--color-text-primary);
+}
+
+.think-block-python-output-label {
+  min-width: 0;
+  flex: 1;
+  margin-bottom: calc(var(--spacing-unit) * 1);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.think-block-python-output-toggle .think-block-python-output-label {
+  margin-bottom: 0;
+}
+
+.think-block-python-chevron.is-expanded {
+  transform: rotate(90deg);
+}
+
+.think-block-python-output-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    visibility 0s linear 220ms;
+}
+
+.think-block-python-output-disclosure[aria-hidden='false'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.think-block-python-output-disclosure-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.think-block-python-output-content {
+  box-sizing: border-box;
+  width: min(100%, 620px);
+  max-height: min(260px, 36vh);
+  margin: calc(var(--spacing-unit) * 1) 0 0;
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+  overflow: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-bg-surface-alt-raw), 0.58);
+  color: var(--code-token-plain);
+  font-family: var(--font-family-code);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  scrollbar-color: var(--color-border-medium) transparent;
+  scrollbar-width: thin;
+}
+
+.think-block-python-output-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.think-block-python-output-content::-webkit-scrollbar-track,
+.think-block-python-output-content::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.think-block-python-output-content::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: var(--color-border-medium);
 }
 
 @media (max-width: 600px) {
@@ -305,7 +424,16 @@
     font-size: 0.75rem;
   }
 
+  .think-block-python-output-content {
+    max-height: min(220px, 34vh);
+    font-size: 0.75rem;
+  }
+
   .think-block-python-toggle {
+    min-height: 36px;
+  }
+
+  .think-block-python-output-toggle {
     min-height: 36px;
   }
 
@@ -330,6 +458,7 @@
 @media (prefers-reduced-motion: reduce) {
   .think-block-icon,
   .think-block-python-chevron,
+  .think-block-python-output-disclosure,
   .think-block-python-disclosure,
   .think-block-disclosure,
   .think-block-content {

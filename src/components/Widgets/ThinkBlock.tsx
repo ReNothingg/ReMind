@@ -62,7 +62,9 @@ function renderPythonSyntaxToken(token: PythonSyntaxToken, key: string): ReactNo
 
 function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
     const [isCodeExpanded, setIsCodeExpanded] = useState(false);
+    const [isOutputExpanded, setIsOutputExpanded] = useState(false);
     const codeId = useId();
+    const outputId = useId();
     const { t } = useTranslation();
     const highlightedCode = useMemo(() => {
         try {
@@ -126,6 +128,44 @@ function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
                     </pre>
                 </div>
             </div>
+            {activity.output && (
+                <div className="think-block-python-output">
+                    <button
+                        type="button"
+                        className="think-block-python-output-toggle"
+                        onClick={() => setIsOutputExpanded((expanded) => !expanded)}
+                        aria-expanded={isOutputExpanded}
+                        aria-controls={outputId}
+                    >
+                        <span className="think-block-python-output-label">
+                            {t('think.python.output')}
+                        </span>
+                        <span className="think-block-python-toggle-label">
+                            {t(`think.python.${isOutputExpanded ? 'hideOutput' : 'showOutput'}`)}
+                        </span>
+                        <svg
+                            className={cn('think-block-python-chevron', isOutputExpanded && 'is-expanded')}
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            aria-hidden="true"
+                        >
+                            <path d="m7 5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
+                    <div
+                        id={outputId}
+                        className="think-block-python-output-disclosure"
+                        aria-hidden={!isOutputExpanded}
+                        inert={!isOutputExpanded}
+                    >
+                        <div className="think-block-python-output-disclosure-inner">
+                            <pre className="think-block-python-output-content">{activity.output}</pre>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

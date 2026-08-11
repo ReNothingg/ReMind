@@ -105,7 +105,10 @@
     "python": {
       "running": "جارٍ تنفيذ كود Python...",
       "completed": "اكتمل تنفيذ Python",
-      "failed": "فشل تنفيذ Python",
+        "failed": "فشل تنفيذ Python",
+        "output": "نتيجة التنفيذ",
+        "showOutput": "عرض النتيجة",
+        "hideOutput": "إخفاء النتيجة",
       "showCode": "عرض الكود",
       "hideCode": "إخفاء الكود"
     }

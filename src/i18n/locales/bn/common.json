@@ -105,7 +105,10 @@
     "python": {
       "running": "Python কোড চালানো হচ্ছে...",
       "completed": "Python সম্পাদন সম্পন্ন হয়েছে",
-      "failed": "Python সম্পাদন ব্যর্থ হয়েছে",
+        "failed": "Python সম্পাদন ব্যর্থ হয়েছে",
+        "output": "এক্সিকিউশনের ফলাফল",
+        "showOutput": "ফলাফল দেখান",
+        "hideOutput": "ফলাফল লুকান",
       "showCode": "কোড দেখান",
       "hideCode": "কোড লুকান"
     }

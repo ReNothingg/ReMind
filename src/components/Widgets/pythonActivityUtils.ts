@@ -8,6 +8,7 @@ export type DecodedPythonActivity = {
     status: PythonActivityStatus;
     code: string;
     purpose: string;
+    output: string;
     durationMs: number;
     artifactCount: number;
 };
@@ -20,6 +21,7 @@ const VALID_PYTHON_STATUSES = new Set<PythonActivityStatus>([
 const MAX_ENCODED_ACTIVITY_LENGTH = 140_000;
 const MAX_CODE_LENGTH = 24_000;
 const MAX_PURPOSE_LENGTH = 1_000;
+const MAX_OUTPUT_LENGTH = 12_000;
 
 export function decodePythonActivity(encoded: string): DecodedPythonActivity | null {
     if (!encoded || encoded.length > MAX_ENCODED_ACTIVITY_LENGTH) {
@@ -48,6 +50,7 @@ export function decodePythonActivity(encoded: string): DecodedPythonActivity | n
             status: payload.status,
             code: String(payload.code || '').slice(0, MAX_CODE_LENGTH),
             purpose: String(payload.purpose || '').replace(/\s+/g, ' ').trim().slice(0, MAX_PURPOSE_LENGTH),
+            output: String(payload.output || '').slice(0, MAX_OUTPUT_LENGTH),
             durationMs: Number.isFinite(durationMs)
                 ? Math.max(0, Math.min(60_000, durationMs))
                 : 0,

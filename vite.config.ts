@@ -60,6 +60,9 @@ export default defineConfig({
       '/login': {
         ...backendProxy,
       },
+      '/confirm': {
+        ...backendProxy,
+      },
       '/synthesize': {
         ...backendProxy,
       },

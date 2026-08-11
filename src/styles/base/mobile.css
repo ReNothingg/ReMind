@@ -247,6 +247,15 @@
     align-items: flex-end;
   }
 
+  .user-message.has-user-actions {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+
+  .user-message.has-user-actions .message-content {
+    max-width: calc(100% - 56px);
+  }
+
   .icon-wrapper {
     width: 32px;
     height: 32px;
@@ -263,8 +272,9 @@
 
   .user-message .message-content {
     border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
-    background: var(--color-accent);
-    color: var(--color-text-on-accent-bg);
+    background: rgba(var(--color-accent-raw), 0.08);
+    color: var(--user-message-text-color);
+    border-color: rgba(var(--color-accent-raw), 0.14);
   }
 
   .user-message .message-content::before {
@@ -316,11 +326,16 @@
   .user-message.has-user-actions .actions-bar {
     position: static;
     border-top: none;
-    padding: 3px;
-    margin: 8px 0 0 auto;
+    padding: 0;
+    flex: 0 0 auto;
+    align-self: center;
+    flex-direction: column;
+    margin: 0;
     gap: 2px;
     flex-wrap: nowrap;
     width: max-content;
+    border-color: transparent;
+    background: transparent;
   }
 
   .action-btn {

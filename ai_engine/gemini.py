@@ -46,6 +46,7 @@ _THINK_BLOCK_RE = re.compile(r"<think(?:\s[^>]*)?>[\s\S]*?</think>", re.IGNORECA
 MAX_SEARCH_ACTIVITY_ENCODED_CHARS = 48_000
 MAX_PYTHON_ACTIVITY_CODE_CHARS = 24_000
 MAX_PYTHON_ACTIVITY_PURPOSE_CHARS = 1_000
+MAX_PYTHON_ACTIVITY_RESULT_CHARS = 12_000
 
 
 def _db_user_id(user_id: Any) -> int | None:
@@ -346,6 +347,7 @@ def _python_activity_token(
     purpose: Any = "",
     duration_ms: Any = 0,
     artifact_count: Any = 0,
+    output: Any = "",
 ) -> str:
     safe_status = status if status in {
         "python_running",
@@ -360,11 +362,35 @@ def _python_activity_token(
         "purpose": _bounded_activity_text(purpose, MAX_PYTHON_ACTIVITY_PURPOSE_CHARS),
         "duration_ms": _bounded_activity_int(duration_ms, 60_000),
         "artifact_count": _bounded_activity_int(artifact_count, 10),
+        "output": str(output or "")[:MAX_PYTHON_ACTIVITY_RESULT_CHARS],
     }
     encoded = base64.urlsafe_b64encode(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     ).decode("ascii")
     return f'<python_activity data-b64="{encoded}"></python_activity>'
+
+
+def _python_activity_output(result: dict[str, Any]) -> str:
+    """Prepare a bounded, plain-text execution result for the activity timeline."""
+    if not isinstance(result, dict):
+        return ""
+    output = str(result.get("stdout") or result.get("stderr") or "")
+    if output:
+        return output[:MAX_PYTHON_ACTIVITY_RESULT_CHARS]
+
+    previews: list[str] = []
+    for artifact in result.get("artifacts") or []:
+        if not isinstance(artifact, dict):
+            continue
+        preview = artifact.get("preview")
+        if not isinstance(preview, str) or not preview:
+            continue
+        name = _bounded_activity_text(artifact.get("original_name"), 180)
+        previews.append(f"{name}\n{preview}" if name else preview)
+        combined = "\n\n".join(previews)
+        if len(combined) >= MAX_PYTHON_ACTIVITY_RESULT_CHARS:
+            return combined[:MAX_PYTHON_ACTIVITY_RESULT_CHARS]
+    return "\n\n".join(previews)[:MAX_PYTHON_ACTIVITY_RESULT_CHARS]
 
 
 def _thinking_level(user_message_data: dict[str, Any]) -> types.ThinkingLevel:
@@ -621,6 +647,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                                     duration_ms=result.output.get("duration_ms")
                                     or (time.monotonic() - python_started_at) * 1000,
                                     artifact_count=len(result.output.get("artifacts") or []),
+                                    output=_python_activity_output(result.output),
                                 ),
                                 separate=True,
                             )

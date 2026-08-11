@@ -179,6 +179,7 @@
   border: none !important;
   overflow: visible !important;
   height: auto !important;
+  line-height: 1.45 !important;
 }
 
 .code-block-content code[class*='language-'],

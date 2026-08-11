@@ -147,6 +147,7 @@ const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
                     !file
                     || typeof file === 'string'
                     || (!file.url_path && !file.original_name && !file.name)
+                    || (!isUser && (file.preview || file.metadata?.inline_result))
                 ) {
                     return null;
                 }
@@ -2185,27 +2186,27 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                         )}
                     </div>
                 )}
-                {showUserActions && (
-                    <div className="actions-bar ui-message-actions ui-user-message-actions">
-                        <MessageActionButton
-                            className="copy-btn"
-                            title={t('common.copy')}
-                            onClick={handleCopy}
-                        >
-                            <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
-                        <MessageActionButton
-                            className="edit-btn"
-                            title={t('chat.editUserMessage.edit')}
-                            onClick={() => setIsEditingUserMessage(true)}
-                        >
-                            <img src="/icons/ui/edit.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
-                    </div>
-                )}
                     </>
                 )}
             </div>
+            {showUserActions && (
+                <div className="actions-bar ui-message-actions ui-user-message-actions">
+                    <MessageActionButton
+                        className="copy-btn"
+                        title={t('common.copy')}
+                        onClick={handleCopy}
+                    >
+                        <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
+                    </MessageActionButton>
+                    <MessageActionButton
+                        className="edit-btn"
+                        title={t('chat.editUserMessage.edit')}
+                        onClick={() => setIsEditingUserMessage(true)}
+                    >
+                        <img src="/icons/ui/edit.svg" alt="" aria-hidden="true" />
+                    </MessageActionButton>
+                </div>
+            )}
         </div>
     );
 };

@@ -41,6 +41,14 @@ describe('formatText', () => {
         expect(html).toContain('token keyword');
     });
 
+    it('includes line numbers for an unfinished streamed code fence', () => {
+        const html = formatText('```text\nfirst line\nsecond line');
+        const container = document.createElement('div');
+        container.innerHTML = html;
+
+        expect(container.querySelectorAll('.line-numbers-rows > span')).toHaveLength(2);
+    });
+
     it('normalizes common language aliases before highlighting', () => {
         const html = formatText('```ts\nconst enabled: boolean = true;\n```');
 

@@ -105,7 +105,10 @@
     "python": {
       "running": "Выполняю Python-код...",
       "completed": "Python-код выполнен",
-      "failed": "Не удалось выполнить Python-код",
+        "failed": "Не удалось выполнить Python-код",
+        "output": "Результат выполнения",
+        "showOutput": "Показать результат",
+        "hideOutput": "Скрыть результат",
       "showCode": "Показать код",
       "hideCode": "Скрыть код"
     }

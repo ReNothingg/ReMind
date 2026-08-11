@@ -105,7 +105,10 @@
     "python": {
       "running": "Python कोड चलाया जा रहा है...",
       "completed": "Python निष्पादन पूरा हुआ",
-      "failed": "Python निष्पादन विफल हुआ",
+        "failed": "Python निष्पादन विफल हुआ",
+        "output": "निष्पादन परिणाम",
+        "showOutput": "परिणाम दिखाएं",
+        "hideOutput": "परिणाम छिपाएं",
       "showCode": "कोड दिखाएं",
       "hideCode": "कोड छिपाएं"
     }

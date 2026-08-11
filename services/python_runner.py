@@ -35,6 +35,7 @@ MAX_ARTIFACT_TOTAL_BYTES = 12 * 1024 * 1024
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
 MAX_INLINE_ARTIFACT_BYTES = 4 * 1024 * 1024
 MAX_INLINE_ARTIFACT_TOTAL_BYTES = 8 * 1024 * 1024
+MAX_TEXT_ARTIFACT_PREVIEW_CHARS = 12_000
 WAIT_TIMEOUT_SECONDS = 22.0
 POLL_SECONDS = 0.05
 JOB_ID_RE = re.compile(r"^[a-f0-9]{32}$")
@@ -355,15 +356,17 @@ def _persist_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, 
             target.unlink(missing_ok=True)
             continue
 
-        persisted.append(
-            {
-                "url_path": f"/uploads/{target_name}",
-                "original_name": original_name,
-                "mime_type": mime_type,
-                "size": size,
-                "metadata": _artifact_metadata(target, extension),
-            }
-        )
+        artifact = {
+            "url_path": f"/uploads/{target_name}",
+            "original_name": original_name,
+            "mime_type": mime_type,
+            "size": size,
+            "metadata": _artifact_metadata(target, extension),
+        }
+        preview = _text_artifact_preview(target, extension)
+        if preview:
+            artifact["preview"] = preview
+        persisted.append(artifact)
     return persisted
 
 
@@ -509,3 +512,14 @@ def _artifact_metadata(path: Path, extension: str) -> dict[str, Any]:
     except (OSError, ValueError, zipfile.BadZipFile, ElementTree.ParseError):
         return {}
     return {}
+
+
+def _text_artifact_preview(path: Path, extension: str) -> str:
+    """Return a bounded UTF-8 preview only for already validated text artifacts."""
+    if extension not in {".csv", ".json", ".md", ".txt"}:
+        return ""
+    try:
+        with path.open(encoding="utf-8-sig") as handle:
+            return handle.read(MAX_TEXT_ARTIFACT_PREVIEW_CHARS)
+    except (OSError, UnicodeError):
+        return ""

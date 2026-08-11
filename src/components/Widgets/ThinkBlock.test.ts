@@ -20,6 +20,9 @@ vi.mock('react-i18next', () => ({
             'think.python.running': 'Running Python code...',
             'think.python.completed': 'Python execution completed',
             'think.python.failed': 'Python execution failed',
+            'think.python.output': 'Execution result',
+            'think.python.showOutput': 'Show result',
+            'think.python.hideOutput': 'Hide result',
             'think.python.showCode': 'Show code',
             'think.python.hideCode': 'Hide code',
             'webSearch.queryLabel': 'Query',
@@ -304,6 +307,46 @@ describe('ThinkBlock', () => {
         expect(container.querySelector('.think-block-python-code .token.keyword')?.textContent)
             .toBe('import');
         expect(container.querySelector('.think-block-python-code script')).toBeNull();
+    });
+
+    it('renders text output inline instead of presenting it as a file attachment', () => {
+        const completed = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-output',
+            status: 'python_completed',
+            code: 'print("result")',
+            output: 'maze.txt\n██  ██\n  ██  ',
+        });
+
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        act(() => {
+            root?.render(React.createElement(ThinkBlock, {
+                content: completed,
+                openTime: 100,
+                closeTime: 200,
+            }));
+        });
+        act(() => container?.querySelector<HTMLButtonElement>('.think-block-header')?.click());
+
+        const outputToggle = container.querySelector<HTMLButtonElement>('.think-block-python-output-toggle');
+        expect(outputToggle?.getAttribute('aria-expanded')).toBe('false');
+        expect(outputToggle?.textContent).toContain('Show result');
+        expect(container.querySelector('.think-block-python-output-disclosure')?.getAttribute('aria-hidden'))
+            .toBe('true');
+
+        act(() => outputToggle?.click());
+
+        expect(outputToggle?.getAttribute('aria-expanded')).toBe('true');
+        expect(outputToggle?.textContent).toContain('Hide result');
+        expect(container.querySelector('.think-block-python-output-disclosure')?.getAttribute('aria-hidden'))
+            .toBe('false');
+        expect(container.querySelector('.think-block-python-output-label')?.textContent)
+            .toBe('Execution result');
+        expect(container.querySelector('.think-block-python-output-content')?.textContent)
+            .toBe('maze.txt\n██  ██\n  ██  ');
+        expect(container.querySelector('.think-block-python-output-content script')).toBeNull();
     });
 
     it('keeps multiple Python purposes in chronological tool order', () => {

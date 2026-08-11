@@ -536,7 +536,9 @@ def _build_model_message_parts(
                 "source": "python",
             }
             if isinstance(artifact.get("metadata"), dict):
-                attachment["metadata"] = artifact["metadata"]
+                attachment["metadata"] = dict(artifact["metadata"])
+            if isinstance(artifact.get("preview"), str) and artifact["preview"]:
+                attachment.setdefault("metadata", {})["inline_result"] = True
             if attachment["mime_type"].startswith("image/"):
                 parts.append({"image": attachment})
             else:

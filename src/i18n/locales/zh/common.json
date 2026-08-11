@@ -105,7 +105,10 @@
     "python": {
       "running": "正在运行 Python 代码...",
       "completed": "Python 执行完成",
-      "failed": "Python 执行失败",
+        "failed": "Python 执行失败",
+        "output": "执行结果",
+        "showOutput": "显示结果",
+        "hideOutput": "隐藏结果",
       "showCode": "显示代码",
       "hideCode": "隐藏代码"
     }

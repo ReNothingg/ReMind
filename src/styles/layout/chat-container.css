@@ -2,7 +2,7 @@
   display: flex;
   min-height: var(--app-viewport-height);
   height: auto;
-  padding: 0rem 0rem 6.25rem;
+  padding: calc(44px + var(--spacing-unit) * 6 + env(safe-area-inset-top)) 0rem 6.25rem;
   border: 0rem solid rgba(255, 255, 255, 0.05);
   color: var(--color-text-primary);
   font-size: 0.88rem;
@@ -59,6 +59,11 @@
 
 .user-message.has-user-actions {
   padding-bottom: 0;
+}
+
+.user-message:active,
+.user-message .message-content:active {
+  transform: none;
 }
 
 .ai-message {
@@ -122,13 +127,17 @@
 }
 
 .user-message .message-content {
-  background: rgba(var(--color-accent-raw), 0.2) 0%;
+  width: auto;
+  max-width: min(72%, 620px);
+  flex: 0 1 auto;
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 4);
+  background: rgba(var(--color-accent-raw), 0.08);
   color: var(--user-message-text-color);
   font-weight: 500;
   letter-spacing: 0;
 
-  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-xl);
-  border: 1px solid rgba(var(--color-accent-raw), 0.2);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  border: 1px solid rgba(var(--color-accent-raw), 0.14);
 }
 
 .ai-message .message-content {
@@ -222,13 +231,15 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 
 .user-message.has-user-actions .actions-bar {
   position: static;
-  margin: calc(var(--spacing-unit) * 2) 0 0 auto;
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0;
   width: max-content;
   gap: 2px;
-  padding: 3px;
+  padding: 0;
   z-index: 2;
-  border-color: rgba(var(--color-accent-raw), 0.24);
-  background: rgba(255, 255, 255, 0.22);
+  border-color: transparent;
+  background: transparent;
   transform-origin: right center;
 }
 
@@ -285,8 +296,13 @@ html[data-theme='light'] .user-message img.markdown-image[alt]:after {
 }
 
 .user-message .action-btn {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
+  color: var(--color-text-tertiary);
+}
+
+.user-message .action-btn:active {
+  transform: none;
 }
 
 @media (pointer: coarse), (max-width: 640px) {

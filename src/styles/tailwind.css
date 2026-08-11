@@ -297,12 +297,12 @@
   }
 
   .ui-message-bubble-user {
-    @apply rounded-[var(--radius-xl)_var(--radius-xl)_var(--radius-sm)_var(--radius-xl)] border px-[var(--chat-message-padding-x)] py-[var(--chat-message-padding-y)] text-foreground;
-    width: fit-content;
-    max-width: min(82%, 720px);
+    @apply rounded-[var(--radius-lg)_var(--radius-lg)_var(--radius-sm)_var(--radius-lg)] border px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*3)] text-foreground;
+    width: auto;
+    max-width: min(72%, 620px);
     flex: 0 1 auto;
-    background: rgba(var(--color-accent-raw), 0.2);
-    border-color: rgba(var(--color-accent-raw), 0.2);
+    background: rgba(var(--color-accent-raw), 0.08);
+    border-color: rgba(var(--color-accent-raw), 0.14);
     color: var(--user-message-text-color);
   }
 
@@ -552,6 +552,7 @@
   .ui-chat-stack {
     @apply mx-auto flex min-h-screen w-[var(--app-content-width-dynamic)] min-w-[var(--content-width-min)] max-w-[var(--app-content-max-width-dynamic)] flex-col px-0 pt-0 pb-[200px] text-[0.88rem] text-foreground;
     min-height: var(--app-viewport-height);
+    padding-top: calc(44px + var(--spacing-unit) * 6 + env(safe-area-inset-top));
   }
 
   .ui-notice-banner {
@@ -1838,7 +1839,7 @@
     }
 
     .ui-message-bubble-user {
-      width: fit-content !important;
+      width: auto !important;
       max-width: 92% !important;
       flex: 0 1 auto !important;
     }
