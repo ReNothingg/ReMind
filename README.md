@@ -22,16 +22,6 @@
     <img src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose" />
   </p>
 
-  <p align="center">
-    <a href="https://www.star-history.com/#ReNothingg/ReMind&type=date&legend=top-left">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ReNothingg/ReMind&type=date&theme=dark&legend=top-left" />
-        <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ReNothingg/ReMind&type=date&legend=top-left" />
-        <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ReNothingg/ReMind&type=date&legend=top-left" />
-      </picture>
-    </a>
-  </p>
-
   <p>
     <a href="#overview">Обзор</a>
     · <a href="#features">Возможности</a>
@@ -92,7 +82,7 @@
 
 <a id="quick-start"></a>
 
-## ⚡ Быстрый старт
+## Быстрый старт
 
 ### Требования
 
@@ -179,7 +169,7 @@ celery -A celery_worker.celery worker --loglevel=info --concurrency=2
 
 <a id="docker"></a>
 
-## 🐳 Docker
+## Docker
 
 В репозитории есть отдельные Compose-конфигурации для разработки и production-проверки.
 
@@ -327,4 +317,4 @@ ReMind распространяется под лицензией **GNU AGPL-3.0
 
 Дополнительные уведомления: [NOTICE.md](NOTICE.md).
 
-Contact: [Telegram: @daich](https://t.me/daich)
+Contact: [renothingg.github.io](https://renothingg.github.io/?contact)
