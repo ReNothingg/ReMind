@@ -168,7 +168,18 @@ return {1, limit, remaining, math.floor(reset_at)}
         return self.evaluate(identifier).remaining
 
 
-login_limiter = RateLimiter(max_requests=5, time_window=300, namespace="login")
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        return max(minimum, min(maximum, int(os.getenv(name, str(default)))))
+    except (TypeError, ValueError):
+        return default
+
+
+login_limiter = RateLimiter(
+    max_requests=_bounded_env_int("LOGIN_RATE_LIMIT_MAX_REQUESTS", 5, 1, 1000),
+    time_window=_bounded_env_int("LOGIN_RATE_LIMIT_WINDOW_SECONDS", 300, 1, 86400),
+    namespace="login",
+)
 password_reset_limiter = RateLimiter(max_requests=3, time_window=3600, namespace="password_reset")
 api_limiter = RateLimiter(max_requests=100, time_window=3600, namespace="api")
 upload_limiter = RateLimiter(max_requests=20, time_window=3600, namespace="upload")

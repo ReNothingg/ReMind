@@ -50,7 +50,11 @@ type ChatSessionActivity = {
 };
 
 type WindowWithLayoutModals = Window & {
-  openImageLightbox?: (imageSrc: string, messageId?: string) => void;
+  openImageLightbox?: (
+    imageSrc: string,
+    messageId?: string,
+    options?: { canRegenerate?: boolean; downloadName?: string }
+  ) => void;
   closeImageLightbox?: () => void;
 };
 
@@ -58,6 +62,8 @@ interface ImageLightboxState {
   isOpen: boolean;
   imageSrc: string | null;
   messageId: string | null;
+  canRegenerate: boolean;
+  downloadName: string | null;
 }
 
 const MOBILE_RAIL_MEDIA_QUERY = '(max-width: 1024px)';
@@ -116,6 +122,8 @@ const MainLayout = () => {
     isOpen: false,
     imageSrc: null,
     messageId: null,
+    canRegenerate: true,
+    downloadName: null,
   });
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isCanvasVisible, setCanvasVisible] = useState(false);
@@ -155,6 +163,7 @@ const MainLayout = () => {
     history,
     canvasTextdoc,
     isLoading,
+    isCanvasStreaming,
     sendMessage,
     stopGeneration,
     loadSession,
@@ -343,11 +352,23 @@ const MainLayout = () => {
   useEffect(() => {
     const appWindow = window as WindowWithLayoutModals;
 
-    appWindow.openImageLightbox = (imageSrc, messageId) => {
-      setImageLightbox({ isOpen: true, imageSrc, messageId: messageId ?? null });
+    appWindow.openImageLightbox = (imageSrc, messageId, options) => {
+      setImageLightbox({
+        isOpen: true,
+        imageSrc,
+        messageId: messageId ?? null,
+        canRegenerate: options?.canRegenerate !== false,
+        downloadName: options?.downloadName ?? null,
+      });
     };
     appWindow.closeImageLightbox = () => {
-      setImageLightbox({ isOpen: false, imageSrc: null, messageId: null });
+      setImageLightbox({
+        isOpen: false,
+        imageSrc: null,
+        messageId: null,
+        canRegenerate: true,
+        downloadName: null,
+      });
     };
 
     return () => {
@@ -532,6 +553,15 @@ const MainLayout = () => {
     [activeMind, clearChat, isTemporaryChat, selectedModel, selectedThinkingLevel, sendMessage]
   );
 
+  const handleRepairPython = useCallback((error: string, code: string) => {
+    const repairPrompt = t('canvas.pythonTerminal.repairPrompt', {
+      error,
+      code,
+      interpolation: { escapeValue: false },
+    });
+    handleSendMessage(repairPrompt, [], {});
+  }, [handleSendMessage, t]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     let shouldUpdateURL = false;
@@ -563,6 +593,12 @@ const MainLayout = () => {
         const target = authView === 'link' && isAuthenticated ? 'link' : 'login';
         setTimeout(() => setAuthOpen(target), 0);
       }
+      shouldUpdateURL = true;
+    }
+
+    const authError = params.get('auth_error');
+    if (authError && /^[a-z_]{1,64}$/.test(authError)) {
+      window.sessionStorage.setItem('remind.auth.error', authError);
       shouldUpdateURL = true;
     }
 
@@ -1233,6 +1269,7 @@ const MainLayout = () => {
                         }
                       }}
                       onBeatboxStateChange={updateBeatboxState}
+                      onSendMessage={handleSendMessage}
                     />
 
                     <InputArea
@@ -1276,10 +1313,13 @@ const MainLayout = () => {
                 />
                 <Suspense fallback={null}>
                   <CanvasPanel
+                    key={`${canvasDockTextdoc.id || ''}:${canvasDockTextdoc.name}:${canvasDockTextdoc.type}`}
                     textdoc={canvasDockTextdoc}
                     onClose={handleCloseCanvas}
                     onContentChange={handleCanvasContentChange}
                     onDraftChange={handleCanvasDraftChange}
+                    onRepairPython={handleRepairPython}
+                    isStreaming={isCanvasStreaming}
                     isPreviewActive={isCanvasHtmlPreviewActive}
                     onPreviewToggle={handleCanvasPreviewToggle}
                   />
@@ -1344,9 +1384,17 @@ const MainLayout = () => {
                 ? document.querySelector(`[data-message-id="${imageLightbox.messageId}"]`)
                 : null
             }
-            onClose={() => setImageLightbox({ isOpen: false, imageSrc: null, messageId: null })}
+            onClose={() => setImageLightbox({
+              isOpen: false,
+              imageSrc: null,
+              messageId: null,
+              canRegenerate: true,
+              downloadName: null,
+            })}
             currentModel={selectedModel}
             sessionId={currentSessionId}
+            canRegenerate={imageLightbox.canRegenerate}
+            downloadName={imageLightbox.downloadName}
           />
         </Suspense>
       )}

@@ -44,9 +44,11 @@
     },
     "actions": {
       "loginLoading": "Вход...",
+      "loginWithApple": "Войти с Apple",
       "loginWithGoogle": "Войти с Google",
       "loginWithTelegram": "Войти через Telegram",
       "registerLoading": "Регистрация...",
+      "registerWithApple": "Зарегистрироваться с Apple",
       "registerWithGoogle": "Зарегистрироваться с Google",
       "registerWithTelegram": "Продолжить с Telegram",
       "telegramLoading": "Открываем Telegram...",
@@ -70,7 +72,9 @@
       "turnstileLoadError": "Антикапча не загрузилась. Обновите страницу или отключите блокировщики для этого сайта.",
       "requestError": "Ошибка сети или сервера",
       "telegramError": "Не удалось войти через Telegram. Попробуйте ещё раз.",
-      "telegramUnavailable": "Telegram Login сейчас недоступен. Обновите страницу и попробуйте снова."
+      "telegramUnavailable": "Telegram Login сейчас недоступен. Обновите страницу и попробуйте снова.",
+      "appleEmailInUse": "Этот Apple email уже используется другим аккаунтом. Сначала войдите, затем привяжите Apple в настройках.",
+      "appleFailed": "Не удалось войти с Apple. Попробуйте ещё раз."
     },
     "passwordStrength": {
       "label": "Надёжность пароля",
@@ -97,7 +101,14 @@
     "collapse": "Свернуть размышления",
     "completedLabel": "Думал на протяжении {{time}}",
     "timeMilliseconds": "{{value}}мс",
-    "timeSeconds": "{{value}}с"
+    "timeSeconds": "{{value}}с",
+    "python": {
+      "running": "Выполняю Python-код...",
+      "completed": "Python-код выполнен",
+      "failed": "Не удалось выполнить Python-код",
+      "showCode": "Показать код",
+      "hideCode": "Скрыть код"
+    }
   },
   "landing": {
     "ariaLabel": "Стартовый экран",
@@ -216,6 +227,21 @@
     "resizeHandle": "Изменить ширину canvas",
     "card": {
       "openAria": "Открыть {{name}} в canvas"
+    },
+    "pythonTerminal": {
+      "ariaLabel": "Терминал Python",
+      "title": "Терминал",
+      "run": "Запустить",
+      "running": "Выполняется…",
+      "success": "Готово",
+      "failed": "Ошибка",
+      "empty": "Запустите код, чтобы увидеть вывод.",
+      "noOutput": "Код завершился без вывода.",
+      "duration": "Время: {{duration}} мс",
+      "requestFailed": "Не удалось запустить Python-код.",
+      "resize": "Изменить высоту терминала Python",
+      "repair": "Исправить",
+      "repairPrompt": "При запуске Python-кода в Canvas произошла ошибка. Исправь код в текущем Canvas, учитывая ошибку ниже.\n\nОшибка:\n{{error}}\n\nТекущий код:\n```python\n{{code}}\n```\n\nВнеси исправления в Canvas и кратко объясни, что было изменено."
     }
   },
   "beatbox": {
@@ -397,16 +423,19 @@
       "profileUpdated": "Профиль обновлён",
       "updateError": "Ошибка обновления",
       "loginMethods": {
+        "apple": "Apple",
         "google": "Google",
         "telegram": "Telegram",
         "connected": "Подключён",
         "notConnected": "Не подключён",
         "botReady": "Бот готов",
         "syncRequired": "Нужна синхронизация",
+        "linkApple": "Привязать Apple аккаунт",
         "linkGoogle": "Привязать Google аккаунт",
         "linkTelegram": "Привязать Telegram аккаунт",
         "syncTelegram": "Синхронизировать с ботом",
         "linkingTelegram": "Подключаем Telegram...",
+        "appleLinked": "Apple аккаунт успешно привязан.",
         "googleLinked": "Google аккаунт успешно привязан.",
         "telegramLinked": "Telegram аккаунт успешно привязан.",
         "telegramSynced": "Telegram аккаунт синхронизирован с ботом.",
@@ -414,6 +443,7 @@
         "emailInUse": "Этот Google email уже используется другим аккаунтом.",
         "authRequired": "Сессия истекла. Войдите снова и повторите привязку.",
         "googleFailed": "Не удалось привязать Google аккаунт.",
+        "appleFailed": "Не удалось привязать Apple аккаунт.",
         "telegramFailed": "Не удалось привязать Telegram аккаунт."
       },
       "validation": {
@@ -995,6 +1025,14 @@
   },
   "widgets": {
     "creating": "Создание {{tool}}"
+  },
+  "visualizations": {
+    "defaultTitle": "Интерактивная визуализация",
+    "invalid": "Не удалось отобразить этот интерактивный блок.",
+    "tooLarge": "Этот интерактивный блок слишком большой для безопасного отображения.",
+    "followUpTitle": "Продолжить в чате",
+    "followUpSend": "Отправить",
+    "cancel": "Отмена"
   },
   "htmlPreview": {
     "title": "Предпросмотр HTML"

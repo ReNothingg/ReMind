@@ -44,9 +44,11 @@
     },
     "actions": {
       "loginLoading": "साइन इन हो रहा है...",
+      "loginWithApple": "Apple से साइन इन करें",
       "loginWithGoogle": "Google से साइन इन करें",
       "loginWithTelegram": "Telegram से जारी रखें",
       "registerLoading": "खाता बनाया जा रहा है...",
+      "registerWithApple": "Apple से खाता बनाएँ",
       "registerWithGoogle": "Google से साइन अप करें",
       "registerWithTelegram": "Telegram से साइन अप करें",
       "telegramLoading": "Telegram खोला जा रहा है...",
@@ -70,7 +72,9 @@
       "turnstileLoadError": "Cloudflare सत्यापन लोड नहीं हुआ। पेज रीफ़्रेश करें या इस साइट के लिए ब्लॉकर बंद करें।",
       "requestError": "नेटवर्क या सर्वर त्रुटि",
       "telegramError": "Telegram से साइन इन नहीं हो सका। फिर से कोशिश करें।",
-      "telegramUnavailable": "Telegram Login अभी उपलब्ध नहीं है। पेज रीफ़्रेश करके फिर कोशिश करें।"
+      "telegramUnavailable": "Telegram Login अभी उपलब्ध नहीं है। पेज रीफ़्रेश करके फिर कोशिश करें।",
+      "appleEmailInUse": "यह Apple ईमेल किसी दूसरे खाते में उपयोग हो रहा है। पहले साइन इन करें, फिर सेटिंग्स में Apple जोड़ें।",
+      "appleFailed": "Apple से साइन इन नहीं हो सका। फिर कोशिश करें।"
     },
     "passwordStrength": {
       "label": "पासवर्ड मजबूती",
@@ -97,7 +101,14 @@
     "collapse": "विचार छिपाएं",
     "completedLabel": "{{time}} तक सोचा",
     "timeMilliseconds": "{{value}} मि.से.",
-    "timeSeconds": "{{value}} से."
+    "timeSeconds": "{{value}} से.",
+    "python": {
+      "running": "Python कोड चलाया जा रहा है...",
+      "completed": "Python निष्पादन पूरा हुआ",
+      "failed": "Python निष्पादन विफल हुआ",
+      "showCode": "कोड दिखाएं",
+      "hideCode": "कोड छिपाएं"
+    }
   },
   "landing": {
     "ariaLabel": "स्टार्ट स्क्रीन",
@@ -216,6 +227,21 @@
     "resizeHandle": "Resize canvas",
     "card": {
       "openAria": "Open {{name}} in canvas"
+    },
+    "pythonTerminal": {
+      "ariaLabel": "Python terminal",
+      "title": "Terminal",
+      "run": "Run",
+      "running": "Running…",
+      "success": "Done",
+      "failed": "Error",
+      "empty": "Run the code to see its output.",
+      "noOutput": "The code finished without output.",
+      "duration": "Time: {{duration}} ms",
+      "requestFailed": "Python code could not be executed.",
+      "resize": "Resize Python terminal",
+      "repair": "Fix",
+      "repairPrompt": "The Python code in Canvas failed to execute. Fix the code in the current Canvas using the error below.\n\nError:\n{{error}}\n\nCurrent code:\n```python\n{{code}}\n```\n\nApply the fix in Canvas and briefly explain what changed."
     }
   },
   "beatbox": {
@@ -397,16 +423,19 @@
       "profileUpdated": "प्रोफ़ाइल अपडेट हो गई",
       "updateError": "अपडेट विफल",
       "loginMethods": {
+        "apple": "Apple",
         "google": "Google",
         "telegram": "Telegram",
         "connected": "जुड़ा हुआ",
         "notConnected": "नहीं जुड़ा",
         "botReady": "बॉट तैयार है",
         "syncRequired": "सिंक आवश्यक है",
+        "linkApple": "Apple खाता जोड़ें",
         "linkGoogle": "Google खाता जोड़ें",
         "linkTelegram": "Telegram खाता जोड़ें",
         "syncTelegram": "बॉट के साथ सिंक करें",
         "linkingTelegram": "Telegram जोड़ा जा रहा है...",
+        "appleLinked": "Apple खाता सफलतापूर्वक जुड़ गया।",
         "googleLinked": "Google खाता सफलतापूर्वक जुड़ गया।",
         "telegramLinked": "Telegram खाता सफलतापूर्वक जुड़ गया।",
         "telegramSynced": "Telegram खाता बॉट के साथ सिंक हो गया।",
@@ -414,6 +443,7 @@
         "emailInUse": "यह Google ईमेल किसी अन्य खाते में उपयोग हो रहा है।",
         "authRequired": "आपका सत्र समाप्त हो गया। फिर से साइन इन करके प्रयास करें।",
         "googleFailed": "Google खाता नहीं जोड़ा जा सका।",
+        "appleFailed": "Apple खाता नहीं जोड़ा जा सका।",
         "telegramFailed": "Telegram खाता नहीं जोड़ा जा सका।"
       },
       "validation": {
@@ -995,6 +1025,14 @@
   },
   "widgets": {
     "creating": "Creating {{tool}}"
+  },
+  "visualizations": {
+    "defaultTitle": "इंटरैक्टिव विज़ुअलाइज़ेशन",
+    "invalid": "यह इंटरैक्टिव ब्लॉक प्रदर्शित नहीं किया जा सका।",
+    "tooLarge": "यह इंटरैक्टिव ब्लॉक सुरक्षित रूप से प्रदर्शित करने के लिए बहुत बड़ा है।",
+    "followUpTitle": "चैट में जारी रखें",
+    "followUpSend": "भेजें",
+    "cancel": "रद्द करें"
   },
   "htmlPreview": {
     "title": "HTML preview"

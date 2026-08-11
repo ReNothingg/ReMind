@@ -6,7 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: frontend-dev
-    command: npm run dev -- --host 0.0.0.0
+    command:
+      - sh
+      - -c
+      - npm ls --depth=0 >/dev/null 2>&1 || npm ci; exec npm run dev:frontend -- --host 0.0.0.0
     ports:
       - "5173:5173"
     environment:
@@ -29,6 +32,8 @@ services:
     ports:
       - "5000:5000"
     env_file:
+      - path: .env
+        required: true
       - path: .env.dev
         required: false
     environment:
@@ -38,6 +43,8 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - SECRET_KEY=dev-secret-key-change-me
+      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - AI_PROVIDER_MODEL_NAME=gemini-3.1-flash-lite
       - BACKEND_URL=http://127.0.0.1:5000
       - DATABASE_URL=postgresql://remind:remind-dev-password@db:5432/remind_db
@@ -48,17 +55,30 @@ services:
       - ALLOW_GUEST_CHATS_SAVE=True
       - ENABLE_STRICT_HTTPS=False
       - VALIDATE_USER_AGENT=False
-      - CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
-      - ALLOWED_HOSTS=127.0.0.1,localhost,backend
+      - CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173,${DEV_LAN_ORIGIN:-}
+      - ALLOWED_HOSTS=127.0.0.1,localhost,backend,${DEV_LAN_HOST:-}
       - SESSION_COOKIE_DOMAIN=
       - SESSION_COOKIE_NAME=remind_dev_session
+      - TURNSTILE_SITE_KEY=
+      - TURNSTILE_SECRET_KEY=
+      - LOGIN_RATE_LIMIT_MAX_REQUESTS=100
+      - LOGIN_RATE_LIMIT_WINDOW_SECONDS=60
+      - BRUTE_FORCE_MAX_LOGIN_ATTEMPTS=50
+      - BRUTE_FORCE_LOCKOUT_SECONDS=60
+      - BRUTE_FORCE_PROGRESSIVE_LOCKOUT=False
+      - BRUTE_FORCE_MAX_LOCKOUT_SECONDS=60
+      - PYTHON_RUNNER_ENABLED=True
+      - PYTHON_RUNNER_QUEUE=/var/lib/remind-python-runner
     volumes:
       - .:/app
+      - python_runner_dev_queue:/var/lib/remind-python-runner
     depends_on:
       redis:
         condition: service_healthy
       db:
         condition: service_healthy
+      init-python-runner-storage:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 10s
@@ -75,6 +95,8 @@ services:
       target: backend-dev
     command: python scripts/reload_on_change.py -- celery -A celery_worker.celery worker --loglevel=info --concurrency=2 --pool=solo
     env_file:
+      - path: .env
+        required: true
       - path: .env.dev
         required: false
     environment:
@@ -84,6 +106,9 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - SECRET_KEY=dev-secret-key-change-me
+      - AI_PROVIDER_API_KEY=${AI_PROVIDER_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - AI_PROVIDER_MODEL_NAME=gemini-3.1-flash-lite
       - DATABASE_URL=postgresql://remind:remind-dev-password@db:5432/remind_db
       - REDIS_URL=redis://:remind-dev-redis-password@redis:6379/0
       - CELERY_BROKER_URL=redis://:remind-dev-redis-password@redis:6379/1
@@ -92,15 +117,81 @@ services:
       - VALIDATE_USER_AGENT=False
       - SESSION_COOKIE_DOMAIN=
       - SESSION_COOKIE_NAME=remind_dev_session
+      - PYTHON_RUNNER_ENABLED=True
+      - PYTHON_RUNNER_QUEUE=/var/lib/remind-python-runner
     volumes:
       - .:/app
+      - python_runner_dev_queue:/var/lib/remind-python-runner
     depends_on:
       redis:
         condition: service_healthy
       db:
         condition: service_healthy
+      init-python-runner-storage:
+        condition: service_completed_successfully
     networks:
       - dev
+
+  init-python-runner-storage:
+    build:
+      context: .
+      dockerfile: Dockerfile.python-runner
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - chown 0:0 /jobs && chmod 700 /jobs && mkdir -p /jobs/requests /jobs/responses && chown -R 1001:0 /jobs && chmod 2770 /jobs /jobs/requests /jobs/responses
+    volumes:
+      - python_runner_dev_queue:/jobs
+    network_mode: none
+    restart: "no"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+
+  python-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.python-runner
+    environment:
+      - PYTHON_RUNNER_QUEUE=/jobs
+    volumes:
+      - python_runner_dev_queue:/jobs
+    depends_on:
+      init-python-runner-storage:
+        condition: service_completed_successfully
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=640m,mode=0711
+      - /dev/shm:rw,noexec,nosuid,nodev,size=1m,mode=000
+    user: "0:0"
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - KILL
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 768m
+    cpus: 0.75
+    ulimits:
+      nofile:
+        soft: 128
+        hard: 128
+      nproc:
+        soft: 64
+        hard: 64
+    restart: unless-stopped
 
   db:
     image: postgres:15-alpine
@@ -143,6 +234,7 @@ volumes:
   frontend_node_modules:
   postgres_dev_data:
   redis_dev_data:
+  python_runner_dev_queue:
 
 networks:
   dev:

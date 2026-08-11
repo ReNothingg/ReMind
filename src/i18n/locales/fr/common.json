@@ -44,9 +44,11 @@
     },
     "actions": {
       "loginLoading": "Connexion...",
+      "loginWithApple": "Se connecter avec Apple",
       "loginWithGoogle": "Se connecter avec Google",
       "loginWithTelegram": "Continuer avec Telegram",
       "registerLoading": "Création du compte...",
+      "registerWithApple": "S’inscrire avec Apple",
       "registerWithGoogle": "S'inscrire avec Google",
       "registerWithTelegram": "S’inscrire avec Telegram",
       "telegramLoading": "Ouverture de Telegram...",
@@ -70,7 +72,9 @@
       "turnstileLoadError": "La vérification Cloudflare ne s’est pas chargée. Actualisez la page ou désactivez les bloqueurs pour ce site.",
       "requestError": "Erreur réseau ou serveur",
       "telegramError": "Impossible de se connecter avec Telegram. Réessayez.",
-      "telegramUnavailable": "Telegram Login est indisponible. Actualisez la page et réessayez."
+      "telegramUnavailable": "Telegram Login est indisponible. Actualisez la page et réessayez.",
+      "appleEmailInUse": "Cette adresse Apple est déjà utilisée par un autre compte. Connectez-vous puis associez Apple dans les réglages.",
+      "appleFailed": "Connexion avec Apple impossible. Réessayez."
     },
     "passwordStrength": {
       "label": "Sécurité du mot de passe",
@@ -97,7 +101,14 @@
     "collapse": "Réduire les pensées",
     "completedLabel": "Réflexion pendant {{time}}",
     "timeMilliseconds": "{{value}} ms",
-    "timeSeconds": "{{value}} s"
+    "timeSeconds": "{{value}} s",
+    "python": {
+      "running": "Exécution du code Python...",
+      "completed": "Exécution de Python terminée",
+      "failed": "Échec de l’exécution de Python",
+      "showCode": "Afficher le code",
+      "hideCode": "Masquer le code"
+    }
   },
   "landing": {
     "ariaLabel": "Écran de démarrage",
@@ -216,6 +227,21 @@
     "resizeHandle": "Resize canvas",
     "card": {
       "openAria": "Open {{name}} in canvas"
+    },
+    "pythonTerminal": {
+      "ariaLabel": "Python terminal",
+      "title": "Terminal",
+      "run": "Run",
+      "running": "Running…",
+      "success": "Done",
+      "failed": "Error",
+      "empty": "Run the code to see its output.",
+      "noOutput": "The code finished without output.",
+      "duration": "Time: {{duration}} ms",
+      "requestFailed": "Python code could not be executed.",
+      "resize": "Resize Python terminal",
+      "repair": "Fix",
+      "repairPrompt": "The Python code in Canvas failed to execute. Fix the code in the current Canvas using the error below.\n\nError:\n{{error}}\n\nCurrent code:\n```python\n{{code}}\n```\n\nApply the fix in Canvas and briefly explain what changed."
     }
   },
   "beatbox": {
@@ -395,16 +421,19 @@
       "profileUpdated": "Profil mis à jour",
       "updateError": "Échec de la mise à jour",
       "loginMethods": {
+        "apple": "Apple",
         "google": "Google",
         "telegram": "Telegram",
         "connected": "Connecté",
         "notConnected": "Non connecté",
         "botReady": "Bot prêt",
         "syncRequired": "Synchronisation requise",
+        "linkApple": "Associer le compte Apple",
         "linkGoogle": "Associer un compte Google",
         "linkTelegram": "Associer un compte Telegram",
         "syncTelegram": "Synchroniser avec le bot",
         "linkingTelegram": "Connexion à Telegram...",
+        "appleLinked": "Le compte Apple a été associé.",
         "googleLinked": "Le compte Google a été associé.",
         "telegramLinked": "Le compte Telegram a été associé.",
         "telegramSynced": "Le compte Telegram a été synchronisé avec le bot.",
@@ -412,6 +441,7 @@
         "emailInUse": "Cet e-mail Google est déjà utilisé par un autre compte.",
         "authRequired": "Votre session a expiré. Reconnectez-vous et réessayez.",
         "googleFailed": "Impossible d’associer le compte Google.",
+        "appleFailed": "Impossible d’associer le compte Apple.",
         "telegramFailed": "Impossible d’associer le compte Telegram."
       },
       "nameHint": "Utilisé pour la personnalisation de l'IA.",
@@ -995,6 +1025,14 @@
   },
   "widgets": {
     "creating": "Creating {{tool}}"
+  },
+  "visualizations": {
+    "defaultTitle": "Visualisation interactive",
+    "invalid": "Impossible d’afficher ce bloc interactif.",
+    "tooLarge": "Ce bloc interactif est trop volumineux pour être affiché en toute sécurité.",
+    "followUpTitle": "Continuer dans le chat",
+    "followUpSend": "Envoyer",
+    "cancel": "Annuler"
   },
   "htmlPreview": {
     "title": "HTML preview"

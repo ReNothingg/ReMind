@@ -44,9 +44,11 @@
     },
     "actions": {
       "loginLoading": "সাইন ইন করা হচ্ছে...",
+      "loginWithApple": "Apple দিয়ে সাইন ইন করুন",
       "loginWithGoogle": "Google দিয়ে সাইন ইন করুন",
       "loginWithTelegram": "Telegram দিয়ে চালিয়ে যান",
       "registerLoading": "অ্যাকাউন্ট তৈরি করা হচ্ছে...",
+      "registerWithApple": "Apple দিয়ে অ্যাকাউন্ট তৈরি করুন",
       "registerWithGoogle": "Google দিয়ে সাইন আপ করুন",
       "registerWithTelegram": "Telegram দিয়ে সাইন আপ করুন",
       "telegramLoading": "Telegram খোলা হচ্ছে...",
@@ -70,7 +72,9 @@
       "turnstileLoadError": "Cloudflare যাচাইকরণ লোড হয়নি। পৃষ্ঠাটি রিফ্রেশ করুন অথবা এই সাইটের জন্য ব্লকার বন্ধ করুন।",
       "requestError": "নেটওয়ার্ক অথবা সার্ভার ত্রুটি",
       "telegramError": "Telegram দিয়ে সাইন ইন করা যায়নি। আবার চেষ্টা করুন।",
-      "telegramUnavailable": "Telegram Login এখন উপলভ্য নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।"
+      "telegramUnavailable": "Telegram Login এখন উপলভ্য নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।",
+      "appleEmailInUse": "এই Apple ইমেইলটি অন্য অ্যাকাউন্টে ব্যবহৃত হচ্ছে। আগে সাইন ইন করে সেটিংস থেকে Apple যুক্ত করুন।",
+      "appleFailed": "Apple দিয়ে সাইন ইন করা যায়নি। আবার চেষ্টা করুন।"
     },
     "passwordStrength": {
       "label": "পাসওয়ার্ডের শক্তি",
@@ -97,7 +101,14 @@
     "collapse": "ভাবনা সংকুচিত করুন",
     "completedLabel": "{{time}} ধরে ভেবেছে",
     "timeMilliseconds": "{{value}} মি.সে.",
-    "timeSeconds": "{{value}} সে."
+    "timeSeconds": "{{value}} সে.",
+    "python": {
+      "running": "Python কোড চালানো হচ্ছে...",
+      "completed": "Python সম্পাদন সম্পন্ন হয়েছে",
+      "failed": "Python সম্পাদন ব্যর্থ হয়েছে",
+      "showCode": "কোড দেখান",
+      "hideCode": "কোড লুকান"
+    }
   },
   "landing": {
     "ariaLabel": "শুরু স্ক্রিন",
@@ -216,6 +227,21 @@
     "resizeHandle": "Resize canvas",
     "card": {
       "openAria": "Open {{name}} in canvas"
+    },
+    "pythonTerminal": {
+      "ariaLabel": "Python terminal",
+      "title": "Terminal",
+      "run": "Run",
+      "running": "Running…",
+      "success": "Done",
+      "failed": "Error",
+      "empty": "Run the code to see its output.",
+      "noOutput": "The code finished without output.",
+      "duration": "Time: {{duration}} ms",
+      "requestFailed": "Python code could not be executed.",
+      "resize": "Resize Python terminal",
+      "repair": "Fix",
+      "repairPrompt": "The Python code in Canvas failed to execute. Fix the code in the current Canvas using the error below.\n\nError:\n{{error}}\n\nCurrent code:\n```python\n{{code}}\n```\n\nApply the fix in Canvas and briefly explain what changed."
     }
   },
   "beatbox": {
@@ -397,16 +423,19 @@
       "profileUpdated": "প্রোফাইল আপডেট হয়েছে",
       "updateError": "আপডেট ব্যর্থ",
       "loginMethods": {
+        "apple": "Apple",
         "google": "Google",
         "telegram": "Telegram",
         "connected": "যুক্ত",
         "notConnected": "যুক্ত নয়",
         "botReady": "বট প্রস্তুত",
         "syncRequired": "সিঙ্ক প্রয়োজন",
+        "linkApple": "Apple অ্যাকাউন্ট যুক্ত করুন",
         "linkGoogle": "Google অ্যাকাউন্ট যুক্ত করুন",
         "linkTelegram": "Telegram অ্যাকাউন্ট যুক্ত করুন",
         "syncTelegram": "বটের সাথে সিঙ্ক করুন",
         "linkingTelegram": "Telegram যুক্ত হচ্ছে...",
+        "appleLinked": "Apple অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে।",
         "googleLinked": "Google অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে।",
         "telegramLinked": "Telegram অ্যাকাউন্ট সফলভাবে যুক্ত হয়েছে।",
         "telegramSynced": "Telegram অ্যাকাউন্টটি বটের সাথে সিঙ্ক হয়েছে।",
@@ -414,6 +443,7 @@
         "emailInUse": "এই Google ইমেইলটি অন্য অ্যাকাউন্টে ব্যবহৃত হচ্ছে।",
         "authRequired": "আপনার সেশন শেষ হয়েছে। আবার সাইন ইন করে চেষ্টা করুন।",
         "googleFailed": "Google অ্যাকাউন্ট যুক্ত করা যায়নি।",
+        "appleFailed": "Apple অ্যাকাউন্ট যুক্ত করা যায়নি।",
         "telegramFailed": "Telegram অ্যাকাউন্ট যুক্ত করা যায়নি।"
       },
       "validation": {
@@ -995,6 +1025,14 @@
   },
   "widgets": {
     "creating": "Creating {{tool}}"
+  },
+  "visualizations": {
+    "defaultTitle": "ইন্টারঅ্যাক্টিভ ভিজ্যুয়ালাইজেশন",
+    "invalid": "এই ইন্টারঅ্যাক্টিভ ব্লকটি দেখানো যায়নি।",
+    "tooLarge": "এই ইন্টারঅ্যাক্টিভ ব্লকটি নিরাপদে দেখানোর জন্য খুব বড়।",
+    "followUpTitle": "চ্যাটে চালিয়ে যান",
+    "followUpSend": "পাঠান",
+    "cancel": "বাতিল করুন"
   },
   "htmlPreview": {
     "title": "HTML preview"

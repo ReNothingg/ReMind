@@ -14,7 +14,6 @@
     <a href="https://github.com/ReNothingg/ReMind/issues"><img src="https://img.shields.io/github/issues/ReNothingg/ReMind?color=2563eb" alt="Open issues" /></a>
   </p>
 
-  <!-- ## Звезды -->
   <p>
     <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11" />
     <img src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB" alt="React 19" />

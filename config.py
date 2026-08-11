@@ -17,6 +17,8 @@ UPLOAD_FOLDER: Path = DB_PATH / "uploads"
 CHATS_FOLDER: Path = DB_PATH / "chats"
 CREATE_IMAGE_FOLDER: Path = DB_PATH / "generated_images"
 
+PYTHON_RUNNER_QUEUE: Path = Path(os.getenv("PYTHON_RUNNER_QUEUE", "/var/lib/remind-python-runner"))
+
 LOGS_FOLDER: Path = BASE_PATH / "logs"
 
 for folder in [UPLOAD_FOLDER, CHATS_FOLDER, CREATE_IMAGE_FOLDER, LOGS_FOLDER]:
@@ -50,6 +52,9 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if raw is None:
         return default
     return raw.lower() in ("1", "true", "yes", "on")
+
+
+PYTHON_RUNNER_ENABLED = _env_bool("PYTHON_RUNNER_ENABLED", default=False)
 
 
 def _sqlite_directory_usable(folder: Path) -> bool:
@@ -205,6 +210,16 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+APPLE_APP_BUNDLE_ID = (
+    os.getenv("APPLE_APP_BUNDLE_ID", "synvexai.remind").strip() or "synvexai.remind"
+)
+APPLE_SERVICE_ID = (os.getenv("APPLE_SERVICE_ID") or "").strip()
+APPLE_WEB_REDIRECT_URI = (os.getenv("APPLE_WEB_REDIRECT_URI") or "").strip()
+APPLE_CLIENT_SECRET = (os.getenv("APPLE_CLIENT_SECRET") or "").strip()
+APPLE_TEAM_ID = (os.getenv("APPLE_TEAM_ID") or "").strip()
+APPLE_KEY_ID = (os.getenv("APPLE_KEY_ID") or "").strip()
+APPLE_PRIVATE_KEY = (os.getenv("APPLE_PRIVATE_KEY") or "").strip()
+APPLE_PRIVATE_KEY_PATH = (os.getenv("APPLE_PRIVATE_KEY_PATH") or "").strip()
 TELEGRAM_CLIENT_ID = (os.getenv("TELEGRAM_CLIENT_ID") or "").strip()
 TELEGRAM_BOT_TOKEN = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
 TELEGRAM_BOT_USERNAME = (os.getenv("TELEGRAM_BOT_USERNAME") or "").strip().lstrip("@")
@@ -235,6 +250,10 @@ if BACKEND_URL:
     backend_host = _normalize_host_entry(BACKEND_URL)
     if backend_host and backend_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(backend_host)
+if not APPLE_WEB_REDIRECT_URI and APPLE_SERVICE_ID and BACKEND_URL:
+    _apple_backend_url = BACKEND_URL.strip().rstrip("/")
+    if urlparse(_apple_backend_url).scheme == "https":
+        APPLE_WEB_REDIRECT_URI = f"{_apple_backend_url}/login/apple/callback"
 
 SESSION_COOKIE_DOMAIN = (os.getenv("SESSION_COOKIE_DOMAIN") or "").strip() or None
 ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE = _env_bool(
@@ -324,6 +343,7 @@ BYPASS_USER_AGENT_VALIDATION_ROUTES = [
     r"^/health",
     r"^/metrics",
     r"^/openapi\\.json$",
+    r"^/\.well-known/apple-app-site-association$",
     r"^/status",
     r"^/$",
     r"^/index\.html$",

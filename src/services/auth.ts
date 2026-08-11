@@ -25,6 +25,9 @@ export type AuthUser = {
 export type AuthConfig = {
     gauth_available?: boolean;
     google_login_url?: string;
+    apple_native_available?: boolean;
+    apple_web_available?: boolean;
+    apple_login_url?: string | null;
     telegram_available?: boolean;
     telegram_client_id?: string | null;
     telegram_nonce?: string | null;

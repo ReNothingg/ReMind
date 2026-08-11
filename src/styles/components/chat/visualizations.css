@@ -1,0 +1,96 @@
+.visualization-instance {
+  width: 100%;
+  margin-block: calc(var(--spacing-unit) * 3);
+}
+
+.visualization-instance.is-wide {
+  position: relative;
+  inset-inline-start: 50%;
+  width: min(1024px, calc(100vw - var(--rail-width) - 40px));
+  max-width: none;
+  transform: translateX(-50%);
+}
+
+.visualization-frame {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  border: 0;
+  background: transparent;
+  transition: height var(--transition-fast);
+}
+
+.visualization-error {
+  margin-block: calc(var(--spacing-unit) * 3);
+  padding: calc(var(--spacing-unit) * 3);
+  border: 1px solid var(--error-panel-border);
+  border-radius: var(--radius-md);
+  background: var(--error-panel-bg);
+  color: var(--color-text-error);
+}
+
+.visualization-follow-up {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing-unit) * 3);
+  margin-top: calc(var(--spacing-unit) * 2);
+  padding: calc(var(--spacing-unit) * 3);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+}
+
+.visualization-follow-up-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--spacing-unit);
+}
+
+.visualization-follow-up-copy span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.visualization-follow-up-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: calc(var(--spacing-unit) * 2);
+}
+
+.visualization-follow-up-actions .is-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent-bg);
+}
+
+@media screen and (max-width: 1024px) {
+  .visualization-instance.is-wide {
+    width: calc(100vw - 24px);
+  }
+}
+
+@media screen and (max-width: 560px) {
+  .visualization-instance {
+    margin-block: calc(var(--spacing-unit) * 2);
+  }
+
+  .visualization-follow-up {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .visualization-follow-up-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visualization-frame {
+    transition: none;
+  }
+}

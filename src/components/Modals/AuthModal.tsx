@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';
 import { apiService } from '../../services/api';
 import { loadTelegramLoginSdk } from '../../services/telegramLogin';
-import SocialAuthButton, { GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
+import SocialAuthButton, { AppleLogo, GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
 import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
 import {
@@ -69,6 +69,8 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     const [authConfig, setAuthConfig] = useState(null);
     const [googleUrl, setGoogleUrl] = useState('/login/google');
     const [googleAvailable, setGoogleAvailable] = useState(false);
+    const [appleUrl, setAppleUrl] = useState('/login/apple');
+    const [appleAvailable, setAppleAvailable] = useState(false);
     const [telegramSdkReady, setTelegramSdkReady] = useState(false);
     const [telegramLoading, setTelegramLoading] = useState(false);
     const [telegramLink, setTelegramLink] = useState<{ url: string; request_id: string } | null>(null);
@@ -155,10 +157,29 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
             return `${googleUrl}${separator}redirect_to=${encodeURIComponent(window.location.href)}`;
         }
     })();
+    const appleHref = (() => {
+        try {
+            const base = new URL(appleUrl, window.location.origin);
+            base.searchParams.set('redirect_to', window.location.href);
+            return base.toString();
+        } catch {
+            return '';
+        }
+    })();
 
     useEffect(() => {
         setIsLoginView(initialView === 'login' || linkMode);
     }, [initialView, linkMode]);
+
+    useEffect(() => {
+        const code = window.sessionStorage.getItem('remind.auth.error');
+        if (!code) return;
+        window.sessionStorage.removeItem('remind.auth.error');
+        const key = code === 'email_in_use'
+            ? 'authModal.messages.appleEmailInUse'
+            : 'authModal.messages.appleFailed';
+        setMessage({ type: 'error', text: t(key) });
+    }, [t]);
 
     useEffect(() => {
         if (!linkMode) return;
@@ -181,6 +202,8 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                 setAuthConfig(cfg);
                 setGoogleUrl(cfg.google_login_url || '/login/google');
                 setGoogleAvailable(cfg.gauth_available || false);
+                setAppleUrl(cfg.apple_login_url || '/login/apple');
+                setAppleAvailable(Boolean(cfg.apple_web_available && cfg.apple_login_url));
             } catch (err) {
                 console.warn('Failed to load auth config', err);
                 if (linkMode) {
@@ -721,8 +744,17 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                             {isLoading ? t('authModal.actions.loginLoading') : t('auth.login')}
                         </button>
 
-                        {(googleAvailable || telegramAvailable) && (
+                        {(appleAvailable || googleAvailable || telegramAvailable) && (
                             <div className="space-y-2 pt-1">
+                                {appleAvailable && appleHref && (
+                                    <SocialAuthButton
+                                        href={appleHref}
+                                        label={t('authModal.actions.loginWithApple')}
+                                        icon={<AppleLogo />}
+                                    >
+                                        {t('authModal.actions.loginWithApple')}
+                                    </SocialAuthButton>
+                                )}
                                 {googleAvailable && (
                                     <SocialAuthButton
                                         href={googleHref}
@@ -893,8 +925,17 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                             {isLoading ? t('authModal.actions.registerLoading') : t('auth.register')}
                         </button>
 
-                        {(googleAvailable || telegramAvailable) && (
+                        {(appleAvailable || googleAvailable || telegramAvailable) && (
                             <div className="auth-field-full space-y-2 pt-1">
+                                {appleAvailable && appleHref && (
+                                    <SocialAuthButton
+                                        href={appleHref}
+                                        label={t('authModal.actions.registerWithApple')}
+                                        icon={<AppleLogo />}
+                                    >
+                                        {t('authModal.actions.registerWithApple')}
+                                    </SocialAuthButton>
+                                )}
                                 {googleAvailable && (
                                     <SocialAuthButton
                                         href={googleHref}

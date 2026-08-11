@@ -6,6 +6,7 @@ from config import BACKEND_URL, CORS_ORIGINS, ENABLE_STRICT_HTTPS
 
 JSON_LD_SCRIPT_HASH = "'sha256-529wnUTyEzuvHzh9W52mngjs3kPjTj0o1Y74Rgsw7Eg='"
 HTML_PREVIEW_PATH = "/html-preview.html"
+MOBILE_TURNSTILE_PATH = "/api/auth/turnstile/mobile"
 
 
 def _origin_from_url(raw_url: str | None) -> str | None:
@@ -87,6 +88,28 @@ def get_html_preview_csp_header():
     )
 
 
+def get_mobile_turnstile_csp_header():
+    nonce = getattr(g, "csp_nonce", "") if has_request_context() else ""
+    script_sources = ["https://challenges.cloudflare.com"]
+    if nonce:
+        script_sources.insert(0, f"'nonce-{nonce}'")
+    return "; ".join(
+        [
+            "default-src 'none'",
+            f"script-src {' '.join(script_sources)}",
+            f"style-src 'nonce-{nonce}'" if nonce else "style-src 'none'",
+            "img-src data: https://challenges.cloudflare.com",
+            "connect-src https://challenges.cloudflare.com",
+            "frame-src https://challenges.cloudflare.com",
+            "worker-src 'none'",
+            "object-src 'none'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            "frame-ancestors 'none'",
+        ]
+    )
+
+
 def get_permissions_policy():
     policies = [
         "accelerometer=()",
@@ -116,6 +139,10 @@ def get_permissions_policy():
 
 
 def apply_security_headers(response):
+    is_apple_app_site_association = bool(
+        has_request_context()
+        and request.path == "/.well-known/apple-app-site-association"
+    )
     is_html_preview = bool(has_request_context() and request.path == HTML_PREVIEW_PATH)
     if is_html_preview:
         response.headers["Content-Security-Policy"] = get_html_preview_csp_header()
@@ -125,6 +152,26 @@ def apply_security_headers(response):
         response.headers["Permissions-Policy"] = get_permissions_policy()
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        return response
+
+    is_mobile_turnstile = bool(
+        has_request_context() and request.path == MOBILE_TURNSTILE_PATH
+    )
+    if is_mobile_turnstile:
+        response.headers["Content-Security-Policy"] = get_mobile_turnstile_csp_header()
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = get_permissions_policy()
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        if ENABLE_STRICT_HTTPS:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
         return response
 
     response.headers["Content-Security-Policy"] = get_csp_header()
@@ -142,7 +189,9 @@ def apply_security_headers(response):
     content_type = (response.headers.get("Content-Type") or "").lower()
     is_json_response = "application/json" in content_type
     is_api_request = bool(has_request_context() and request.path.startswith("/api/"))
-    if response.status_code in (401, 403) or is_json_response or is_api_request:
+    if response.status_code in (401, 403) or (
+        not is_apple_app_site_association and (is_json_response or is_api_request)
+    ):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"

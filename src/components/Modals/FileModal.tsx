@@ -117,31 +117,34 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
             onBackdropClick={onClose}
             onRequestClose={onClose}
         >
-            <button
-                className="file-modal-close ui-icon-control absolute right-4 top-4 z-10 size-10 rounded-md border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
-                onClick={onClose}
-                title={t('common.closeEsc')}
-                aria-label={t('common.closeEsc')}
-                type="button"
-            >
-                x
-            </button>
-
-            <div className="file-modal-info-header flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 pr-16 text-sm sm:px-5">
+            <div className="file-modal-info-header flex items-center gap-3 border-b border-border px-4 py-3 text-sm sm:px-5">
                 <span className="file-name-display min-w-0 flex-1 truncate font-semibold text-foreground" title={file.name}>
                     {Utils.escapeHtml(file.name)}
                 </span>
-                <span className="file-size-display ui-badge">
-                    {fileService.formatFileSize(file.size)}
-                </span>
-                {isText && lineCount > 0 && (
-                    <>
-                        <span className="info-separator text-subtle">|</span>
-                        <span className="line-count-data text-sm text-muted">
-                            {t('files.lines', { count: lineCount })}
-                        </span>
-                    </>
-                )}
+                <div className="file-modal-header-actions">
+                    <span className="file-size-display ui-badge">
+                        {fileService.formatFileSize(file.size)}
+                    </span>
+                    {isText && lineCount > 0 && (
+                        <>
+                            <span className="info-separator text-subtle">|</span>
+                            <span className="line-count-data text-sm text-muted">
+                                {t('files.lines', { count: lineCount })}
+                            </span>
+                        </>
+                    )}
+                    <button
+                        className="file-modal-close ui-icon-control size-10 rounded-md border-transparent bg-interactive text-muted hover:bg-surface-alt hover:text-foreground"
+                        onClick={onClose}
+                        title={t('common.closeEsc')}
+                        aria-label={t('common.closeEsc')}
+                        type="button"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div ref={contentRef} className="flex min-h-0 flex-1 flex-col">

@@ -41,7 +41,7 @@ import { useURLRouter } from '../../hooks/useURLRouter';
 import CustomSelect from '../UI/CustomSelect';
 import ModalShell from '../UI/ModalShell';
 import ToggleSwitch from '../UI/ToggleSwitch';
-import { GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
+import { AppleLogo, GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
 import { requestNotificationPermission } from '../../utils/notifications';
 import { showToast } from '../../utils/toast';
 import { cn } from '../../utils/cn';
@@ -499,15 +499,17 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
         const result = new URLSearchParams(window.location.search).get('auth_link');
         if (!result) return;
         const messageKey = {
+            apple_linked: 'settings.account.loginMethods.appleLinked',
             google_linked: 'settings.account.loginMethods.googleLinked',
             identity_in_use: 'settings.account.loginMethods.identityInUse',
             email_in_use: 'settings.account.loginMethods.emailInUse',
             auth_required: 'settings.account.loginMethods.authRequired',
             google_failed: 'settings.account.loginMethods.googleFailed',
+            apple_failed: 'settings.account.loginMethods.appleFailed',
         }[result];
         if (messageKey) {
             setProfileMessage({
-                type: result === 'google_linked' ? 'success' : 'error',
+                type: result === 'google_linked' || result === 'apple_linked' ? 'success' : 'error',
                 text: t(messageKey),
             });
         }
@@ -519,12 +521,20 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     }, [t]);
 
     const authMethods = new Set(user?.auth_methods || (user?.oauth_provider ? [user.oauth_provider] : []));
+    const appleConnected = authMethods.has('apple');
     const googleConnected = authMethods.has('google');
     const telegramConnected = authMethods.has('telegram');
     const telegramBotReady = telegramConnected && Boolean(user?.telegram_bot_ready);
     const googleLinkHref = (() => {
         if (!authConfig?.google_login_url) return '';
         const url = new URL(authConfig.google_login_url, window.location.origin);
+        url.searchParams.set('mode', 'link');
+        url.searchParams.set('redirect_to', `${window.location.origin}/#settings/account`);
+        return url.toString();
+    })();
+    const appleLinkHref = (() => {
+        if (!authConfig?.apple_login_url || !authConfig.apple_web_available) return '';
+        const url = new URL(authConfig.apple_login_url, window.location.origin);
         url.searchParams.set('mode', 'link');
         url.searchParams.set('redirect_to', `${window.location.origin}/#settings/account`);
         return url.toString();
@@ -781,6 +791,45 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                 <p className="account-card-copy">
                     {t('settings.account.connectedApps.description')}
                 </p>
+            </div>
+
+            <div className="account-connected-app-row">
+                <span className="account-connected-app-icon" aria-hidden="true">
+                    <AppleLogo />
+                </span>
+                <div className="account-connected-app-copy">
+                    <strong>{t('settings.account.loginMethods.apple')}</strong>
+                </div>
+                <div className="account-connected-app-controls">
+                    <span className={cn(
+                        'account-connected-app-status',
+                        appleConnected ? 'is-connected' : 'is-disconnected'
+                    )}>
+                        {t(appleConnected
+                            ? 'settings.account.loginMethods.connected'
+                            : 'settings.account.loginMethods.notConnected')}
+                    </span>
+                    {!appleConnected && (
+                        appleLinkHref ? (
+                            <a
+                                className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
+                                href={appleLinkHref}
+                            >
+                                <PlugZap size={15} strokeWidth={1.9} />
+                                {t('settings.account.loginMethods.linkApple')}
+                            </a>
+                        ) : (
+                            <button
+                                type="button"
+                                className="account-connected-app-action ui-button-secondary min-h-11 rounded-md px-3 py-2"
+                                disabled
+                            >
+                                <PlugZap size={15} strokeWidth={1.9} />
+                                {t('settings.account.loginMethods.linkApple')}
+                            </button>
+                        )
+                    )}
+                </div>
             </div>
 
             <div className="account-connected-app-row">

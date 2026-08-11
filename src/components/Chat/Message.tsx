@@ -8,6 +8,7 @@ import { fileService } from '../../services/fileService';
 import Quiz from '../Widgets/Quiz';
 import Spinwheel from '../Widgets/Spinwheel';
 import Beatbox from '../Widgets/Beatbox';
+import Visualization from '../Widgets/Visualization';
 import ThinkBlock from '../Widgets/ThinkBlock';
 import { mergeThinkWidgets } from '../Widgets/thinkBlockUtils';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
@@ -40,7 +41,14 @@ const MessageActionButton = ({ className, title, onClick, children, disabled = f
     </button>
 );
 
-const MessageImageAttachmentContent = ({ src, alt, messageId, isInteractive }) => {
+const MessageImageAttachmentContent = ({
+    src,
+    alt,
+    messageId,
+    isInteractive,
+    canRegenerate = true,
+    downloadName,
+}) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
     const { t } = useTranslation();
@@ -100,7 +108,10 @@ const MessageImageAttachmentContent = ({ src, alt, messageId, isInteractive }) =
                     className="message-image-button is-interactive"
                     onClick={() => {
                         if (window.openImageLightbox) {
-                            window.openImageLightbox(src, messageId);
+                            window.openImageLightbox(src, messageId, {
+                                canRegenerate,
+                                downloadName,
+                            });
                         }
                     }}
                     aria-label={`${t('chatImage.open')}: ${alt}`}
@@ -119,6 +130,122 @@ const MessageImageAttachmentContent = ({ src, alt, messageId, isInteractive }) =
 const MessageImageAttachment = (props) => (
     <MessageImageAttachmentContent key={props.src} {...props} />
 );
+
+const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
+    if (!files?.length) return null;
+
+    return (
+        <div
+            className={cn(
+                'message-attachments mt-2.5 flex flex-wrap gap-2',
+                isUser ? 'user-attachments' : 'ai-attachments'
+            )}
+        >
+            {files.map((entry, index) => {
+                const file = entry.file || entry;
+                if (
+                    !file
+                    || typeof file === 'string'
+                    || (!file.url_path && !file.original_name && !file.name)
+                ) {
+                    return null;
+                }
+
+                const fileName = file.original_name || file.name || t('files.fileFallback');
+                const fileUrl = file.local_preview_url || file.url_path || '';
+                const fullUrl = resolveMediaUrl(fileUrl);
+                const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
+                const extension = fileName.split('.').pop()?.toLowerCase() || '';
+                const iconPath = fileService.getFileIconPath(extension);
+                const isImage = fileService.isImageFile({
+                    name: fileName,
+                    type: file.mime_type,
+                    mime_type: file.mime_type,
+                });
+                const openPreview = () => {
+                    window.openImageLightbox?.(fullUrl, messageId, {
+                        canRegenerate: false,
+                        downloadName: fileName,
+                    });
+                };
+
+                return (
+                    <div
+                        key={`${file.url_path || fileName}-${index}`}
+                        className="attachment-file-card ui-attachment-card"
+                        title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}
+                    >
+                        <div className="attachment-card-preview ui-attachment-preview">
+                            {isImage && fullUrl ? (
+                                <button
+                                    type="button"
+                                    className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
+                                    onClick={openPreview}
+                                    aria-label={`${t('chatImage.open')}: ${fileName}`}
+                                >
+                                    <img
+                                        src={fullUrl}
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="image-thumbnail h-full w-full object-cover"
+                                        onError={(event) => {
+                                            event.currentTarget.src = iconPath;
+                                            event.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
+                                        }}
+                                    />
+                                </button>
+                            ) : (
+                                <img
+                                    src={iconPath}
+                                    alt={fileName}
+                                    className="generic-icon size-12 object-contain opacity-60"
+                                    onError={(event) => {
+                                        event.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                                    }}
+                                />
+                            )}
+                        </div>
+                        <div className="attachment-card-footer ui-attachment-footer">
+                            <img
+                                src={iconPath}
+                                alt=""
+                                aria-hidden="true"
+                                className="attachment-card-footer-icon"
+                                onError={(event) => {
+                                    event.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                                }}
+                            />
+                            <div className="attachment-card-footer-info">
+                                {fullUrl && isImage ? (
+                                    <button
+                                        type="button"
+                                        className="file-card-name border-0 bg-transparent p-0 text-left"
+                                        onClick={openPreview}
+                                    >
+                                        {fileName}
+                                    </button>
+                                ) : fullUrl ? (
+                                    <a
+                                        href={fullUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="file-card-name"
+                                        onClick={(event) => event.stopPropagation()}
+                                    >
+                                        {fileName}
+                                    </a>
+                                ) : (
+                                    <span className="file-card-name">{fileName}</span>
+                                )}
+                                {fileSize && <span className="file-card-size">{fileSize}</span>}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
 
 const resolveMediaUrl = (path) => {
     if (typeof path !== 'string' || !path) {
@@ -676,7 +803,7 @@ const GitHubDiffCard = ({ payload, t }) => {
     );
 };
 
-const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, onBeatboxStateChange }) => {
+const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, onBeatboxStateChange, onSendMessage = null }) => {
     const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus, deliveryState } = message;
     const isUser = role === 'user';
     const { settings } = useSettings();
@@ -880,6 +1007,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 const beatboxHosts = contentRef.current.querySelectorAll('.beatbox-instance-host');
                 const quizHosts = contentRef.current.querySelectorAll('.quiz-instance-host');
                 const spinwheelHosts = contentRef.current.querySelectorAll('.spinwheel-instance-host');
+                const visualizeHosts = contentRef.current.querySelectorAll('.visualize-instance-host');
                 const thinkHosts = contentRef.current.querySelectorAll('.think-instance-host');
 
                 beatboxHosts.forEach((host, idx) => {
@@ -957,6 +1085,27 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     }
                 });
 
+                visualizeHosts.forEach((host, idx) => {
+                    const encodedSource = host.getAttribute('data-visualize-source-b64');
+                    if (!encodedSource) return;
+                    const state = {
+                        html: fromBase64(encodedSource),
+                        title: host.getAttribute('data-visualize-title') || '',
+                        mode: host.getAttribute('data-visualize-mode') === 'wide' ? 'wide' : 'normal',
+                    };
+                    const existingId = `visualize-${message.id}-${idx}`;
+                    if (
+                        !hasEquivalentWidget(newWidgets, 'visualize', state)
+                        && !newWidgets.some(w => w.id === existingId)
+                    ) {
+                        newWidgets.push({
+                            type: 'visualize',
+                            id: existingId,
+                            state,
+                        });
+                    }
+                });
+
                 thinkHosts.forEach((host, idx) => {
                     const openTime = host.getAttribute('data-think-open');
                     const closeTime = host.getAttribute('data-think-close');
@@ -998,6 +1147,9 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     if (!host.hasAttribute('data-from-parts')) {
                         host.remove();
                     }
+                });
+                visualizeHosts.forEach(host => {
+                    host.remove();
                 });
                 thinkHosts.forEach(host => {
                     if (!host.hasAttribute('data-from-parts')) {
@@ -1546,32 +1698,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     </div>
                 ) : (
                     <>
-                {displayImages?.length > 0 && (
-                    <div
-                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
-                        data-count={displayImages.length}
-                    >
-                        {displayImages.map((src, idx) => {
-                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
-                            if (!imagePath) {
-                                return null;
-                            }
-
-                            const fullSrc = resolveMediaUrl(imagePath);
-                            return (
-                                <MessageImageAttachment
-                                    key={`${message.id}-image-${idx}`}
-                                    src={fullSrc}
-                                    alt={t('chatImage.messageAlt', { number: idx + 1 })}
-                                    messageId={message.id}
-                                    isInteractive={!isUser}
-                                />
-                            );
-                        })}
-                    </div>
-                )}
-
-                {displayFiles?.length > 0 && (
+                {isUser && displayFiles?.length > 0 && (
                     <div
                         className={cn(
                             'message-attachments mt-2.5 flex flex-wrap gap-2',
@@ -1609,7 +1736,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                                 className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
                                                 onClick={() => {
                                                     if (window.openImageLightbox) {
-                                                        window.openImageLightbox(fullUrl, message.id);
+                                                        window.openImageLightbox(fullUrl, message.id, {
+                                                            canRegenerate: false,
+                                                            downloadName: fileName,
+                                                        });
                                                     }
                                                 }}
                                                 aria-label={`${t('chatImage.open')}: ${fileName}`}
@@ -1653,7 +1783,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                                     className="file-card-name border-0 bg-transparent p-0 text-left"
                                                     onClick={() => {
                                                         if (window.openImageLightbox) {
-                                                            window.openImageLightbox(fullUrl, message.id);
+                                                            window.openImageLightbox(fullUrl, message.id, {
+                                                                canRegenerate: false,
+                                                                downloadName: fileName,
+                                                            });
                                                         }
                                                     }}
                                                 >
@@ -1681,22 +1814,6 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     </div>
                 )}
 
-                {isGeneratingImage && (
-                    <div className="image-generation-placeholder ui-message-image-placeholder">
-                        <div className="image-placeholder-visual ui-message-image-visual">
-                            <div className="shimmer-effect"></div>
-                            <svg className="placeholder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" x2="12" y1="3" y2="15"/>
-                            </svg>
-                        </div>
-                        <div className="image-placeholder-caption ui-message-image-caption">
-                            {t('chatImage.generating', { prompt: imagePrompt || '' })}
-                        </div>
-                    </div>
-                )}
-
                 {!isUser && isLoading && webSearchStatus && (
                     <WebSearchProgress status={webSearchStatus} t={t} />
                 )}
@@ -1720,6 +1837,59 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     />
                 ))}
 
+                {!isUser && (
+                    <MessageFileAttachments
+                        files={displayFiles}
+                        isUser={false}
+                        messageId={message.id}
+                        t={t}
+                    />
+                )}
+
+                {displayImages?.length > 0 && (
+                    <div
+                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
+                        data-count={displayImages.length}
+                    >
+                        {displayImages.map((src, idx) => {
+                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
+                            if (!imagePath) {
+                                return null;
+                            }
+
+                            const fullSrc = resolveMediaUrl(imagePath);
+                            const isPythonArtifact = typeof src === 'object' && src?.source === 'python';
+                            return (
+                                <MessageImageAttachment
+                                    key={`${message.id}-image-${idx}`}
+                                    src={fullSrc}
+                                    alt={t('chatImage.messageAlt', { number: idx + 1 })}
+                                    messageId={message.id}
+                                    isInteractive={!isUser}
+                                    canRegenerate={!isPythonArtifact}
+                                    downloadName={typeof src === 'object' ? src?.original_name : undefined}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
+
+                {isGeneratingImage && (
+                    <div className="image-generation-placeholder ui-message-image-placeholder">
+                        <div className="image-placeholder-visual ui-message-image-visual">
+                            <div className="shimmer-effect"></div>
+                            <svg className="placeholder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" x2="12" y1="3" y2="15"/>
+                            </svg>
+                        </div>
+                        <div className="image-placeholder-caption ui-message-image-caption">
+                            {t('chatImage.generating', { prompt: imagePrompt || '' })}
+                        </div>
+                    </div>
+                )}
+
                 <div
                     ref={contentRef}
                     className="message-text ui-message-text"
@@ -1737,6 +1907,16 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                         return <Spinwheel key={widget.id} initialState={widget.state} />;
                     } else if (widget.type === 'beatbox') {
                         return <Beatbox key={widget.id} initialState={widget.state} onStateChange={onBeatboxStateChange} />;
+                    } else if (widget.type === 'visualize') {
+                        return (
+                            <Visualization
+                                key={widget.id}
+                                initialState={widget.state}
+                                onFollowUp={onSendMessage
+                                    ? (prompt) => onSendMessage(prompt, [], {})
+                                    : undefined}
+                            />
+                        );
                     }
                     return null;
                 })}

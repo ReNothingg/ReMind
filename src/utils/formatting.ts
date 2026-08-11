@@ -52,6 +52,67 @@ const escapeHtml = (unsafe: string | null | undefined) => {
         .replace(/'/g, "&#039;");
 };
 
+const MAX_LATEX_EXPRESSION_CHARS = 20_000;
+
+const decodeHtmlEntities = (value: string) => value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+
+const renderLatexExpression = (source: string, displayMode: boolean, fallback: string) => {
+    const expression = decodeHtmlEntities(source).trim();
+    if (!expression || expression.length > MAX_LATEX_EXPRESSION_CHARS) {
+        return fallback;
+    }
+
+    try {
+        const rendered = katex.renderToString(expression, {
+            displayMode,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1_000,
+        });
+        return `<span class="markdown-latex-source" data-latex-source="${escapeHtml(expression)}" data-latex-display="${displayMode ? 'true' : 'false'}"${displayMode ? ' tabindex="0"' : ''}>${rendered}</span>`;
+    } catch (error) {
+        console.warn('KaTeX render failed', error);
+        return fallback;
+    }
+};
+
+const renderLatexInHtml = (html: string) => {
+    const protectedTags: string[] = [];
+    return html.split(/(<[^>]+>)/g).map((segment) => {
+        const closingTag = segment.match(/^<\s*\/\s*(pre|code|script|style)\s*>/i);
+        if (closingTag) {
+            const index = protectedTags.lastIndexOf(String(closingTag[1] || '').toLowerCase());
+            if (index >= 0) {
+                protectedTags.splice(index, 1);
+            }
+            return segment;
+        }
+
+        const openingTag = segment.match(/^<\s*(pre|code|script|style)\b/i);
+        if (openingTag && !/\/\s*>$/.test(segment)) {
+            protectedTags.push(String(openingTag[1] || '').toLowerCase());
+            return segment;
+        }
+        if (segment.startsWith('<') || protectedTags.length > 0) {
+            return segment;
+        }
+
+        const withDisplayMath = segment.replace(
+            /\$\$([\s\S]+?)\$\$/g,
+            (match, expression) => renderLatexExpression(expression, true, match),
+        );
+        return withDisplayMath.replace(
+            /\$([^$\n]+?)\$/g,
+            (match, expression) => renderLatexExpression(expression, false, match),
+        );
+    }).join('');
+};
+
 const linkifyEscapedText = (escapedText: string) => {
     return escapedText.replace(/https?:\/\/[^\s<]+/g, (rawUrl) => {
         const trailingMatch = rawUrl.match(/[.,!?;:)\]]+$/);
@@ -210,6 +271,63 @@ const DOMPURIFY_SHARED_OPTIONS = {
     FORBID_ATTR: ['srcdoc'],
 };
 
+const COLOR_TOKEN_PATTERN = /(^|[^\w#])(#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3}))(?![0-9a-f])/gi;
+
+const decorateColorTokens = (html: string) => {
+    if (!html || typeof document === 'undefined') return html;
+
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    const walker = document.createTreeWalker(root, 4);
+    const textNodes: Text[] = [];
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+        textNodes.push(currentNode as Text);
+        currentNode = walker.nextNode();
+    }
+
+    textNodes.forEach((textNode) => {
+        const parent = textNode.parentElement;
+        if (!parent || parent.closest('pre, code, a, .chat-color-token')) return;
+
+        COLOR_TOKEN_PATTERN.lastIndex = 0;
+        const source = textNode.nodeValue || '';
+        const fragment = document.createDocumentFragment();
+        let cursor = 0;
+        let match: RegExpExecArray | null;
+        let found = false;
+
+        while ((match = COLOR_TOKEN_PATTERN.exec(source)) !== null) {
+            const boundary = match[1] || '';
+            const token = match[2];
+            if (!token) continue;
+            const tokenStart = match.index + boundary.length;
+            fragment.append(source.slice(cursor, tokenStart));
+
+            const tokenWrapper = document.createElement('span');
+            tokenWrapper.className = 'chat-color-token';
+            const swatch = document.createElement('span');
+            swatch.className = 'chat-color-swatch';
+            swatch.setAttribute('aria-hidden', 'true');
+            swatch.style.backgroundColor = token;
+            const tokenLabel = document.createElement('span');
+            tokenLabel.className = 'chat-color-value';
+            tokenLabel.textContent = token;
+            tokenWrapper.append(tokenLabel, swatch);
+            fragment.append(tokenWrapper);
+
+            cursor = tokenStart + token.length;
+            found = true;
+        }
+
+        if (!found) return;
+        fragment.append(source.slice(cursor));
+        textNode.replaceWith(fragment);
+    });
+
+    return root.innerHTML;
+};
+
 type FormatLabels = {
     codeBlock: {
         codeSnippet: string;
@@ -291,6 +409,102 @@ const interpolateLabel = (template: string, values: Record<string, string>) => (
         template
     )
 );
+
+const encodeBase64Utf8 = (value: string) => {
+    try {
+        const bytes = new TextEncoder().encode(value);
+        let binary = '';
+        bytes.forEach((byte) => {
+            binary += String.fromCharCode(byte);
+        });
+        return btoa(binary);
+    } catch (error) {
+        console.warn('Base64 encoding failed:', error);
+        return '';
+    }
+};
+
+const buildVisualizationHost = (language: string, title: string, source: string) => {
+    const encodedSource = encodeBase64Utf8(source);
+    const mode = language.toLowerCase() === 'visualize-wide' ? 'wide' : 'normal';
+    const safeTitle = escapeHtml(normalizeFenceFilename(title).slice(0, 120));
+    return `<div class="visualize-instance-host" data-visualize-source-b64="${encodedSource}" data-visualize-title="${safeTitle}" data-visualize-mode="${mode}"></div>`;
+};
+
+const normalizeVisualizationFenceLine = (line: string) => {
+    const normalized = line
+        .trim()
+        .replace(/\\`/g, '`')
+        .replace(/｀/g, '`');
+    return normalized.replace(/^((?:`[\t ]*){3,})/, (ticks) => ticks.replace(/[\t ]/g, ''));
+};
+
+const parseVisualizationFenceOpening = (line: string) => {
+    const normalized = normalizeVisualizationFenceLine(line);
+    const match = normalized.match(/^`{3,}[\t ]*(visualize(?:-wide)?)(?:[\t ]*:[\t ]*(.*))?$/i);
+    if (!match) return null;
+    return { language: match[1] || 'visualize', title: match[2] || '' };
+};
+
+const isFenceOnlyLine = (line: string) => /^`{3,}[\t ]*$/.test(
+    normalizeVisualizationFenceLine(line)
+);
+
+const buildInteractivePlaceholder = (toolName: string, formatLabels: FormatLabels) => {
+    const name = (toolName || '').toLowerCase();
+    const label = escapeHtml(interpolateLabel(formatLabels.widgets.creating, { tool: name }));
+    return `<span class="interactive-placeholder" data-tool="${name}" aria-live="polite"><span class="ip-spinner"></span><span class="ip-text">${label}</span></span>`;
+};
+
+const processVisualizationFences = (text: string, formatLabels: FormatLabels) => {
+    const lines = text.replace(/\r\n?/g, '\n').split('\n');
+    const output: string[] = [];
+
+    for (let index = 0; index < lines.length; index += 1) {
+        let opening = parseVisualizationFenceOpening(lines[index] || '');
+        let contentStart = index + 1;
+
+        if (!opening && isFenceOnlyLine(lines[index] || '')) {
+            const detachedInfo = String(lines[index + 1] || '').trim().match(
+                /^(visualize(?:-wide)?)(?:[\t ]*:[\t ]*(.*))?$/i
+            );
+            if (detachedInfo) {
+                opening = {
+                    language: detachedInfo[1] || 'visualize',
+                    title: detachedInfo[2] || '',
+                };
+                contentStart = index + 2;
+            }
+        }
+
+        if (!opening) {
+            output.push(lines[index] || '');
+            continue;
+        }
+
+        let closingIndex = -1;
+        for (let candidate = contentStart; candidate < lines.length; candidate += 1) {
+            if (isFenceOnlyLine(lines[candidate] || '')) {
+                closingIndex = candidate;
+                break;
+            }
+        }
+
+        if (closingIndex === -1) {
+            output.push(buildInteractivePlaceholder('visualize', formatLabels));
+            break;
+        }
+
+        output.push(buildVisualizationHost(
+            opening.language,
+            opening.title,
+            lines.slice(contentStart, closingIndex).join('\n')
+        ));
+        index = closingIndex;
+    }
+
+    return output.join('\n');
+};
 
 type DiagramBlockOptions = {
     language: string;
@@ -425,18 +639,7 @@ const originalRender = md.render.bind(md);
 md.render = function (str, env) {
     const toRender = str.replace(/\\\[([\s\S]+?)\\\]/g, (_match, expr) => `$$${expr}$$`)
         .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr) => `$${expr}$`);
-    let html = originalRender(toRender, env);
-    try {
-        html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_match, expr) =>
-            `<span class="markdown-latex-source" data-latex-source="${escapeHtml(expr.trim())}" data-latex-display="true">${katex.renderToString(expr, { displayMode: true, throwOnError: false })}</span>`
-        );
-        html = html.replace(/\$([^$\n]+?)\$/g, (_match, expr) =>
-            `<span class="markdown-latex-source" data-latex-source="${escapeHtml(expr.trim())}" data-latex-display="false">${katex.renderToString(expr, { displayMode: false, throwOnError: false })}</span>`
-        );
-    } catch (e) {
-        console.warn('KaTeX render failed', e);
-    }
-    return html;
+    return renderLatexInHtml(originalRender(toRender, env));
 };
 md.renderer.rules.fence = (tokens, idx, _options, env) => {
     const token = tokens[idx];
@@ -449,6 +652,10 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
     if (['beatbox', 'quiz', 'spinwheel'].includes(actualLanguage)) {
         const escapedState = escapeHtml(codeContent);
         return `<div class="${actualLanguage}-instance-host" data-${actualLanguage}-state='${escapedState}'></div>`;
+    }
+
+    if (actualLanguage === 'visualize' || actualLanguage === 'visualize-wide') {
+        return buildVisualizationHost(actualLanguage, filename, codeContent);
     }
 
     const diagramBlock = buildDiagramBlock({
@@ -497,17 +704,13 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
 const processInteractiveHTMLTags = (text: string, labels?: FormatTextOptions['labels']) => {
     if (typeof text !== 'string' || !text) return text;
     const formatLabels = resolveFormatLabels(labels);
-
-    const makePlaceholder = (toolName: string) => {
-        const name = (toolName || '').toLowerCase();
-        const label = escapeHtml(interpolateLabel(formatLabels.widgets.creating, { tool: name }));
-        return `<span class="interactive-placeholder" data-tool="${name}" aria-live="polite"><span class="ip-spinner"></span><span class="ip-text">${label}</span></span>`;
-    };
+    text = processVisualizationFences(text, formatLabels);
 
     const unclosedConfigs = [
         { tag: 'beatbox' },
         { tag: 'quiz' },
-        { tag: 'spinwheel' }
+        { tag: 'spinwheel' },
+        { tag: 'visualize' }
     ];
 
     for (const cfg of unclosedConfigs) {
@@ -517,19 +720,20 @@ const processInteractiveHTMLTags = (text: string, labels?: FormatTextOptions['la
             const lastOpenIdx = text.toLowerCase().lastIndexOf(`<${cfg.tag}>`);
             if (lastOpenIdx !== -1) {
                 const head = text.slice(0, lastOpenIdx);
-                text = `${head}${makePlaceholder(cfg.tag)}`;
+                text = `${head}${buildInteractivePlaceholder(cfg.tag, formatLabels)}`;
             }
         }
     }
 
-    const toBase64 = (str: string) => {
-        try {
-            return btoa(unescape(encodeURIComponent(str)));
-        } catch (e) {
-            console.warn('Base64 encoding failed:', e);
-            return '';
+    const toBase64 = encodeBase64Utf8;
+
+    text = text.replace(
+        /<visualize(?:\s+title="([^"]{0,120})")?(?:\s+mode="(normal|wide)")?>([\s\S]*?)<\/visualize>/gi,
+        (_match, title, mode, content) => {
+            const encodedSource = toBase64(content.trim());
+            return `<div class="visualize-instance-host" data-visualize-source-b64="${encodedSource}" data-visualize-title="${escapeHtml(title || '')}" data-visualize-mode="${mode === 'wide' ? 'wide' : 'normal'}"></div>`;
         }
-    };
+    );
 
     text = text.replace(/<beatbox>([\s\S]*?)<\/beatbox>/gi, (_match, content) => {
         const encodedState = toBase64(content.trim());
@@ -576,6 +780,7 @@ export const formatText = (text: string, options: FormatTextOptions = {}) => {
         return `<div class="table-wrapper"><button class="table-copy-btn" type="button" title="${safeTableCopyLabel}" aria-label="${safeTableCopyLabel}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></button><div><table>`;
     });
     renderedHtml = renderedHtml.replace(/<\/table>/g, '</table></div></div>');
+    renderedHtml = decorateColorTokens(renderedHtml);
     return DOMPurify.sanitize(renderedHtml, {
         ...DOMPURIFY_SHARED_OPTIONS,
         ADD_TAGS: ['svg', 'path', 'rect', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'mark', 'c', 'button', 'img', 'input', 'canvas'],
@@ -584,6 +789,7 @@ export const formatText = (text: string, options: FormatTextOptions = {}) => {
             'data-language', 'data-filename', 'data-source-filename', 'data-latex-source', 'data-latex-display', 'data-tab', 'data-pane', 'scope', 'colspan', 'rowspan',
             'type', 'checked', 'disabled', 'src', 'name',
             'data-beatbox-state', 'data-beatbox-state-b64', 'data-quiz-state', 'data-quiz-state-b64', 'data-spinwheel-state', 'data-spinwheel-state-b64',
+            'data-visualize-source-b64', 'data-visualize-title', 'data-visualize-mode',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
             'data-think-open', 'data-think-close', 'data-think-content', 'data-think-content-b64',
             'data-tool', 'data-source-ids', 's', 'tabindex', 'aria-live', 'aria-label', 'aria-hidden',
@@ -642,7 +848,10 @@ export const formatUserMessageText = (text: string, options: FormatUserMessageOp
 
     const quoteHtml = `
         <div class="user-message-quote-display">
-            <blockquote>${formatPlainText(leadingQuote.quote)}</blockquote>
+            <blockquote>${options.renderMarkdown
+                ? formatUserText(leadingQuote.quote, { labels: options.labels })
+                    .replace(/^<p>([\s\S]*)<\/p>\s*$/, '$1')
+                : formatPlainText(leadingQuote.quote)}</blockquote>
         </div>
     `;
     const bodyHtml = leadingQuote.body.trim() ? renderBody(leadingQuote.body) : '';
@@ -654,6 +863,12 @@ const userMd = new MarkdownIt({
     linkify: true,
     typographer: true,
 });
+const originalUserRender = userMd.render.bind(userMd);
+userMd.render = function (str, env) {
+    const toRender = str.replace(/\\\[([\s\S]+?)\\\]/g, (_match, expr) => `$$${expr}$$`)
+        .replace(/\\\(([^\n]+?)\\\)/g, (_match, expr) => `$${expr}$`);
+    return renderLatexInHtml(originalUserRender(toRender, env));
+};
 
 userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     const token = tokens[idx];
@@ -719,7 +934,7 @@ export const formatUserText = (text: string, options: FormatTextOptions = {}) =>
         ADD_ATTR: [
             'class', 'title', 'alt', 'viewBox', 'fill', 'width', 'height', 'd',
             'type', 'checked', 'disabled', 'src', 'name',
-            'data-language', 'data-filename', 'data-source-filename', 'data-tab', 'data-pane',
+            'data-language', 'data-filename', 'data-source-filename', 'data-latex-source', 'data-latex-display', 'data-tab', 'data-pane',
             'aria-label', 'aria-hidden', 'aria-expanded', 'aria-selected', 'aria-controls',
             'role', 'aria-live', 'tabindex', 'data-expand-label', 'data-collapse-label', 'hidden',
         ]

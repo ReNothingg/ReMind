@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import html
 import json
 import logging
@@ -40,9 +41,11 @@ THINKING_LEVELS: dict[str, types.ThinkingLevel] = {
     "medium": types.ThinkingLevel.MEDIUM,
     "high": types.ThinkingLevel.HIGH,
 }
-MAX_THOUGHT_SUMMARY_CHARS = 64_000
+MAX_THOUGHT_SUMMARY_CHARS = 160_000
 _THINK_BLOCK_RE = re.compile(r"<think(?:\s[^>]*)?>[\s\S]*?</think>", re.IGNORECASE)
 MAX_SEARCH_ACTIVITY_ENCODED_CHARS = 48_000
+MAX_PYTHON_ACTIVITY_CODE_CHARS = 24_000
+MAX_PYTHON_ACTIVITY_PURPOSE_CHARS = 1_000
 
 
 def _db_user_id(user_id: Any) -> int | None:
@@ -286,6 +289,13 @@ def _bounded_activity_text(value: Any, max_chars: int) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()[:max_chars]
 
 
+def _bounded_activity_int(value: Any, maximum: int) -> int:
+    try:
+        return max(0, min(maximum, int(value or 0)))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
 def _search_activity_token(
     status: str,
     query: Any,
@@ -328,6 +338,35 @@ def _search_activity_token(
     return f'<search_activity data-b64="{encoded}"></search_activity>'
 
 
+def _python_activity_token(
+    activity_id: str,
+    status: str,
+    *,
+    code: Any = "",
+    purpose: Any = "",
+    duration_ms: Any = 0,
+    artifact_count: Any = 0,
+) -> str:
+    safe_status = status if status in {
+        "python_running",
+        "python_completed",
+        "python_failed",
+    } else "python_failed"
+    payload = {
+        "type": "python_execution",
+        "id": re.sub(r"[^a-zA-Z0-9_-]", "", str(activity_id or ""))[:64],
+        "status": safe_status,
+        "code": str(code or "")[:MAX_PYTHON_ACTIVITY_CODE_CHARS],
+        "purpose": _bounded_activity_text(purpose, MAX_PYTHON_ACTIVITY_PURPOSE_CHARS),
+        "duration_ms": _bounded_activity_int(duration_ms, 60_000),
+        "artifact_count": _bounded_activity_int(artifact_count, 10),
+    }
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    return f'<python_activity data-b64="{encoded}"></python_activity>'
+
+
 def _thinking_level(user_message_data: dict[str, Any]) -> types.ThinkingLevel:
     requested = (
         str(
@@ -352,11 +391,14 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
     client: genai.Client | None = None
     try:
         system_prompt = build_system_prompt(db_user_id, user_message_data)
-        tools_enabled = user_message_data.get("toolsEnabled", True) is not False
+        tools_enabled = user_message_data.get("toolsEnabled", True) is not False and not isinstance(
+            user_message_data.get("telegram_context"), dict
+        )
         declarations = (
             model_tool_declarations(
                 db_user_id,
                 enable_web=_web_tool_enabled(user_message_data),
+                input_files=user_message_data.get("files"),
             )
             if tools_enabled
             else []
@@ -439,6 +481,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
 
         for tool_round in range(MAX_TOOL_ROUNDS + 1):
             function_calls: list[tuple[str, dict[str, Any]]] = []
+            round_answer_chunks: list[str] = []
 
             response_stream = chat.send_message_stream(
                 next_message,
@@ -461,10 +504,11 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                         continue
 
                     if text:
-                        yield str(text)
-                        any_answer_generated = True
-                        if thought_chunks:
-                            thought_needs_separator = True
+                        # Gemini can emit user-facing prose before a function call in the
+                        # same round. Buffer it until the round is complete so intermediate
+                        # planning stays in the thought timeline instead of leaking into the
+                        # final answer ahead of the tool result.
+                        round_answer_chunks.append(str(text))
 
                     function_call = getattr(part, "function_call", None)
                     name = str(getattr(function_call, "name", "") or "").strip()
@@ -477,7 +521,18 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
 
             if not function_calls:
                 yield from finalize_thought()
+                for answer_chunk in round_answer_chunks:
+                    yield answer_chunk
+                    any_answer_generated = True
                 break
+
+            for index, answer_chunk in enumerate(round_answer_chunks):
+                thought_event = append_thought_content(
+                    answer_chunk,
+                    separate=index == 0,
+                )
+                if thought_event:
+                    yield thought_event
             if tool_round >= MAX_TOOL_ROUNDS:
                 logger.warning("Gemini 3.1 Flash-Lite tool loop limit reached for user %s", user_id)
                 yield from finalize_thought()
@@ -506,11 +561,44 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                     result_output = {"ok": False, "error": "duplicate_tool_call"}
                 else:
                     completed_tool_calls.add(call_key)
+                    python_activity_id = ""
+                    python_started_at = 0.0
+                    if name == "python_execute":
+                        python_activity_id = hashlib.sha256(call_key.encode("utf-8")).hexdigest()[:24]
+                        python_started_at = time.monotonic()
+                        python_started = append_thought_content(
+                            _python_activity_token(
+                                python_activity_id,
+                                "python_running",
+                                code=arguments.get("code"),
+                                purpose=arguments.get("purpose"),
+                            ),
+                            separate=True,
+                        )
+                        if python_started:
+                            yield python_started
                     try:
-                        result = execute_model_tool(name, arguments, user_id=db_user_id)
+                        result = execute_model_tool(
+                            name,
+                            arguments,
+                            user_id=db_user_id,
+                            input_files=user_message_data.get("files"),
+                            allow_artifacts=not bool(user_message_data.get("temporary_chat")),
+                        )
                     except Exception:
                         logger.exception("Gemini 3.1 Flash-Lite tool execution failed: %s", name)
                         result_output = {"ok": False, "error": "tool_execution_failed"}
+                        if python_activity_id:
+                            python_failed = append_thought_content(
+                                _python_activity_token(
+                                    python_activity_id,
+                                    "python_failed",
+                                    duration_ms=(time.monotonic() - python_started_at) * 1000,
+                                ),
+                                separate=True,
+                            )
+                            if python_failed:
+                                yield python_failed
                         if name == "web_search":
                             search_failed = append_thought_content(
                                 _search_activity_token("web_search_failed", arguments.get("query")),
@@ -521,6 +609,23 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                     else:
                         result_output = result.output
                         yield from result.events
+                        if python_activity_id:
+                            python_finished = append_thought_content(
+                                _python_activity_token(
+                                    python_activity_id,
+                                    (
+                                        "python_completed"
+                                        if result.output.get("ok")
+                                        else "python_failed"
+                                    ),
+                                    duration_ms=result.output.get("duration_ms")
+                                    or (time.monotonic() - python_started_at) * 1000,
+                                    artifact_count=len(result.output.get("artifacts") or []),
+                                ),
+                                separate=True,
+                            )
+                            if python_finished:
+                                yield python_finished
                         if name == "web_search":
                             search_status = (
                                 "web_search_done" if result.sources else "web_search_no_results"

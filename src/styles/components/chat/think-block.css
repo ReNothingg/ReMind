@@ -133,7 +133,8 @@
   background: var(--color-text-tertiary);
 }
 
-.think-block-step.is-search .think-block-step-marker {
+.think-block-step.is-search .think-block-step-marker,
+.think-block-step.is-python .think-block-step-marker {
   top: 2px;
   left: -28px;
   width: 18px;
@@ -143,7 +144,8 @@
   color: var(--color-text-tertiary);
 }
 
-.think-block-step.is-search .think-block-step-marker svg {
+.think-block-step.is-search .think-block-step-marker svg,
+.think-block-step.is-python .think-block-step-marker svg {
   display: block;
   width: 18px;
   height: 18px;
@@ -178,6 +180,108 @@
   margin-left: 0;
 }
 
+.think-block-python {
+  width: 100%;
+  min-width: 0;
+}
+
+.think-block-python-purpose {
+  margin-bottom: 7px;
+}
+
+.think-block-python-toggle {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2);
+  padding: 0 0 calc(var(--spacing-unit) * 1.5);
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.think-block-python-toggle:hover {
+  color: var(--color-text-primary);
+}
+
+.think-block-python-toggle .think-block-step-title {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.think-block-python-toggle-label {
+  flex: 0 0 auto;
+  color: currentColor;
+  font-size: 0.75rem;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.think-block-python-chevron {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  transform: rotate(0deg);
+  transition: transform var(--transition-fast);
+}
+
+.think-block-python.is-code-expanded .think-block-python-chevron {
+  transform: rotate(90deg);
+}
+
+.think-block-python-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    visibility 0s linear 220ms;
+}
+
+.think-block-python.is-code-expanded .think-block-python-disclosure {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.think-block-python-disclosure-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.think-block-python-code {
+  max-width: 100%;
+  max-height: min(420px, 55vh);
+  margin: calc(var(--spacing-unit) * 1.5) 0 calc(var(--spacing-unit) * 1);
+  padding: calc(var(--spacing-unit) * 1.5) 0 calc(var(--spacing-unit) * 2);
+  overflow: auto;
+  border: 0;
+  background: transparent;
+  color: var(--code-token-plain);
+  font-family: var(--font-family-code);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  tab-size: 4;
+  white-space: pre;
+}
+
+.think-block-python-code code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  color: inherit;
+  font: inherit;
+}
+
 @media (max-width: 600px) {
   .think-block-wrapper {
     max-width: calc(100vw - 56px);
@@ -196,6 +300,19 @@
     padding-left: calc(var(--spacing-unit) * 4.5);
   }
 
+  .think-block-python-code {
+    max-height: min(320px, 48vh);
+    font-size: 0.75rem;
+  }
+
+  .think-block-python-toggle {
+    min-height: 36px;
+  }
+
+  .think-block-python-toggle-label {
+    font-size: 0.7rem;
+  }
+
 }
 
 @media print {
@@ -212,6 +329,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .think-block-icon,
+  .think-block-python-chevron,
+  .think-block-python-disclosure,
   .think-block-disclosure,
   .think-block-content {
     transition: none;

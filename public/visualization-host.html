@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html,
+        body,
+        #visualization {
+            display: block;
+            width: 100%;
+            min-height: 1px;
+            margin: 0;
+            border: 0;
+            overflow: hidden;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <iframe id="visualization" sandbox="allow-scripts" title=""></iframe>
+    <script>
+        const frame = document.getElementById('visualization');
+        let activeChannelId = '';
+
+        window.addEventListener('message', (event) => {
+            if (event.source === window.parent && event.data?.type === 'remind:visualization:render') {
+                const channelId = typeof event.data.channelId === 'string'
+                    ? event.data.channelId.slice(0, 200)
+                    : '';
+                const documentSource = typeof event.data.documentSource === 'string'
+                    ? event.data.documentSource
+                    : '';
+                if (!channelId || !documentSource || documentSource.length > 1_100_000) return;
+                activeChannelId = channelId;
+                frame.title = typeof event.data.title === 'string' ? event.data.title.slice(0, 120) : '';
+                frame.srcdoc = documentSource;
+                return;
+            }
+
+            if (
+                event.source === window.parent
+                && event.data?.type === 'remind:visualization:math-result'
+                && event.data?.channelId === activeChannelId
+            ) {
+                frame.contentWindow?.postMessage({
+                    type: 'remind:visualization:math-result',
+                    channelId: activeChannelId,
+                    requestId: String(event.data.requestId || '').slice(0, 100),
+                    html: String(event.data.html || '').slice(0, 200_000),
+                }, '*');
+                return;
+            }
+
+            if (event.source !== frame.contentWindow || event.data?.channelId !== activeChannelId) return;
+            if (event.data?.type === 'remind:visualization:resize') {
+                const height = Math.min(1800, Math.max(120, Math.ceil(Number(event.data.height) || 0)));
+                frame.style.height = `${height}px`;
+                window.parent.postMessage({
+                    type: 'remind:visualization:resize',
+                    channelId: activeChannelId,
+                    height,
+                }, '*');
+                return;
+            }
+            if (event.data?.type === 'remind:visualization:follow-up') {
+                window.parent.postMessage({
+                    type: 'remind:visualization:follow-up',
+                    channelId: activeChannelId,
+                    prompt: String(event.data.prompt || '').slice(0, 4000),
+                    title: String(event.data.title || '').slice(0, 250),
+                }, '*');
+                return;
+            }
+            if (event.data?.type === 'remind:visualization:math-request') {
+                window.parent.postMessage({
+                    type: 'remind:visualization:math-request',
+                    channelId: activeChannelId,
+                    requestId: String(event.data.requestId || '').slice(0, 100),
+                    expression: String(event.data.expression || '').slice(0, 4000),
+                    displayMode: event.data.displayMode === true,
+                }, '*');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import base64
 import re
 import unicodedata
 import uuid
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ ALLOWED_FILE_EXTENSIONS = {
     "json",
     "java",
     "md",
+    "pdf",
     "rs",
     "ts",
     "txt",
@@ -68,9 +70,12 @@ CHAT_TEXTUAL_DETECTED_MIME_TYPES = {
     "application/x-yaml",
     "application/yaml",
 }
+CHAT_DOCUMENT_MIME_TYPES = {"pdf": "application/pdf"}
 CHAT_UPLOAD_MAX_FILES = 10
 CHAT_UPLOAD_MAX_TOTAL_BYTES = 8 * 1024 * 1024
 CHAT_UPLOAD_EXTENSION_RE = re.compile(r"^[a-z0-9]{1,12}$")
+CHAT_IMAGE_MAX_DIMENSION = 8192
+CHAT_IMAGE_MAX_PIXELS = 25_000_000
 
 
 def _validate_chat_filename(filename: object) -> tuple[bool, str | None, str | None]:
@@ -170,14 +175,36 @@ def _classify_chat_file(filepath: Path, extension: str) -> tuple[str, str | None
         if not is_valid or detected_mime != CHAT_IMAGE_MIME_TYPES[extension] or not PIL_AVAILABLE:
             return None
         try:
-            with Image.open(filepath) as image:
-                image_format = image.format
-                image.verify()
-        except Exception:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(filepath) as image:
+                    image_format = image.format
+                    width, height = image.size
+                    if (
+                        width <= 0
+                        or height <= 0
+                        or width > CHAT_IMAGE_MAX_DIMENSION
+                        or height > CHAT_IMAGE_MAX_DIMENSION
+                        or width * height > CHAT_IMAGE_MAX_PIXELS
+                    ):
+                        return None
+                    image.verify()
+        except (Exception, Image.DecompressionBombWarning):
             return None
         if image_format != CHAT_IMAGE_PIL_FORMATS[extension]:
             return None
         return detected_mime, None
+
+    if extension in CHAT_DOCUMENT_MIME_TYPES:
+        expected_mime = CHAT_DOCUMENT_MIME_TYPES[extension]
+        if not is_valid or detected_mime != expected_mime:
+            return None
+        try:
+            if not filepath.read_bytes()[:5].startswith(b"%PDF-"):
+                return None
+        except OSError:
+            return None
+        return expected_mime, None
 
     if extension not in CHAT_TEXT_MIME_TYPES:
         return None
@@ -235,21 +262,15 @@ def handle_file_upload(file_storage, user_id):
         mimetype, text = classification
 
         model_part = {}
-        if extension_is_image:
-            with Image.open(filepath) as img:
-                max_dimension = 50000  # 50000x50000 pixels max
-                if img.size[0] > max_dimension or img.size[1] > max_dimension:
-                    filepath.unlink()
-                    return None
-
-            with open(filepath, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
+        if extension_is_image or extension in CHAT_DOCUMENT_MIME_TYPES:
+            encoded = base64.b64encode(filepath.read_bytes()).decode("utf-8")
             model_part = {"inline_data": {"mime_type": mimetype, "data": encoded}}
-        else:
-            if text is None:
-                _safe_unlink(filepath)
-                return None
+        elif text is not None:
             model_part = {"text": f"--- File: {safe_filename_result} ---\n{text}\n--- End File ---"}
+        else:
+            _safe_unlink(filepath)
+            return None
+
         if not is_safe_to_serve(str(filepath)):
             _safe_unlink(filepath)
             return None
@@ -304,7 +325,7 @@ def restore_stored_file_for_model(
     )
     original_name = normalized_original_name if original_name_valid else filename
     try:
-        if extension in ALLOWED_IMAGE_EXTENSIONS:
+        if extension in ALLOWED_IMAGE_EXTENSIONS or extension in CHAT_DOCUMENT_MIME_TYPES:
             encoded = base64.b64encode(filepath.read_bytes()).decode("utf-8")
             model_part: dict[str, Any] = {
                 "inline_data": {"mime_type": detected_mime, "data": encoded}

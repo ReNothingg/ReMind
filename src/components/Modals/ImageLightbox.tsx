@@ -13,6 +13,8 @@ type ImageLightboxProps = {
     onClose: () => void;
     currentModel?: string | null;
     sessionId?: string | null;
+    canRegenerate?: boolean;
+    downloadName?: string | null;
 };
 
 const getSourceUserMessageElement = (messageElement?: HTMLElement | null): HTMLElement | null => {
@@ -48,7 +50,16 @@ const normalizeModelName = (modelName?: string | null) => {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel, sessionId }: ImageLightboxProps) => {
+const ImageLightbox = ({
+    isOpen,
+    imageSrc,
+    messageElement,
+    onClose,
+    currentModel,
+    sessionId,
+    canRegenerate = true,
+    downloadName,
+}: ImageLightboxProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [hasImageError, setHasImageError] = useState(false);
     const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
@@ -97,7 +108,9 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
     const activeStyleLabel =
         styleOptions.find((option) => option.value === imageStyle)?.label || imageStyle;
     const modelLabel =
-        currentModel === 'demo_image'
+        !canRegenerate
+            ? ''
+            : currentModel === 'demo_image'
             ? 'Mind image'
             : normalizeModelName(currentModel);
 
@@ -227,7 +240,17 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
             } catch {
             }
 
-            a.download = `remind-art-${Date.now()}.${ext}`;
+            const safeDownloadName = String(downloadName || '')
+                .split(/[\\/]/)
+                .pop()
+                ?.split('')
+                .filter((character) => {
+                    const codePoint = character.charCodeAt(0);
+                    return codePoint >= 32 && codePoint !== 127;
+                })
+                .join('')
+                .slice(0, 180);
+            a.download = safeDownloadName || `remind-art-${Date.now()}.${ext}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -360,9 +383,14 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
                                         )}
                                     </div>
                                     <div className="image-lightbox-empty-description">
-                                        {translate(
+                                    {canRegenerate
+                                        ? translate(
                                             'imageLightbox.errors.previewDescription',
                                             'Check the file path or regenerate the image.'
+                                        )
+                                        : translate(
+                                            'chatImage.unavailableDescription',
+                                            'The image could not be loaded.'
                                         )}
                                     </div>
                                 </div>
@@ -378,8 +406,9 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
                     </div>
                 </div>
 
-                <div className="image-lightbox-footer">
-                    <div className="image-lightbox-context-card">
+                <div className={cn('image-lightbox-footer', !canRegenerate && 'is-preview-only')}>
+                    {canRegenerate && (
+                        <div className="image-lightbox-context-card">
                         <div className="image-lightbox-context-label">
                             {translate('imageLightbox.promptLabel', 'Original prompt')}
                         </div>
@@ -408,39 +437,44 @@ const ImageLightbox = ({ isOpen, imageSrc, messageElement, onClose, currentModel
                                 </span>
                             )}
                         </div>
-                    </div>
+                        </div>
+                    )}
 
                     <div className="lightbox-controls image-lightbox-controls">
-                        <CustomSelect
-                            className="image-lightbox-style-select"
-                            label={translate('imageLightbox.styleLabel', 'Style')}
-                            value={imageStyle}
-                            onChange={setImageStyle}
-                            options={styleOptions}
-                            disabled={isLoading}
-                        />
+                        {canRegenerate && (
+                            <CustomSelect
+                                className="image-lightbox-style-select"
+                                label={translate('imageLightbox.styleLabel', 'Style')}
+                                value={imageStyle}
+                                onChange={setImageStyle}
+                                options={styleOptions}
+                                disabled={isLoading}
+                            />
+                        )}
 
                         <div className="image-lightbox-actions">
-                            <button
-                                id="lightboxRegenerateBtn"
-                                className="lightbox-btn ui-button-secondary image-lightbox-action-button"
-                                onClick={handleRegenerate}
-                                disabled={isLoading}
-                                title={translate('imageLightbox.actions.regenerate', 'Regenerate')}
-                                type="button"
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                                    <path d="M21 3v5h-5" />
-                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                                    <path d="M3 21v-5h5" />
-                                </svg>
-                                <span>
-                                    {isLoading
-                                        ? translate('imageLightbox.actions.regenerating', 'Generating...')
-                                        : translate('imageLightbox.actions.regenerate', 'Regenerate')}
-                                </span>
-                            </button>
+                            {canRegenerate && (
+                                <button
+                                    id="lightboxRegenerateBtn"
+                                    className="lightbox-btn ui-button-secondary image-lightbox-action-button"
+                                    onClick={handleRegenerate}
+                                    disabled={isLoading}
+                                    title={translate('imageLightbox.actions.regenerate', 'Regenerate')}
+                                    type="button"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                                        <path d="M21 3v5h-5" />
+                                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                                        <path d="M3 21v-5h5" />
+                                    </svg>
+                                    <span>
+                                        {isLoading
+                                            ? translate('imageLightbox.actions.regenerating', 'Generating...')
+                                            : translate('imageLightbox.actions.regenerate', 'Regenerate')}
+                                    </span>
+                                </button>
+                            )}
 
                             <button
                                 id="lightboxDownloadBtn"

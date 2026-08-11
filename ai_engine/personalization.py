@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from flask import request
 
 from ai_engine.prompt_templates import load_prompt, load_prompt_section, render_prompt
+from config import PYTHON_RUNNER_ENABLED
 from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
@@ -127,9 +128,9 @@ def render_user_md_with_settings(
     telegram_first_name = re.sub(
         r"\s+", " ", str(telegram_profile.get("first_name") or "")
     ).strip()[:200]
-    telegram_username = re.sub(
-        r"\s+", " ", str(telegram_profile.get("username") or "")
-    ).strip()[:200]
+    telegram_username = re.sub(r"\s+", " ", str(telegram_profile.get("username") or "")).strip()[
+        :200
+    ]
     account_name = (
         user_profile.get("name")
         or telegram_first_name
@@ -196,6 +197,20 @@ def render_github_tool_prompt(user_id: Optional[int]) -> str:
 
 def render_web_tool_prompt() -> str:
     tool_prompt = load_prompt_section("tools/web.md", "Assistant System Prompt")
+    if not tool_prompt:
+        return ""
+    return tool_prompt.strip()
+
+
+def render_visualize_tool_prompt() -> str:
+    tool_prompt = load_prompt_section("tools/visualize.md", "ReMind Assistant System Prompt")
+    if not tool_prompt:
+        return ""
+    return tool_prompt.strip()
+
+
+def render_python_tool_prompt() -> str:
+    tool_prompt = load_prompt_section("tools/python.md", "ReMind Assistant System Prompt")
     if not tool_prompt:
         return ""
     return tool_prompt.strip()
@@ -318,6 +333,19 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         else ""
     )
     widget_tool_prompt = render_prompt("tools/widgets.md", {}) if tools_enabled else ""
+    visualize_tool_prompt = (
+        render_visualize_tool_prompt() if tools_enabled and telegram_context is None else ""
+    )
+    python_tool_prompt = (
+        render_python_tool_prompt()
+        if (
+            tools_enabled
+            and telegram_context is None
+            and user_id is not None
+            and PYTHON_RUNNER_ENABLED
+        )
+        else ""
+    )
     current_canvas_textdoc = render_current_canvas_textdoc(user_data) if tools_enabled else ""
     beatbox_state_prompt = render_beatbox_state_prompt(user_data) if tools_enabled else ""
     github_tool_prompt = render_github_tool_prompt(user_id) if tools_enabled else ""
@@ -329,6 +357,8 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         tool
         for tool in [
             widget_tool_prompt,
+            visualize_tool_prompt,
+            python_tool_prompt,
             web_tool_prompt,
             current_canvas_textdoc,
             beatbox_state_prompt,

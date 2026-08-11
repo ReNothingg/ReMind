@@ -50,4 +50,28 @@ describe('chat branch normalization', () => {
 
         expect(message.deliveryState).toBe('interrupted');
     });
+
+    it('preserves Python artifact provenance and metadata', () => {
+        const message = normalizeHistoryMessage({
+            id: 'artifact-message',
+            role: 'model',
+            parts: [{
+                image: {
+                    url_path: '/uploads/chart.png',
+                    original_name: 'portfolio.png',
+                    mime_type: 'image/png',
+                    source: 'python',
+                    metadata: { kind: 'image', width: 1200, height: 1000 },
+                },
+            }],
+        });
+
+        expect(message.images).toEqual([{
+            url_path: '/uploads/chart.png',
+            original_name: 'portfolio.png',
+            mime_type: 'image/png',
+            source: 'python',
+            metadata: { kind: 'image', width: 1200, height: 1000 },
+        }]);
+    });
 });

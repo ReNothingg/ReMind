@@ -17,6 +17,11 @@ vi.mock('react-i18next', () => ({
             'think.completedLabel': `Thought for ${options?.time}`,
             'think.timeMilliseconds': `${options?.value}ms`,
             'think.timeSeconds': `${options?.value}s`,
+            'think.python.running': 'Running Python code...',
+            'think.python.completed': 'Python execution completed',
+            'think.python.failed': 'Python execution failed',
+            'think.python.showCode': 'Show code',
+            'think.python.hideCode': 'Hide code',
             'webSearch.queryLabel': 'Query',
             'webSearch.sourceFallback': 'Source',
             'webSearch.sourcesAria': 'Web search sources',
@@ -33,6 +38,12 @@ const encodeSearchActivity = (payload: unknown) => {
     const bytes = new TextEncoder().encode(JSON.stringify(payload));
     const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
     return `<search_activity data-b64="${btoa(binary)}"></search_activity>`;
+};
+
+const encodePythonActivity = (payload: unknown) => {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    return `<python_activity data-b64="${btoa(binary)}"></python_activity>`;
 };
 
 describe('ThinkBlock', () => {
@@ -238,6 +249,112 @@ describe('ThinkBlock', () => {
 
         expect(container.querySelector('.think-block-label')?.textContent)
             .toBe('current search query');
+    });
+
+    it('shows the exact executed Python code and merges its terminal status', () => {
+        const running = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-1',
+            status: 'python_running',
+            code: 'import matplotlib.pyplot as plt\nprint("<script>safe</script>")',
+            purpose: 'Build and validate the requested chart.',
+            duration_ms: 0,
+            artifact_count: 0,
+        });
+        const completed = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-1',
+            status: 'python_completed',
+            code: '',
+            duration_ms: 125,
+            artifact_count: 1,
+        });
+
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        act(() => {
+            root?.render(React.createElement(ThinkBlock, {
+                content: `${running}\n\n${completed}`,
+                openTime: 100,
+                closeTime: 225,
+            }));
+        });
+        act(() => container?.querySelector<HTMLButtonElement>('.think-block-header')?.click());
+
+        expect(container.querySelectorAll('.think-block-step.is-python')).toHaveLength(1);
+        expect(container.querySelector('.think-block-python-purpose')?.textContent)
+            .toBe('Build and validate the requested chart.');
+        expect(container.querySelector('.think-block-step-title')?.textContent)
+            .toBe('Python execution completed');
+        const codeToggle = container.querySelector<HTMLButtonElement>('.think-block-python-toggle');
+        expect(codeToggle?.getAttribute('aria-expanded')).toBe('false');
+        expect(codeToggle?.textContent).toContain('Show code');
+        expect(container.querySelector('.think-block-python-disclosure')?.getAttribute('aria-hidden'))
+            .toBe('true');
+
+        act(() => codeToggle?.click());
+
+        expect(codeToggle?.getAttribute('aria-expanded')).toBe('true');
+        expect(codeToggle?.textContent).toContain('Hide code');
+        expect(container.querySelector('.think-block-python-disclosure')?.getAttribute('aria-hidden'))
+            .toBe('false');
+        expect(container.querySelector('.think-block-python-code')?.textContent)
+            .toBe('import matplotlib.pyplot as plt\nprint("<script>safe</script>")');
+        expect(container.querySelector('.think-block-python-code .token.keyword')?.textContent)
+            .toBe('import');
+        expect(container.querySelector('.think-block-python-code script')).toBeNull();
+    });
+
+    it('keeps multiple Python purposes in chronological tool order', () => {
+        const firstRunning = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-1',
+            status: 'python_running',
+            code: 'print(5050)',
+            purpose: 'Calculate the initial portfolio metrics.',
+        });
+        const firstDone = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-1',
+            status: 'python_completed',
+        });
+        const secondRunning = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-2',
+            status: 'python_running',
+            code: 'print(5050 ** 2)',
+            purpose: 'Use the verified metrics for the stress test.',
+        });
+        const secondDone = encodePythonActivity({
+            type: 'python_execution',
+            id: 'run-2',
+            status: 'python_completed',
+        });
+
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        act(() => {
+            root?.render(React.createElement(ThinkBlock, {
+                content: `${firstRunning}\n${firstDone}\nThe first result is valid.\n${secondRunning}\n${secondDone}`,
+                openTime: 100,
+                closeTime: 300,
+            }));
+        });
+        act(() => container?.querySelector<HTMLButtonElement>('.think-block-header')?.click());
+
+        const purposes = Array.from(container.querySelectorAll('.think-block-python-purpose'));
+        expect(purposes.map((node) => node.textContent)).toEqual([
+            'Calculate the initial portfolio metrics.',
+            'Use the verified metrics for the stress test.',
+        ]);
+        const review = Array.from(container.querySelectorAll('.think-block-step-body'))
+            .find((node) => node.textContent === 'The first result is valid.');
+        expect(purposes[0]?.compareDocumentPosition(review as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+        expect(review?.compareDocumentPosition(purposes[1] as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
     });
 });
 

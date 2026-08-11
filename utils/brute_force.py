@@ -8,10 +8,25 @@ from typing import DefaultDict
 
 from flask import request
 
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_DURATION = 900  # 15m
-PROGRESSIVE_LOCKOUT = True
-MAX_LOCKOUT_DURATION = 3600  # 1h max.
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        return max(minimum, min(maximum, int(os.getenv(name, str(default)))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+MAX_LOGIN_ATTEMPTS = _bounded_env_int("BRUTE_FORCE_MAX_LOGIN_ATTEMPTS", 5, 1, 1000)
+LOCKOUT_DURATION = _bounded_env_int("BRUTE_FORCE_LOCKOUT_SECONDS", 900, 1, 86400)
+PROGRESSIVE_LOCKOUT = _env_bool("BRUTE_FORCE_PROGRESSIVE_LOCKOUT", True)
+MAX_LOCKOUT_DURATION = _bounded_env_int("BRUTE_FORCE_MAX_LOCKOUT_SECONDS", 3600, 1, 604800)
 _attempt_store: DefaultDict[str, list[float]] = defaultdict(list)
 _lockout_store: dict[str, float | int] = {}
 _store_lock = RLock()

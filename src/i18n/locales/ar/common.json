@@ -44,9 +44,11 @@
     },
     "actions": {
       "loginLoading": "جارٍ تسجيل الدخول...",
+      "loginWithApple": "تسجيل الدخول باستخدام Apple",
       "loginWithGoogle": "سجّل الدخول باستخدام Google",
       "loginWithTelegram": "المتابعة باستخدام Telegram",
       "registerLoading": "جارٍ إنشاء الحساب...",
+      "registerWithApple": "إنشاء حساب باستخدام Apple",
       "registerWithGoogle": "سجّل باستخدام Google",
       "registerWithTelegram": "التسجيل باستخدام Telegram",
       "telegramLoading": "جارٍ فتح Telegram...",
@@ -70,7 +72,9 @@
       "turnstileLoadError": "تعذّر تحميل التحقق من Cloudflare. حدّث الصفحة أو عطّل أدوات الحظر لهذا الموقع.",
       "requestError": "خطأ في الشبكة أو الخادم",
       "telegramError": "تعذّر تسجيل الدخول باستخدام Telegram. حاول مرة أخرى.",
-      "telegramUnavailable": "تسجيل الدخول عبر Telegram غير متاح الآن. حدّث الصفحة وحاول مرة أخرى."
+      "telegramUnavailable": "تسجيل الدخول عبر Telegram غير متاح الآن. حدّث الصفحة وحاول مرة أخرى.",
+      "appleEmailInUse": "بريد Apple هذا مستخدم في حساب آخر. سجّل الدخول أولًا ثم اربط Apple من الإعدادات.",
+      "appleFailed": "تعذّر تسجيل الدخول باستخدام Apple. حاول مرة أخرى."
     },
     "passwordStrength": {
       "label": "قوة كلمة المرور",
@@ -97,7 +101,14 @@
     "collapse": "طي الأفكار",
     "completedLabel": "فكّر لمدة {{time}}",
     "timeMilliseconds": "{{value}} مللي ثانية",
-    "timeSeconds": "{{value}} ث"
+    "timeSeconds": "{{value}} ث",
+    "python": {
+      "running": "جارٍ تنفيذ كود Python...",
+      "completed": "اكتمل تنفيذ Python",
+      "failed": "فشل تنفيذ Python",
+      "showCode": "عرض الكود",
+      "hideCode": "إخفاء الكود"
+    }
   },
   "landing": {
     "ariaLabel": "شاشة البدء",
@@ -216,6 +227,21 @@
     "resizeHandle": "Resize canvas",
     "card": {
       "openAria": "Open {{name}} in canvas"
+    },
+    "pythonTerminal": {
+      "ariaLabel": "Python terminal",
+      "title": "Terminal",
+      "run": "Run",
+      "running": "Running…",
+      "success": "Done",
+      "failed": "Error",
+      "empty": "Run the code to see its output.",
+      "noOutput": "The code finished without output.",
+      "duration": "Time: {{duration}} ms",
+      "requestFailed": "Python code could not be executed.",
+      "resize": "Resize Python terminal",
+      "repair": "Fix",
+      "repairPrompt": "The Python code in Canvas failed to execute. Fix the code in the current Canvas using the error below.\n\nError:\n{{error}}\n\nCurrent code:\n```python\n{{code}}\n```\n\nApply the fix in Canvas and briefly explain what changed."
     }
   },
   "beatbox": {
@@ -397,16 +423,19 @@
       "profileUpdated": "تم تحديث الملف الشخصي",
       "updateError": "فشل التحديث",
       "loginMethods": {
+        "apple": "Apple",
         "google": "Google",
         "telegram": "Telegram",
         "connected": "مرتبط",
         "notConnected": "غير مرتبط",
         "botReady": "البوت جاهز",
         "syncRequired": "المزامنة مطلوبة",
+        "linkApple": "ربط حساب Apple",
         "linkGoogle": "ربط حساب Google",
         "linkTelegram": "ربط حساب Telegram",
         "syncTelegram": "المزامنة مع البوت",
         "linkingTelegram": "جارٍ ربط Telegram...",
+        "appleLinked": "تم ربط حساب Apple بنجاح.",
         "googleLinked": "تم ربط حساب Google بنجاح.",
         "telegramLinked": "تم ربط حساب Telegram بنجاح.",
         "telegramSynced": "تمت مزامنة حساب Telegram مع البوت.",
@@ -414,6 +443,7 @@
         "emailInUse": "بريد Google هذا مستخدم في حساب آخر.",
         "authRequired": "انتهت الجلسة. سجّل الدخول وحاول الربط مجددًا.",
         "googleFailed": "تعذر ربط حساب Google.",
+        "appleFailed": "تعذّر ربط حساب Apple.",
         "telegramFailed": "تعذر ربط حساب Telegram."
       },
       "validation": {
@@ -995,6 +1025,14 @@
   },
   "widgets": {
     "creating": "Creating {{tool}}"
+  },
+  "visualizations": {
+    "defaultTitle": "تصور تفاعلي",
+    "invalid": "تعذر عرض هذه الكتلة التفاعلية.",
+    "tooLarge": "هذه الكتلة التفاعلية كبيرة جدًا بحيث لا يمكن عرضها بأمان.",
+    "followUpTitle": "المتابعة في الدردشة",
+    "followUpSend": "إرسال",
+    "cancel": "إلغاء"
   },
   "htmlPreview": {
     "title": "HTML preview"

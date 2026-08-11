@@ -11,6 +11,7 @@ from services.github_app import (
     GitHubAPIError,
     parse_repo_full_name,
 )
+from services.python_runner import available_input_files, execute_python, python_runner_available
 from services.web_search import public_sources, run_web_search
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class ModelToolResult:
 
 
 def model_tool_declarations(
-    user_id: int | None, *, enable_web: bool = False
+    user_id: int | None, *, enable_web: bool = False, input_files: Any = None
 ) -> list[dict[str, Any]]:
     declarations: list[dict[str, Any]] = []
     if WEB_SEARCH_ENABLED and enable_web:
@@ -116,6 +117,58 @@ def model_tool_declarations(
                 },
             ]
         )
+    if python_runner_available(user_id):
+        available_names = available_input_files(input_files)
+        input_description = (
+            " Read-only input files available in REMIND_INPUT_DIR: "
+            + ", ".join(json.dumps(name, ensure_ascii=False) for name in available_names)
+            + "."
+            if available_names
+            else " No input files are available for this call."
+        )
+        declarations.append(
+            {
+                "name": "python_execute",
+                "description": (
+                    "Execute a self-contained Python 3.12 script in ReMind's ephemeral, "
+                    "network-disabled, resource-limited runner. Use for data analysis, charts, "
+                    "PDF work, spreadsheets, or calculations. You must call this tool when the "
+                    "user explicitly asks to run Python or names Matplotlib, NumPy, pandas, "
+                    "Pillow, pypdf, ReportLab, or openpyxl; do not substitute an interactive "
+                    "visualization, canvas, or unexecuted code. Save deliverables only to the "
+                    "REMIND_OUTPUT_DIR environment path; read supplied files only from "
+                    "REMIND_INPUT_DIR. After each result, inspect success, output, errors, and "
+                    "artifact metadata in internal reasoning before answering or making another "
+                    "call. A successful process exit does not prove task completion. Complete "
+                    "all requested sections, reject placeholders, derive validation flags from "
+                    "real checks, and reopen structured deliverables to verify them. "
+                    "Installed: numpy, pandas, matplotlib, Pillow, pypdf, "
+                    "reportlab, openpyxl." + input_description
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": (
+                                "Complete Python script, maximum 24000 characters. The runtime "
+                                "is fresh on every call and has no network access."
+                            ),
+                        },
+                        "purpose": {
+                            "type": "string",
+                            "description": (
+                                "A concise user-language progress summary, maximum 1000 "
+                                "characters: what this execution will verify or produce and, "
+                                "for later calls, which prior result led to it. State conclusions, "
+                                "not hidden chain-of-thought."
+                            ),
+                        }
+                    },
+                    "required": ["code", "purpose"],
+                },
+            }
+        )
     return declarations
 
 
@@ -124,6 +177,8 @@ def execute_model_tool(
     arguments: dict[str, Any],
     *,
     user_id: int | None,
+    input_files: Any = None,
+    allow_artifacts: bool = True,
 ) -> ModelToolResult:
     if name == "web_search":
         return _execute_web_search(arguments)
@@ -133,7 +188,25 @@ def execute_model_tool(
         return _execute_github_repository_map(user_id, arguments)
     if name == "github_read_file":
         return _execute_github_read_file(user_id, arguments)
+    if name == "python_execute":
+        return _execute_python(user_id, arguments, input_files, allow_artifacts)
     return ModelToolResult({"ok": False, "error": "unknown_tool"})
+
+
+def _execute_python(
+    user_id: int | None,
+    arguments: dict[str, Any],
+    input_files: Any,
+    allow_artifacts: bool,
+) -> ModelToolResult:
+    result = execute_python(
+        arguments.get("code"),
+        user_id=user_id,
+        input_files=input_files,
+        allow_artifacts=allow_artifacts,
+    )
+    events = [{"python_artifacts": result.artifacts}] if result.artifacts else []
+    return ModelToolResult(result.output, events=events)
 
 
 def serialize_tool_output(output: dict[str, Any]) -> str:

@@ -2,9 +2,34 @@
 
 export interface components {
   schemas: {
+    AppleChallengeResponse: {
+      challenge: string;
+      expires_in: number;
+      nonce: string;
+    };
+    AppleLoginRequest: {
+      challenge: string;
+      identity_token: string;
+      name?: {
+        first_name?: string | null;
+        last_name?: string | null;
+        middle_name?: string | null;
+      } | null;
+    };
     AuthCheckResponse: {
       authenticated: boolean;
       user: components["schemas"]["User"] | null;
+    };
+    AuthConfigResponse: {
+      apple_login_url?: string | null;
+      apple_native_available?: boolean;
+      apple_web_available?: boolean;
+      gauth_available?: boolean;
+      google_login_url?: string;
+      telegram_available?: boolean;
+      turnstile_required?: boolean;
+      turnstile_site_key?: string | null;
+      [key: string]: unknown;
     };
     AuthErrorResponse: {
       error: string;
@@ -18,6 +43,21 @@ export interface components {
     AuthLoginResponse: {
       message: string;
       user: components["schemas"]["User"];
+    };
+    CanvasPythonExecuteRequest: {
+      code: string;
+    };
+    CanvasPythonExecuteResponse: {
+      duration_ms?: number;
+      error?: string | null;
+      exit_code?: number | null;
+      ok: boolean;
+      request_id?: string | null;
+      stderr?: string;
+      stderr_truncated?: boolean;
+      stdout?: string;
+      stdout_truncated?: boolean;
+      timed_out?: boolean;
     };
     CanvasSaveRequest: {
       textdoc: components["schemas"]["CanvasTextdoc"];
@@ -250,7 +290,7 @@ export interface components {
       [key: string]: unknown;
     };
     User: {
-      auth_methods?: ("google" | "password" | "telegram")[];
+      auth_methods?: ("apple" | "google" | "password" | "telegram")[];
       created_at?: string | null;
       email: string | null;
       id: number;
@@ -263,12 +303,85 @@ export interface components {
 }
 
 export interface paths {
+  "/api/auth/apple": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AppleLoginRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AuthLoginResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "409": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/apple/nonce": {
+    get: {
+      parameters: {
+        query: {
+          mode?: "login" | "link";
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AppleChallengeResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/api/auth/check": {
     get: {
       responses: {
         "200": {
           content: {
             "application/json": components["schemas"]["AuthCheckResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/config": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AuthConfigResponse"];
           };
         };
       };
@@ -428,6 +541,37 @@ export interface paths {
           };
         };
         "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/python/execute": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["CanvasPythonExecuteRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["CanvasPythonExecuteResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "503": {
           content: {
             "application/json": components["schemas"]["ErrorResponse"];
           };

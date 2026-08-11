@@ -10,6 +10,7 @@
 @import "./legacy/rail-history-search.css";
 @import "./legacy/accessibility-modes.css";
 @import "./legacy/rich-content-visualizations.css";
+@import "./components/chat/visualizations.css";
 @import "./legacy/image-generation-placeholder.css";
 @import "./legacy/critical-loader.css";
 @import "./legacy/rail-chat-list-overrides.css";

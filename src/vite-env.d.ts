@@ -4,7 +4,11 @@ type PrismModule = typeof import('prismjs');
 
 interface Window {
   pageLoadTime: number;
-  openImageLightbox?: (imageSrc: string, messageId?: string) => void;
+  openImageLightbox?: (
+    imageSrc: string,
+    messageId?: string,
+    options?: { canRegenerate?: boolean; downloadName?: string }
+  ) => void;
   closeImageLightbox?: () => void;
   webkitAudioContext?: typeof AudioContext;
   Prism?: PrismModule;

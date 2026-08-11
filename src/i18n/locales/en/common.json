@@ -44,9 +44,11 @@
     },
     "actions": {
       "loginLoading": "Signing in...",
+      "loginWithApple": "Sign in with Apple",
       "loginWithGoogle": "Sign in with Google",
       "loginWithTelegram": "Continue with Telegram",
       "registerLoading": "Creating account...",
+      "registerWithApple": "Sign up with Apple",
       "registerWithGoogle": "Sign up with Google",
       "registerWithTelegram": "Sign up with Telegram",
       "telegramLoading": "Opening Telegram...",
@@ -70,7 +72,9 @@
       "turnstileLoadError": "Cloudflare verification did not load. Refresh the page or disable blockers for this site.",
       "requestError": "Network or server error",
       "telegramError": "Could not sign in with Telegram. Please try again.",
-      "telegramUnavailable": "Telegram Login is unavailable right now. Refresh the page and try again."
+      "telegramUnavailable": "Telegram Login is unavailable right now. Refresh the page and try again.",
+      "appleEmailInUse": "This Apple email is already used by another account. Sign in first, then link Apple in settings.",
+      "appleFailed": "Could not sign in with Apple. Please try again."
     },
     "passwordStrength": {
       "label": "Password strength",
@@ -97,7 +101,14 @@
     "collapse": "Collapse thoughts",
     "completedLabel": "Thought for {{time}}",
     "timeMilliseconds": "{{value}}ms",
-    "timeSeconds": "{{value}}s"
+    "timeSeconds": "{{value}}s",
+    "python": {
+      "running": "Running Python code...",
+      "completed": "Python execution completed",
+      "failed": "Python execution failed",
+      "showCode": "Show code",
+      "hideCode": "Hide code"
+    }
   },
   "landing": {
     "ariaLabel": "Start screen",
@@ -216,6 +227,21 @@
     "resizeHandle": "Resize canvas",
     "card": {
       "openAria": "Open {{name}} in canvas"
+    },
+    "pythonTerminal": {
+      "ariaLabel": "Python terminal",
+      "title": "Terminal",
+      "run": "Run",
+      "running": "Running…",
+      "success": "Done",
+      "failed": "Error",
+      "empty": "Run the code to see its output.",
+      "noOutput": "The code finished without output.",
+      "duration": "Time: {{duration}} ms",
+      "requestFailed": "Python code could not be executed.",
+      "resize": "Resize Python terminal",
+      "repair": "Fix",
+      "repairPrompt": "The Python code in Canvas failed to execute. Fix the code in the current Canvas using the error below.\n\nError:\n{{error}}\n\nCurrent code:\n```python\n{{code}}\n```\n\nApply the fix in Canvas and briefly explain what changed."
     }
   },
   "beatbox": {
@@ -397,16 +423,19 @@
       "profileUpdated": "Profile updated",
       "updateError": "Update failed",
       "loginMethods": {
+        "apple": "Apple",
         "google": "Google",
         "telegram": "Telegram",
         "connected": "Connected",
         "notConnected": "Not connected",
         "botReady": "Bot ready",
         "syncRequired": "Sync required",
+        "linkApple": "Link Apple account",
         "linkGoogle": "Link Google account",
         "linkTelegram": "Link Telegram account",
         "syncTelegram": "Sync with bot",
         "linkingTelegram": "Connecting Telegram...",
+        "appleLinked": "Apple account linked successfully.",
         "googleLinked": "Google account linked successfully.",
         "telegramLinked": "Telegram account linked successfully.",
         "telegramSynced": "Telegram account synchronized with the bot.",
@@ -414,6 +443,7 @@
         "emailInUse": "This Google email is already used by another account.",
         "authRequired": "Your session expired. Sign in and try linking again.",
         "googleFailed": "Failed to link the Google account.",
+        "appleFailed": "Failed to link the Apple account.",
         "telegramFailed": "Failed to link the Telegram account."
       },
       "validation": {
@@ -995,6 +1025,14 @@
   },
   "widgets": {
     "creating": "Creating {{tool}}"
+  },
+  "visualizations": {
+    "defaultTitle": "Interactive visualization",
+    "invalid": "This interactive block could not be rendered.",
+    "tooLarge": "This interactive block is too large to render safely.",
+    "followUpTitle": "Continue in chat",
+    "followUpSend": "Send",
+    "cancel": "Cancel"
   },
   "htmlPreview": {
     "title": "HTML preview"

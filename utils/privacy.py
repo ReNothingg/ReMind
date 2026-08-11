@@ -148,6 +148,7 @@ def delete_user_data(user_id, delete_account=False):
     from utils.audit_log import AuditEvents, log_audit_event
     from utils.auth import (
         AIResponseFeedback,
+        AppleAuthChallenge,
         AuthIdentity,
         ChatShare,
         GitHubAgentTask,
@@ -198,6 +199,10 @@ def delete_user_data(user_id, delete_account=False):
         settings_deleted = UserSettings.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["settings"] = settings_deleted
         if delete_account:
+            apple_challenges_deleted = AppleAuthChallenge.query.filter_by(
+                link_user_id=user_id
+            ).delete()
+            results["items_deleted"]["apple_auth_challenges"] = apple_challenges_deleted
             auth_identities_deleted = AuthIdentity.query.filter_by(user_id=user_id).delete()
             results["items_deleted"]["auth_identities"] = auth_identities_deleted
             user = db.session.get(User, user_id)
@@ -246,6 +251,7 @@ def delete_user_data(user_id, delete_account=False):
 def anonymize_user_data(user_id):
     from utils.auth import (
         AIResponseFeedback,
+        AppleAuthChallenge,
         AuthIdentity,
         GitHubAgentTask,
         GitHubInstallation,
@@ -267,6 +273,7 @@ def anonymize_user_data(user_id):
     user.reset_token = None
     user.oauth_id = None
     user.oauth_provider = None
+    AppleAuthChallenge.query.filter_by(link_user_id=user_id).delete()
     AuthIdentity.query.filter_by(user_id=user_id).delete()
     GitHubAgentTask.query.filter_by(user_id=user_id).delete()
     GitHubInstallation.query.filter_by(user_id=user_id).delete()

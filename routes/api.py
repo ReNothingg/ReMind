@@ -6,6 +6,7 @@ from routes.features.feedback import register_feedback_routes
 from routes.features.github import register_github_routes
 from routes.features.minds import register_mind_routes
 from routes.features.privacy import register_privacy_routes
+from routes.features.python import register_python_routes
 from routes.features.sessions import register_session_routes
 from routes.features.share import register_share_routes
 from routes.features.system import register_system_routes
@@ -21,5 +22,6 @@ register_mind_routes(api_bp)
 register_session_routes(api_bp)
 register_share_routes(api_bp)
 register_privacy_routes(api_bp)
+register_python_routes(api_bp)
 register_system_routes(api_bp)
 register_user_state_routes(api_bp)

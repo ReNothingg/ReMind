@@ -9,6 +9,7 @@ const ChatContainer = ({
     onEdit,
     onSwitchVariant,
     onBeatboxStateChange,
+    onSendMessage = null,
     currentSessionId = null,
     isReadOnly = false
 }) => {
@@ -91,6 +92,7 @@ const ChatContainer = ({
                         onEdit={isReadOnly ? null : onEdit}
                         onSwitchVariant={onSwitchVariant}
                         onBeatboxStateChange={onBeatboxStateChange}
+                        onSendMessage={isReadOnly ? null : onSendMessage}
                     />
                 ))}
                 <div ref={chatEndRef} className="clear-both float-left" />

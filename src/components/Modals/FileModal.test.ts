@@ -81,4 +81,25 @@ describe('FileModal tabs', () => {
         expect(secondPanel?.hidden).toBe(false);
         expect(secondPanel?.getAttribute('aria-labelledby')).toBe(tabs[1].id);
     });
+
+    it('keeps the close control inside the header without absolute positioning', () => {
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(FileModal, {
+                isOpen: true,
+                onClose: vi.fn(),
+                file: { name: 'preview.txt', size: 48, type: 'text/plain' },
+                content: 'preview',
+            }));
+        });
+
+        const header = container.querySelector('.file-modal-info-header');
+        const close = container.querySelector<HTMLButtonElement>('.file-modal-close');
+        expect(header?.contains(close)).toBe(true);
+        expect(close?.classList.contains('absolute')).toBe(false);
+        expect(close?.querySelector('svg')).not.toBeNull();
+    });
 });

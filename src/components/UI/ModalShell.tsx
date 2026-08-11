@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { KeyboardEvent, MouseEventHandler, PropsWithChildren, Ref } from 'react';
 import { cn } from '../../utils/cn';
 
@@ -116,7 +117,7 @@ const ModalShell = ({
         }
     };
 
-    return (
+    return createPortal(
         <div
             ref={(node) => {
                 assignRef(overlayRef, node);
@@ -147,7 +148,8 @@ const ModalShell = ({
             >
                 {children}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

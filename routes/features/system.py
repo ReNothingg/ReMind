@@ -317,6 +317,26 @@ def register_system_routes(api_bp):
         )
         return Response(body, mimetype="text/plain; charset=utf-8")
 
+    @api_bp.route("/.well-known/apple-app-site-association", methods=["GET"])
+    def apple_app_site_association():
+        response = jsonify(
+            {
+                "applinks": {
+                    "details": [
+                        {
+                            "appIDs": ["A7AA4W5KXR.synvexai.remind"],
+                            "components": [
+                                {"/": "/c/*"}
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
     @api_bp.route("/.well-known/change-password", methods=["GET"])
     def well_known_change_password():
         return redirect("/forgot_password", code=302)

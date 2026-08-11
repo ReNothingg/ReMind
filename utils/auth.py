@@ -12,7 +12,18 @@ import jwt
 import requests
 from authlib.integrations.base_client.errors import MismatchingStateError
 from authlib.integrations.flask_client import OAuth
-from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Response,
+    current_app,
+    flash,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import BadData, URLSafeTimedSerializer
 from sqlalchemy import bindparam, func, inspect, text
@@ -51,8 +62,20 @@ TELEGRAM_BOT_USER_ID_MAX = (1 << 52) - 1
 TELEGRAM_LINK_TOKEN_TTL_SECONDS = 600
 TELEGRAM_LINK_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
 TELEGRAM_LINK_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{24}$")
-SUPPORTED_AUTH_PROVIDERS = frozenset({"google", "telegram"})
+APPLE_ISSUER = "https://appleid.apple.com"
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_AUTHORIZE_URL = "https://appleid.apple.com/auth/authorize"
+APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token"
+APPLE_AUTH_CHALLENGE_TTL_SECONDS = 600
+APPLE_ID_TOKEN_MAX_LENGTH = 16_384
+APPLE_TOKEN_MAX_AGE_SECONDS = 86_400
+APPLE_ALLOWED_SIGNING_ALGORITHMS = ("RS256",)
+APPLE_CHALLENGE_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
+APPLE_SUBJECT_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
+APPLE_OAUTH_BINDING_COOKIE = "__Secure-remind_apple_oauth"
+SUPPORTED_AUTH_PROVIDERS = frozenset({"apple", "google", "telegram"})
 _telegram_jwks_client = None
+_apple_jwks_client = None
 
 
 class TelegramNonceMismatchError(jwt.InvalidTokenError):
@@ -64,6 +87,18 @@ class TelegramSubjectError(jwt.InvalidTokenError):
 
 
 class AuthIdentityConflictError(ValueError):
+    pass
+
+
+class AppleAuthError(ValueError):
+    pass
+
+
+class AppleNonceMismatchError(jwt.InvalidTokenError):
+    pass
+
+
+class AppleReplayError(jwt.InvalidTokenError):
     pass
 
 
@@ -240,6 +275,35 @@ class AuthIdentity(db.Model):
     provider_user_id = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     user = db.relationship("User", back_populates="auth_identities")
+
+
+class AppleAuthChallenge(db.Model):
+    """Short-lived one-time challenge. Raw state and nonce values are never persisted."""
+
+    __tablename__ = "apple_auth_challenge"
+
+    id = db.Column(db.Integer, primary_key=True)
+    challenge_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    nonce_hash = db.Column(db.String(64), nullable=False)
+    flow = db.Column(db.String(12), nullable=False)
+    mode = db.Column(db.String(12), nullable=False)
+    link_user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=True
+    )
+    redirect_to = db.Column(db.String(500), nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    consumed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AppleTokenReplay(db.Model):
+    """Digest-only replay ledger for verified Apple identity tokens."""
+
+    __tablename__ = "apple_token_replay"
+
+    token_hash = db.Column(db.String(64), primary_key=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
 class TelegramLinkRequest(db.Model):
@@ -972,6 +1036,437 @@ def _build_unique_username(*candidates: str | None) -> str:
     return f"user_{secrets.token_hex(6)}"[:50]
 
 
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _valid_apple_web_redirect_uri(
+    raw_value: str | None,
+    allowed_hosts: Any = None,
+) -> str:
+    candidate = str(raw_value or "").strip()
+    parsed = urlparse(candidate)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.path != "/login/apple/callback"
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+        or (allowed_hosts is not None and not _is_allowed_hostname(parsed.hostname, allowed_hosts))
+    ):
+        return ""
+    return candidate
+
+
+def _apple_web_client_credentials_available(
+    *,
+    service_id: str,
+    client_secret: str,
+    team_id: str,
+    key_id: str,
+    private_key: str,
+    private_key_path: str,
+) -> bool:
+    if not service_id or not re.fullmatch(r"[A-Za-z0-9.-]{3,255}", service_id):
+        return False
+    if client_secret:
+        return len(client_secret) <= 8_192
+    return bool(
+        re.fullmatch(r"[A-Z0-9]{10}", team_id or "")
+        and re.fullmatch(r"[A-Z0-9]{10}", key_id or "")
+        and (private_key or private_key_path)
+    )
+
+
+def _read_apple_private_key(raw_key: str, key_path: str) -> str:
+    candidate = str(raw_key or "").replace("\\n", "\n").strip()
+    if not candidate and key_path:
+        from pathlib import Path
+
+        path = Path(key_path).expanduser()
+        if not path.is_file() or path.stat().st_size > 65_536:
+            raise AppleAuthError("apple_client_secret_unavailable")
+        candidate = path.read_text(encoding="utf-8").strip()
+    if (
+        not candidate.startswith("-----BEGIN PRIVATE KEY-----")
+        or not candidate.endswith("-----END PRIVATE KEY-----")
+        or len(candidate) > 65_536
+    ):
+        raise AppleAuthError("apple_client_secret_unavailable")
+    return candidate
+
+
+def _apple_client_secret(
+    *,
+    client_id: str,
+    configured_secret: str,
+    team_id: str,
+    key_id: str,
+    private_key: str,
+    private_key_path: str,
+) -> str:
+    if configured_secret:
+        if len(configured_secret) > 8_192:
+            raise AppleAuthError("apple_client_secret_unavailable")
+        return configured_secret
+    if not re.fullmatch(r"[A-Z0-9]{10}", team_id or "") or not re.fullmatch(
+        r"[A-Z0-9]{10}", key_id or ""
+    ):
+        raise AppleAuthError("apple_client_secret_unavailable")
+    now = int(datetime.now().timestamp())
+    return jwt.encode(
+        {
+            "iss": team_id,
+            "iat": now,
+            "exp": now + 600,
+            "aud": APPLE_ISSUER,
+            "sub": client_id,
+        },
+        _read_apple_private_key(private_key, private_key_path),
+        algorithm="ES256",
+        headers={"kid": key_id},
+    )
+
+
+def _exchange_apple_authorization_code(
+    code: str,
+    *,
+    client_id: str,
+    redirect_uri: str,
+    configured_secret: str,
+    team_id: str,
+    key_id: str,
+    private_key: str,
+    private_key_path: str,
+) -> str:
+    if not isinstance(code, str) or not code or len(code) > 4_096:
+        raise AppleAuthError("invalid_apple_authorization_code")
+    client_secret = _apple_client_secret(
+        client_id=client_id,
+        configured_secret=configured_secret,
+        team_id=team_id,
+        key_id=key_id,
+        private_key=private_key,
+        private_key_path=private_key_path,
+    )
+    try:
+        response = requests.post(
+            APPLE_TOKEN_URL,
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": redirect_uri,
+            },
+            headers={"Accept": "application/json"},
+            timeout=10,
+            allow_redirects=False,
+        )
+    except requests.RequestException as exc:
+        raise AppleAuthError("apple_token_exchange_unavailable") from exc
+    if response.status_code != 200:
+        raise AppleAuthError("apple_authorization_code_rejected")
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise AppleAuthError("apple_token_exchange_unavailable") from exc
+    identity_token = payload.get("id_token") if isinstance(payload, dict) else None
+    if (
+        not isinstance(identity_token, str)
+        or not identity_token
+        or len(identity_token) > APPLE_ID_TOKEN_MAX_LENGTH
+    ):
+        raise AppleAuthError("apple_token_exchange_unavailable")
+    return identity_token
+
+
+def _apple_web_binding_serializer(secret_key: str) -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(secret_key, salt="apple-web-oauth-binding")
+
+
+def _encode_apple_web_binding(secret_key: str, challenge: str) -> str:
+    return _apple_web_binding_serializer(secret_key).dumps(
+        {"aud": "remind-apple-web", "challenge": challenge}
+    )
+
+
+def _decode_apple_web_binding(secret_key: str, token: str) -> str | None:
+    if not secret_key or not token:
+        return None
+    try:
+        payload = _apple_web_binding_serializer(secret_key).loads(
+            token, max_age=APPLE_AUTH_CHALLENGE_TTL_SECONDS
+        )
+    except BadData:
+        return None
+    if not isinstance(payload, dict) or payload.get("aud") != "remind-apple-web":
+        return None
+    challenge = payload.get("challenge")
+    return challenge if isinstance(challenge, str) else None
+
+
+def _issue_apple_auth_challenge(
+    *,
+    flow: str,
+    mode: str,
+    link_user_id: int | None = None,
+    redirect_to: str = "",
+) -> tuple[str, str]:
+    if flow not in {"native", "web"} or mode not in {"login", "link"}:
+        raise AppleAuthError("invalid_apple_auth_flow")
+    if mode == "link" and not link_user_id:
+        raise AppleAuthError("auth_required")
+
+    now = datetime.utcnow()
+    # Keep the two digest-only tables bounded without retaining stale authentication data.
+    AppleAuthChallenge.query.filter(AppleAuthChallenge.expires_at <= now).delete(
+        synchronize_session=False
+    )
+    AppleTokenReplay.query.filter(AppleTokenReplay.expires_at <= now).delete(
+        synchronize_session=False
+    )
+
+    challenge = secrets.token_urlsafe(32)
+    raw_nonce = secrets.token_urlsafe(32)
+    record = AppleAuthChallenge(
+        challenge_hash=_sha256_text(challenge),
+        nonce_hash=_sha256_text(raw_nonce),
+        flow=flow,
+        mode=mode,
+        link_user_id=link_user_id,
+        redirect_to=(redirect_to or "")[:500],
+        expires_at=now + timedelta(seconds=APPLE_AUTH_CHALLENGE_TTL_SECONDS),
+    )
+    db.session.add(record)
+    db.session.commit()
+    return challenge, raw_nonce
+
+
+def _consume_apple_auth_challenge(challenge: str, *, flow: str) -> dict[str, Any]:
+    normalized = str(challenge or "").strip()
+    if flow not in {"native", "web"} or not APPLE_CHALLENGE_RE.fullmatch(normalized):
+        raise AppleAuthError("invalid_or_expired_challenge")
+
+    now = datetime.utcnow()
+    record = AppleAuthChallenge.query.filter_by(
+        challenge_hash=_sha256_text(normalized),
+        flow=flow,
+    ).first()
+    if not record or record.consumed_at is not None or record.expires_at <= now:
+        raise AppleAuthError("invalid_or_expired_challenge")
+
+    snapshot = {
+        "nonce_hash": record.nonce_hash,
+        "mode": record.mode,
+        "link_user_id": record.link_user_id,
+        "redirect_to": record.redirect_to or "",
+    }
+    updated = AppleAuthChallenge.query.filter(
+        AppleAuthChallenge.id == record.id,
+        AppleAuthChallenge.consumed_at.is_(None),
+        AppleAuthChallenge.expires_at > now,
+    ).update({"consumed_at": now}, synchronize_session=False)
+    if updated != 1:
+        db.session.rollback()
+        raise AppleAuthError("invalid_or_expired_challenge")
+    db.session.commit()
+    return snapshot
+
+
+def _revoke_pending_apple_link_challenges(user_id: int | None) -> None:
+    if not isinstance(user_id, int) or isinstance(user_id, bool) or user_id <= 0:
+        return
+    AppleAuthChallenge.query.filter(
+        AppleAuthChallenge.link_user_id == user_id,
+        AppleAuthChallenge.mode == "link",
+        AppleAuthChallenge.consumed_at.is_(None),
+    ).delete(synchronize_session=False)
+    db.session.commit()
+
+
+def _get_apple_jwks_client():
+    global _apple_jwks_client
+    if _apple_jwks_client is None:
+        _apple_jwks_client = jwt.PyJWKClient(
+            APPLE_JWKS_URL,
+            cache_keys=True,
+            cache_jwk_set=True,
+            lifespan=300,
+            timeout=5,
+        )
+    return _apple_jwks_client
+
+
+def _apple_subject(claims: dict) -> str:
+    subject = str(claims.get("sub") or "").strip()
+    if not APPLE_SUBJECT_RE.fullmatch(subject):
+        raise jwt.InvalidTokenError("Invalid Apple subject")
+    return subject
+
+
+def _verify_apple_identity_token(
+    id_token: str,
+    *,
+    audience: str,
+    expected_nonce_hash: str,
+) -> dict:
+    if not isinstance(id_token, str) or not id_token or len(id_token) > APPLE_ID_TOKEN_MAX_LENGTH:
+        raise jwt.InvalidTokenError("Invalid Apple identity token")
+    if not audience:
+        raise jwt.InvalidAudienceError("Apple audience is not configured")
+
+    unverified_header = jwt.get_unverified_header(id_token)
+    algorithm = unverified_header.get("alg")
+    key_id = unverified_header.get("kid")
+    if algorithm not in APPLE_ALLOWED_SIGNING_ALGORITHMS:
+        raise jwt.InvalidAlgorithmError("Unsupported Apple signing algorithm")
+    if not isinstance(key_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", key_id):
+        raise jwt.InvalidTokenError("Invalid Apple signing key identifier")
+
+    signing_key = _get_apple_jwks_client().get_signing_key_from_jwt(id_token)
+    claims = jwt.decode(
+        id_token,
+        key=signing_key.key,
+        algorithms=list(APPLE_ALLOWED_SIGNING_ALGORITHMS),
+        audience=audience,
+        issuer=APPLE_ISSUER,
+        leeway=30,
+        options={"require": ["aud", "exp", "iat", "iss", "nonce", "sub"]},
+    )
+
+    token_audience = claims.get("aud")
+    if not isinstance(token_audience, str) or not secrets.compare_digest(token_audience, audience):
+        raise jwt.InvalidAudienceError("Invalid Apple audience")
+
+    now = int(datetime.now().timestamp())
+    issued_at = claims.get("iat")
+    expires_at = claims.get("exp")
+    if (
+        isinstance(issued_at, bool)
+        or not isinstance(issued_at, int)
+        or isinstance(expires_at, bool)
+        or not isinstance(expires_at, int)
+        or issued_at > now + 30
+        or now - issued_at > APPLE_TOKEN_MAX_AGE_SECONDS
+        or expires_at <= issued_at
+        or expires_at - issued_at > APPLE_TOKEN_MAX_AGE_SECONDS
+    ):
+        raise jwt.InvalidTokenError("Invalid Apple token lifetime")
+
+    token_nonce = claims.get("nonce")
+    if (
+        not isinstance(token_nonce, str)
+        or not re.fullmatch(r"[a-f0-9]{64}", token_nonce)
+        or not secrets.compare_digest(token_nonce, expected_nonce_hash)
+    ):
+        raise AppleNonceMismatchError("Invalid Apple login nonce")
+    _apple_subject(claims)
+    return claims
+
+
+def _consume_apple_token_replay(id_token: str, claims: dict) -> None:
+    token_hash = hashlib.sha256(id_token.encode("utf-8")).hexdigest()
+    expires_at = datetime.utcfromtimestamp(int(claims["exp"]))
+    db.session.add(AppleTokenReplay(token_hash=token_hash, expires_at=expires_at))
+    try:
+        db.session.commit()
+    except IntegrityError as exc:
+        db.session.rollback()
+        raise AppleReplayError("Apple identity token was already used") from exc
+
+
+def _apple_email_is_verified(claims: dict) -> bool:
+    value = claims.get("email_verified")
+    return value is True or (isinstance(value, str) and value.lower() == "true")
+
+
+def _clean_apple_profile_name(value: Any, fallback: str) -> str:
+    if not isinstance(value, str):
+        return fallback
+    cleaned = "".join(char for char in value.strip() if unicodedata.category(char)[0] != "C")
+    return cleaned[:100] or fallback
+
+
+def _find_or_create_apple_user(claims: dict, display_name: str | None = None) -> User:
+    subject = _apple_subject(claims)
+    identity = _discard_orphan_auth_identity(_find_auth_identity("apple", subject))
+    user = identity.user if identity else None
+    if not user:
+        user = User.query.filter_by(oauth_provider="apple", oauth_id=subject).first()
+    if user:
+        _link_auth_identity(user, "apple", subject)
+        if not user.name and display_name:
+            user.name = _clean_apple_profile_name(display_name, user.username)
+        db.session.commit()
+        return user
+
+    raw_email = claims.get("email")
+    if (
+        not isinstance(raw_email, str)
+        or not raw_email.strip()
+        or not _apple_email_is_verified(claims)
+    ):
+        raise AppleAuthError("apple_email_required")
+    try:
+        email = InputValidator.validate_email(raw_email.strip().lower())
+    except ValidationError as exc:
+        raise AppleAuthError("apple_email_required") from exc
+    if User.query.filter(func.lower(User.email) == email.lower()).first():
+        raise AuthIdentityConflictError("email_in_use")
+
+    email_prefix = email.split("@", 1)[0]
+    username = _build_unique_username(email_prefix, display_name, f"apple_{subject[-8:]}")
+    account_name = _clean_apple_profile_name(display_name, username)
+    user = User(
+        username=username,
+        name=account_name,
+        email=email,
+        password=None,
+        is_confirmed=True,
+        oauth_provider="apple",
+        oauth_id=subject,
+    )
+    db.session.add(user)
+    db.session.flush()
+    _link_auth_identity(user, "apple", subject)
+    db.session.add(UserSettings(user_id=user.id))
+    db.session.commit()
+    return user
+
+
+def _link_apple_identity(user: User, claims: dict) -> User:
+    _link_auth_identity(user, "apple", _apple_subject(claims))
+    db.session.commit()
+    return user
+
+
+def _apple_display_name(raw_value: Any) -> str | None:
+    if isinstance(raw_value, str):
+        value = raw_value
+        if len(value) > 4_096:
+            return None
+        try:
+            raw_value = json.loads(value)
+        except (TypeError, ValueError):
+            return _clean_apple_profile_name(value, "") or None
+    if not isinstance(raw_value, dict):
+        return None
+    name = raw_value.get("name") if isinstance(raw_value.get("name"), dict) else raw_value
+    parts = [
+        name.get("firstName") or name.get("first_name"),
+        name.get("middleName") or name.get("middle_name"),
+        name.get("lastName") or name.get("last_name"),
+    ]
+    combined = " ".join(
+        part.strip()[:100] for part in parts if isinstance(part, str) and part.strip()
+    )
+    return _clean_apple_profile_name(combined, "") or None
+
+
 def _telegram_placeholder_email(telegram_subject: str) -> str:
     return f"telegram-{telegram_subject}@users.remind.invalid"
 
@@ -1269,6 +1764,8 @@ def _is_loopback_hostname(hostname: str) -> bool:
 
 def _is_safe_redirect_target(target: str, allowed_hosts) -> bool:
     if not target or not isinstance(target, str):
+        return False
+    if "\\" in target or any(ord(char) < 32 or ord(char) == 127 for char in target):
         return False
 
     parsed = urlparse(target)
@@ -1657,6 +2154,7 @@ def register_auth_routes(app):
 
         user_id = session.get("user_id")
         if user_id:
+            _revoke_pending_apple_link_challenges(user_id)
             log_audit_event(AuditEvents.AUTH_LOGOUT, {}, user_id)
         invalidate_session()
         flash("Вы вышли из системы", "info")
@@ -1673,6 +2171,219 @@ def register_auth_routes(app):
             return redirect(url_for("login"))
 
         return redirect("/#settings/account", code=302)
+
+    @app.route("/login/apple")
+    @rate_limit(login_limiter, "Too many login attempts")
+    def login_apple():
+        from config import (
+            ALLOWED_HOSTS,
+            APPLE_CLIENT_SECRET,
+            APPLE_KEY_ID,
+            APPLE_PRIVATE_KEY,
+            APPLE_PRIVATE_KEY_PATH,
+            APPLE_SERVICE_ID,
+            APPLE_TEAM_ID,
+            APPLE_WEB_REDIRECT_URI,
+            SECRET_KEY,
+            SESSION_COOKIE_DOMAIN,
+        )
+
+        callback_uri = _valid_apple_web_redirect_uri(
+            APPLE_WEB_REDIRECT_URI,
+            ALLOWED_HOSTS,
+        )
+        if not callback_uri or not _apple_web_client_credentials_available(
+            service_id=APPLE_SERVICE_ID,
+            client_secret=APPLE_CLIENT_SECRET,
+            team_id=APPLE_TEAM_ID,
+            key_id=APPLE_KEY_ID,
+            private_key=APPLE_PRIVATE_KEY,
+            private_key_path=APPLE_PRIVATE_KEY_PATH,
+        ):
+            return make_error(
+                "apple_web_unavailable",
+                status=503,
+                code="apple_web_unavailable",
+            )
+
+        mode = "link" if request.args.get("mode") == "link" else "login"
+        link_user_id = None
+        if mode == "link":
+            raw_user_id = session.get("user_id")
+            link_user = db.session.get(User, raw_user_id) if raw_user_id else None
+            if not link_user:
+                return make_error("auth_required", status=401, code="auth_required")
+            link_user_id = link_user.id
+
+        redirect_candidate = request.args.get("redirect_to") or request.headers.get("Referer") or ""
+        redirect_to = _normalize_redirect_target(redirect_candidate, ALLOWED_HOSTS)
+        try:
+            challenge, raw_nonce = _issue_apple_auth_challenge(
+                flow="web",
+                mode=mode,
+                link_user_id=link_user_id,
+                redirect_to=redirect_to,
+            )
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error("Apple web auth challenge creation failed (%s)", type(exc).__name__)
+            return make_error(
+                "apple_auth_unavailable",
+                status=503,
+                code="apple_auth_unavailable",
+            )
+
+        query = urlencode(
+            {
+                "client_id": APPLE_SERVICE_ID,
+                "redirect_uri": callback_uri,
+                "response_type": "code",
+                "response_mode": "form_post",
+                "scope": "name email",
+                "state": challenge,
+                "nonce": _sha256_text(raw_nonce),
+            }
+        )
+        response = redirect(f"{APPLE_AUTHORIZE_URL}?{query}")
+        cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
+        response.set_cookie(
+            APPLE_OAUTH_BINDING_COOKIE,
+            _encode_apple_web_binding(SECRET_KEY, challenge),
+            max_age=APPLE_AUTH_CHALLENGE_TTL_SECONDS,
+            httponly=True,
+            secure=True,
+            samesite="None",
+            domain=cookie_domain,
+            path=url_for("authorize_apple"),
+        )
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
+    @app.route("/login/apple/callback", methods=["POST"])
+    @rate_limit(login_limiter, "Too many login attempts")
+    def authorize_apple():
+        from config import (
+            ALLOWED_HOSTS,
+            APPLE_CLIENT_SECRET,
+            APPLE_KEY_ID,
+            APPLE_PRIVATE_KEY,
+            APPLE_PRIVATE_KEY_PATH,
+            APPLE_SERVICE_ID,
+            APPLE_TEAM_ID,
+            APPLE_WEB_REDIRECT_URI,
+            SECRET_KEY,
+            SESSION_COOKIE_DOMAIN,
+        )
+        from utils.session_security import regenerate_session
+
+        state = request.form.get("state", "")
+        authorization_code = request.form.get("code", "")
+        apple_error = request.form.get("error", "")
+        metadata = None
+
+        def finish_apple_redirect(location: str):
+            if metadata and metadata.get("mode") == "link":
+                try:
+                    link_user = db.session.get(User, metadata.get("link_user_id"))
+                    if link_user and not is_account_disabled(link_user):
+                        # Apple's required form_post callback is cross-site, so the
+                        # SameSite=Lax session cookie is absent. Restore only the
+                        # account captured by the signed, one-time link challenge.
+                        session.clear()
+                        session["user_id"] = link_user.id
+                        session["username"] = InputValidator.sanitize_output(link_user.username)
+                        regenerate_session()
+                        session.permanent = True
+                except Exception as restore_exc:
+                    db.session.rollback()
+                    app.logger.error(
+                        "Apple link session restoration failed (%s)",
+                        type(restore_exc).__name__,
+                    )
+            response = redirect(location)
+            cookie_domain = resolve_cookie_domain(SESSION_COOKIE_DOMAIN, request.host)
+            response.delete_cookie(
+                APPLE_OAUTH_BINDING_COOKIE,
+                domain=cookie_domain,
+                path=url_for("authorize_apple"),
+                secure=True,
+                samesite="None",
+            )
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Referrer-Policy"] = "no-referrer"
+            return response
+
+        try:
+            bound_state = _decode_apple_web_binding(
+                SECRET_KEY,
+                request.cookies.get(APPLE_OAUTH_BINDING_COOKIE, ""),
+            )
+            if (
+                not bound_state
+                or not isinstance(state, str)
+                or not secrets.compare_digest(bound_state, state)
+            ):
+                raise AppleAuthError("invalid_apple_web_binding")
+            metadata = _consume_apple_auth_challenge(state, flow="web")
+            if apple_error or not authorization_code:
+                raise AppleAuthError("apple_authorization_cancelled")
+            identity_token = _exchange_apple_authorization_code(
+                authorization_code,
+                client_id=APPLE_SERVICE_ID,
+                redirect_uri=_valid_apple_web_redirect_uri(
+                    APPLE_WEB_REDIRECT_URI,
+                    ALLOWED_HOSTS,
+                ),
+                configured_secret=APPLE_CLIENT_SECRET,
+                team_id=APPLE_TEAM_ID,
+                key_id=APPLE_KEY_ID,
+                private_key=APPLE_PRIVATE_KEY,
+                private_key_path=APPLE_PRIVATE_KEY_PATH,
+            )
+            claims = _verify_apple_identity_token(
+                identity_token,
+                audience=APPLE_SERVICE_ID,
+                expected_nonce_hash=metadata["nonce_hash"],
+            )
+            _consume_apple_token_replay(identity_token, claims)
+            display_name = _apple_display_name(request.form.get("user"))
+
+            if metadata["mode"] == "link":
+                user = db.session.get(User, metadata["link_user_id"])
+                if not user or is_account_disabled(user):
+                    raise AppleAuthError("auth_required")
+                _link_apple_identity(user, claims)
+                return finish_apple_redirect("/?auth_link=apple_linked#settings/account")
+
+            user = _find_or_create_apple_user(claims, display_name)
+            if is_account_disabled(user):
+                raise AppleAuthError("account_disabled")
+            session.clear()
+            session["user_id"] = user.id
+            session["username"] = InputValidator.sanitize_output(user.username)
+            regenerate_session()
+            session.permanent = True
+            return finish_apple_redirect(metadata["redirect_to"] or "/")
+        except AuthIdentityConflictError as exc:
+            db.session.rollback()
+            result = "email_in_use" if str(exc) == "email_in_use" else "identity_in_use"
+            if metadata and metadata.get("mode") == "link":
+                return finish_apple_redirect(f"/?auth_link={result}#settings/account")
+            return finish_apple_redirect(f"/?auth=login&auth_error={result}")
+        except (AppleAuthError, jwt.PyJWTError, IntegrityError) as exc:
+            db.session.rollback()
+            app.logger.warning("Apple web authentication rejected (%s)", type(exc).__name__)
+            if metadata and metadata.get("mode") == "link":
+                return finish_apple_redirect("/?auth_link=apple_failed#settings/account")
+            return finish_apple_redirect("/?auth=login&auth_error=apple_failed")
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error("Apple web authentication failed (%s)", type(exc).__name__)
+            if metadata and metadata.get("mode") == "link":
+                return finish_apple_redirect("/?auth_link=apple_failed#settings/account")
+            return finish_apple_redirect("/?auth=login&auth_error=apple_failed")
 
     @app.route("/login/google")
     def login_google():
@@ -2019,10 +2730,93 @@ def register_auth_routes(app):
                 return jsonify({"authenticated": True, "user": user.to_dict()}), 200
         return jsonify({"authenticated": False, "user": None}), 200
 
+    @app.route("/api/auth/turnstile/mobile", methods=["GET"])
+    def api_mobile_turnstile():
+        """Serve a minimal, first-party Turnstile shell for native app authentication."""
+        from config import LOCALHOST_MODE, TURNSTILE_SITE_KEY
+
+        nonce = getattr(g, "csp_nonce", "") or secrets.token_urlsafe(24)
+        site_key = TURNSTILE_SITE_KEY if TURNSTILE_SITE_KEY and not LOCALHOST_MODE else ""
+        site_key_literal = json.dumps(site_key)
+        document = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <style nonce="{nonce}">
+    :root {{ color-scheme: light dark; }}
+    html, body {{ margin: 0; min-height: 74px; background: transparent; overflow: hidden; }}
+    body {{ display: flex; align-items: center; justify-content: center; }}
+    #challenge {{ min-height: 70px; width: 100%; display: flex; align-items: center; justify-content: center; }}
+  </style>
+  <script nonce="{nonce}">
+    (() => {{
+      const siteKey = {site_key_literal};
+      const post = (payload) => {{
+        try {{ window.webkit?.messageHandlers?.turnstile?.postMessage(payload); }} catch (_) {{}}
+      }};
+      let timeout = setTimeout(() => post({{ state: "failed" }}), 20000);
+      window.remindTurnstileBoot = () => {{
+        if (!siteKey) {{
+          clearTimeout(timeout);
+          post({{ state: "disabled" }});
+          return;
+        }}
+        if (!window.turnstile) {{
+          clearTimeout(timeout);
+          post({{ state: "failed" }});
+          return;
+        }}
+        try {{
+          window.turnstile.render("#challenge", {{
+            sitekey: siteKey,
+            theme: "auto",
+            callback: (token) => {{ clearTimeout(timeout); post({{ state: "solved", token }}); }},
+            "expired-callback": () => post({{ state: "expired" }}),
+            "error-callback": () => {{ clearTimeout(timeout); post({{ state: "failed" }}); }}
+          }});
+          post({{ state: "ready" }});
+        }} catch (_) {{
+          clearTimeout(timeout);
+          post({{ state: "failed" }});
+        }}
+      }};
+    }})();
+  </script>
+  <script nonce="{nonce}" defer src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=remindTurnstileBoot"></script>
+</head>
+<body><main id="challenge"></main></body>
+</html>"""
+        response = Response(document, content_type="text/html; charset=utf-8")
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; "
+            f"script-src 'nonce-{nonce}' https://challenges.cloudflare.com; "
+            f"style-src 'nonce-{nonce}'; "
+            "frame-src https://challenges.cloudflare.com; "
+            "connect-src https://challenges.cloudflare.com; "
+            "img-src data: https://challenges.cloudflare.com; "
+            "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        )
+        return response
+
     @app.route("/api/auth/config", methods=["GET"])
     def api_auth_config():
 
         from config import (
+            ALLOWED_HOSTS,
+            APPLE_APP_BUNDLE_ID,
+            APPLE_CLIENT_SECRET,
+            APPLE_KEY_ID,
+            APPLE_PRIVATE_KEY,
+            APPLE_PRIVATE_KEY_PATH,
+            APPLE_SERVICE_ID,
+            APPLE_TEAM_ID,
+            APPLE_WEB_REDIRECT_URI,
             GOOGLE_CLIENT_ID,
             IOS_OAUTH_CALLBACK_SCHEME,
             IOS_OAUTH_REDIRECT_URI,
@@ -2033,6 +2827,17 @@ def register_auth_routes(app):
         )
 
         telegram_nonce = _issue_telegram_login_nonce() if TELEGRAM_CLIENT_ID else None
+        apple_web_available = bool(
+            _valid_apple_web_redirect_uri(APPLE_WEB_REDIRECT_URI, ALLOWED_HOSTS)
+            and _apple_web_client_credentials_available(
+                service_id=APPLE_SERVICE_ID,
+                client_secret=APPLE_CLIENT_SECRET,
+                team_id=APPLE_TEAM_ID,
+                key_id=APPLE_KEY_ID,
+                private_key=APPLE_PRIVATE_KEY,
+                private_key_path=APPLE_PRIVATE_KEY_PATH,
+            )
+        )
 
         return (
             jsonify(
@@ -2042,6 +2847,9 @@ def register_auth_routes(app):
                     "gauth_available": bool(GOOGLE_CLIENT_ID),
                     "google_login_url": url_for("login_google"),
                     "google_mobile_login_url": url_for("login_google", client="ios"),
+                    "apple_native_available": bool(APPLE_APP_BUNDLE_ID),
+                    "apple_web_available": apple_web_available,
+                    "apple_login_url": url_for("login_apple") if apple_web_available else None,
                     "telegram_available": bool(TELEGRAM_CLIENT_ID),
                     "telegram_client_id": TELEGRAM_CLIENT_ID or None,
                     "telegram_nonce": telegram_nonce,
@@ -2052,6 +2860,132 @@ def register_auth_routes(app):
             ),
             200,
         )
+
+    @app.route("/api/auth/apple/nonce", methods=["GET"])
+    @rate_limit(login_limiter, "Too many login attempts")
+    def api_apple_nonce():
+        from config import APPLE_APP_BUNDLE_ID
+
+        if not APPLE_APP_BUNDLE_ID:
+            return jsonify({"error": "apple_unavailable", "code": "apple_unavailable"}), 503
+        mode = request.args.get("mode", "login")
+        if mode not in {"login", "link"}:
+            return jsonify({"error": "invalid_request", "code": "invalid_request"}), 400
+
+        link_user_id = None
+        if mode == "link":
+            raw_user_id = session.get("user_id")
+            link_user = db.session.get(User, raw_user_id) if raw_user_id else None
+            if not link_user:
+                return jsonify({"error": "auth_required", "code": "auth_required"}), 401
+            link_user_id = link_user.id
+        try:
+            challenge, raw_nonce = _issue_apple_auth_challenge(
+                flow="native",
+                mode=mode,
+                link_user_id=link_user_id,
+            )
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error("Apple native challenge creation failed (%s)", type(exc).__name__)
+            return (
+                jsonify({"error": "apple_auth_unavailable", "code": "apple_auth_unavailable"}),
+                503,
+            )
+
+        response = jsonify(
+            {
+                "challenge": challenge,
+                "nonce": raw_nonce,
+                "expires_in": APPLE_AUTH_CHALLENGE_TTL_SECONDS,
+            }
+        )
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        return response, 200
+
+    @app.route("/api/auth/apple", methods=["POST"])
+    @rate_limit(login_limiter, "Too many login attempts")
+    def api_apple_login():
+        from config import APPLE_APP_BUNDLE_ID
+        from utils.session_security import regenerate_session
+
+        if not APPLE_APP_BUNDLE_ID:
+            return jsonify({"error": "apple_unavailable", "code": "apple_unavailable"}), 503
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "invalid_request", "code": "invalid_request"}), 400
+        identity_token = data.get("identity_token")
+        challenge = data.get("challenge")
+        if (
+            not isinstance(identity_token, str)
+            or not identity_token
+            or len(identity_token) > APPLE_ID_TOKEN_MAX_LENGTH
+            or not isinstance(challenge, str)
+            or not APPLE_CHALLENGE_RE.fullmatch(challenge)
+        ):
+            return jsonify({"error": "invalid_request", "code": "invalid_request"}), 400
+
+        try:
+            metadata = _consume_apple_auth_challenge(challenge, flow="native")
+            if metadata["mode"] == "link":
+                current_user_id = session.get("user_id")
+                if current_user_id != metadata["link_user_id"]:
+                    raise AppleAuthError("auth_required")
+            claims = _verify_apple_identity_token(
+                identity_token,
+                audience=APPLE_APP_BUNDLE_ID,
+                expected_nonce_hash=metadata["nonce_hash"],
+            )
+            _consume_apple_token_replay(identity_token, claims)
+            display_name = _apple_display_name(data.get("name"))
+
+            if metadata["mode"] == "link":
+                user = db.session.get(User, metadata["link_user_id"])
+                if not user or is_account_disabled(user):
+                    raise AppleAuthError("auth_required")
+                _link_apple_identity(user, claims)
+                return jsonify({"message": "apple_linked", "user": user.to_dict()}), 200
+
+            user = _find_or_create_apple_user(claims, display_name)
+        except AuthIdentityConflictError as exc:
+            db.session.rollback()
+            code = "email_in_use" if str(exc) == "email_in_use" else "auth_identity_in_use"
+            return jsonify({"error": code, "code": code}), 409
+        except AppleAuthError as exc:
+            db.session.rollback()
+            code = (
+                str(exc)
+                if str(exc)
+                in {
+                    "apple_email_required",
+                    "auth_required",
+                    "invalid_or_expired_challenge",
+                }
+                else "apple_auth_failed"
+            )
+            status = 401 if code in {"auth_required", "invalid_or_expired_challenge"} else 400
+            return jsonify({"error": code, "code": code}), status
+        except (jwt.PyJWTError, IntegrityError) as exc:
+            db.session.rollback()
+            app.logger.warning("Apple native authentication rejected (%s)", type(exc).__name__)
+            return jsonify({"error": "apple_auth_failed", "code": "apple_auth_failed"}), 401
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error("Apple native authentication failed (%s)", type(exc).__name__)
+            return (
+                jsonify({"error": "apple_auth_unavailable", "code": "apple_auth_unavailable"}),
+                503,
+            )
+
+        if is_account_disabled(user):
+            return jsonify({"error": "account_disabled", "code": "account_disabled"}), 403
+        session.clear()
+        session["user_id"] = user.id
+        session["username"] = InputValidator.sanitize_output(user.username)
+        regenerate_session()
+        session.permanent = True
+        return jsonify({"message": "apple_authenticated", "user": user.to_dict()}), 200
 
     @app.route("/api/auth/telegram", methods=["POST"])
     @rate_limit(login_limiter, "Too many login attempts")
@@ -2411,6 +3345,7 @@ def register_auth_routes(app):
 
         from utils.session_security import invalidate_session
 
+        _revoke_pending_apple_link_challenges(session.get("user_id"))
         invalidate_session()
         return jsonify({"message": "Успешный выход"}), 200
 

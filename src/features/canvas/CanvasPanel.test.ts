@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Utils } from '../../utils/utils';
+import { apiService } from '../../services/api';
 import CanvasPanel from './CanvasPanel';
 
 describe('CanvasPanel preview toggle', () => {
@@ -45,6 +46,7 @@ describe('CanvasPanel preview toggle', () => {
         const previewButton = container.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
         expect(previewButton?.classList.contains('is-active')).toBe(true);
         expect(container.querySelectorAll('.chat-canvas-close-button')).toHaveLength(1);
+        expect(container.querySelector('.chat-canvas-python-terminal')).toBeNull();
         expect(container.querySelector('.chat-canvas-toolbar')).toBeNull();
         expect(container.querySelector('.chat-canvas-header .chat-canvas-type-label')).not.toBeNull();
         expect(container.querySelectorAll('.chat-canvas-header .chat-canvas-icon-button'))
@@ -91,6 +93,182 @@ describe('CanvasPanel preview toggle', () => {
             expect(container?.querySelector('.chat-canvas-fold-marker.is-closed')).not.toBeNull();
             expect(container?.querySelector('.cm-foldPlaceholder')).not.toBeNull();
         });
+    });
+
+    it('shows a Python terminal and renders isolated runner output', async () => {
+        const executePython = vi.spyOn(apiService, 'executeCanvasPython').mockResolvedValue({
+            ok: true,
+            stdout: 'hello from canvas\\n',
+            stderr: '',
+            duration_ms: 18,
+        });
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-python-terminal',
+                    name: 'runner.py',
+                    type: 'code/python',
+                    content: 'print("hello from canvas")',
+                    comments: [],
+                    updated_at: 1,
+                },
+                onClose: vi.fn(),
+            }));
+        });
+
+        const terminal = container.querySelector('.chat-canvas-python-terminal');
+        const runButton = container.querySelector<HTMLButtonElement>('.chat-canvas-python-run-header-button');
+        expect(terminal).not.toBeNull();
+        expect(runButton).not.toBeNull();
+        expect(container.querySelector('.chat-canvas-python-terminal button')).toBeNull();
+        const resizeHandle = container.querySelector<HTMLElement>('.chat-canvas-python-terminal-resize-handle');
+        expect(resizeHandle).not.toBeNull();
+
+        act(() => {
+            resizeHandle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+        });
+        expect(resizeHandle?.getAttribute('aria-valuenow')).toBe('264');
+
+        act(() => {
+            resizeHandle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        });
+        expect(resizeHandle?.getAttribute('aria-valuenow')).toBe('128');
+
+        await act(async () => {
+            runButton?.click();
+            await Promise.resolve();
+        });
+
+        expect(executePython).toHaveBeenCalledWith('print("hello from canvas")');
+        await vi.waitFor(() => {
+            expect(container?.querySelector('.chat-canvas-python-terminal-output')?.textContent)
+                .toContain('hello from canvas');
+            expect(container?.querySelector('.chat-canvas-python-terminal-header .chat-canvas-python-terminal-meta'))
+                .not.toBeNull();
+            expect(container?.querySelector('.chat-canvas-python-terminal-output .chat-canvas-python-terminal-meta'))
+                .toBeNull();
+        });
+
+        const output = container.querySelector<HTMLDivElement>('.chat-canvas-python-terminal-output');
+        output?.focus();
+        const selectAllEvent = new KeyboardEvent('keydown', {
+            key: 'a',
+            metaKey: true,
+            bubbles: true,
+            cancelable: true,
+        });
+        act(() => output?.dispatchEvent(selectAllEvent));
+        expect(selectAllEvent.defaultPrevented).toBe(true);
+        expect(window.getSelection()?.toString()).toContain('hello from canvas');
+    });
+
+    it('offers to send the Python error back to the assistant for repair', async () => {
+        const executePython = vi.spyOn(apiService, 'executeCanvasPython').mockResolvedValue({
+            ok: false,
+            stdout: '',
+            stderr: 'NameError: name is not defined',
+            duration_ms: 12,
+        });
+        const onRepairPython = vi.fn();
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-python-repair',
+                    name: 'broken.py',
+                    type: 'code/python',
+                    content: 'print(name)',
+                    comments: [],
+                    updated_at: 1,
+                },
+                onClose: vi.fn(),
+                onRepairPython,
+            }));
+        });
+
+        await act(async () => {
+            container?.querySelector<HTMLButtonElement>('.chat-canvas-python-run-header-button')?.click();
+            await Promise.resolve();
+        });
+
+        await vi.waitFor(() => {
+            expect(container?.querySelector('.chat-canvas-python-repair-button')).not.toBeNull();
+        });
+        act(() => {
+            container?.querySelector<HTMLButtonElement>('.chat-canvas-python-repair-button')?.click();
+        });
+
+        expect(executePython).toHaveBeenCalledWith('print(name)');
+        expect(onRepairPython).toHaveBeenCalledWith('NameError: name is not defined', 'print(name)');
+    });
+
+    it('renders ANSI terminal colors without exposing escape sequences', async () => {
+        vi.spyOn(apiService, 'executeCanvasPython').mockResolvedValue({
+            ok: true,
+            stdout: '\u001b[94mBLUE\u001b[0m plain',
+            stderr: '',
+            duration_ms: 4,
+        });
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-python-ansi',
+                    name: 'colors.py',
+                    type: 'code/python',
+                    content: 'print("\\033[94mBLUE\\033[0m plain")',
+                    comments: [],
+                    updated_at: 1,
+                },
+                onClose: vi.fn(),
+            }));
+        });
+
+        await act(async () => {
+            container?.querySelector<HTMLButtonElement>('.chat-canvas-python-run-header-button')?.click();
+            await Promise.resolve();
+        });
+
+        await vi.waitFor(() => {
+            const output = container?.querySelector('.chat-canvas-python-terminal-output');
+            expect(output?.querySelector('.chat-canvas-ansi-fg-bright-blue')?.textContent).toBe('BLUE');
+            expect(output?.textContent).toContain('BLUE plain');
+            expect(output?.textContent).not.toContain('\u001b[94m');
+        });
+    });
+
+    it('shows the streaming scan overlay while Canvas code is being updated', () => {
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-python-stream',
+                    name: 'stream.py',
+                    type: 'code/python',
+                    content: 'print("stream")',
+                    comments: [],
+                    updated_at: 1,
+                },
+                onClose: vi.fn(),
+                isStreaming: true,
+            }));
+        });
+
+        expect(container.querySelector('.chat-canvas-code-editor.is-streaming')).not.toBeNull();
+        expect(container.querySelector('.chat-canvas-code-stream-overlay.is-active')).not.toBeNull();
     });
 
     it('keeps the line-number DOM bounded for very large documents', () => {

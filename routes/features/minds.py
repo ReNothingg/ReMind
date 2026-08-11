@@ -348,24 +348,54 @@ def register_mind_routes(api_bp):
                 Mind.created_at.desc(),
             )
 
-        limit = max(1, min(request.args.get("limit", default=60, type=int) or 60, 100))
-        minds = query.limit(limit).all()
-        return make_ok({"minds": _serialize_minds(minds, viewer_id), "categories": MIND_CATEGORIES})
+        page = max(1, request.args.get("page", default=1, type=int) or 1)
+        requested_page_size = request.args.get(
+            "page_size",
+            default=request.args.get("limit", default=60, type=int),
+            type=int,
+        )
+        page_size = max(1, min(requested_page_size or 60, 100))
+        total = query.count()
+        minds = query.offset((page - 1) * page_size).limit(page_size).all()
+        return make_ok(
+            {
+                "minds": _serialize_minds(minds, viewer_id),
+                "categories": MIND_CATEGORIES,
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "has_more": page * page_size < total,
+            }
+        )
 
     @api_bp.route("/api/minds/pinned", methods=["GET"])
     @api_error_boundary("mind_pins_failed")
     def list_pinned_minds():
         viewer_id = require_authenticated_user_id()
-        rows = (
+        page = max(1, request.args.get("page", default=1, type=int) or 1)
+        page_size = max(
+            1,
+            min(request.args.get("page_size", default=60, type=int) or 60, 100),
+        )
+        query = (
             db.session.query(Mind, MindPin.created_at)
             .join(MindPin, MindPin.mind_id == Mind.id)
             .filter(MindPin.user_id == viewer_id)
             .filter(Mind.is_banned.is_(False))
             .order_by(MindPin.created_at.asc())
-            .all()
         )
+        total = query.count()
+        rows = query.offset((page - 1) * page_size).limit(page_size).all()
         minds = [mind for mind, _created_at in rows if _can_view_mind(mind, viewer_id)]
-        return make_ok({"minds": _serialize_minds(minds, viewer_id)})
+        return make_ok(
+            {
+                "minds": _serialize_minds(minds, viewer_id),
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "has_more": page * page_size < total,
+            }
+        )
 
     @api_bp.route("/api/minds", methods=["POST"])
     @rate_limit(api_limiter, "Too many mind changes. Please wait.")

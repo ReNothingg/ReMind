@@ -38,34 +38,43 @@
 }
 
 .file-modal-close {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 45px;
-  width: 45px;
+  position: static;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
   color: var(--color-text-secondary);
-  font-size: 1.8em;
   cursor: pointer;
   line-height: 1;
-  z-index: 15;
-  opacity: 0.7;
-  transition: all var(--transition-fast);
+  opacity: 1;
+  transform: none;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .file-modal-close:hover {
   opacity: 1;
   color: var(--color-text-primary);
-  transform: scale(1.1) rotate(90deg);
+  transform: none;
+}
+
+.file-modal-close svg {
+  width: 19px;
+  height: 19px;
+  transform: none;
+}
+
+.file-modal-close:hover svg {
+  transform: none;
 }
 
 .file-modal-info-header {
-  padding: 0 calc(var(--spacing-unit) * 5);
-
+  min-height: 56px;
+  height: auto;
   background-color: var(--color-bg-surface-alt);
   border-bottom: 1px solid var(--color-border-medium);
   display: flex;
@@ -74,8 +83,15 @@
   font-size: 0.9em;
   color: var(--color-text-secondary);
   flex-shrink: 0;
-  height: 45px;
   box-sizing: border-box;
+}
+
+.file-modal-header-actions {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .file-modal-info-header .file-name-display {
@@ -84,7 +100,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: calc(var(--spacing-unit) * 3.75);
+  margin-right: 0;
 }
 
 .file-modal-info-header .file-size-display,

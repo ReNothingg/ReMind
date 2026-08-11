@@ -20,6 +20,87 @@
         }
       }
     },
+    "/api/auth/config": {
+      "get": {
+        "summary": "Get available authentication methods",
+        "responses": {
+          "200": {
+            "description": "Authentication configuration",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthConfigResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/apple/nonce": {
+      "get": {
+        "summary": "Create a server-issued one-time Apple sign-in challenge",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": { "type": "string", "enum": ["login", "link"], "default": "login" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One-time challenge",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AppleChallengeResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required for linking",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+          },
+          "429": {
+            "description": "Rate-limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/auth/apple": {
+      "post": {
+        "summary": "Login, register, or link a native Sign in with Apple identity",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AppleLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Apple authentication",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthLoginResponse" } } }
+          },
+          "400": {
+            "description": "Invalid request or a verified email is required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+          },
+          "401": {
+            "description": "Invalid, expired, or replayed Apple credential",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+          },
+          "409": {
+            "description": "Apple identity or email is already linked",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+          },
+          "429": {
+            "description": "Rate-limited",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "summary": "Login with email and password",
@@ -370,6 +451,41 @@
         }
       }
     },
+    "/api/python/execute": {
+      "post": {
+        "summary": "Execute Python code from Canvas in the isolated runner",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CanvasPythonExecuteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Python execution result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CanvasPythonExecuteResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Python code",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "503": {
+            "description": "Python runner unavailable",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
     "/sessions/{session_id}/branch": {
       "put": {
         "summary": "Select an active conversation branch",
@@ -540,7 +656,7 @@
           "oauth_provider": { "type": ["string", "null"] },
           "auth_methods": {
             "type": "array",
-            "items": { "type": "string", "enum": ["google", "password", "telegram"] }
+            "items": { "type": "string", "enum": ["apple", "google", "password", "telegram"] }
           },
           "telegram_bot_ready": { "type": "boolean" }
         },
@@ -556,6 +672,48 @@
               { "$ref": "#/components/schemas/User" },
               { "type": "null" }
             ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthConfigResponse": {
+        "type": "object",
+        "properties": {
+          "apple_native_available": { "type": "boolean" },
+          "apple_web_available": { "type": "boolean" },
+          "apple_login_url": { "type": ["string", "null"] },
+          "gauth_available": { "type": "boolean" },
+          "google_login_url": { "type": "string" },
+          "telegram_available": { "type": "boolean" },
+          "turnstile_required": { "type": "boolean" },
+          "turnstile_site_key": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "AppleChallengeResponse": {
+        "type": "object",
+        "required": ["challenge", "nonce", "expires_in"],
+        "properties": {
+          "challenge": { "type": "string", "minLength": 32, "maxLength": 128 },
+          "nonce": { "type": "string", "minLength": 32, "maxLength": 128 },
+          "expires_in": { "type": "integer", "minimum": 1, "maximum": 600 }
+        },
+        "additionalProperties": false
+      },
+      "AppleLoginRequest": {
+        "type": "object",
+        "required": ["identity_token", "challenge"],
+        "properties": {
+          "identity_token": { "type": "string", "minLength": 1, "maxLength": 16384 },
+          "challenge": { "type": "string", "minLength": 32, "maxLength": 128 },
+          "name": {
+            "type": ["object", "null"],
+            "properties": {
+              "first_name": { "type": ["string", "null"], "maxLength": 100 },
+              "middle_name": { "type": ["string", "null"], "maxLength": 100 },
+              "last_name": { "type": ["string", "null"], "maxLength": 100 }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -880,6 +1038,31 @@
           "request_id": { "type": ["string", "null"] },
           "session_id": { "type": "string" },
           "textdoc": { "$ref": "#/components/schemas/CanvasTextdoc" }
+        },
+        "additionalProperties": false
+      },
+      "CanvasPythonExecuteRequest": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 24000 }
+        },
+        "additionalProperties": false
+      },
+      "CanvasPythonExecuteResponse": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "request_id": { "type": ["string", "null"] },
+          "error": { "type": ["string", "null"] },
+          "exit_code": { "type": ["integer", "null"] },
+          "timed_out": { "type": "boolean" },
+          "duration_ms": { "type": "integer" },
+          "stdout": { "type": "string" },
+          "stderr": { "type": "string" },
+          "stdout_truncated": { "type": "boolean" },
+          "stderr_truncated": { "type": "boolean" }
         },
         "additionalProperties": false
       },

@@ -46,6 +46,8 @@ services:
       - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
       - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-},${TUNNEL_HOST:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-},${TUNNEL_ORIGIN:-}
       - DB_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD}
       - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       - DATABASE_URL=postgresql://remind:${DB_PASSWORD:?Set DB_PASSWORD}@db:5432/remind_db
@@ -68,15 +70,20 @@ services:
       - ALLOW_GUEST_CHATS_SAVE=False
       - ENABLE_STRICT_HTTPS=False
       - VALIDATE_USER_AGENT=True
+      - PYTHON_RUNNER_ENABLED=True
+      - PYTHON_RUNNER_QUEUE=/var/lib/remind-python-runner
     volumes:
       - ./database:/app/database
       - ./logs:/app/logs
+      - python_runner_queue:/var/lib/remind-python-runner
     depends_on:
       redis:
         condition: service_healthy
       db:
         condition: service_healthy
       init-storage:
+        condition: service_completed_successfully
+      init-python-runner-storage:
         condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
@@ -205,15 +212,20 @@ services:
       - ALLOW_CROSS_SUBDOMAIN_SESSION_COOKIE=False
       - PUBLIC_METRICS_ENABLED=False
       - PUBLIC_OPENAPI_ENABLED=False
+      - PYTHON_RUNNER_ENABLED=True
+      - PYTHON_RUNNER_QUEUE=/var/lib/remind-python-runner
     volumes:
       - ./database:/app/database
       - ./logs:/app/logs
+      - python_runner_queue:/var/lib/remind-python-runner
     depends_on:
       redis:
         condition: service_healthy
       db:
         condition: service_healthy
       init-storage:
+        condition: service_completed_successfully
+      init-python-runner-storage:
         condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
@@ -253,6 +265,72 @@ services:
       - FOWNER
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+
+  init-python-runner-storage:
+    image: remind-python-runner:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.python-runner
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - chown 0:0 /jobs && chmod 700 /jobs && mkdir -p /jobs/requests /jobs/responses && chown -R 1001:0 /jobs && chmod 2770 /jobs /jobs/requests /jobs/responses
+    volumes:
+      - python_runner_queue:/jobs
+    network_mode: none
+    restart: "no"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+  python-runner:
+    image: remind-python-runner:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.python-runner
+    environment:
+      - PYTHON_RUNNER_QUEUE=/jobs
+    volumes:
+      - python_runner_queue:/jobs
+    depends_on:
+      init-python-runner-storage:
+        condition: service_completed_successfully
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=640m,mode=0711
+      - /dev/shm:rw,noexec,nosuid,nodev,size=1m,mode=000
+    user: "0:0"
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - KILL
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 768m
+    cpus: 0.75
+    ulimits:
+      nofile:
+        soft: 128
+        hard: 128
+      nproc:
+        soft: 64
+        hard: 64
+    restart: unless-stopped
+    stop_grace_period: 5s
     logging: *default-logging
 
   migrate:
@@ -363,6 +441,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  python_runner_queue:
 
 networks:
   edge:

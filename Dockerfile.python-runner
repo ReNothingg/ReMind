@@ -1,0 +1,42 @@
+FROM python:3.12-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2 AS wheels
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+COPY requirements/python-runner.txt /tmp/requirements.txt
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r /tmp/requirements.txt
+
+FROM python:3.12-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONNOUSERSITE=1 \
+    MPLBACKEND=Agg \
+    PYTHON_RUNNER_QUEUE=/jobs
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libfreetype6 \
+    libjpeg62-turbo \
+    libopenblas0-pthread \
+    libpng16-16 \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+COPY --from=wheels /wheels /wheels
+COPY requirements/python-runner.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --no-index --no-deps /wheels/* \
+    && python -m pip uninstall -y pip setuptools wheel \
+    && rm -rf /wheels /tmp/requirements.txt /root/.cache /usr/local/bin/pip*
+
+WORKDIR /runner
+COPY python_runner/supervisor.py python_runner/healthcheck.py ./
+
+RUN mkdir -p /jobs /tmp \
+    && chown 1001:1001 /jobs \
+    && chmod 700 /jobs \
+    && chmod 755 /runner/supervisor.py /runner/healthcheck.py
+
+USER 0:0
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["python", "/runner/healthcheck.py"]
+
+CMD ["python", "/runner/supervisor.py"]

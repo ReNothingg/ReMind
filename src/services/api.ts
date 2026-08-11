@@ -116,6 +116,18 @@ type CanvasSaveResponse = {
     textdoc: CanvasTextdoc;
 };
 
+export type CanvasPythonExecutionResponse = {
+    ok: boolean;
+    error?: string;
+    exit_code?: number | null;
+    timed_out?: boolean;
+    duration_ms?: number;
+    stdout?: string;
+    stderr?: string;
+    stdout_truncated?: boolean;
+    stderr_truncated?: boolean;
+};
+
 export type MindVisibility = 'private' | 'link' | 'store';
 
 export type MindCategory = {
@@ -882,6 +894,14 @@ export const apiService = {
             }
         );
         return response.textdoc;
+    },
+
+    async executeCanvasPython(code: string): Promise<CanvasPythonExecutionResponse> {
+        return fetchApi<CanvasPythonExecutionResponse>('/api/python/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+        });
     },
 
     async toggleShare(

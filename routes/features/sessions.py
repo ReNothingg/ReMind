@@ -5,7 +5,7 @@ import re
 import uuid
 
 from flask import request, session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
@@ -236,6 +236,10 @@ def register_session_routes(api_bp):
         db_user_id = None
         page = max(1, request.args.get("page", default=1, type=int) or 1)
         page_size = max(1, min(request.args.get("page_size", default=50, type=int) or 50, 100))
+        search_query = str(request.args.get("q") or "").strip()[:120]
+        source_filter = str(request.args.get("source") or "all").strip().lower()
+        if source_filter not in {"all", "web", "telegram"}:
+            raise ApiError("Invalid source filter", status=400, code="invalid_source_filter")
         total = 0
         has_more = False
 
@@ -256,6 +260,21 @@ def register_session_routes(api_bp):
                 )
                 .filter(UserChatHistory.user_id == db_user_id)
             )
+            if search_query:
+                escaped_query = (
+                    search_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                )
+                search_pattern = f"%{escaped_query}%"
+                base_query = base_query.filter(
+                    or_(
+                        UserChatHistory.title.ilike(search_pattern, escape="\\"),
+                        UserChatHistory.messages_data.ilike(search_pattern, escape="\\"),
+                    )
+                )
+            if source_filter == "web":
+                base_query = base_query.filter(UserChatHistory.source == "web")
+            elif source_filter == "telegram":
+                base_query = base_query.filter(UserChatHistory.source.like("telegram\\_%", escape="\\"))
             total = base_query.count()
             has_more = (page * page_size) < total
             rows = (
@@ -309,11 +328,22 @@ def register_session_routes(api_bp):
                         "session_id": safe_sid,
                         "last_updated": data.get("last_updated", 0),
                         "title": data.get("title", "Новый чат"),
+                        "source": "web",
                         "last_message": _safe_session_preview(history),
                     }
                 )
 
         if not db_user_id:
+            if search_query:
+                folded_query = search_query.casefold()
+                sessions = [
+                    item
+                    for item in sessions
+                    if folded_query in str(item.get("title") or "").casefold()
+                    or folded_query in str(item.get("last_message") or "").casefold()
+                ]
+            if source_filter == "telegram":
+                sessions = []
             sessions.sort(key=lambda item: item.get("last_updated", 0), reverse=True)
             total = len(sessions)
             start = (page - 1) * page_size

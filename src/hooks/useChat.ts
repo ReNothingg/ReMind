@@ -170,6 +170,27 @@ function slugify(text) {
         .replace(/^-+|-+$/g, '');
 }
 
+function normalizeHistoryImage(value) {
+    if (typeof value === 'string') return value;
+    if (!value || typeof value !== 'object') return '';
+    const urlPath = value.url_path || value.url || value.path || '';
+    if (!urlPath) return '';
+    const hasArtifactShape = Boolean(
+        value.original_name
+        && value.mime_type
+        && Number.isFinite(Number(value.size))
+    );
+    return {
+        url_path: urlPath,
+        original_name: value.original_name || value.name || undefined,
+        mime_type: value.mime_type || undefined,
+        source: value.source === 'python' || hasArtifactShape ? 'python' : undefined,
+        metadata: value.metadata && typeof value.metadata === 'object'
+            ? value.metadata
+            : undefined,
+    };
+}
+
 function normalizeHistoryVariant(value) {
     if (!value || typeof value !== 'object') return null;
     const parts = Array.isArray(value.parts) ? value.parts : [];
@@ -180,7 +201,10 @@ function normalizeHistoryVariant(value) {
         id: value.variant_id || value.id || crypto.randomUUID(),
         variantId: value.variant_id || value.id || null,
         content,
-        images: parts.filter((part) => part?.image).map((part) => part.image.url_path || part.image),
+        images: parts
+            .filter((part) => part?.image)
+            .map((part) => normalizeHistoryImage(part.image))
+            .filter(Boolean),
         files: parts.filter((part) => part?.file).map((part) => ({ file: part.file })),
         sources: Array.isArray(value.sources) ? value.sources : [],
         githubTool: value.github_tool || value.githubTool || null,
@@ -207,7 +231,7 @@ function patchMessageVariant(message, variantId, patch) {
     };
 }
 
-const MAX_STREAMED_THINKING_CHARS = 64_000;
+const MAX_STREAMED_THINKING_CHARS = 160_000;
 
 function patchThinkingUpdate(message, update) {
     if (!message || !update || typeof update !== 'object') {
@@ -252,7 +276,10 @@ export function normalizeHistoryMessage(msg) {
     text = text.replace(/---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi, '');
     text = text.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
 
-    const images = parts.filter((part) => part.image).map((part) => part.image.url_path || part.image) || [];
+    const images = parts
+        .filter((part) => part.image)
+        .map((part) => normalizeHistoryImage(part.image))
+        .filter(Boolean) || [];
     const files = parts.filter((part) => part.file).map((part) => ({
         file: {
             url_path: part.file.url_path || part.file,
@@ -434,6 +461,7 @@ export const useChat = () => {
     const [canvasTextdoc, setCanvasTextdoc] = useState<CanvasTextdoc | null>(null);
     const [beatboxState, setBeatboxState] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isCanvasStreaming, setIsCanvasStreaming] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
     const [sessionAccess, setSessionAccess] = useState(createDefaultSessionAccess);
@@ -468,6 +496,12 @@ export const useChat = () => {
     useEffect(() => {
         checkAuthRef.current = checkAuth;
     }, [checkAuth]);
+
+    useEffect(() => {
+        if (!isLoading) {
+            setIsCanvasStreaming(false);
+        }
+    }, [isLoading]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -532,6 +566,7 @@ export const useChat = () => {
             return;
         }
         if ('textdoc' in update) {
+            setIsCanvasStreaming(true);
             setCanvasTextdocState(update.textdoc);
         }
     }, [setCanvasTextdocState]);
@@ -1617,6 +1652,15 @@ export const useChat = () => {
                     const uploadedNonImageFiles = uploadedFiles
                         .filter((file) => !(typeof file?.mime_type === 'string' && file.mime_type.startsWith('image/')))
                         .map((file) => ({ file }));
+                    const pythonArtifacts = Array.isArray(finalData.python_artifacts)
+                        ? finalData.python_artifacts
+                        : [];
+                    const pythonArtifactImages = pythonArtifacts
+                        .filter((file) => typeof file?.mime_type === 'string' && file.mime_type.startsWith('image/') && file.url_path)
+                        .map((file) => ({ ...file, source: 'python' }));
+                    const pythonArtifactFiles = pythonArtifacts
+                        .filter((file) => !(typeof file?.mime_type === 'string' && file.mime_type.startsWith('image/')))
+                        .map((file) => ({ file }));
                     if (finalCanvasTextdoc && isActiveSession) {
                         setCanvasTextdocState(finalCanvasTextdoc);
                     }
@@ -1648,7 +1692,8 @@ export const useChat = () => {
                         if (msg.id === aiMsgId) {
                             const firstVariant = {
                                 content: finalContent,
-                                images: finalData.images || [],
+                                images: [...(finalData.images || []), ...pythonArtifactImages],
+                                files: pythonArtifactFiles,
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
@@ -1661,7 +1706,8 @@ export const useChat = () => {
                                 isGeneratingImage: false,
                                 webSearchStatus: null,
                                 content: finalContent,
-                                images: finalData.images || [],
+                                images: [...(finalData.images || []), ...pythonArtifactImages],
+                                files: pythonArtifactFiles,
                                 sources: finalData.sources || [],
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
@@ -2570,6 +2616,7 @@ export const useChat = () => {
         canvasTextdoc,
         beatboxState,
         isLoading,
+        isCanvasStreaming,
         currentSessionId,
         currentSessionSlug,
         sessionAccess,

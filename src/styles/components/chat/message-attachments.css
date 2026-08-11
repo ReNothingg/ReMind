@@ -138,7 +138,7 @@
   display: grid;
   gap: calc(var(--spacing-unit) * 2);
   width: min(100%, 560px);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .message-image-grid[data-count='1'] {
@@ -150,7 +150,7 @@
   position: relative;
   overflow: hidden;
   border-radius: calc(var(--radius-lg) + 2px);
-  border: 1px solid rgba(var(--color-white-raw), 0.12);
+  border: 0;
   background: rgba(var(--color-black-raw), 0.18);
   box-shadow: none;
 }
@@ -163,9 +163,7 @@
   position: relative;
   display: flex;
   width: 100%;
-  min-height: min(42vw, 292px);
-  max-height: min(58vh, 520px);
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -184,11 +182,10 @@
 
 .message-image-element {
   display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: min(58vh, 520px);
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
   background: transparent;
   transition:
     transform var(--transition-fast),

@@ -183,6 +183,14 @@
   align-items: stretch;
 }
 
+.image-lightbox-footer.is-preview-only {
+  grid-template-columns: 1fr;
+}
+
+.image-lightbox-footer.is-preview-only .image-lightbox-controls {
+  justify-self: end;
+}
+
 .image-lightbox-context-card {
   display: flex;
   min-width: 0;
@@ -291,6 +299,11 @@
   .image-lightbox-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .image-lightbox-footer.is-preview-only .image-lightbox-controls {
+    width: 100%;
+    justify-self: stretch;
   }
 
   .image-lightbox-style-select {

@@ -95,6 +95,8 @@ CHAT_REQUEST_FIELDS = frozenset(
         "mind_id",
         "model",
         "operation",
+        "expected_user_id",
+        "expected_guest",
         "request_id",
         "session_id",
         "target_message_id",
@@ -305,6 +307,54 @@ def _persist_pending_uploads(user_data: dict[str, Any], session_id: str) -> list
 def process_request_data() -> tuple[str, dict[str, Any], str]:
     auth_user_id = session.get("user_id")
 
+    def validate_expected_user_id(payload: dict[str, Any]) -> None:
+        raw_expected_user_id = payload.get("expected_user_id")
+        raw_expected_guest = payload.get("expected_guest")
+        expected_guest = False
+        if raw_expected_guest is not None:
+            if isinstance(raw_expected_guest, bool):
+                expected_guest = raw_expected_guest
+            elif isinstance(raw_expected_guest, str) and raw_expected_guest.lower() in {
+                "true",
+                "false",
+            }:
+                expected_guest = raw_expected_guest.lower() == "true"
+            else:
+                raise ApiError(
+                    "Invalid authenticated user context.",
+                    status=400,
+                    code="invalid_expected_guest",
+                )
+        if expected_guest and raw_expected_user_id not in (None, ""):
+            raise ApiError(
+                "Invalid authenticated user context.",
+                status=400,
+                code="invalid_auth_context",
+            )
+        if expected_guest and auth_user_id is not None:
+            raise ApiError(
+                "Authentication changed. Please retry the request.",
+                status=401,
+                code="auth_identity_changed",
+            )
+        if raw_expected_user_id in (None, ""):
+            return
+        try:
+            expected_user_id = int(raw_expected_user_id)
+            current_user_id = int(auth_user_id) if auth_user_id is not None else None
+        except (TypeError, ValueError) as exc:
+            raise ApiError(
+                "Invalid authenticated user context.",
+                status=400,
+                code="invalid_expected_user_id",
+            ) from exc
+        if current_user_id != expected_user_id:
+            raise ApiError(
+                "Authentication changed. Please retry the request.",
+                status=401,
+                code="auth_identity_changed",
+            )
+
     def resolve_session_id(raw_identifier: Any) -> str:
         if raw_identifier is None or not str(raw_identifier).strip():
             if auth_user_id is not None:
@@ -325,6 +375,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         if raw_data is not None and not isinstance(raw_data, dict):
             raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
         data = _allowed_chat_fields(raw_data or {})
+        validate_expected_user_id(data)
         operation = str(data.get("operation") or "send").strip().lower()
         if operation not in CHAT_OPERATIONS:
             raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
@@ -354,6 +405,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         raise ApiError("Empty request", status=400, code="empty_request")
 
     user_data = _allowed_chat_fields(request.form.to_dict())
+    validate_expected_user_id(user_data)
     operation = str(user_data.get("operation") or "send").strip().lower()
     if operation not in CHAT_OPERATIONS:
         raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
@@ -460,7 +512,11 @@ def _coerce_image_parts(images: Any) -> list[dict[str, str]]:
     return normalized_images
 
 
-def _build_model_message_parts(reply_text: str, images: Any) -> list[dict]:
+def _build_model_message_parts(
+    reply_text: str,
+    images: Any,
+    python_artifacts: Any = None,
+) -> list[dict]:
     parts: list[dict] = []
     if reply_text:
         parts.append({"text": reply_text})
@@ -468,7 +524,32 @@ def _build_model_message_parts(reply_text: str, images: Any) -> list[dict]:
     for image_part in _coerce_image_parts(images):
         parts.append({"image": image_part})
 
+    if isinstance(python_artifacts, list):
+        for artifact in python_artifacts:
+            if not isinstance(artifact, dict) or not artifact.get("url_path"):
+                continue
+            attachment = {
+                "url_path": str(artifact.get("url_path")),
+                "mime_type": str(artifact.get("mime_type") or "application/octet-stream"),
+                "original_name": str(artifact.get("original_name") or "artifact"),
+                "size": _safe_attachment_size(artifact.get("size")),
+                "source": "python",
+            }
+            if isinstance(artifact.get("metadata"), dict):
+                attachment["metadata"] = artifact["metadata"]
+            if attachment["mime_type"].startswith("image/"):
+                parts.append({"image": attachment})
+            else:
+                parts.append({"file": attachment})
+
     return parts
+
+
+def _safe_attachment_size(value: Any) -> int:
+    try:
+        return max(0, min(12 * 1024 * 1024, int(value)))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _extract_web_sources(user_data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -516,6 +597,7 @@ def _build_model_message_for_history(
     reply_text: str,
     images: Any,
     sources: Any,
+    python_artifacts: Any = None,
     github_tool: Any = None,
     canvas_textdoc: Any = None,
     canvas_updates: Any = None,
@@ -526,7 +608,7 @@ def _build_model_message_for_history(
     message: dict[str, Any] = {
         "id": message_id or f"a_{uuid.uuid4().hex}",
         "role": "model",
-        "parts": _build_model_message_parts(reply_text, images),
+        "parts": _build_model_message_parts(reply_text, images, python_artifacts),
     }
     if isinstance(sources, list) and sources:
         message["sources"] = sources
@@ -826,6 +908,7 @@ def _stream_chat_response(
                     reply_text,
                     final_data.get("images"),
                     final_data.get("sources"),
+                    python_artifacts=final_data.get("python_artifacts"),
                     github_tool=final_data.get("github_tool"),
                     canvas_textdoc=final_data.get("canvas_textdoc"),
                     canvas_updates=final_data.get("canvas_updates"),
@@ -859,6 +942,22 @@ def _stream_chat_response(
 
                         if "internal_reply_part" in chunk:
                             internal_reply_parts.append(str(chunk.get("internal_reply_part") or ""))
+                            continue
+
+                        if "python_artifacts" in chunk:
+                            existing_artifacts = final_data.get("python_artifacts")
+                            final_data["python_artifacts"] = [
+                                *(
+                                    existing_artifacts
+                                    if isinstance(existing_artifacts, list)
+                                    else []
+                                ),
+                                *(
+                                    chunk.get("python_artifacts")
+                                    if isinstance(chunk.get("python_artifacts"), list)
+                                    else []
+                                ),
+                            ][:10]
                             continue
 
                         if "canvas_update" in chunk:
@@ -972,6 +1071,8 @@ def register_chat_routes(api_bp):
         user_data["request_id"] = raw_request_id
 
         resolved_session_id, share_entry = resolve_session_identifier(session_identifier)
+        if session_identifier.startswith("p_") and share_entry is None:
+            raise ApiError("Chat not found", status=404, code="not_found")
         if share_entry and not (db_user_id and share_entry.user_id == db_user_id):
             if not share_entry.is_public:
                 raise ApiError("Chat not found", status=404, code="not_found")

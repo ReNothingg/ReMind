@@ -92,6 +92,16 @@ BACKEND_URL=https://your-domain.example
 ```env
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+APPLE_APP_BUNDLE_ID=synvexai.remind
+# Web-вход включается только при наличии Services ID и точного HTTPS callback из Apple Developer.
+APPLE_SERVICE_ID=
+APPLE_WEB_REDIRECT_URI=https://your-domain.example/login/apple/callback
+# Для обязательной server-side проверки web authorization code укажите готовый
+# APPLE_CLIENT_SECRET либо APPLE_TEAM_ID + APPLE_KEY_ID + APPLE_PRIVATE_KEY_PATH.
+APPLE_CLIENT_SECRET=
+APPLE_TEAM_ID=
+APPLE_KEY_ID=
+APPLE_PRIVATE_KEY_PATH=
 TELEGRAM_CLIENT_ID=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_USERNAME=
