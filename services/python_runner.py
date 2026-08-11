@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import fcntl
 import json
 import logging
@@ -32,6 +33,8 @@ MAX_RESPONSE_BYTES = 64 * 1024
 MAX_ARTIFACT_FILES = 10
 MAX_ARTIFACT_TOTAL_BYTES = 12 * 1024 * 1024
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
+MAX_INLINE_ARTIFACT_BYTES = 4 * 1024 * 1024
+MAX_INLINE_ARTIFACT_TOTAL_BYTES = 8 * 1024 * 1024
 WAIT_TIMEOUT_SECONDS = 22.0
 POLL_SECONDS = 0.05
 JOB_ID_RE = re.compile(r"^[a-f0-9]{32}$")
@@ -95,6 +98,7 @@ def execute_python(
     user_id: int | None,
     input_files: Any = None,
     allow_artifacts: bool = True,
+    inline_artifacts: bool = False,
 ) -> PythonExecutionResult:
     if not python_runner_available(user_id):
         return PythonExecutionResult({"ok": False, "error": "python_runner_unavailable"})
@@ -145,7 +149,12 @@ def execute_python(
             )
         response = _wait_for_response(response_manifest)
         artifacts = _persist_artifacts(job_id, response) if allow_artifacts else []
-        public_artifacts = [artifact for artifact in artifacts if artifact.get("url_path")]
+        if inline_artifacts:
+            artifacts = _read_inline_artifacts(job_id, response)
+        public_artifacts = [
+            artifact for artifact in artifacts
+            if artifact.get("url_path") or artifact.get("data_url")
+        ]
         return PythonExecutionResult(
             {
                 "ok": bool(response.get("ok")),
@@ -356,6 +365,59 @@ def _persist_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, 
             }
         )
     return persisted
+
+
+def _read_inline_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, Any]]:
+    if not JOB_ID_RE.fullmatch(job_id):
+        return []
+    raw_artifacts = response.get("artifacts")
+    if not isinstance(raw_artifacts, list):
+        return []
+
+    source_root = (Path(PYTHON_RUNNER_QUEUE) / "responses" / job_id / "artifacts").resolve()
+    inline: list[dict[str, Any]] = []
+    total_bytes = 0
+    for raw_artifact in raw_artifacts[:MAX_ARTIFACT_FILES]:
+        if not isinstance(raw_artifact, dict):
+            continue
+        stored_name = str(raw_artifact.get("stored_name") or "")
+        original_name = secure_filename(str(raw_artifact.get("original_name") or ""))[:180]
+        if not stored_name or not original_name or "/" in stored_name or "\\" in stored_name:
+            continue
+        source = (source_root / stored_name).resolve()
+        try:
+            source.relative_to(source_root)
+            stat = source.lstat()
+        except (OSError, ValueError):
+            continue
+        if source.is_symlink() or not source.is_file():
+            continue
+        size = stat.st_size
+        if size <= 0 or size > MAX_INLINE_ARTIFACT_BYTES:
+            continue
+        if total_bytes + size > MAX_INLINE_ARTIFACT_TOTAL_BYTES:
+            break
+        extension = Path(original_name).suffix.lower()
+        if extension not in {".jpeg", ".jpg", ".png", ".webp"}:
+            continue
+        mime_type = _validate_artifact(source, extension)
+        if not mime_type or not mime_type.startswith("image/"):
+            continue
+        try:
+            encoded = base64.b64encode(source.read_bytes()).decode("ascii")
+        except OSError:
+            continue
+        total_bytes += size
+        inline.append(
+            {
+                "original_name": original_name,
+                "mime_type": mime_type,
+                "size": size,
+                "metadata": _artifact_metadata(source, extension),
+                "data_url": f"data:{mime_type};base64,{encoded}",
+            }
+        )
+    return inline
 
 
 def _validate_artifact(path: Path, extension: str) -> str | None:

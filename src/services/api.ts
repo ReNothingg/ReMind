@@ -126,6 +126,15 @@ export type CanvasPythonExecutionResponse = {
     stderr?: string;
     stdout_truncated?: boolean;
     stderr_truncated?: boolean;
+    artifacts?: CanvasPythonArtifact[];
+};
+
+export type CanvasPythonArtifact = {
+    original_name?: string;
+    mime_type?: string;
+    size?: number;
+    metadata?: Record<string, unknown>;
+    data_url?: string;
 };
 
 export type MindVisibility = 'private' | 'link' | 'store';

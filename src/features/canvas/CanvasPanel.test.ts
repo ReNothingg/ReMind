@@ -247,6 +247,48 @@ describe('CanvasPanel preview toggle', () => {
         });
     });
 
+    it('renders image artifacts returned by the Python runner', async () => {
+        vi.spyOn(apiService, 'executeCanvasPython').mockResolvedValue({
+            ok: true,
+            stdout: '',
+            stderr: '',
+            duration_ms: 9,
+            artifacts: [{
+                original_name: 'plot.png',
+                mime_type: 'image/png',
+                data_url: 'data:image/png;base64,AAAA',
+            }],
+        });
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+
+        act(() => {
+            root?.render(React.createElement(CanvasPanel, {
+                textdoc: {
+                    id: 'canvas-python-image',
+                    name: 'plot.py',
+                    type: 'code/python',
+                    content: 'print("plot")',
+                    comments: [],
+                    updated_at: 1,
+                },
+                onClose: vi.fn(),
+            }));
+        });
+
+        await act(async () => {
+            container?.querySelector<HTMLButtonElement>('.chat-canvas-python-run-header-button')?.click();
+            await Promise.resolve();
+        });
+
+        await vi.waitFor(() => {
+            const image = container?.querySelector<HTMLImageElement>('.chat-canvas-python-terminal-image img');
+            expect(image?.src).toContain('data:image/png;base64,AAAA');
+            expect(image?.alt).toBe('plot.png');
+        });
+    });
+
     it('shows the streaming scan overlay while Canvas code is being updated', () => {
         container = document.createElement('div');
         document.body.appendChild(container);

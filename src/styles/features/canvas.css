@@ -929,6 +929,24 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   margin-top: 8px;
 }
 
+.chat-canvas-python-terminal-image {
+  width: fit-content;
+  max-width: 100%;
+  margin: 10px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface-alt);
+}
+
+.chat-canvas-python-terminal-image img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(46vh, 420px);
+  object-fit: contain;
+}
+
 .chat-canvas-python-terminal-stderr {
   color: var(--color-text-error) !important;
 }

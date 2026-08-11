@@ -27,5 +27,10 @@ def register_python_routes(api_bp):
         if not isinstance(code, str) or not code.strip() or len(code) > MAX_CODE_CHARS:
             raise ApiError("Invalid Python code", status=400, code="invalid_code")
 
-        result = execute_python(code, user_id=user_id, allow_artifacts=False)
+        result = execute_python(
+            code,
+            user_id=user_id,
+            allow_artifacts=False,
+            inline_artifacts=True,
+        )
         return make_ok(result.output)

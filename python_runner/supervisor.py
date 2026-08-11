@@ -225,7 +225,22 @@ def _execute_job(job_id: str, request_path: Path) -> dict[str, Any]:
         input_names = _copy_inputs(job_id, work_root, request.get("input_files") or [])
 
         script_path = work_root / "main.py"
-        script_path.write_text(code, encoding="utf-8")
+        capture_figures = """
+import os as _remind_os
+try:
+    import matplotlib.pyplot as _remind_plt
+    _remind_output_dir = _remind_os.environ.get("REMIND_OUTPUT_DIR", "")
+    for _remind_index, _remind_number in enumerate(_remind_plt.get_fignums(), start=1):
+        _remind_figure = _remind_plt.figure(_remind_number)
+        _remind_figure.savefig(
+            _remind_os.path.join(_remind_output_dir, f"figure-{_remind_index}.png"),
+            dpi=144,
+            bbox_inches="tight",
+        )
+except Exception:
+    pass
+"""
+        script_path.write_text(f"{code}\n\n{capture_figures}", encoding="utf-8")
         script_path.chmod(0o400)
         os.chown(script_path, SANDBOX_UID, SANDBOX_GID)
 

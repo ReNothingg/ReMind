@@ -276,6 +276,9 @@ const CanvasPanel = ({
         || pythonRun.result?.error
         || (pythonRun.state === 'error' ? t('canvas.pythonTerminal.requestFailed') : '')
         || '';
+    const pythonImageArtifacts = (pythonRun.result?.artifacts || []).filter((artifact) => (
+        artifact.mime_type?.startsWith('image/') && artifact.data_url
+    ));
 
     const handleRepairPython = () => {
         if (pythonRun.state !== 'error' || !pythonErrorText || !onRepairPython) return;
@@ -531,7 +534,19 @@ const CanvasPanel = ({
                                             {pythonRun.result?.error && !pythonRun.result.stderr && (
                                                 <pre className="chat-canvas-python-terminal-stderr">{renderAnsiText(pythonRun.result.error)}</pre>
                                             )}
-                                            {!pythonRun.result?.stdout && !pythonRun.result?.stderr && !pythonRun.result?.error && (
+                                            {pythonImageArtifacts.map((artifact, index) => (
+                                                <figure
+                                                    className="chat-canvas-python-terminal-image"
+                                                    key={`${artifact.original_name || 'python-image'}-${index}`}
+                                                >
+                                                    <img
+                                                        src={artifact.data_url}
+                                                        alt={artifact.original_name || t('canvas.pythonTerminal.imageOutput')}
+                                                        loading="lazy"
+                                                    />
+                                                </figure>
+                                            ))}
+                                            {!pythonRun.result?.stdout && !pythonRun.result?.stderr && !pythonRun.result?.error && pythonImageArtifacts.length === 0 && (
                                                 pythonRun.state === 'error'
                                                     ? <pre className="chat-canvas-python-terminal-stderr">{renderAnsiText(pythonErrorText)}</pre>
                                                     : <span className="chat-canvas-python-terminal-placeholder">

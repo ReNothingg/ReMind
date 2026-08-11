@@ -240,6 +240,7 @@
       "duration": "Время: {{duration}} мс",
       "requestFailed": "Не удалось запустить Python-код.",
       "resize": "Изменить высоту терминала Python",
+      "imageOutput": "Изображение из Python",
       "repair": "Исправить",
       "repairPrompt": "При запуске Python-кода в Canvas произошла ошибка. Исправь код в текущем Canvas, учитывая ошибку ниже.\n\nОшибка:\n{{error}}\n\nТекущий код:\n```python\n{{code}}\n```\n\nВнеси исправления в Canvas и кратко объясни, что было изменено."
     }

@@ -240,6 +240,7 @@
       "duration": "Time: {{duration}} ms",
       "requestFailed": "Python code could not be executed.",
       "resize": "Resize Python terminal",
+      "imageOutput": "Python image output",
       "repair": "Fix",
       "repairPrompt": "The Python code in Canvas failed to execute. Fix the code in the current Canvas using the error below.\n\nError:\n{{error}}\n\nCurrent code:\n```python\n{{code}}\n```\n\nApply the fix in Canvas and briefly explain what changed."
     }
