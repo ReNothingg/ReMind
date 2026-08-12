@@ -1054,13 +1054,13 @@
   }
 
   .ui-composer-shell {
-    @apply relative flex min-h-[var(--input-area-height-base)] flex-grow shrink-0 flex-col items-stretch gap-1 rounded-[var(--input-area-border-radius)] border px-2 py-1 shadow-[var(--shadow-xs)] transition duration-200;
+    @apply relative flex min-h-[52px] flex-grow shrink-0 flex-col items-stretch gap-1 rounded-[var(--radius-lg)] border p-1 shadow-[var(--shadow-xs)] transition duration-200;
     background: var(--input-pill-bg);
-    border-color: var(--color-border-subtle);
+    border-color: var(--color-border-medium);
   }
 
   .ui-composer-input-row {
-    @apply flex w-full items-end gap-1;
+    @apply flex min-h-10 w-full items-center gap-1;
   }
 
   .ui-composer-shell:focus-within {
@@ -1125,20 +1125,42 @@
   }
 
   .ui-composer-textarea {
-    @apply min-h-[calc(var(--input-area-item-height)-var(--spacing-unit)*4)] flex-1 resize-none bg-transparent px-1 py-1 text-base leading-6 outline-none placeholder:text-subtle disabled:cursor-not-allowed;
+    @apply min-h-10 flex-1 resize-none bg-transparent px-1 py-1 text-base leading-6 outline-none placeholder:text-subtle disabled:cursor-not-allowed;
     color: var(--input-text-color);
-    padding-block: calc(var(--spacing-unit) * 1.5);
+    padding-block: calc(var(--spacing-unit) * 1.25);
   }
 
   .ui-composer-icon-button {
     @apply inline-flex size-10 min-w-10 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-foreground shadow-none outline-none transition duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60;
     appearance: none;
     -webkit-appearance: none;
-    border-radius: var(--input-area-border-radius);
+    border-radius: var(--radius-md);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 50%;
     box-shadow: none;
+  }
+
+  .ui-composer-shell .attach-button.ui-composer-icon-button {
+    background-color: transparent;
+    color: var(--icon-color-secondary);
+  }
+
+  .ui-composer-shell .send-button.ui-composer-icon-button {
+    background-color: transparent;
+    color: var(--icon-color-secondary);
+  }
+
+  .ui-composer-shell .send-button.ui-composer-icon-button.is-ready,
+  .ui-composer-shell .send-button.ui-composer-icon-button.stop-button {
+    background-color: rgba(var(--color-accent-raw), 0.18);
+    color: var(--color-accent);
+  }
+
+  .ui-composer-shell .send-button.ui-composer-icon-button:disabled:not(.stop-button) {
+    background-color: transparent;
+    color: var(--icon-color-secondary);
+    opacity: 0.55;
   }
 
   .ui-composer-icon-button:hover {

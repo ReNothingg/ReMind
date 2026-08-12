@@ -22,6 +22,7 @@ import { Utils } from '../../utils/utils';
 import TranslationPanel from './TranslationPanel';
 import { hasEquivalentWidget } from './widgetUtils';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
 import { isActiveWebSearchStatus } from './webSearchStatus';
 import { getFeedbackActionVisibility } from './feedbackState';
@@ -895,6 +896,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     const [feedbackMessageType, setFeedbackMessageType] = useState('success');
     const [likeConfettiBurst, setLikeConfettiBurst] = useState(0);
     const audio = useAudio(message.id);
+    const { isAuthenticated } = useAuth();
     const formatLabels = useMemo(() => ({
         codeBlock: {
             codeSnippet: t('codeBlock.codeSnippet'),
@@ -906,6 +908,8 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
             expand: t('codeBlock.expand'),
             collapse: t('codeBlock.collapse'),
             tableCopy: t('codeBlock.tableCopy'),
+            run: t('canvas.pythonTerminal.run'),
+            terminal: t('canvas.pythonTerminal.title'),
         },
         diagrams: {
             chartjsLoading: t('codeBlock.loading.chartjs'),
@@ -1228,17 +1232,6 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         const applySyntaxHighlighting = () => {
             highlightCode(currentRef);
 
-            const codeBlocks = currentRef.querySelectorAll('pre.line-numbers');
-            codeBlocks.forEach(pre => {
-                if (window.Prism?.plugins?.lineNumbers) {
-                    try {
-                        window.Prism.plugins.lineNumbers.resize(pre);
-                    } catch (e) {
-                        console.warn('Failed to initialize line numbers:', e);
-                    }
-                }
-            });
-
             const codeBlockContents = currentRef.querySelectorAll('.code-block-content');
             codeBlockContents.forEach(content => {
                 if (!content.dataset.initialMaxHeight) {
@@ -1289,7 +1282,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
 
         if (resizeObserver) {
             resizeObserver.observe(currentRef);
-            currentRef.querySelectorAll('.code-block-content, pre.line-numbers').forEach((element) => {
+            currentRef.querySelectorAll('.code-block-content, pre.code-line-numbered').forEach((element) => {
                 resizeObserver.observe(element);
             });
         }
@@ -1407,7 +1400,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
             }
 
             const target = eventTarget?.closest('button');
-            if (!target) return;
+            if (!(target instanceof HTMLButtonElement)) return;
 
             if (target.classList.contains('table-copy-btn')) {
                 e.preventDefault();
@@ -1457,7 +1450,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 return;
             }
 
-            const codeBlock = target.closest('.code-block');
+            const codeBlock = target.closest<HTMLElement>('.code-block');
             if (!codeBlock) return;
 
             const codeElement = codeBlock.querySelector('code');
@@ -1465,11 +1458,66 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
 
             const codeText = codeElement.textContent || '';
 
+            if (target.classList.contains('run-code-btn')) {
+                e.preventDefault();
+                if (target.disabled) return;
+
+                const consolePanel = codeBlock.querySelector<HTMLElement>('.code-execution-console');
+                const status = consolePanel?.querySelector<HTMLElement>('.code-execution-console-status');
+                const meta = consolePanel?.querySelector<HTMLElement>('.code-execution-console-meta');
+                const output = consolePanel?.querySelector<HTMLPreElement>('.code-execution-console-output');
+                if (!consolePanel || !status || !meta || !output) return;
+
+                consolePanel.hidden = false;
+                consolePanel.classList.remove('is-error');
+                consolePanel.classList.add('is-running');
+                status.textContent = t('canvas.pythonTerminal.running');
+                meta.textContent = '';
+                output.textContent = '';
+                target.disabled = true;
+
+                if (!isAuthenticated) {
+                    consolePanel.classList.remove('is-running');
+                    consolePanel.classList.add('is-error');
+                    status.textContent = t('canvas.pythonTerminal.failed');
+                    output.textContent = t('settings.account.signInOrRegister');
+                    target.disabled = false;
+                    return;
+                }
+
+                void apiService.executeCanvasPython(codeText)
+                    .then((result) => {
+                        const isSuccess = result.ok;
+                        consolePanel.classList.remove('is-running');
+                        consolePanel.classList.toggle('is-error', !isSuccess);
+                        status.textContent = isSuccess
+                            ? t('canvas.pythonTerminal.success')
+                            : t('canvas.pythonTerminal.failed');
+                        meta.textContent = result.duration_ms === undefined
+                            ? ''
+                            : t('canvas.pythonTerminal.duration', { duration: result.duration_ms });
+                        output.textContent = [result.stdout, result.stderr || result.error]
+                            .filter((value): value is string => Boolean(value))
+                            .join('\n\n') || t('canvas.pythonTerminal.noOutput');
+                    })
+                    .catch(() => {
+                        consolePanel.classList.remove('is-running');
+                        consolePanel.classList.add('is-error');
+                        status.textContent = t('canvas.pythonTerminal.failed');
+                        meta.textContent = '';
+                        output.textContent = t('canvas.pythonTerminal.requestFailed');
+                    })
+                    .finally(() => {
+                        target.disabled = false;
+                    });
+                return;
+            }
+
             if (target.classList.contains('code-tab-btn')) {
                 const tab = target.dataset.tab;
                 if (!tab) return;
 
-                const tabs = codeBlock.querySelectorAll('.code-tab-btn');
+                const tabs = codeBlock.querySelectorAll<HTMLButtonElement>('.code-tab-btn');
                 tabs.forEach(btn => {
                     const isActiveTab = btn === target;
                     btn.classList.toggle('active', isActiveTab);
@@ -1477,7 +1525,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     btn.tabIndex = isActiveTab ? 0 : -1;
                 });
 
-                const panes = codeBlock.querySelectorAll('.code-block-pane');
+                const panes = codeBlock.querySelectorAll<HTMLElement>('.code-block-pane');
                 panes.forEach(pane => {
                     const isActivePane = pane.dataset.pane === tab;
                     pane.classList.toggle('active', isActivePane);
@@ -1485,7 +1533,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 });
 
                 if (tab === 'code') {
-                    const content = codeBlock.querySelector('.code-block-content');
+                    const content = codeBlock.querySelector<HTMLElement>('.code-block-content');
                     if (content) {
                         if (!content.dataset.initialMaxHeight) {
                             const computedStyle = window.getComputedStyle(content);
@@ -1504,10 +1552,6 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                                 }
                             }
 
-                            const pre = content.querySelector('pre.line-numbers');
-                            if (pre && window.Prism && window.Prism.plugins && window.Prism.plugins.lineNumbers) {
-                                window.Prism.plugins.lineNumbers.resize(pre);
-                            }
                         });
                     }
                 }
@@ -1522,11 +1566,11 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 const mimeType = language === 'svg' ? 'image/svg+xml' : `text/${language}`;
                 Utils.downloadFile(codeText, downloadName, mimeType);
             } else if (target.classList.contains('toggle-code-btn')) {
-                const content = codeBlock.querySelector('.code-block-content');
+                const content = codeBlock.querySelector<HTMLElement>('.code-block-content');
                 if (!content) return;
 
-                const iconExpand = target.querySelector('.icon-expand');
-                const iconCollapse = target.querySelector('.icon-collapse');
+                const iconExpand = target.querySelector<HTMLElement>('.icon-expand');
+                const iconCollapse = target.querySelector<HTMLElement>('.icon-collapse');
                 const isCurrentlyCollapsed = !content.classList.contains('expanded');
 
                 if (isCurrentlyCollapsed) {
@@ -1541,10 +1585,6 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     if (iconCollapse) iconCollapse.style.display = 'block';
                     content.classList.remove('has-overflow');
                     requestAnimationFrame(() => {
-                        const pre = content.querySelector('pre.line-numbers');
-                        if (pre && window.Prism && window.Prism.plugins && window.Prism.plugins.lineNumbers) {
-                            window.Prism.plugins.lineNumbers.resize(pre);
-                        }
                     });
                 } else {
                     const expandLabel = target.dataset.expandLabel || t('codeBlock.expand');
@@ -1575,7 +1615,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 currentRef.removeEventListener('click', handleClick);
             };
         }
-    }, [displayContent, markdownEnabledForMessage, message.id, t]);
+    }, [displayContent, isAuthenticated, markdownEnabledForMessage, message.id, t]);
     const handleCopy = async () => {
         const contentToCopy = isUser ? content : stripThinkingBlocks(displayContent);
         if (!contentToCopy) return;

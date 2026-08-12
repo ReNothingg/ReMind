@@ -224,20 +224,43 @@ const highlightCodeContent = (codeContent: string, prismLanguage: string) => {
 };
 
 const renderCodeLineNumberRows = (codeContent: string) => {
-    const lineCount = Math.max(1, codeContent.split('\n').length);
+    const normalizedCode = codeContent.endsWith('\n') ? codeContent.slice(0, -1) : codeContent;
+    const lineCount = Math.max(1, normalizedCode.split('\n').length);
     return `<span class="line-numbers-rows" aria-hidden="true">${'<span></span>'.repeat(lineCount)}</span>`;
 };
 
-const resizeCodeLineNumbers = (root: ParentNode) => {
-    root.querySelectorAll('pre.line-numbers').forEach((pre) => {
-        if (window.Prism?.plugins?.lineNumbers) {
-            try {
-                window.Prism.plugins.lineNumbers.resize(pre);
-            } catch (error) {
-                console.warn('Failed to resize line numbers:', error);
-            }
-        }
-    });
+const COLLAPSED_CODE_VISIBLE_LINE_COUNT = 9;
+
+const renderCodeCollapseControl = (
+    codeContent: string,
+    expandLabel: string,
+    collapseLabel: string,
+) => {
+    const lineCount = Math.max(1, codeContent.trimEnd().split('\n').length);
+    if (lineCount <= COLLAPSED_CODE_VISIBLE_LINE_COUNT) return '';
+
+    return `<button class="toggle-code-btn" type="button" title="${expandLabel}" aria-label="${expandLabel}" aria-expanded="false" data-expand-label="${expandLabel}" data-collapse-label="${collapseLabel}">
+        <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
+    </button>`;
+};
+
+const renderPythonExecutionControls = (language: string, labels: FormatLabels['codeBlock']) => {
+    if (language !== 'python') return { button: '', console: '' };
+
+    const safeRunLabel = escapeHtml(labels.run);
+    const safeTerminalLabel = escapeHtml(labels.terminal);
+    return {
+        button: `<button class="run-code-btn" type="button" title="${safeRunLabel}" aria-label="${safeRunLabel}">${safeRunLabel}</button>`,
+        console: `<section class="code-execution-console" hidden aria-live="polite" aria-label="${safeTerminalLabel}">
+            <header class="code-execution-console-header">
+                <span class="code-execution-console-title">${safeTerminalLabel}</span>
+                <span class="code-execution-console-status"></span>
+                <span class="code-execution-console-meta"></span>
+            </header>
+            <pre class="code-execution-console-output" tabindex="0"></pre>
+        </section>`,
+    };
 };
 
 type MarkdownUtils = {
@@ -344,6 +367,8 @@ type FormatLabels = {
         expand: string;
         collapse: string;
         tableCopy: string;
+        run: string;
+        terminal: string;
     };
     diagrams: {
         chartjsLoading: string;
@@ -380,6 +405,8 @@ const DEFAULT_FORMAT_LABELS: FormatLabels = {
         expand: 'Expand',
         collapse: 'Collapse',
         tableCopy: 'Copy table',
+        run: 'Run',
+        terminal: 'Console',
     },
     diagrams: {
         chartjsLoading: 'Loading chart...',
@@ -606,6 +633,8 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }: DiagramB
     const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
     const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
     const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
+    const collapseControl = renderCodeCollapseControl(codeContent, safeExpandLabel, safeCollapseLabel);
+    const pythonExecutionControls = renderPythonExecutionControls(normalizedLanguage, formatLabels.codeBlock);
 
     return `
     <div class="code-block diagram-block ${meta.blockClass}" data-language="${normalizedLanguage}" data-filename="${safeName}" data-source-filename="${safeSourceFilename}">
@@ -617,12 +646,10 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }: DiagramB
                 <button class="code-tab-btn" data-tab="code" type="button" role="tab" aria-selected="false" tabindex="-1">${safeCodeLabel}</button>
             </div>
             <div class="code-block-header-actions">
+                ${pythonExecutionControls.button}
                 <button class="download-code-btn" type="button" title="${safeDownloadLabel}" aria-label="${safeDownloadLabel}"><img src="/icons/ui/download.svg" alt="" aria-hidden="true"></button>
                 <button class="copy-code-btn" type="button" title="${safeCopyLabel}" aria-label="${safeCopyLabel}"><img src="/icons/ui/copy.svg" alt="" aria-hidden="true"></button>
-                <button class="toggle-code-btn" type="button" title="${safeExpandLabel}" aria-label="${safeExpandLabel}" aria-expanded="false" data-expand-label="${safeExpandLabel}" data-collapse-label="${safeCollapseLabel}">
-                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
-                </button>
+                ${collapseControl}
             </div>
         </div>
         <div class="code-block-pane diagram-preview active" data-pane="preview" role="tabpanel">
@@ -630,10 +657,30 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }: DiagramB
         </div>
         <div class="code-block-pane code-block-scroll-wrapper" data-pane="code" role="tabpanel" hidden>
             <div class="code-block-content">
-                <pre class="line-numbers language-${codeLanguage}"><code class="language-${codeLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
+                <pre class="code-line-numbered language-${codeLanguage}"><code class="language-${codeLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
             </div>
         </div>
+        ${pythonExecutionControls.console}
     </div>`;
+};
+
+const ensureCodeLineNumberRows = (root: ParentNode) => {
+    root.querySelectorAll('pre.code-line-numbered').forEach((pre) => {
+        if (pre.querySelector('.line-numbers-rows')) return;
+
+        const codeContent = pre.querySelector('code')?.textContent || '';
+        const rows = document.createElement('span');
+        rows.className = 'line-numbers-rows';
+        rows.setAttribute('aria-hidden', 'true');
+
+        const normalizedCode = codeContent.endsWith('\n') ? codeContent.slice(0, -1) : codeContent;
+        const lineCount = Math.max(1, normalizedCode.split('\n').length);
+        for (let index = 0; index < lineCount; index += 1) {
+            rows.appendChild(document.createElement('span'));
+        }
+
+        pre.appendChild(rows);
+    });
 };
 const md = new MarkdownIt({
     html: true,
@@ -685,25 +732,26 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
     const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
     const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
     const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
+    const collapseControl = renderCodeCollapseControl(codeContent, safeExpandLabel, safeCollapseLabel);
+    const pythonExecutionControls = renderPythonExecutionControls(actualLanguage, formatLabels.codeBlock);
     return `
     <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
+                ${pythonExecutionControls.button}
                 <button class="download-code-btn" type="button" title="${safeDownloadLabel}" aria-label="${safeDownloadLabel}"><img src="/icons/ui/download.svg" alt="" aria-hidden="true"></button>
                 <button class="copy-code-btn" type="button" title="${safeCopyLabel}" aria-label="${safeCopyLabel}"><img src="/icons/ui/copy.svg" alt="" aria-hidden="true"></button>
-                <button class="toggle-code-btn" type="button" title="${safeExpandLabel}" aria-label="${safeExpandLabel}" aria-expanded="false" data-expand-label="${safeExpandLabel}" data-collapse-label="${safeCollapseLabel}">
-                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
-                </button>
+                ${collapseControl}
             </div>
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
+                <pre class="code-line-numbered language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
             </div>
         </div>
+        ${pythonExecutionControls.console}
     </div>`;
 };
 const processInteractiveHTMLTags = (text: string, labels?: FormatTextOptions['labels']) => {
@@ -906,6 +954,8 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     const safeCopyLabel = escapeHtml(formatLabels.codeBlock.copy);
     const safeExpandLabel = escapeHtml(formatLabels.codeBlock.expand);
     const safeCollapseLabel = escapeHtml(formatLabels.codeBlock.collapse);
+    const collapseControl = renderCodeCollapseControl(codeContent, safeExpandLabel, safeCollapseLabel);
+    const pythonExecutionControls = renderPythonExecutionControls(actualLanguage, formatLabels.codeBlock);
 
     return `
     <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
@@ -913,19 +963,18 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
             <div class="code-block-header-actions">
+                ${pythonExecutionControls.button}
                 <button class="download-code-btn" type="button" title="${safeDownloadLabel}" aria-label="${safeDownloadLabel}"><img src="/icons/ui/download.svg" alt="" aria-hidden="true"></button>
                 <button class="copy-code-btn" type="button" title="${safeCopyLabel}" aria-label="${safeCopyLabel}"><img src="/icons/ui/copy.svg" alt="" aria-hidden="true"></button>
-                <button class="toggle-code-btn" type="button" title="${safeExpandLabel}" aria-label="${safeExpandLabel}" aria-expanded="false" data-expand-label="${safeExpandLabel}" data-collapse-label="${safeCollapseLabel}">
-                    <svg class="icon-expand" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: block;" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-                    <svg class="icon-collapse" viewBox="0 0 24 24" fill="currentColor" width="18px" height="18px" style="display: none;" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
-                </button>
+                ${collapseControl}
             </div>
         </div>
         <div class="code-block-scroll-wrapper">
             <div class="code-block-content">
-                <pre class="line-numbers language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
+                <pre class="code-line-numbered language-${safePrismLanguage}"><code class="language-${safePrismLanguage}">${highlightedContent}</code>${renderCodeLineNumberRows(codeContent)}</pre>
             </div>
         </div>
+        ${pythonExecutionControls.console}
     </div>`;
 };
 
@@ -948,24 +997,23 @@ export const formatUserText = (text: string, options: FormatTextOptions = {}) =>
 
 export const highlightCode = (container?: ParentNode) => {
     const root = container || document;
-    root.querySelectorAll('pre.line-numbers > .line-numbers-rows').forEach((rows) => rows.remove());
     root.querySelectorAll('code[class*="language-"]').forEach((code) => {
         code.removeAttribute('data-highlighted');
     });
 
     if (container) {
         Prism.highlightAllUnder(container);
-        resizeCodeLineNumbers(container);
+        ensureCodeLineNumberRows(container);
         return;
     }
 
     Prism.highlightAll();
-    resizeCodeLineNumbers(document);
+    ensureCodeLineNumberRows(document);
 };
 
 export const refreshCodeLineNumbers = (container?: ParentNode) => {
     const root = container || document;
-    const codeBlocks = Array.from(root.querySelectorAll('pre.line-numbers'));
+    const codeBlocks = Array.from(root.querySelectorAll('pre.code-line-numbered'));
     if (codeBlocks.length === 0) return;
 
     const hasMissingRows = codeBlocks.some((pre) => !pre.querySelector('.line-numbers-rows'));
@@ -974,5 +1022,4 @@ export const refreshCodeLineNumbers = (container?: ParentNode) => {
         return;
     }
 
-    resizeCodeLineNumbers(root);
 };

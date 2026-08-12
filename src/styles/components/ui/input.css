@@ -48,7 +48,7 @@
 
 .input-wrapper {
   background-color: var(--input-pill-bg);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--color-border-medium);
   flex-grow: 1;
   flex-shrink: 0;
   position: relative;
@@ -56,10 +56,10 @@
   gap: calc(var(--spacing-unit) * 1);
   align-items: center;
 
-  padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
-  border-radius: var(--input-area-border-radius);
+  padding: calc(var(--spacing-unit) * 0.5);
+  border-radius: var(--radius-lg);
   transition: all var(--transition-normal);
-  min-height: var(--input-area-height-base);
+  min-height: 52px;
   box-shadow: none;
 }
 
@@ -121,10 +121,10 @@
 
   position: relative;
   color: var(--icon-color-secondary);
-  background-color: var(--input-button-bg);
+  background-color: transparent;
   background-image: none;
   margin: 0;
-  border-radius: var(--input-area-border-radius);
+  border-radius: var(--radius-md);
   border: none;
   outline: none;
   box-shadow: none;
@@ -163,8 +163,13 @@
 .send-button {
   --composer-icon-url: var(--icon-send-url);
 
-  background-color: var(--input-send-button-bg);
-  color: var(--icon-color-on-solid);
+  color: var(--icon-color-secondary);
+}
+
+.send-button.is-ready,
+.send-button.stop-button {
+  background-color: rgba(var(--color-accent-raw), 0.18);
+  color: var(--color-accent);
 }
 
 .send-button.stop-button {
@@ -180,12 +185,13 @@
   background-color: var(--input-button-hover-bg);
 }
 
-.send-button:hover {
-  background-color: var(--input-send-button-hover-bg);
+.send-button.is-ready:hover,
+.send-button.stop-button:hover {
+  background-color: rgba(var(--color-accent-raw), 0.28);
 }
 
 .send-button:disabled:not(.stop-button) {
-  background-color: var(--input-button-bg) !important;
+  background-color: transparent !important;
   color: var(--icon-color-secondary) !important;
   cursor: not-allowed;
 }

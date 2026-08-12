@@ -667,8 +667,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
     const currentFontSizePx = Number.isFinite(parsedFontSizePx)
         ? Math.min(FONT_SIZE_MAX_PX, Math.max(FONT_SIZE_MIN_PX, parsedFontSizePx))
         : 16;
-    const fontSizePercent = ((currentFontSizePx - FONT_SIZE_MIN_PX) / (FONT_SIZE_MAX_PX - FONT_SIZE_MIN_PX)) * 100;
-
     const optionalPersonalizationTabs: Array<{ id: SettingsTabId; label: string; icon: ReactNode }> = isAuthenticated
         ? [{
             id: 'personalization',
@@ -1558,13 +1556,11 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         <div className="setting-range-label text-sm font-medium text-foreground">
                                             {t('settings.accessibility.fontSizeLabel')}
                                         </div>
-                                        <div className="setting-range-control relative w-full max-w-60 pt-[18px]">
-                                            <div
-                                                className="setting-range-bubble absolute top-0 rounded-full border border-border-strong bg-interactive px-2 py-0.5 text-[0.78rem] font-semibold text-foreground"
-                                                style={{ left: `${fontSizePercent}%`, transform: 'translateX(-50%)' }}
-                                                aria-hidden="true"
-                                            >
+                                        <div className="setting-range-control relative w-full max-w-60">
+                                            <div className="setting-range-heading">
+                                                <span className="setting-range-value" aria-hidden="true">
                                                 {currentFontSizePx}px
+                                                </span>
                                             </div>
                                             <input
                                                 className="setting-range w-full"
@@ -1576,14 +1572,6 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                                 onChange={(e) => updateSetting('fontSize', `${e.target.value}px`)}
                                                 aria-label={t('settings.accessibility.fontSizeLabel')}
                                             />
-                                            <div className="setting-range-ticks mt-1 flex justify-between" aria-hidden="true">
-                                                {Array.from(
-                                                    { length: Math.floor((FONT_SIZE_MAX_PX - FONT_SIZE_MIN_PX) / FONT_SIZE_STEP_PX) + 1 },
-                                                    (_, i) => FONT_SIZE_MIN_PX + i * FONT_SIZE_STEP_PX
-                                                ).map((v) => (
-                                                    <span key={v} className="setting-range-tick block h-1.5 w-px rounded-full bg-white/20" />
-                                                ))}
-                                            </div>
                                             <div className="setting-range-meta mt-1 flex justify-between text-[0.78rem] text-subtle">
                                                 <span>{FONT_SIZE_MIN_PX}px</span>
                                                 <span>{FONT_SIZE_MAX_PX}px</span>

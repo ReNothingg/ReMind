@@ -494,8 +494,8 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  pre.line-numbers {
-    padding-left: 3.5em !important;
+  pre.code-line-numbered {
+    grid-template-columns: 3.5em minmax(0, 1fr);
   }
 
   .quiz-card,

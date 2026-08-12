@@ -41,12 +41,33 @@ describe('formatText', () => {
         expect(html).toContain('token keyword');
     });
 
+    it('adds a safe run control and console shell only to Python code blocks', () => {
+        const pythonContainer = document.createElement('div');
+        pythonContainer.innerHTML = formatText('```python\nprint("ok")\n```');
+        const textContainer = document.createElement('div');
+        textContainer.innerHTML = formatText('```text\nplain text\n```');
+
+        expect(pythonContainer.querySelector('.run-code-btn')?.textContent).toBe('Run');
+        expect(pythonContainer.querySelector('.code-execution-console')?.hasAttribute('hidden')).toBe(true);
+        expect(textContainer.querySelector('.run-code-btn')).toBeNull();
+        expect(textContainer.querySelector('.code-execution-console')).toBeNull();
+    });
+
     it('includes line numbers for an unfinished streamed code fence', () => {
         const html = formatText('```text\nfirst line\nsecond line');
         const container = document.createElement('div');
         container.innerHTML = html;
 
         expect(container.querySelectorAll('.line-numbers-rows > span')).toHaveLength(2);
+    });
+
+    it('only renders a collapse control when code exceeds the collapsed line limit', () => {
+        const shortHtml = formatText('```python\nfirst\nsecond\n```');
+        const longCode = Array.from({ length: 10 }, (_, index) => `line_${index + 1}`).join('\n');
+        const longHtml = formatText(`\`\`\`python\n${longCode}\n\`\`\``);
+
+        expect(shortHtml).not.toContain('toggle-code-btn');
+        expect(longHtml).toContain('toggle-code-btn');
     });
 
     it('normalizes common language aliases before highlighting', () => {
@@ -279,7 +300,7 @@ describe('highlightCode', () => {
     it('re-highlights code blocks after Prism marked them as already highlighted', () => {
         const container = document.createElement('div');
         container.innerHTML = `
-            <pre class="line-numbers language-python">
+            <pre class="code-line-numbered language-python">
                 <code class="language-python" data-highlighted="yes">from pathlib import Path</code>
                 <span class="line-numbers-rows"><span></span></span>
             </pre>
@@ -290,6 +311,17 @@ describe('highlightCode', () => {
         const code = container.querySelector('code');
         expect(code?.querySelector('.token.keyword')?.textContent).toBe('from');
         expect(container.querySelectorAll('.line-numbers-rows')).toHaveLength(1);
+    });
+
+    it('restores fallback rows after a highlighter rebuild removes them', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <pre class="code-line-numbered language-python"><code class="language-python">print('one')\nprint('two')</code></pre>
+        `;
+
+        highlightCode(container);
+
+        expect(container.querySelectorAll('.line-numbers-rows > span')).toHaveLength(2);
     });
 });
 
