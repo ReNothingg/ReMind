@@ -80,6 +80,12 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     const authConfigRequestStartedRef = useRef(false);
     const loginContainerRef = useRef(null);
     const registerContainerRef = useRef(null);
+    const registerNameRef = useRef<HTMLInputElement | null>(null);
+    const registerUsernameRef = useRef<HTMLInputElement | null>(null);
+    const registerEmailRef = useRef<HTMLInputElement | null>(null);
+    const registerPasswordRef = useRef<HTMLInputElement | null>(null);
+    const registerConfirmPasswordRef = useRef<HTMLInputElement | null>(null);
+    const usernameAutofillAppliedRef = useRef(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -170,6 +176,35 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     useEffect(() => {
         setIsLoginView(initialView === 'login' || linkMode);
     }, [initialView, linkMode]);
+
+    // Keep the convenience fields in sync after the browser/password manager
+    // has supplied a value. Do not poll the DOM: polling controlled inputs can
+    // close Safari's native autofill popover while it is being shown.
+    useEffect(() => {
+        if (isLoginView || linkMode) return;
+        if (!username && email && !usernameAutofillAppliedRef.current) {
+            const localPart = email.split('@')[0]
+                .replace(/[^a-zA-Z0-9_-]/g, '')
+                .replace(/^[_-]+/, '')
+                .slice(0, 50);
+            if (localPart.length >= 3) {
+                usernameAutofillAppliedRef.current = true;
+                if (registerUsernameRef.current) {
+                    registerUsernameRef.current.value = localPart;
+                }
+                setUsername(localPart);
+            }
+        }
+    }, [email, isLoginView, linkMode, username]);
+
+    useEffect(() => {
+        if (!isLoginView && !linkMode && password && !confirmPassword) {
+            if (registerConfirmPasswordRef.current && !registerConfirmPasswordRef.current.value) {
+                registerConfirmPasswordRef.current.value = password;
+            }
+            setConfirmPassword(password);
+        }
+    }, [confirmPassword, isLoginView, linkMode, password]);
 
     useEffect(() => {
         const code = window.sessionStorage.getItem('remind.auth.error');
@@ -560,9 +595,18 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         e.preventDefault();
         setFieldErrors({});
 
+        // Safari may update the DOM value without notifying React. Read the
+        // registered controls once on submit so autofilled values are never
+        // lost during validation or the request.
+        const effectiveName = registerNameRef.current?.value || name;
+        const effectiveUsername = registerUsernameRef.current?.value || username;
+        const effectiveEmail = registerEmailRef.current?.value || email;
+        const effectivePassword = registerPasswordRef.current?.value || password;
+        const effectiveConfirmPassword = registerConfirmPasswordRef.current?.value || confirmPassword || effectivePassword;
+
         const nextFieldErrors: AccountFieldErrors = {};
-        const nameError = validateAccountName(name, t, { required: true });
-        const usernameError = validateUsername(username, t);
+        const nameError = validateAccountName(effectiveName, t, { required: true });
+        const usernameError = validateUsername(effectiveUsername, t);
 
         if (nameError) {
             nextFieldErrors.name = nameError;
@@ -578,23 +622,23 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
             return;
         }
 
-        if (password !== confirmPassword) {
+        if (effectivePassword !== effectiveConfirmPassword) {
             setMessage({ type: 'error', text: t('authModal.messages.passwordsMismatch') });
             return;
         }
-        if (name.length > 100) {
+        if (effectiveName.length > 100) {
             setMessage({ type: 'error', text: t('settings.account.validation.nameLength') });
             return;
         }
-        if (username.length > 100) {
+        if (effectiveUsername.length > 100) {
             setMessage({ type: 'error', text: t('authModal.messages.usernameTooLong') });
             return;
         }
-        if (email.length > 100) {
+        if (effectiveEmail.length > 100) {
             setMessage({ type: 'error', text: t('authModal.messages.emailTooLong') });
             return;
         }
-        if (password.length > 100) {
+        if (effectivePassword.length > 100) {
             setMessage({ type: 'error', text: t('authModal.messages.passwordTooLong') });
             return;
         }
@@ -608,7 +652,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                 return;
             }
 
-            const res = await authService.register(name.trim(), username.trim(), email, password, turnstileResponse);
+            const res = await authService.register(effectiveName.trim(), effectiveUsername.trim(), effectiveEmail, effectivePassword, turnstileResponse);
             if (res.success === false) {
                 const localizedError = localizeAccountError(res.error, res.field, t);
                 setFieldErrors(localizedError.fieldErrors);
@@ -651,6 +695,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         setPassword('');
         setName('');
         setUsername('');
+        usernameAutofillAppliedRef.current = false;
         setConfirmPassword('');
         setShowPassword(false);
         setShowConfirmPassword(false);
@@ -696,31 +741,25 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                         </h2>
                     </div>
 
-                    <form className="space-y-4" onSubmit={handleLogin}>
+                    <form className="space-y-4" onSubmit={handleLogin} autoComplete="on">
                         <div className="form-group flex flex-col gap-1.5">
                             <label className={fieldLabelClass} htmlFor="loginEmail">{t('authModal.fields.email')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="email"
                                 id="loginEmail"
+                                name="email"
+                                autoComplete="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="loginPassword">{t('authModal.fields.password')}</label>
-                            <div className="password-field">
-                                <input
-                                    className={`${fieldInputClass} auth-password-input`}
-                                    type={showPassword ? 'text' : 'password'}
-                                    id="loginPassword"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
+                            <div className="password-label-row">
+                                <label className={fieldLabelClass} htmlFor="loginPassword">{t('authModal.fields.password')}</label>
                                 <button
-                                    className="password-toggle"
+                                    className="password-toggle password-toggle--label"
                                     type="button"
                                     onClick={() => setShowPassword((current) => !current)}
                                     aria-label={passwordToggleLabel}
@@ -729,6 +768,18 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 >
                                     {showPassword ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" /> : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
                                 </button>
+                            </div>
+                            <div className="password-field">
+                                <input
+                                    className={`${fieldInputClass} auth-password-input`}
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="loginPassword"
+                                    name="password"
+                                    autoComplete="current-password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
                             </div>
                         </div>
 
@@ -786,14 +837,18 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                         </h2>
                     </div>
 
-                    <form className="auth-register-form" onSubmit={handleRegister}>
+                    <form className="auth-register-form" onSubmit={handleRegister} autoComplete="on">
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regName">{t('authModal.fields.name')}</label>
+                            <label className={fieldLabelClass} htmlFor="name">{t('authModal.fields.name')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="text"
-                                id="regName"
-                                value={name}
+                                id="name"
+                                name="given-name"
+                                autoComplete="given-name"
+                                autoCapitalize="words"
+                                ref={registerNameRef}
+                                defaultValue={name}
                                 onChange={(e) => {
                                     setName(e.target.value);
                                     setFieldErrors((prev) => ({ ...prev, name: undefined }));
@@ -808,12 +863,15 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                             )}
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regUsername">{t('authModal.fields.username')}</label>
+                            <label className={fieldLabelClass} htmlFor="username">{t('authModal.fields.username')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="text"
-                                id="regUsername"
-                                value={username}
+                                id="username"
+                                name="username"
+                                autoComplete="username"
+                                ref={registerUsernameRef}
+                                defaultValue={username}
                                 onChange={(e) => {
                                     setUsername(e.target.value);
                                     setFieldErrors((prev) => ({ ...prev, username: undefined }));
@@ -828,32 +886,25 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                             )}
                         </div>
                         <div className="form-group auth-field-full flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regEmail">{t('authModal.fields.email')}</label>
+                            <label className={fieldLabelClass} htmlFor="email">{t('authModal.fields.email')}</label>
                             <input
                                 className={fieldInputClass}
                                 type="email"
-                                id="regEmail"
-                                value={email}
+                                id="email"
+                                name="email"
+                                autoComplete="email"
+                                ref={registerEmailRef}
+                                defaultValue={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 maxLength={100}
                                 required
                             />
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regPassword">{t('authModal.fields.password')}</label>
-                            <div className="password-field">
-                                <input
-                                    className={`${fieldInputClass} auth-password-input`}
-                                    type={showPassword ? 'text' : 'password'}
-                                    id="regPassword"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    minLength={8}
-                                    maxLength={100}
-                                    required
-                                />
+                            <div className="password-label-row">
+                                <label className={fieldLabelClass} htmlFor="new-password">{t('authModal.fields.password')}</label>
                                 <button
-                                    className="password-toggle"
+                                    className="password-toggle password-toggle--label"
                                     type="button"
                                     onClick={() => setShowPassword((current) => !current)}
                                     aria-label={passwordToggleLabel}
@@ -863,21 +914,27 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                     {showPassword ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" /> : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
                                 </button>
                             </div>
-                        </div>
-                        <div className="form-group flex flex-col gap-1.5">
-                            <label className={fieldLabelClass} htmlFor="regConfirm">{t('authModal.fields.confirmPassword')}</label>
                             <div className="password-field">
                                 <input
                                     className={`${fieldInputClass} auth-password-input`}
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    id="regConfirm"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="new-password"
+                                    name="new-password"
+                                    autoComplete="new-password"
+                                    ref={registerPasswordRef}
+                                    defaultValue={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    minLength={8}
                                     maxLength={100}
                                     required
                                 />
+                            </div>
+                        </div>
+                        <div className="form-group flex flex-col gap-1.5">
+                            <div className="password-label-row">
+                                <label className={fieldLabelClass} htmlFor="confirm-password">{t('authModal.fields.confirmPassword')}</label>
                                 <button
-                                    className="password-toggle"
+                                    className="password-toggle password-toggle--label"
                                     type="button"
                                     onClick={() => setShowConfirmPassword((current) => !current)}
                                     aria-label={confirmPasswordToggleLabel}
@@ -886,6 +943,20 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 >
                                     {showConfirmPassword ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" /> : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
                                 </button>
+                            </div>
+                            <div className="password-field">
+                                <input
+                                    className={`${fieldInputClass} auth-password-input`}
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    id="confirm-password"
+                                    name="confirm-password"
+                                    autoComplete="new-password"
+                                    ref={registerConfirmPasswordRef}
+                                    defaultValue={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    maxLength={100}
+                                    required
+                                />
                             </div>
                         </div>
 

@@ -385,14 +385,27 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
 .auth-modal .password-field input {
   display: block;
   width: 100%;
-  padding-right: 2.8rem;
+  padding-right: 3rem;
+}
+
+.auth-modal .password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  gap: 0.5rem;
+}
+
+.auth-modal .password-label-row .ui-field-label {
+  margin-bottom: 0;
 }
 
 .auth-modal .password-toggle {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 0.42rem;
+  /* Leave the native Safari/Password AutoFill control at the far right. */
+  right: 2.65rem;
   margin-block: auto;
   transform: none;
   width: 40px;
@@ -428,6 +441,16 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
   color: var(--color-text-primary);
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
+}
+
+.auth-modal .password-toggle--label {
+  position: relative;
+  inset: auto;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  margin: 0;
+  border-radius: var(--radius-sm);
 }
 
 .auth-modal .auth-register-form {
