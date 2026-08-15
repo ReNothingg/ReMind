@@ -85,6 +85,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     const registerEmailRef = useRef<HTMLInputElement | null>(null);
     const registerPasswordRef = useRef<HTMLInputElement | null>(null);
     const registerConfirmPasswordRef = useRef<HTMLInputElement | null>(null);
+    const loginPasswordRef = useRef<HTMLInputElement | null>(null);
     const usernameAutofillAppliedRef = useRef(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -205,6 +206,38 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
             setConfirmPassword(password);
         }
     }, [confirmPassword, isLoginView, linkMode, password]);
+
+    useEffect(() => {
+        const passwordInput = isLoginView ? loginPasswordRef.current : registerPasswordRef.current;
+        if (passwordInput && passwordInput.value !== password) {
+            passwordInput.value = password;
+        }
+    }, [isLoginView, password, showPassword]);
+
+    useEffect(() => {
+        if (!isLoginView && !linkMode) {
+            const confirmInput = registerConfirmPasswordRef.current;
+            if (confirmInput && confirmInput.value !== confirmPassword) {
+                confirmInput.value = confirmPassword;
+            }
+        }
+    }, [confirmPassword, isLoginView, linkMode, showConfirmPassword]);
+
+    const togglePasswordVisibility = () => {
+        const passwordInput = isLoginView ? loginPasswordRef.current : registerPasswordRef.current;
+        if (passwordInput && passwordInput.value !== password) {
+            setPassword(passwordInput.value);
+        }
+        setShowPassword((current) => !current);
+    };
+
+    const toggleConfirmPasswordVisibility = () => {
+        const confirmInput = registerConfirmPasswordRef.current;
+        if (confirmInput && confirmInput.value !== confirmPassword) {
+            setConfirmPassword(confirmInput.value);
+        }
+        setShowConfirmPassword((current) => !current);
+    };
 
     useEffect(() => {
         const code = window.sessionStorage.getItem('remind.auth.error');
@@ -761,7 +794,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 <button
                                     className="password-toggle password-toggle--label"
                                     type="button"
-                                    onClick={() => setShowPassword((current) => !current)}
+                                    onClick={togglePasswordVisibility}
                                     aria-label={passwordToggleLabel}
                                     aria-pressed={showPassword}
                                     title={passwordToggleLabel}
@@ -776,6 +809,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                     id="loginPassword"
                                     name="password"
                                     autoComplete="current-password"
+                                    ref={loginPasswordRef}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -906,7 +940,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 <button
                                     className="password-toggle password-toggle--label"
                                     type="button"
-                                    onClick={() => setShowPassword((current) => !current)}
+                                    onClick={togglePasswordVisibility}
                                     aria-label={passwordToggleLabel}
                                     aria-pressed={showPassword}
                                     title={passwordToggleLabel}
@@ -936,7 +970,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 <button
                                     className="password-toggle password-toggle--label"
                                     type="button"
-                                    onClick={() => setShowConfirmPassword((current) => !current)}
+                                    onClick={toggleConfirmPasswordVisibility}
                                     aria-label={confirmPasswordToggleLabel}
                                     aria-pressed={showConfirmPassword}
                                     title={confirmPasswordToggleLabel}
