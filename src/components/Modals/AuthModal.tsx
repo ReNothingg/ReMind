@@ -878,8 +878,8 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 className={fieldInputClass}
                                 type="text"
                                 id="name"
-                                name="given-name"
-                                autoComplete="given-name"
+                                name="name"
+                                autoComplete="name"
                                 autoCapitalize="words"
                                 ref={registerNameRef}
                                 defaultValue={name}
@@ -903,7 +903,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 type="text"
                                 id="username"
                                 name="username"
-                                autoComplete="username"
+                                autoComplete="nickname"
                                 ref={registerUsernameRef}
                                 defaultValue={username}
                                 onChange={(e) => {
