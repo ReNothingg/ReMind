@@ -192,6 +192,23 @@ export interface components {
       visibility: "private" | "link" | "store";
       [key: string]: unknown;
     };
+    PasswordResetCompleteRequest: {
+      code: string;
+      password: string;
+      reset_request_id: string;
+    };
+    PasswordResetCompleteResponse: {
+      message: "password_reset_complete";
+    };
+    PasswordResetRequest: {
+      email: string;
+      language?: string;
+    };
+    PasswordResetRequestResponse: {
+      expires_in: number;
+      message: "password_reset_code_sent";
+      reset_request_id: string;
+    };
     PrivacyDeleteRequest: {
       delete_account?: boolean;
     };
@@ -413,6 +430,53 @@ export interface paths {
         "403": {
           content: {
             "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/password-reset/complete": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["PasswordResetCompleteRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["PasswordResetCompleteResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/auth/password-reset/request": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["PasswordResetRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["PasswordResetRequestResponse"];
           };
         };
         "429": {

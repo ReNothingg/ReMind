@@ -68,6 +68,10 @@
       "usernameTooLong": "Username must not exceed 100 characters",
       "emailTooLong": "Email must not exceed 100 characters",
       "passwordTooLong": "Password must not exceed 100 characters",
+      "passwordRequired": "Enter a password",
+      "passwordMinLength": "Password must contain at least {{count}} characters",
+      "passwordDigitRequired": "Password must contain at least one digit",
+      "passwordSpecialRequired": "Password must contain at least one special character",
       "turnstileRequired": "Confirm that you are not a robot and try again.",
       "turnstileLoadError": "Cloudflare verification did not load. Refresh the page or disable blockers for this site.",
       "requestError": "Network or server error",
@@ -85,6 +89,11 @@
         "good": "Good",
         "strong": "Strong"
       }
+    },
+    "passwordReset": {
+      "requestTitle": "Reset password", "confirmTitle": "Enter the email code", "requestDescription": "Enter your account email. We will send a one-time verification code if the account exists.", "confirmDescription": "Enter the 6-digit code from the email and choose a new password. The code expires in 10 minutes.",
+      "forgotPassword": "Forgot password?", "sendCode": "Send code", "sendingCode": "Sending...", "codeLabel": "Email code", "newPasswordLabel": "New password", "resetPassword": "Save new password", "resetting": "Saving...", "sendAgain": "Send a new code", "backToLogin": "Back to sign in", "codeSent": "If this email is registered, a verification code has been sent.", "complete": "Password updated. You can now sign in.", "invalidCode": "The code is invalid, expired, or has already been used.", "requestError": "Could not reset the password. Please try again.", "rateLimited": "Too many attempts. Wait a while and try again.",
+      "email": {"subject": "Your ReMind password reset code", "heading": "Password reset", "greeting": "Hello, {{username}}!", "intro": "Enter this verification code in ReMind to choose a new password:", "expiry": "The code expires in 10 minutes and can only be used once.", "ignore": "If you did not request a password reset, ignore this email. Do not share the code with anyone.", "changedSubject": "Your ReMind password was changed", "changedHeading": "Password changed", "changedIntro": "Your ReMind password was successfully changed.", "changedWarning": "If this was not you, request another reset immediately and contact support."}
     }
   },
   "common": {
@@ -111,6 +120,17 @@
         "hideOutput": "Hide result",
       "showCode": "Show code",
       "hideCode": "Hide code"
+    },
+    "image": {
+      "crop": {"running": "Cropping image...", "completed": "Image crop ready", "failed": "Image crop failed"},
+      "tile": {"running": "Splitting image into sections...", "completed": "Image sections ready", "failed": "Image splitting failed"},
+      "source": "Source: {{filename}}",
+      "fragments": "Sections: {{count}}"
+    },
+    "model": {
+      "waiting": "Waiting for the model to continue analysis...",
+      "responded": "The model continued its analysis",
+      "failed": "The model did not respond in time"
     }
   },
   "landing": {

@@ -181,6 +181,11 @@ login_limiter = RateLimiter(
     namespace="login",
 )
 password_reset_limiter = RateLimiter(max_requests=3, time_window=3600, namespace="password_reset")
+password_reset_verify_limiter = RateLimiter(
+    max_requests=10,
+    time_window=900,
+    namespace="password_reset_verify",
+)
 api_limiter = RateLimiter(max_requests=100, time_window=3600, namespace="api")
 upload_limiter = RateLimiter(max_requests=20, time_window=3600, namespace="upload")
 

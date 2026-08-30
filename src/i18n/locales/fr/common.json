@@ -68,6 +68,10 @@
       "usernameTooLong": "Le nom d'utilisateur ne doit pas dépasser 100 caractères",
       "emailTooLong": "L'e-mail ne doit pas dépasser 100 caractères",
       "passwordTooLong": "Le mot de passe ne doit pas dépasser 100 caractères",
+      "passwordRequired": "Saisissez un mot de passe",
+      "passwordMinLength": "Le mot de passe doit contenir au moins {{count}} caractères",
+      "passwordDigitRequired": "Le mot de passe doit contenir au moins un chiffre",
+      "passwordSpecialRequired": "Le mot de passe doit contenir au moins un caractère spécial",
       "turnstileRequired": "Confirmez que vous n'êtes pas un robot, puis réessayez.",
       "turnstileLoadError": "La vérification Cloudflare ne s’est pas chargée. Actualisez la page ou désactivez les bloqueurs pour ce site.",
       "requestError": "Erreur réseau ou serveur",
@@ -85,6 +89,11 @@
         "good": "Bon",
         "strong": "Fort"
       }
+    },
+    "passwordReset": {
+      "requestTitle": "Réinitialiser le mot de passe", "confirmTitle": "Saisissez le code reçu par email", "requestDescription": "Saisissez l’email de votre compte. S’il existe, nous enverrons un code de vérification à usage unique.", "confirmDescription": "Saisissez le code à 6 chiffres reçu par email et choisissez un nouveau mot de passe. Le code expire dans 10 minutes.",
+      "forgotPassword": "Mot de passe oublié ?", "sendCode": "Envoyer le code", "sendingCode": "Envoi...", "codeLabel": "Code reçu par email", "newPasswordLabel": "Nouveau mot de passe", "resetPassword": "Enregistrer le nouveau mot de passe", "resetting": "Enregistrement...", "sendAgain": "Envoyer un nouveau code", "backToLogin": "Retour à la connexion", "codeSent": "Si cet email est enregistré, un code de vérification a été envoyé.", "complete": "Mot de passe mis à jour. Vous pouvez maintenant vous connecter.", "invalidCode": "Le code est incorrect, expiré ou déjà utilisé.", "requestError": "Impossible de réinitialiser le mot de passe. Réessayez.", "rateLimited": "Trop de tentatives. Patientez puis réessayez.",
+      "email": {"subject": "Votre code de réinitialisation ReMind", "heading": "Réinitialisation du mot de passe", "greeting": "Bonjour, {{username}} !", "intro": "Saisissez ce code de vérification dans ReMind pour choisir un nouveau mot de passe :", "expiry": "Le code expire dans 10 minutes et ne peut être utilisé qu’une fois.", "ignore": "Si vous n’avez pas demandé cette réinitialisation, ignorez cet email. Ne partagez ce code avec personne.", "changedSubject": "Votre mot de passe ReMind a été modifié", "changedHeading": "Mot de passe modifié", "changedIntro": "Le mot de passe de votre compte ReMind a bien été modifié.", "changedWarning": "Si vous n’êtes pas à l’origine de cette action, demandez immédiatement une nouvelle réinitialisation et contactez l’assistance."}
     }
   },
   "common": {
@@ -111,6 +120,17 @@
         "hideOutput": "Masquer le résultat",
       "showCode": "Afficher le code",
       "hideCode": "Masquer le code"
+    },
+    "image": {
+      "crop": {"running": "Recadrage de l’image...", "completed": "Recadrage prêt", "failed": "Échec du recadrage"},
+      "tile": {"running": "Découpage de l’image en sections...", "completed": "Sections de l’image prêtes", "failed": "Échec du découpage de l’image"},
+      "source": "Source : {{filename}}",
+      "fragments": "Sections : {{count}}"
+    },
+    "model": {
+      "waiting": "En attente de la poursuite de l’analyse par le modèle...",
+      "responded": "Le modèle a poursuivi son analyse",
+      "failed": "Le modèle n’a pas répondu à temps"
     }
   },
   "landing": {

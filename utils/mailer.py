@@ -102,6 +102,52 @@ EMAIL_TEMPLATES = {
     </body>
     </html>
     """,
+    "password_reset_code": """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #1f2937; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+            <h2>{heading}</h2>
+        </div>
+        <div style="padding: 20px; background-color: #f9fafb; border: 1px solid #d1d5db;">
+            <p>{greeting}</p>
+            <p>{intro}</p>
+            <p style="text-align: center; margin: 24px 0;">
+                <strong style="display: inline-block; font-size: 30px; letter-spacing: 8px; color: #111827;">{code}</strong>
+            </p>
+            <p>{expiry}</p>
+            <p>{ignore}</p>
+        </div>
+        <div style="margin-top: 20px; font-size: 12px; color: #6b7280; text-align: center;">
+            <p>&copy; {year} ReMind.</p>
+        </div>
+    </body>
+    </html>
+    """,
+    "password_changed_localized": """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #1f2937; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+            <h2>{heading}</h2>
+        </div>
+        <div style="padding: 20px; background-color: #f9fafb; border: 1px solid #d1d5db;">
+            <p>{greeting}</p>
+            <p>{intro}</p>
+            <p>{warning}</p>
+        </div>
+        <div style="margin-top: 20px; font-size: 12px; color: #6b7280; text-align: center;">
+            <p>&copy; {year} ReMind.</p>
+        </div>
+    </body>
+    </html>
+    """,
 }
 
 

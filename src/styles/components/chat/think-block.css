@@ -134,7 +134,9 @@
 }
 
 .think-block-step.is-search .think-block-step-marker,
-.think-block-step.is-python .think-block-step-marker {
+.think-block-step.is-python .think-block-step-marker,
+.think-block-step.is-image .think-block-step-marker,
+.think-block-step.is-model .think-block-step-marker {
   top: 2px;
   left: -28px;
   width: 18px;
@@ -145,7 +147,9 @@
 }
 
 .think-block-step.is-search .think-block-step-marker svg,
-.think-block-step.is-python .think-block-step-marker svg {
+.think-block-step.is-python .think-block-step-marker svg,
+.think-block-step.is-image .think-block-step-marker svg,
+.think-block-step.is-model .think-block-step-marker svg {
   display: block;
   width: 18px;
   height: 18px;
@@ -173,6 +177,14 @@
   line-height: 1.65;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.think-block-step-meta {
+  margin-top: calc(var(--spacing-unit) * 1.25);
+  color: var(--color-text-tertiary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .think-block-sources-panel {

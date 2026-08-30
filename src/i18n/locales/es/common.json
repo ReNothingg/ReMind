@@ -68,6 +68,10 @@
       "usernameTooLong": "El nombre de usuario no debe superar los 100 caracteres",
       "emailTooLong": "El correo electrónico no debe superar los 100 caracteres",
       "passwordTooLong": "La contraseña no debe superar los 100 caracteres",
+      "passwordRequired": "Introduce una contraseña",
+      "passwordMinLength": "La contraseña debe tener al menos {{count}} caracteres",
+      "passwordDigitRequired": "La contraseña debe contener al menos un dígito",
+      "passwordSpecialRequired": "La contraseña debe contener al menos un carácter especial",
       "turnstileRequired": "Confirma que no eres un robot e inténtalo de nuevo.",
       "turnstileLoadError": "No se pudo cargar la verificación de Cloudflare. Actualiza la página o desactiva los bloqueadores para este sitio.",
       "requestError": "Error de red o del servidor",
@@ -85,6 +89,11 @@
         "good": "Buena",
         "strong": "Fuerte"
       }
+    },
+    "passwordReset": {
+      "requestTitle": "Restablecer contraseña", "confirmTitle": "Introduce el código del correo", "requestDescription": "Introduce el email de tu cuenta. Si existe, enviaremos un código de verificación de un solo uso.", "confirmDescription": "Introduce el código de 6 dígitos del correo y elige una nueva contraseña. El código caduca en 10 minutos.",
+      "forgotPassword": "¿Olvidaste la contraseña?", "sendCode": "Enviar código", "sendingCode": "Enviando...", "codeLabel": "Código del correo", "newPasswordLabel": "Nueva contraseña", "resetPassword": "Guardar nueva contraseña", "resetting": "Guardando...", "sendAgain": "Enviar un código nuevo", "backToLogin": "Volver al inicio de sesión", "codeSent": "Si este email está registrado, se ha enviado un código de verificación.", "complete": "Contraseña actualizada. Ya puedes iniciar sesión.", "invalidCode": "El código no es válido, ha caducado o ya se utilizó.", "requestError": "No se pudo restablecer la contraseña. Inténtalo de nuevo.", "rateLimited": "Demasiados intentos. Espera un poco e inténtalo de nuevo.",
+      "email": {"subject": "Tu código para restablecer la contraseña de ReMind", "heading": "Restablecer contraseña", "greeting": "¡Hola, {{username}}!", "intro": "Introduce este código de verificación en ReMind para elegir una nueva contraseña:", "expiry": "El código caduca en 10 minutos y solo puede utilizarse una vez.", "ignore": "Si no solicitaste restablecer la contraseña, ignora este correo. No compartas el código.", "changedSubject": "Tu contraseña de ReMind ha cambiado", "changedHeading": "Contraseña cambiada", "changedIntro": "La contraseña de tu cuenta ReMind se cambió correctamente.", "changedWarning": "Si no fuiste tú, solicita otro restablecimiento de inmediato y contacta con soporte."}
     }
   },
   "common": {
@@ -111,6 +120,17 @@
         "hideOutput": "Ocultar resultado",
       "showCode": "Mostrar código",
       "hideCode": "Ocultar código"
+    },
+    "image": {
+      "crop": {"running": "Recortando la imagen...", "completed": "Recorte de imagen listo", "failed": "No se pudo recortar la imagen"},
+      "tile": {"running": "Dividiendo la imagen en secciones...", "completed": "Secciones de imagen listas", "failed": "No se pudo dividir la imagen"},
+      "source": "Fuente: {{filename}}",
+      "fragments": "Secciones: {{count}}"
+    },
+    "model": {
+      "waiting": "Esperando a que el modelo continúe el análisis...",
+      "responded": "El modelo continuó el análisis",
+      "failed": "El modelo no respondió a tiempo"
     }
   },
   "landing": {

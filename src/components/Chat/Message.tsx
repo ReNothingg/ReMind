@@ -26,6 +26,10 @@ import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
 import { isActiveWebSearchStatus } from './webSearchStatus';
 import { getFeedbackActionVisibility } from './feedbackState';
+import {
+    filterRedundantAutoCapturedImages,
+    stripAttachedArtifactMarkdownImages,
+} from './imageArtifacts';
 
 const LIKE_CONFETTI_PARTICLES = Array.from({ length: 8 }, (_, index) => index);
 
@@ -841,6 +845,8 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         return parts.filter(p => p.image).map(p => p.image.url_path || p.image);
     }, [images, parts]);
 
+    const rawDisplayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
+    const displayImages = filterRedundantAutoCapturedImages(rawDisplayImages);
     let displayContent = currentVariant ? currentVariant.content : content;
     if (displayContent) {
         displayContent = displayContent.replace(/\{[^{}]*"url_path"[^{}]*\}/g, '');
@@ -850,10 +856,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
         if (githubDiffPayload) {
             displayContent = stripGitHubDiffFence(displayContent);
         }
+        displayContent = stripAttachedArtifactMarkdownImages(displayContent, rawDisplayImages);
         displayContent = stripCanmoreToolMarkup(displayContent).trim();
     }
 
-    const displayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
     const displayFiles = currentVariant ? (currentVariant.files || []) : filesFromParts;
     const displaySources = useMemo(
         () => (currentVariant ? (currentVariant.sources || []) : (sources || [])),

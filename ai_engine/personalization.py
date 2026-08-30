@@ -216,6 +216,13 @@ def render_python_tool_prompt() -> str:
     return tool_prompt.strip()
 
 
+def render_image_tool_prompt() -> str:
+    tool_prompt = load_prompt("tools/image.md")
+    if not tool_prompt:
+        return ""
+    return tool_prompt.strip()
+
+
 def render_current_canvas_textdoc(user_data: dict[str, Any]) -> str:
     canvas = user_data.get("canvas_textdoc") if isinstance(user_data, dict) else None
     if not isinstance(canvas, dict):
@@ -346,6 +353,21 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
         )
         else ""
     )
+    image_tool_prompt = (
+        render_image_tool_prompt()
+        if (
+            tools_enabled
+            and telegram_context is None
+            and user_id is not None
+            and PYTHON_RUNNER_ENABLED
+            and any(
+                isinstance(file_info, dict)
+                and str(file_info.get("mime_type") or "").startswith("image/")
+                for file_info in user_data.get("files", [])
+            )
+        )
+        else ""
+    )
     current_canvas_textdoc = render_current_canvas_textdoc(user_data) if tools_enabled else ""
     beatbox_state_prompt = render_beatbox_state_prompt(user_data) if tools_enabled else ""
     github_tool_prompt = render_github_tool_prompt(user_id) if tools_enabled else ""
@@ -359,6 +381,7 @@ def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
             widget_tool_prompt,
             visualize_tool_prompt,
             python_tool_prompt,
+            image_tool_prompt,
             web_tool_prompt,
             current_canvas_textdoc,
             beatbox_state_prompt,

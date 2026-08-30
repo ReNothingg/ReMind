@@ -11,14 +11,20 @@ from services.github_app import (
     GitHubAPIError,
     parse_repo_full_name,
 )
-from services.python_runner import available_input_files, execute_python, python_runner_available
+from services.image_tools import crop_image, tile_image
+from services.python_runner import (
+    available_input_files,
+    execute_python,
+    python_runner_available,
+    resolve_input_files,
+)
 from services.web_search import public_sources, run_web_search
 
 logger = logging.getLogger(__name__)
 
-MAX_TOOL_ROUNDS = 5
+MAX_TOOL_ROUNDS = 10
 MAX_TOOL_CALLS_PER_ROUND = 4
-MAX_TOOL_CALLS_TOTAL = 8
+MAX_TOOL_CALLS_TOTAL = 16
 MAX_TOOL_OUTPUT_CHARS = 48_000
 MAX_GITHUB_REPOSITORIES = 100
 MAX_GITHUB_TREE_PATHS = 600
@@ -29,6 +35,8 @@ class ModelToolResult:
     output: dict[str, Any]
     events: list[dict[str, Any]] = field(default_factory=list)
     sources: list[dict[str, Any]] = field(default_factory=list)
+    model_artifacts: list[dict[str, Any]] = field(default_factory=list)
+    reusable_files: list[dict[str, Any]] = field(default_factory=list)
 
 
 def model_tool_declarations(
@@ -119,6 +127,11 @@ def model_tool_declarations(
         )
     if python_runner_available(user_id):
         available_names = available_input_files(input_files)
+        available_image_names = [
+            name
+            for name, path in resolve_input_files(input_files)
+            if path.suffix.lower() in {".jpeg", ".jpg", ".png", ".webp"}
+        ]
         input_description = (
             " Read-only input files available in REMIND_INPUT_DIR: "
             + ", ".join(json.dumps(name, ensure_ascii=False) for name in available_names)
@@ -163,12 +176,101 @@ def model_tool_declarations(
                                 "for later calls, which prior result led to it. State conclusions, "
                                 "not hidden chain-of-thought."
                             ),
-                        }
+                        },
                     },
                     "required": ["code", "purpose"],
                 },
             }
         )
+        if available_image_names:
+            image_enum = {"type": "string", "enum": available_image_names}
+            declarations.extend(
+                [
+                    {
+                        "name": "image_crop",
+                        "description": (
+                            "Crop one available image by exact pixel coordinates. The crop is "
+                            "immediately attached back to your next model turn so you can inspect "
+                            "fine details and decide whether another crop is needed. Use "
+                            "deliver_to_user=false for internal visual analysis and true only when "
+                            "the crop itself is a requested final deliverable. Coordinates are based "
+                            "on the original image dimensions returned by this tool."
+                        ),
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "filename": image_enum,
+                                "x": {"type": "integer", "minimum": 0},
+                                "y": {"type": "integer", "minimum": 0},
+                                "width": {"type": "integer", "minimum": 1},
+                                "height": {"type": "integer", "minimum": 1},
+                                "max_output_edge": {
+                                    "type": "integer",
+                                    "minimum": 256,
+                                    "maximum": 4096,
+                                    "default": 2048,
+                                },
+                                "deliver_to_user": {"type": "boolean"},
+                                "purpose": {
+                                    "type": "string",
+                                    "description": (
+                                        "Concise user-language progress summary explaining which "
+                                        "region is being inspected and why. Do not reveal hidden "
+                                        "chain-of-thought."
+                                    ),
+                                },
+                            },
+                            "required": [
+                                "filename",
+                                "x",
+                                "y",
+                                "width",
+                                "height",
+                                "deliver_to_user",
+                                "purpose",
+                            ],
+                        },
+                    },
+                    {
+                        "name": "image_tile",
+                        "description": (
+                            "Split a large available image into a 1x1 through 3x3 inspection grid. "
+                            "Every tile is attached back to your next model turn with its exact "
+                            "source coordinates. Use this when the full image is too dense or large "
+                            "to inspect reliably, then follow up with image_crop on important areas. "
+                            "Tiles are internal analysis material and are not delivered to the user."
+                        ),
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "filename": image_enum,
+                                "rows": {"type": "integer", "minimum": 1, "maximum": 3},
+                                "columns": {"type": "integer", "minimum": 1, "maximum": 3},
+                                "overlap_percent": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 25,
+                                    "default": 5,
+                                },
+                                "max_tile_edge": {
+                                    "type": "integer",
+                                    "minimum": 512,
+                                    "maximum": 1024,
+                                    "default": 1024,
+                                },
+                                "purpose": {
+                                    "type": "string",
+                                    "description": (
+                                        "Concise user-language progress summary explaining why the "
+                                        "image is being split. Do not reveal hidden chain-of-thought."
+                                    ),
+                                },
+                            },
+                            "required": ["filename", "rows", "columns", "purpose"],
+                        },
+                    },
+                ]
+            )
     return declarations
 
 
@@ -190,6 +292,26 @@ def execute_model_tool(
         return _execute_github_read_file(user_id, arguments)
     if name == "python_execute":
         return _execute_python(user_id, arguments, input_files, allow_artifacts)
+    if name == "image_crop":
+        result = crop_image(
+            arguments,
+            input_files=input_files,
+            allow_artifacts=allow_artifacts,
+            user_id=user_id,
+        )
+        events = [{"python_artifacts": result.artifacts}] if result.artifacts else []
+        return ModelToolResult(
+            {**result.output, "artifacts": result.artifacts},
+            events=events,
+            model_artifacts=result.model_artifacts,
+            reusable_files=result.reusable_files,
+        )
+    if name == "image_tile":
+        result = tile_image(arguments, input_files=input_files, user_id=user_id)
+        return ModelToolResult(
+            result.output,
+            model_artifacts=result.model_artifacts,
+        )
     return ModelToolResult({"ok": False, "error": "unknown_tool"})
 
 
@@ -204,9 +326,15 @@ def _execute_python(
         user_id=user_id,
         input_files=input_files,
         allow_artifacts=allow_artifacts,
+        include_model_artifacts=True,
     )
     events = [{"python_artifacts": result.artifacts}] if result.artifacts else []
-    return ModelToolResult(result.output, events=events)
+    return ModelToolResult(
+        result.output,
+        events=events,
+        model_artifacts=result.model_artifacts,
+        reusable_files=result.reusable_files,
+    )
 
 
 def serialize_tool_output(output: dict[str, Any]) -> str:

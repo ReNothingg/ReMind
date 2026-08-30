@@ -10,6 +10,10 @@ const requiredTextPaths = [
   ['authModal', 'fields', 'name'],
   ['authModal', 'telegramLinkTitle'],
   ['authModal', 'telegramLinkDescription'],
+  ['authModal', 'passwordReset', 'forgotPassword'],
+  ['authModal', 'passwordReset', 'requestTitle'],
+  ['authModal', 'passwordReset', 'confirmTitle'],
+  ['authModal', 'passwordReset', 'email', 'subject'],
   ['settings', 'account', 'fields', 'name'],
   ['settings', 'account', 'nameHint'],
   ['settings', 'account', 'usernameHint'],
@@ -128,6 +132,10 @@ const validationKeys = [
 
 const localizedCorePaths = [
   ['authModal', 'fields', 'email'],
+  ['authModal', 'passwordReset', 'forgotPassword'],
+  ['authModal', 'passwordReset', 'requestTitle'],
+  ['authModal', 'passwordReset', 'confirmDescription'],
+  ['authModal', 'passwordReset', 'invalidCode'],
   ['common', 'copy'],
   ['common', 'close'],
   ['chat', 'editUserMessage', 'placeholder'],

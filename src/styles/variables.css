@@ -687,11 +687,13 @@ html[data-theme='light'][data-accent-color='white'] {
 }
 
 :root {
-  --palette-bg-raw: 17, 17, 17;
-  --palette-surface-raw: 24, 24, 24;
-  --palette-surface-alt-raw: 29, 29, 31;
-  --palette-interactive-raw: 34, 34, 34;
-  --palette-text-raw: 234, 234, 238;
+  --palette-bg-raw: 14, 14, 14;
+  --palette-canvas-raw: 19, 19, 19;
+  --palette-surface-raw: 26, 26, 26;
+  --palette-surface-alt-raw: 34, 34, 34;
+  --palette-interactive-raw: 44, 44, 44;
+  --palette-elevated-raw: 56, 56, 56;
+  --palette-text-raw: 242, 242, 242;
 
   --color-black-raw: var(--palette-bg-raw);
   --color-white-raw: var(--palette-text-raw);
@@ -700,9 +702,11 @@ html[data-theme='light'][data-accent-color='white'] {
   --color-bg-interactive-raw: var(--palette-interactive-raw);
 
   --color-bg-main: rgb(var(--palette-bg-raw));
+  --color-bg-canvas: rgb(var(--palette-canvas-raw));
   --color-bg-surface: rgb(var(--palette-surface-raw));
   --color-bg-surface-alt: rgb(var(--palette-surface-alt-raw));
   --color-bg-interactive: rgb(var(--palette-interactive-raw));
+  --color-bg-elevated: rgb(var(--palette-elevated-raw));
   --color-bg-overlay: rgba(var(--palette-bg-raw), 0.72);
 
   --color-text-primary: rgba(var(--palette-text-raw), 0.92);
@@ -721,9 +725,9 @@ html[data-theme='light'][data-accent-color='white'] {
   --icon-filter-on-accent: brightness(0) saturate(100%);
   --toggle-btn-icon-filter-active: var(--icon-filter-on-accent);
 
-  --color-border-subtle: rgba(var(--palette-text-raw), 0.07);
-  --color-border-medium: rgba(var(--palette-text-raw), 0.13);
-  --color-border-strong: rgba(var(--palette-text-raw), 0.22);
+  --color-border-subtle: rgba(var(--palette-text-raw), 0.06);
+  --color-border-medium: rgba(var(--palette-text-raw), 0.11);
+  --color-border-strong: rgba(var(--palette-text-raw), 0.18);
   --color-border-focus: rgb(var(--color-accent-raw));
 
   --color-error-raw: 210, 55, 63;
@@ -758,8 +762,13 @@ html[data-theme='light'][data-accent-color='white'] {
   --font-main-thinking: var(--font-family-thinking);
   --transition: var(--transition-normal);
   --animation-duration-fast: 150ms;
-  --animation-duration-normal: 200ms;
-  --animation-duration-slow: 300ms;
+  --animation-duration-normal: 260ms;
+  --animation-duration-slow: 420ms;
+  --motion-quick: 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-settle: 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-layout: 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-layer: 18px;
+  --radius-workspace: 28px;
 
   --code-block-bg: var(--color-bg-surface);
   --code-block-header-bg: var(--color-bg-interactive);
@@ -789,11 +798,13 @@ html:not([data-theme='light'])[data-accent-color='white'] {
 }
 
 html[data-theme='light'] {
-  --palette-bg-raw: 249, 250, 251;
+  --palette-bg-raw: 235, 235, 235;
+  --palette-canvas-raw: 248, 248, 248;
   --palette-surface-raw: 255, 255, 255;
-  --palette-surface-alt-raw: 243, 244, 246;
-  --palette-interactive-raw: 237, 239, 242;
-  --palette-text-raw: 17, 24, 39;
+  --palette-surface-alt-raw: 242, 242, 242;
+  --palette-interactive-raw: 232, 232, 232;
+  --palette-elevated-raw: 220, 220, 220;
+  --palette-text-raw: 24, 24, 24;
 
   --color-black-raw: var(--palette-bg-raw);
   --color-white-raw: var(--palette-text-raw);
@@ -802,21 +813,23 @@ html[data-theme='light'] {
   --color-bg-interactive-raw: var(--palette-interactive-raw);
 
   --color-bg-main: rgb(var(--palette-bg-raw));
+  --color-bg-canvas: rgb(var(--palette-canvas-raw));
   --color-bg-surface: rgb(var(--palette-surface-raw));
   --color-bg-surface-alt: rgb(var(--palette-surface-alt-raw));
   --color-bg-interactive: rgb(var(--palette-interactive-raw));
+  --color-bg-elevated: rgb(var(--palette-elevated-raw));
   --color-bg-overlay: rgba(var(--palette-text-raw), 0.24);
 
   --color-text-primary: rgb(var(--palette-text-raw));
   --color-text-secondary: rgba(var(--palette-text-raw), 0.72);
-  --color-text-tertiary: #6b7280;
+  --color-text-tertiary: #707070;
   --color-text-link: rgb(var(--color-accent-raw));
   --color-text-link-hover: rgb(var(--color-accent-raw));
   --color-text-on-accent-bg: rgb(var(--palette-surface-raw));
 
-  --color-border-subtle: #e5e7eb;
-  --color-border-medium: #d1d5db;
-  --color-border-strong: #9ca3af;
+  --color-border-subtle: rgba(var(--palette-text-raw), 0.07);
+  --color-border-medium: rgba(var(--palette-text-raw), 0.12);
+  --color-border-strong: rgba(var(--palette-text-raw), 0.2);
   --color-border-focus: rgb(var(--color-accent-raw));
 
   --color-text-error: #b91c1c;

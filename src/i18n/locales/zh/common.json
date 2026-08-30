@@ -68,6 +68,10 @@
       "usernameTooLong": "用户名不能超过 100 个字符",
       "emailTooLong": "Email 不能超过 100 个字符",
       "passwordTooLong": "密码不能超过 100 个字符",
+      "passwordRequired": "请输入密码",
+      "passwordMinLength": "密码必须至少包含 {{count}} 个字符",
+      "passwordDigitRequired": "密码必须至少包含一个数字",
+      "passwordSpecialRequired": "密码必须至少包含一个特殊字符",
       "turnstileRequired": "请确认你不是机器人，然后重试。",
       "turnstileLoadError": "Cloudflare 验证未能加载。请刷新页面，或为此网站停用拦截器。",
       "requestError": "网络或服务器错误",
@@ -85,6 +89,11 @@
         "good": "良好",
         "strong": "强"
       }
+    },
+    "passwordReset": {
+      "requestTitle": "重置密码", "confirmTitle": "输入邮件验证码", "requestDescription": "输入账户邮箱。如果账户存在，我们会发送一次性验证码。", "confirmDescription": "输入邮件中的 6 位验证码并设置新密码。验证码将在 10 分钟后过期。",
+      "forgotPassword": "忘记密码？", "sendCode": "发送验证码", "sendingCode": "正在发送...", "codeLabel": "邮件验证码", "newPasswordLabel": "新密码", "resetPassword": "保存新密码", "resetting": "正在保存...", "sendAgain": "发送新验证码", "backToLogin": "返回登录", "codeSent": "如果该邮箱已注册，验证码已发送。", "complete": "密码已更新，现在可以登录。", "invalidCode": "验证码错误、已过期或已使用。", "requestError": "无法重置密码，请重试。", "rateLimited": "尝试次数过多，请稍后再试。",
+      "email": {"subject": "ReMind 密码重置验证码", "heading": "重置密码", "greeting": "你好，{{username}}！", "intro": "请在 ReMind 中输入此验证码以设置新密码：", "expiry": "验证码将在 10 分钟后过期，且只能使用一次。", "ignore": "如果你没有请求重置密码，请忽略此邮件。不要向任何人透露验证码。", "changedSubject": "你的 ReMind 密码已更改", "changedHeading": "密码已更改", "changedIntro": "你的 ReMind 账户密码已成功更改。", "changedWarning": "如果不是你本人操作，请立即再次请求重置并联系支持。"}
     }
   },
   "common": {
@@ -111,6 +120,17 @@
         "hideOutput": "隐藏结果",
       "showCode": "显示代码",
       "hideCode": "隐藏代码"
+    },
+    "image": {
+      "crop": {"running": "正在裁剪图片...", "completed": "图片裁剪已完成", "failed": "图片裁剪失败"},
+      "tile": {"running": "正在将图片拆分为多个区域...", "completed": "图片区域已准备完成", "failed": "图片拆分失败"},
+      "source": "来源：{{filename}}",
+      "fragments": "区域：{{count}}"
+    },
+    "model": {
+      "waiting": "正在等待模型继续分析...",
+      "responded": "模型已继续分析",
+      "failed": "模型未能及时响应"
     }
   },
   "landing": {

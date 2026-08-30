@@ -62,6 +62,14 @@ export type TelegramLinkStatus = {
     user?: AuthUser;
 };
 
+export type PasswordResetRequestResult =
+    | { success: true; resetRequestId: string; expiresIn: number }
+    | { success: false; error?: string; code?: string };
+
+export type PasswordResetCompleteResult =
+    | { success: true }
+    | { success: false; error?: string; code?: string };
+
 type RegisterResponse = {
     message?: string;
     user_id?: number;
@@ -271,6 +279,64 @@ export const authService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ request_id: requestId }),
         });
+    },
+
+    async requestPasswordReset(
+        email: string,
+        language: string
+    ): Promise<PasswordResetRequestResult> {
+        try {
+            const data = await requestAuthJson<{
+                reset_request_id: string;
+                expires_in: number;
+            }>('/api/auth/password-reset/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, language }),
+            });
+            return {
+                success: true,
+                resetRequestId: data.reset_request_id,
+                expiresIn: data.expires_in,
+            };
+        } catch (error) {
+            logFailure('Password reset request', error);
+            const code = extractApiErrorCode(error);
+            const message = extractOptionalErrorMessage(error, 'password_reset_request_failed');
+            return {
+                success: false,
+                ...(code ? { code } : {}),
+                ...(message ? { error: message } : {}),
+            };
+        }
+    },
+
+    async completePasswordReset(
+        resetRequestId: string,
+        code: string,
+        password: string
+    ): Promise<PasswordResetCompleteResult> {
+        try {
+            await requestAuthJson<{ message: string }>('/api/auth/password-reset/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reset_request_id: resetRequestId,
+                    code,
+                    password,
+                }),
+            });
+            return { success: true };
+        } catch (error) {
+            logFailure('Password reset completion', error);
+            const code = extractApiErrorCode(error);
+            const message = extractOptionalErrorMessage(error, 'password_reset_complete_failed');
+            return {
+                success: false,
+                ...(code ? { code } : {}),
+                ...(message ? { error: message } : {}),
+            };
+        }
     },
 
     async register(

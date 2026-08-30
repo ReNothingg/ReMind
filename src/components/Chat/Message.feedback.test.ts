@@ -32,8 +32,16 @@ vi.mock('../../hooks/useAudio', () => ({
     }),
 }));
 
+vi.mock('../../context/AuthContext', () => ({
+    useAuth: () => ({ isAuthenticated: true }),
+}));
+
 import { apiService } from '../../services/api';
 import Message from './Message';
+import {
+    filterRedundantAutoCapturedImages,
+    stripAttachedArtifactMarkdownImages,
+} from './imageArtifacts';
 
 describe('Message feedback actions', () => {
     let container: HTMLDivElement;
@@ -49,6 +57,43 @@ describe('Message feedback actions', () => {
         act(() => root.unmount());
         container.remove();
         delete window.openImageLightbox;
+    });
+
+    it('keeps an explicitly saved Python image instead of its automatic figure snapshot', () => {
+        const images = filterRedundantAutoCapturedImages([
+            {
+                url_path: '/uploads/auto.png',
+                original_name: 'figure-1.png',
+                source: 'python',
+            },
+            {
+                url_path: '/uploads/explicit.png',
+                original_name: 'number_one.png',
+                source: 'python',
+            },
+        ]);
+
+        expect(images).toHaveLength(1);
+        expect(images[0].original_name).toBe('number_one.png');
+    });
+
+    it('keeps multiple automatic figures when there is no explicit image artifact', () => {
+        const images = filterRedundantAutoCapturedImages([
+            { original_name: 'figure-1.png', source: 'python' },
+            { original_name: 'figure-2.png', source: 'python' },
+        ]);
+
+        expect(images).toHaveLength(2);
+    });
+
+    it('removes Markdown images already represented by an attachment', () => {
+        const content = 'Done\n\n![result](figure-1.png)\n\n![external](https://example.com/x.png)';
+        const stripped = stripAttachedArtifactMarkdownImages(content, [
+            { original_name: 'figure-1.png', source: 'python' },
+        ]);
+
+        expect(stripped).not.toContain('![result]');
+        expect(stripped).toContain('![external](https://example.com/x.png)');
     });
 
     it('lets the opposite reaction replace an accidental rating', async () => {

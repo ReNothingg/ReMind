@@ -10,9 +10,11 @@ import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
 import {
     firstAccountFieldError,
+    getAccountPasswordStrength,
     localizeAccountError,
     type AccountFieldErrors,
     validateAccountName,
+    validateAccountPassword,
     validateUsername,
 } from '../../utils/accountValidation';
 
@@ -25,38 +27,12 @@ const PASSWORD_STRENGTH_COLORS = [
 ];
 
 type AuthModalMode = 'login' | 'register' | 'link';
+type PasswordResetStep = 'request' | 'confirm' | null;
 
 type AuthModalProps = {
     onClose: () => void;
     initialView?: Exclude<AuthModalMode, 'link'>;
     authMode?: AuthModalMode;
-};
-
-const getPasswordStrength = (value: string) => {
-    if (!value) {
-        return { score: 0, level: 'empty' };
-    }
-
-    let score = 0;
-    const hasLower = /[a-z]/.test(value);
-    const hasUpper = /[A-Z]/.test(value);
-    const hasNumber = /\d/.test(value);
-    const hasSymbol = /[^\sA-Za-z0-9]/.test(value);
-    const uniqueCharacters = new Set(value).size;
-
-    if (value.length >= 8) score += 1;
-    if (value.length >= 12) score += 1;
-    if (hasLower && hasUpper) score += 1;
-    if (hasNumber) score += 1;
-    if (hasSymbol) score += 1;
-    if (value.length >= 8 && uniqueCharacters < 5) score -= 1;
-
-    score = Math.max(1, Math.min(score, 4));
-
-    if (score >= 4) return { score, level: 'strong' };
-    if (score === 3) return { score, level: 'good' };
-    if (score === 2) return { score, level: 'fair' };
-    return { score, level: 'weak' };
 };
 
 const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps) => {
@@ -95,6 +71,9 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<AccountFieldErrors>({});
+    const [passwordResetStep, setPasswordResetStep] = useState<PasswordResetStep>(null);
+    const [passwordResetRequestId, setPasswordResetRequestId] = useState('');
+    const [passwordResetCode, setPasswordResetCode] = useState('');
 
     const fieldLabelClass = 'ui-field-label';
     const fieldInputClass = 'ui-input min-h-10 rounded-md bg-interactive px-4 py-2.5 text-[0.94rem]';
@@ -105,13 +84,15 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         && authConfig?.telegram_nonce
     );
     const telegramBotLinkAvailable = Boolean(authConfig?.telegram_bot_link_available);
-    const authTitleKey = linkMode
+    const authTitleKey = passwordResetStep
+        ? `authModal.passwordReset.${passwordResetStep}Title`
+        : linkMode
         ? 'authModal.telegramLinkTitle'
         : isLoginView
             ? 'authModal.loginTitle'
             : 'authModal.registerTitle';
     const shouldUseTurnstile = Boolean(authConfig?.turnstile_site_key) && authConfig?.turnstile_required !== false;
-    const passwordStrength = getPasswordStrength(password);
+    const passwordStrength = getAccountPasswordStrength(password);
     const passwordStrengthColor = PASSWORD_STRENGTH_COLORS[passwordStrength.score];
     const passwordToggleLabel = showPassword
         ? t('authModal.actions.hidePassword')
@@ -176,6 +157,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
 
     useEffect(() => {
         setIsLoginView(initialView === 'login' || linkMode);
+        setPasswordResetStep(null);
     }, [initialView, linkMode]);
 
     // Keep the convenience fields in sync after the browser/password manager
@@ -513,7 +495,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
     };
 
     useEffect(() => {
-        if (!shouldUseTurnstile) return;
+        if (!shouldUseTurnstile || passwordResetStep) return;
         let timeoutId;
         let cancelled = false;
 
@@ -569,7 +551,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
             cancelled = true;
             if (timeoutId !== undefined) clearTimeout(timeoutId);
         };
-    }, [authConfig, isLoginView, shouldUseTurnstile, t]);
+    }, [authConfig, isLoginView, passwordResetStep, shouldUseTurnstile, t]);
 
     useEffect(() => {
         if (!window.turnstile) return;
@@ -581,7 +563,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                 removeTurnstile(registerTurnstileIdRef, registerContainerRef);
             }
         };
-    }, [isLoginView]);
+    }, [isLoginView, passwordResetStep]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -640,12 +622,16 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         const nextFieldErrors: AccountFieldErrors = {};
         const nameError = validateAccountName(effectiveName, t, { required: true });
         const usernameError = validateUsername(effectiveUsername, t);
+        const passwordError = validateAccountPassword(effectivePassword, t);
 
         if (nameError) {
             nextFieldErrors.name = nameError;
         }
         if (usernameError) {
             nextFieldErrors.username = usernameError;
+        }
+        if (passwordError) {
+            nextFieldErrors.password = passwordError;
         }
 
         const firstError = firstAccountFieldError(nextFieldErrors);
@@ -718,12 +704,120 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         }
     };
 
+    const openPasswordReset = () => {
+        setPasswordResetStep('request');
+        setPasswordResetRequestId('');
+        setPasswordResetCode('');
+        setPassword('');
+        setConfirmPassword('');
+        setFieldErrors({});
+        setMessage(null);
+    };
+
+    const returnToLogin = () => {
+        setPasswordResetStep(null);
+        setPasswordResetRequestId('');
+        setPasswordResetCode('');
+        setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setFieldErrors({});
+        setMessage(null);
+    };
+
+    const handlePasswordResetRequest = async (event) => {
+        event.preventDefault();
+        setIsLoading(true);
+        setMessage(null);
+        try {
+            const result = await authService.requestPasswordReset(
+                email.trim(),
+                i18n.resolvedLanguage || i18n.language || 'en'
+            );
+            if (result.success === false) {
+                setMessage({
+                    type: 'error',
+                    text: t(result.code === 'rate_limit_exceeded'
+                        ? 'authModal.passwordReset.rateLimited'
+                        : 'authModal.passwordReset.requestError'),
+                });
+                return;
+            }
+            setPasswordResetRequestId(result.resetRequestId);
+            setPasswordResetStep('confirm');
+            setMessage({ type: 'success', text: t('authModal.passwordReset.codeSent') });
+        } catch {
+            setMessage({ type: 'error', text: t('authModal.passwordReset.requestError') });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handlePasswordResetComplete = async (event) => {
+        event.preventDefault();
+        setFieldErrors({});
+        if (!/^\d{6}$/.test(passwordResetCode)) {
+            setMessage({ type: 'error', text: t('authModal.passwordReset.invalidCode') });
+            return;
+        }
+        if (password !== confirmPassword) {
+            setMessage({ type: 'error', text: t('authModal.messages.passwordsMismatch') });
+            return;
+        }
+        const passwordError = validateAccountPassword(password, t);
+        if (passwordError) {
+            setFieldErrors({ password: passwordError });
+            setMessage({ type: 'error', text: passwordError });
+            return;
+        }
+
+        setIsLoading(true);
+        setMessage(null);
+        try {
+            const result = await authService.completePasswordReset(
+                passwordResetRequestId,
+                passwordResetCode,
+                password
+            );
+            if (result.success === false) {
+                if (result.code === 'invalid_password') {
+                    const localized = localizeAccountError(result.error, 'password', t);
+                    setFieldErrors(localized.fieldErrors);
+                    setMessage({
+                        type: 'error',
+                        text: localized.message || t('authModal.passwordReset.requestError'),
+                    });
+                    return;
+                }
+                setMessage({
+                    type: 'error',
+                    text: t(result.code === 'rate_limit_exceeded'
+                        ? 'authModal.passwordReset.rateLimited'
+                        : 'authModal.passwordReset.invalidCode'),
+                });
+                return;
+            }
+            setPasswordResetStep('request');
+            setPasswordResetRequestId('');
+            setPasswordResetCode('');
+            setPassword('');
+            setConfirmPassword('');
+            setMessage({ type: 'success', text: t('authModal.passwordReset.complete') });
+        } catch {
+            setMessage({ type: 'error', text: t('authModal.passwordReset.requestError') });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const switchView = (e) => {
         if (linkMode) return;
         e.preventDefault();
         setIsLoginView(!isLoginView);
         setMessage(null);
         setFieldErrors({});
+        setPasswordResetStep(null);
         setEmail('');
         setPassword('');
         setName('');
@@ -733,6 +827,194 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         setShowPassword(false);
         setShowConfirmPassword(false);
     };
+
+    const renderPasswordReset = () => (
+        <div className="auth-form space-y-4">
+            <div className="space-y-2 pr-12">
+                <h2 className="text-[1.45rem] font-bold tracking-normal text-foreground">
+                    {t(passwordResetStep === 'confirm'
+                        ? 'authModal.passwordReset.confirmTitle'
+                        : 'authModal.passwordReset.requestTitle')}
+                </h2>
+                <p className="text-sm leading-6 text-muted">
+                    {t(passwordResetStep === 'confirm'
+                        ? 'authModal.passwordReset.confirmDescription'
+                        : 'authModal.passwordReset.requestDescription')}
+                </p>
+            </div>
+
+            {passwordResetStep === 'request' ? (
+                <form className="space-y-4" onSubmit={handlePasswordResetRequest}>
+                    <div className="form-group flex flex-col gap-1.5">
+                        <label className={fieldLabelClass} htmlFor="resetEmail">
+                            {t('authModal.fields.email')}
+                        </label>
+                        <input
+                            className={fieldInputClass}
+                            id="resetEmail"
+                            name="email"
+                            type="email"
+                            autoComplete="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            maxLength={100}
+                            required
+                        />
+                    </div>
+                    <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+                        {t(isLoading
+                            ? 'authModal.passwordReset.sendingCode'
+                            : 'authModal.passwordReset.sendCode')}
+                    </button>
+                </form>
+            ) : (
+                <form className="space-y-4" onSubmit={handlePasswordResetComplete}>
+                    <div className="form-group flex flex-col gap-1.5">
+                        <label className={fieldLabelClass} htmlFor="passwordResetCode">
+                            {t('authModal.passwordReset.codeLabel')}
+                        </label>
+                        <input
+                            className={`${fieldInputClass} text-center font-mono tracking-[0.35em]`}
+                            id="passwordResetCode"
+                            name="one-time-code"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            value={passwordResetCode}
+                            onChange={(event) => {
+                                setPasswordResetCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                                setMessage(null);
+                            }}
+                            required
+                        />
+                    </div>
+                    <div className="form-group flex flex-col gap-1.5">
+                        <div className="password-label-row">
+                            <label className={fieldLabelClass} htmlFor="resetNewPassword">
+                                {t('authModal.passwordReset.newPasswordLabel')}
+                            </label>
+                            <button
+                                className="password-toggle password-toggle--label"
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                aria-label={passwordToggleLabel}
+                                aria-pressed={showPassword}
+                                title={passwordToggleLabel}
+                            >
+                                {showPassword
+                                    ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" />
+                                    : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
+                            </button>
+                        </div>
+                        <div className="password-field">
+                            <input
+                                className={`${fieldInputClass} auth-password-input`}
+                                id="resetNewPassword"
+                                name="new-password"
+                                type={showPassword ? 'text' : 'password'}
+                                autoComplete="new-password"
+                                value={password}
+                                onChange={(event) => {
+                                    setPassword(event.target.value);
+                                    setFieldErrors((previous) => ({ ...previous, password: undefined }));
+                                }}
+                                minLength={8}
+                                maxLength={100}
+                                aria-invalid={!!fieldErrors.password}
+                                aria-describedby={fieldErrors.password ? 'resetPasswordError' : undefined}
+                                required
+                            />
+                        </div>
+                        {fieldErrors.password && (
+                            <p id="resetPasswordError" className="text-sm font-medium text-danger">
+                                {fieldErrors.password}
+                            </p>
+                        )}
+                    </div>
+                    <div className="form-group flex flex-col gap-1.5">
+                        <div className="password-label-row">
+                            <label className={fieldLabelClass} htmlFor="resetConfirmPassword">
+                                {t('authModal.fields.confirmPassword')}
+                            </label>
+                            <button
+                                className="password-toggle password-toggle--label"
+                                type="button"
+                                onClick={toggleConfirmPasswordVisibility}
+                                aria-label={confirmPasswordToggleLabel}
+                                aria-pressed={showConfirmPassword}
+                                title={confirmPasswordToggleLabel}
+                            >
+                                {showConfirmPassword
+                                    ? <EyeOff className="password-toggle__icon" size={18} aria-hidden="true" />
+                                    : <Eye className="password-toggle__icon" size={18} aria-hidden="true" />}
+                            </button>
+                        </div>
+                        <div className="password-field">
+                            <input
+                                className={`${fieldInputClass} auth-password-input`}
+                                id="resetConfirmPassword"
+                                name="confirm-password"
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                autoComplete="new-password"
+                                value={confirmPassword}
+                                onChange={(event) => setConfirmPassword(event.target.value)}
+                                minLength={8}
+                                maxLength={100}
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div
+                        className={cn('password-strength', `is-score-${passwordStrength.score}`)}
+                        aria-live="polite"
+                    >
+                        <div className="password-strength__header">
+                            <span>{t('authModal.passwordStrength.label')}</span>
+                            <strong>{t(`authModal.passwordStrength.levels.${passwordStrength.level}`)}</strong>
+                        </div>
+                        <meter
+                            className="password-strength__meter"
+                            min={0}
+                            max={4}
+                            low={2}
+                            high={3}
+                            optimum={4}
+                            value={passwordStrength.score}
+                            aria-label={t('authModal.passwordStrength.label')}
+                            style={{ accentColor: passwordStrengthColor }}
+                        />
+                    </div>
+                    <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+                        {t(isLoading
+                            ? 'authModal.passwordReset.resetting'
+                            : 'authModal.passwordReset.resetPassword')}
+                    </button>
+                    <button
+                        className="w-full text-center text-sm font-semibold text-[var(--color-text-link)] hover:underline"
+                        type="button"
+                        onClick={() => {
+                            setPasswordResetStep('request');
+                            setPasswordResetRequestId('');
+                            setPasswordResetCode('');
+                            setMessage(null);
+                        }}
+                    >
+                        {t('authModal.passwordReset.sendAgain')}
+                    </button>
+                </form>
+            )}
+
+            <button
+                className="w-full text-center text-sm font-semibold text-[var(--color-text-link)] hover:underline"
+                type="button"
+                onClick={returnToLogin}
+            >
+                {t('authModal.passwordReset.backToLogin')}
+            </button>
+        </div>
+    );
 
     return (
         <ModalShell
@@ -753,7 +1035,7 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                 <X size={20} strokeWidth={1.9} aria-hidden="true" />
             </button>
 
-            {linkMode ? (
+            {passwordResetStep ? renderPasswordReset() : linkMode ? (
                 <div className="auth-form space-y-5">
                     <div className="space-y-2 pr-12">
                         <h2 className="text-[1.45rem] font-bold tracking-normal text-foreground">
@@ -816,6 +1098,14 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                 />
                             </div>
                         </div>
+
+                        <button
+                            className="w-full text-right text-sm font-semibold text-[var(--color-text-link)] hover:underline"
+                            type="button"
+                            onClick={openPasswordReset}
+                        >
+                            {t('authModal.passwordReset.forgotPassword')}
+                        </button>
 
                         {shouldUseTurnstile && (
                             <div
@@ -957,12 +1247,20 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
                                     autoComplete="new-password"
                                     ref={registerPasswordRef}
                                     defaultValue={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                                    }}
                                     minLength={8}
                                     maxLength={100}
                                     required
+                                    aria-invalid={!!fieldErrors.password}
+                                    aria-describedby={fieldErrors.password ? 'regPasswordError' : undefined}
                                 />
                             </div>
+                            {fieldErrors.password && (
+                                <p id="regPasswordError" className="text-sm font-medium text-danger">{fieldErrors.password}</p>
+                            )}
                         </div>
                         <div className="form-group flex flex-col gap-1.5">
                             <div className="password-label-row">

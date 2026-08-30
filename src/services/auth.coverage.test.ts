@@ -96,6 +96,45 @@ describe('authService coverage', () => {
         expect(headers.get('Content-Type')).toBe('application/json');
     });
 
+    it('requests and completes a password reset with an email code', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(createJsonResponse({
+                message: 'password_reset_code_sent',
+                reset_request_id: 'abcdefghijklmnopqrstuvwx',
+                expires_in: 600,
+            }))
+            .mockResolvedValueOnce(createJsonResponse({ message: 'password_reset_complete' }))
+            .mockResolvedValueOnce(createJsonResponse({
+                error: { message: 'Invalid or expired password reset code', code: 'invalid_or_expired_code' },
+            }, false));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(authService.requestPasswordReset('demo@example.com', 'ru')).resolves.toEqual({
+            success: true,
+            resetRequestId: 'abcdefghijklmnopqrstuvwx',
+            expiresIn: 600,
+        });
+        await expect(authService.completePasswordReset(
+            'abcdefghijklmnopqrstuvwx',
+            '123456',
+            'NewPassword1!',
+        )).resolves.toEqual({ success: true });
+        await expect(authService.completePasswordReset(
+            'abcdefghijklmnopqrstuvwx',
+            '000000',
+            'NewPassword1!',
+        )).resolves.toEqual({
+            success: false,
+            code: 'invalid_or_expired_code',
+            error: 'Invalid or expired password reset code',
+        });
+
+        expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+            email: 'demo@example.com',
+            language: 'ru',
+        });
+    });
+
     it('logs out and reads profile and settings endpoints', async () => {
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(createJsonResponse({}))

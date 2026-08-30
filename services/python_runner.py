@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import base64
 import fcntl
+import io
 import json
 import logging
 import os
@@ -12,12 +13,12 @@ import time
 import unicodedata
 import uuid
 import zipfile
-from xml.etree import ElementTree
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
-from PIL import Image
+from PIL import Image, ImageOps
 from werkzeug.utils import secure_filename
 
 from config import PYTHON_RUNNER_ENABLED, PYTHON_RUNNER_QUEUE, UPLOAD_FOLDER
@@ -35,6 +36,10 @@ MAX_ARTIFACT_TOTAL_BYTES = 12 * 1024 * 1024
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
 MAX_INLINE_ARTIFACT_BYTES = 4 * 1024 * 1024
 MAX_INLINE_ARTIFACT_TOTAL_BYTES = 8 * 1024 * 1024
+MAX_MODEL_IMAGE_ARTIFACTS = 9
+MAX_MODEL_IMAGE_EDGE = 2048
+MAX_MODEL_IMAGE_PIXELS = 25_000_000
+MAX_MODEL_IMAGE_TOTAL_BYTES = 8 * 1024 * 1024
 MAX_TEXT_ARTIFACT_PREVIEW_CHARS = 12_000
 WAIT_TIMEOUT_SECONDS = 22.0
 POLL_SECONDS = 0.05
@@ -83,6 +88,8 @@ PLACEHOLDER_COMMENT_RE = re.compile(
 class PythonExecutionResult:
     output: dict[str, Any]
     artifacts: list[dict[str, Any]] = field(default_factory=list)
+    model_artifacts: list[dict[str, Any]] = field(default_factory=list)
+    reusable_files: list[dict[str, Any]] = field(default_factory=list)
 
 
 def python_runner_available(user_id: int | None) -> bool:
@@ -93,6 +100,11 @@ def available_input_files(files: Any) -> list[str]:
     return [item[0] for item in _resolve_input_files(files)]
 
 
+def resolve_input_files(files: Any) -> list[tuple[str, Path]]:
+    """Return validated, upload-root-contained files available to model tools."""
+    return _resolve_input_files(files)
+
+
 def execute_python(
     code: Any,
     *,
@@ -100,9 +112,11 @@ def execute_python(
     input_files: Any = None,
     allow_artifacts: bool = True,
     inline_artifacts: bool = False,
+    include_model_artifacts: bool = False,
 ) -> PythonExecutionResult:
     if not python_runner_available(user_id):
         return PythonExecutionResult({"ok": False, "error": "python_runner_unavailable"})
+    resolved_user_id = int(user_id) if user_id is not None else 0
     if not isinstance(code, str) or not code.strip() or len(code) > MAX_CODE_CHARS:
         return PythonExecutionResult({"ok": False, "error": "invalid_code"})
     quality_issues = _code_quality_issues(code)
@@ -115,7 +129,7 @@ def execute_python(
             }
         )
 
-    rate_state = python_tool_limiter.evaluate(f"python_tool:user_{int(user_id)}")
+    rate_state = python_tool_limiter.evaluate(f"python_tool:user_{resolved_user_id}")
     if not rate_state.allowed:
         return PythonExecutionResult(
             {
@@ -149,11 +163,26 @@ def execute_python(
                 {"version": 1, "code": code, "input_files": copied_names},
             )
         response = _wait_for_response(response_manifest)
-        artifacts = _persist_artifacts(job_id, response) if allow_artifacts else []
+        persisted_artifacts = _persist_artifacts(job_id, response) if allow_artifacts else []
+        artifacts = [_public_artifact(artifact) for artifact in persisted_artifacts]
+        reusable_files = [
+            {
+                "path": artifact["_path"],
+                "url_path": artifact.get("url_path"),
+                "original_name": artifact.get("original_name"),
+                "mime_type": artifact.get("mime_type"),
+            }
+            for artifact in persisted_artifacts
+            if artifact.get("_path")
+        ]
         if inline_artifacts:
             artifacts = _read_inline_artifacts(job_id, response)
+        model_artifacts = (
+            _read_model_image_artifacts(job_id, response) if include_model_artifacts else []
+        )
         public_artifacts = [
-            artifact for artifact in artifacts
+            artifact
+            for artifact in artifacts
             if artifact.get("url_path") or artifact.get("data_url")
         ]
         return PythonExecutionResult(
@@ -175,6 +204,8 @@ def execute_python(
                 "artifacts": public_artifacts,
             },
             artifacts=public_artifacts,
+            model_artifacts=model_artifacts,
+            reusable_files=reusable_files,
         )
     except TimeoutError:
         logger.warning("Python runner timed out waiting for job %s", job_id)
@@ -292,7 +323,7 @@ def _code_quality_issues(code: str) -> list[str]:
             if node.value.value is Ellipsis:
                 issues.append(f"ellipsis_placeholder:{node.lineno}")
         if isinstance(node, ast.Dict):
-            for key, value in zip(node.keys, node.values):
+            for key, value in zip(node.keys, node.values, strict=False):
                 if (
                     isinstance(key, ast.Constant)
                     and isinstance(key.value, str)
@@ -357,6 +388,7 @@ def _persist_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, 
             continue
 
         artifact = {
+            "_path": str(target),
             "url_path": f"/uploads/{target_name}",
             "original_name": original_name,
             "mime_type": mime_type,
@@ -368,6 +400,10 @@ def _persist_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, 
             artifact["preview"] = preview
         persisted.append(artifact)
     return persisted
+
+
+def _public_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in artifact.items() if not key.startswith("_")}
 
 
 def _read_inline_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -423,6 +459,76 @@ def _read_inline_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[s
     return inline
 
 
+def _read_model_image_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, Any]]:
+    if not JOB_ID_RE.fullmatch(job_id):
+        return []
+    raw_artifacts = response.get("artifacts")
+    if not isinstance(raw_artifacts, list):
+        return []
+
+    source_root = (Path(PYTHON_RUNNER_QUEUE) / "responses" / job_id / "artifacts").resolve()
+    model_artifacts: list[dict[str, Any]] = []
+    total_bytes = 0
+    for raw_artifact in raw_artifacts[:MAX_ARTIFACT_FILES]:
+        if len(model_artifacts) >= MAX_MODEL_IMAGE_ARTIFACTS or not isinstance(raw_artifact, dict):
+            break
+        stored_name = str(raw_artifact.get("stored_name") or "")
+        original_name = secure_filename(str(raw_artifact.get("original_name") or ""))[:180]
+        if not stored_name or not original_name or "/" in stored_name or "\\" in stored_name:
+            continue
+        source = (source_root / stored_name).resolve()
+        try:
+            source.relative_to(source_root)
+            stat = source.lstat()
+        except (OSError, ValueError):
+            continue
+        if source.is_symlink() or not source.is_file() or stat.st_size <= 0:
+            continue
+        extension = Path(original_name).suffix.lower()
+        if extension not in {".jpeg", ".jpg", ".png", ".webp"}:
+            continue
+        mime_type = _validate_artifact(source, extension)
+        if not mime_type or not mime_type.startswith("image/"):
+            continue
+        try:
+            with Image.open(source) as opened:
+                if opened.width * opened.height > MAX_MODEL_IMAGE_PIXELS:
+                    continue
+                image = ImageOps.exif_transpose(opened)
+                image.thumbnail(
+                    (MAX_MODEL_IMAGE_EDGE, MAX_MODEL_IMAGE_EDGE), Image.Resampling.LANCZOS
+                )
+                has_alpha = image.mode in {"RGBA", "LA"} or (
+                    image.mode == "P" and "transparency" in image.info
+                )
+                buffer = io.BytesIO()
+                if has_alpha:
+                    image.convert("RGBA").save(buffer, format="PNG")
+                    feedback_mime = "image/png"
+                else:
+                    image.convert("RGB").save(buffer, format="JPEG", quality=90, optimize=True)
+                    feedback_mime = "image/jpeg"
+                data = buffer.getvalue()
+        except (OSError, ValueError, Image.DecompressionBombError):
+            continue
+        if not data or total_bytes + len(data) > MAX_MODEL_IMAGE_TOTAL_BYTES:
+            break
+        total_bytes += len(data)
+        model_artifacts.append(
+            {
+                "original_name": original_name,
+                "mime_type": feedback_mime,
+                "data": data,
+                "metadata": {
+                    **_artifact_metadata(source, extension),
+                    "feedback_width": image.width,
+                    "feedback_height": image.height,
+                },
+            }
+        )
+    return model_artifacts
+
+
 def _validate_artifact(path: Path, extension: str) -> str | None:
     detected = detect_mime_from_content(path)
     if detected not in ALLOWED_ARTIFACT_MIMES.get(extension, set()):
@@ -430,7 +536,11 @@ def _validate_artifact(path: Path, extension: str) -> str | None:
     if extension in {".jpeg", ".jpg", ".png", ".webp"}:
         try:
             with Image.open(path) as image:
-                if image.width > 20_000 or image.height > 20_000:
+                if (
+                    image.width > 20_000
+                    or image.height > 20_000
+                    or image.width * image.height > MAX_MODEL_IMAGE_PIXELS
+                ):
                     return None
                 image.verify()
         except Exception:
@@ -495,8 +605,7 @@ def _artifact_metadata(path: Path, extension: str) -> dict[str, Any]:
             sheet_names = [
                 str(element.attrib.get("name") or "")[:120]
                 for element in root.iter()
-                if element.tag.rsplit("}", 1)[-1] == "sheet"
-                and element.attrib.get("name")
+                if element.tag.rsplit("}", 1)[-1] == "sheet" and element.attrib.get("name")
             ][:100]
             return {
                 "kind": "workbook",

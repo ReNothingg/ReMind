@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { apiService, getCsrfToken } from './api';
+import { apiService, getCsrfToken, readChatStreamChunk } from './api';
 
 function createJsonResponse(data: unknown, init: {
     ok?: boolean;
@@ -21,6 +21,23 @@ function createJsonResponse(data: unknown, init: {
 }
 
 describe('apiService coverage', () => {
+    it('cancels a chat stream that stops producing chunks', async () => {
+        vi.useFakeTimers();
+        const cancel = vi.fn().mockResolvedValue(undefined);
+        const reader = {
+            cancel,
+            read: vi.fn(() => new Promise<ReadableStreamReadResult<Uint8Array>>(() => undefined)),
+        };
+
+        const pending = readChatStreamChunk(reader, 50);
+        const rejected = expect(pending).rejects.toThrow('chat_stream_idle_timeout');
+        await vi.advanceTimersByTimeAsync(50);
+        await rejected;
+
+        expect(cancel).toHaveBeenCalledTimes(1);
+        vi.useRealTimers();
+    });
+
     it('reads csrf cookies and attaches csrf header for unsafe methods', async () => {
         expect(getCsrfToken()).toBe('test_csrf');
 

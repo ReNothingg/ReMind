@@ -68,6 +68,10 @@
       "usernameTooLong": "O nome de usuário não deve exceder 100 caracteres",
       "emailTooLong": "O email não deve exceder 100 caracteres",
       "passwordTooLong": "A senha não deve exceder 100 caracteres",
+      "passwordRequired": "Digite uma senha",
+      "passwordMinLength": "A senha deve conter pelo menos {{count}} caracteres",
+      "passwordDigitRequired": "A senha deve conter pelo menos um dígito",
+      "passwordSpecialRequired": "A senha deve conter pelo menos um caractere especial",
       "turnstileRequired": "Confirme que você não é um robô e tente novamente.",
       "turnstileLoadError": "A verificação da Cloudflare não foi carregada. Atualize a página ou desative os bloqueadores para este site.",
       "requestError": "Erro de rede ou do servidor",
@@ -85,6 +89,11 @@
         "good": "Boa",
         "strong": "Forte"
       }
+    },
+    "passwordReset": {
+      "requestTitle": "Redefinir senha", "confirmTitle": "Digite o código do email", "requestDescription": "Digite o email da sua conta. Se ela existir, enviaremos um código de verificação de uso único.", "confirmDescription": "Digite o código de 6 dígitos recebido por email e escolha uma nova senha. O código expira em 10 minutos.",
+      "forgotPassword": "Esqueceu a senha?", "sendCode": "Enviar código", "sendingCode": "Enviando...", "codeLabel": "Código do email", "newPasswordLabel": "Nova senha", "resetPassword": "Salvar nova senha", "resetting": "Salvando...", "sendAgain": "Enviar novo código", "backToLogin": "Voltar ao login", "codeSent": "Se este email estiver cadastrado, um código de verificação foi enviado.", "complete": "Senha atualizada. Agora você pode entrar.", "invalidCode": "O código é inválido, expirou ou já foi usado.", "requestError": "Não foi possível redefinir a senha. Tente novamente.", "rateLimited": "Muitas tentativas. Aguarde um pouco e tente novamente.",
+      "email": {"subject": "Seu código de redefinição de senha do ReMind", "heading": "Redefinição de senha", "greeting": "Olá, {{username}}!", "intro": "Digite este código de verificação no ReMind para escolher uma nova senha:", "expiry": "O código expira em 10 minutos e só pode ser usado uma vez.", "ignore": "Se você não solicitou a redefinição, ignore este email. Não compartilhe o código.", "changedSubject": "Sua senha do ReMind foi alterada", "changedHeading": "Senha alterada", "changedIntro": "A senha da sua conta ReMind foi alterada com sucesso.", "changedWarning": "Se não foi você, solicite outra redefinição imediatamente e entre em contato com o suporte."}
     }
   },
   "common": {
@@ -111,6 +120,17 @@
         "hideOutput": "Ocultar resultado",
       "showCode": "Mostrar código",
       "hideCode": "Ocultar código"
+    },
+    "image": {
+      "crop": {"running": "A recortar a imagem...", "completed": "Recorte da imagem pronto", "failed": "Falha ao recortar a imagem"},
+      "tile": {"running": "A dividir a imagem em secções...", "completed": "Secções da imagem prontas", "failed": "Falha ao dividir a imagem"},
+      "source": "Origem: {{filename}}",
+      "fragments": "Secções: {{count}}"
+    },
+    "model": {
+      "waiting": "A aguardar que o modelo continue a análise...",
+      "responded": "O modelo continuou a análise",
+      "failed": "O modelo não respondeu a tempo"
     }
   },
   "landing": {

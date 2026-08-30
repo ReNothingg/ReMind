@@ -230,13 +230,19 @@ import os as _remind_os
 try:
     import matplotlib.pyplot as _remind_plt
     _remind_output_dir = _remind_os.environ.get("REMIND_OUTPUT_DIR", "")
-    for _remind_index, _remind_number in enumerate(_remind_plt.get_fignums(), start=1):
-        _remind_figure = _remind_plt.figure(_remind_number)
-        _remind_figure.savefig(
-            _remind_os.path.join(_remind_output_dir, f"figure-{_remind_index}.png"),
-            dpi=144,
-            bbox_inches="tight",
-        )
+    _remind_saved_images = any(
+        _remind_entry.is_file(follow_symlinks=False)
+        and _remind_entry.name.lower().endswith((".jpeg", ".jpg", ".png", ".webp"))
+        for _remind_entry in _remind_os.scandir(_remind_output_dir)
+    )
+    if not _remind_saved_images:
+        for _remind_index, _remind_number in enumerate(_remind_plt.get_fignums(), start=1):
+            _remind_figure = _remind_plt.figure(_remind_number)
+            _remind_figure.savefig(
+                _remind_os.path.join(_remind_output_dir, f"figure-{_remind_index}.png"),
+                dpi=144,
+                bbox_inches="tight",
+            )
 except Exception:
     pass
 """

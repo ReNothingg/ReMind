@@ -153,7 +153,7 @@ const InputArea = ({
             textareaRef.current.style.height = 'auto';
             const nextHeight = text.trim()
                 ? Math.min(textareaRef.current.scrollHeight, 200)
-                : 44;
+                : 40;
             textareaRef.current.style.height = `${nextHeight}px`;
         }
     }, [text, quotes]);

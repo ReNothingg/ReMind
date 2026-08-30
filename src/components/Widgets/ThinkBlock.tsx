@@ -13,6 +13,14 @@ import {
     decodePythonActivity,
     type DecodedPythonActivity,
 } from './pythonActivityUtils';
+import {
+    decodeImageActivity,
+    type DecodedImageActivity,
+} from './imageActivityUtils';
+import {
+    decodeModelActivity,
+    type DecodedModelActivity,
+} from './modelActivityUtils';
 
 type ThoughtSection = {
     kind: 'thought';
@@ -28,7 +36,15 @@ type PythonActivity = DecodedPythonActivity & {
     kind: 'python';
 };
 
-type ThoughtTimelineItem = ThoughtSection | SearchActivity | PythonActivity;
+type ImageActivity = DecodedImageActivity & {
+    kind: 'image';
+};
+
+type ModelActivity = DecodedModelActivity & {
+    kind: 'model';
+};
+
+type ThoughtTimelineItem = ThoughtSection | SearchActivity | PythonActivity | ImageActivity | ModelActivity;
 
 type ThinkBlockProps = {
     content?: string;
@@ -170,12 +186,47 @@ function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
     );
 }
 
+function ImageAnalysisStep({ activity }: { activity: ImageActivity }) {
+    const { t } = useTranslation();
+    const statusKey = activity.status === 'image_running'
+        ? 'running'
+        : activity.status === 'image_completed'
+            ? 'completed'
+            : 'failed';
+    return (
+        <div className="think-block-image-analysis">
+            <div className="think-block-step-title">{t(`think.image.${activity.operation}.${statusKey}`)}</div>
+            {activity.purpose && (
+                <div className="think-block-step-body">{activity.purpose}</div>
+            )}
+            {activity.filename && (
+                <div className="think-block-step-meta">
+                    {t('think.image.source', { filename: activity.filename })}
+                    {activity.imageCount > 0
+                        ? ` · ${t('think.image.fragments', { count: activity.imageCount })}`
+                        : ''}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ModelResponseStep({ activity }: { activity: ModelActivity }) {
+    const { t } = useTranslation();
+    const statusKey = activity.status === 'model_waiting'
+        ? 'waiting'
+        : activity.status === 'model_responded'
+            ? 'responded'
+            : 'failed';
+    return <div className="think-block-step-title">{t(`think.model.${statusKey}`)}</div>;
+}
+
 function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
     const text = decodeThoughtEntities(String(value || '')).trim();
     if (!text) {
         return [];
     }
-    const markerRegex = /<search_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/search_activity>|<python_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/python_activity>|\*\*([^*\n]+?)\*\*/g;
+    const markerRegex = /<search_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/search_activity>|<python_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/python_activity>|<image_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/image_activity>|<model_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/model_activity>|\*\*([^*\n]+?)\*\*/g;
     const items: ThoughtTimelineItem[] = [];
     let cursor = 0;
     let pendingHeading: string | undefined;
@@ -202,14 +253,54 @@ function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
                 items.push({ kind: 'python', ...activity });
             }
         } else if (match[3]) {
-            pendingHeading = match[3].trim();
+            const activity = decodeImageActivity(match[3]);
+            if (activity) {
+                items.push({ kind: 'image', ...activity });
+            }
+        } else if (match[4]) {
+            const activity = decodeModelActivity(match[4]);
+            if (activity) {
+                items.push({ kind: 'model', ...activity });
+            }
+        } else if (match[5]) {
+            pendingHeading = match[5].trim();
         }
         cursor = match.index + match[0].length;
     }
     flushThought(text.slice(cursor));
     const mergedItems: ThoughtTimelineItem[] = [];
     const pythonIndexes = new Map<string, number>();
+    const imageIndexes = new Map<string, number>();
+    const modelIndexes = new Map<string, number>();
     items.forEach((item) => {
+        if (item.kind === 'model') {
+            const existingIndex = modelIndexes.get(item.id);
+            if (existingIndex === undefined) {
+                modelIndexes.set(item.id, mergedItems.length);
+                mergedItems.push(item);
+            } else {
+                mergedItems[existingIndex] = item;
+            }
+            return;
+        }
+        if (item.kind === 'image') {
+            const existingIndex = imageIndexes.get(item.id);
+            if (existingIndex === undefined) {
+                imageIndexes.set(item.id, mergedItems.length);
+                mergedItems.push(item);
+            } else {
+                const existing = mergedItems[existingIndex];
+                if (existing.kind === 'image') {
+                    mergedItems[existingIndex] = {
+                        ...existing,
+                        ...item,
+                        purpose: item.purpose || existing.purpose,
+                        filename: item.filename || existing.filename,
+                    };
+                }
+            }
+            return;
+        }
         if (item.kind !== 'python') {
             mergedItems.push(item);
             return;
@@ -280,6 +371,8 @@ export default function ThinkBlock({
         .filter((item) => (
             item.kind === 'search'
             || item.kind === 'python'
+            || item.kind === 'image'
+            || item.kind === 'model'
             || item.heading
             || item.body
         )), [headlineIndex, items]);
@@ -289,6 +382,12 @@ export default function ThinkBlock({
         ?.query.trim();
     const runningPython = items.findLast((item) => (
         item.kind === 'python' && item.status === 'python_running'
+    ));
+    const runningImage = items.findLast((item): item is ImageActivity => (
+        item.kind === 'image' && item.status === 'image_running'
+    ));
+    const waitingModel = items.findLast((item): item is ModelActivity => (
+        item.kind === 'model' && item.status === 'model_waiting'
     ));
 
     useEffect(() => {
@@ -315,7 +414,13 @@ export default function ThinkBlock({
         ? t('think.timeMilliseconds', { value: Math.round(thinkingTime) })
         : t('think.timeSeconds', { value: (thinkingTime / 1000).toFixed(1) });
     const label = isStreaming
-        ? (runningPython ? t('think.python.running') : currentSearchQuery || headline || t('think.loading'))
+        ? (runningPython
+            ? t('think.python.running')
+            : runningImage
+                ? t(`think.image.${runningImage.operation}.running`)
+                : waitingModel
+                    ? t('think.model.waiting')
+                    : currentSearchQuery || headline || t('think.loading'))
         : openTime
             ? t('think.completedLabel', { time: formattedTime })
             : (headline || t('think.label'));
@@ -369,8 +474,10 @@ export default function ThinkBlock({
                                     'think-block-step',
                                     item.kind === 'search' && 'is-search',
                                     item.kind === 'python' && 'is-python',
+                                    item.kind === 'image' && 'is-image',
+                                    item.kind === 'model' && 'is-model',
                                 )}
-                                key={`${item.kind === 'thought' ? item.heading || 'step' : item.kind === 'python' ? item.id : item.status}-${index}`}
+                                key={`${item.kind === 'thought' ? item.heading || 'step' : item.kind === 'python' || item.kind === 'image' || item.kind === 'model' ? item.id : item.status}-${index}`}
                             >
                                 <span className="think-block-step-marker" aria-hidden="true">
                                     {item.kind === 'search' && (
@@ -382,6 +489,18 @@ export default function ThinkBlock({
                                     {item.kind === 'python' && (
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                                             <path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                    {item.kind === 'image' && (
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                                            <path d="m7 16 3.5-4 2.5 3 2-2.5L18 16M15.5 8.5h.01" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                    {item.kind === 'model' && (
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                            <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
+                                            <circle cx="12" cy="12" r="3.5" />
                                         </svg>
                                     )}
                                 </span>
@@ -416,8 +535,12 @@ export default function ThinkBlock({
                                                 />
                                             )}
                                         </>
-                                    ) : (
+                                    ) : item.kind === 'python' ? (
                                         <PythonExecutionStep activity={item} />
+                                    ) : item.kind === 'image' ? (
+                                        <ImageAnalysisStep activity={item} />
+                                    ) : (
+                                        <ModelResponseStep activity={item} />
                                     )}
                                 </div>
                             </div>

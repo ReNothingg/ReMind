@@ -272,6 +272,13 @@ LOCALHOST_MODE = os.getenv("LOCALHOST_MODE", "False").lower() in ("1", "true", "
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME")
+try:
+    GEMINI_STREAM_TIMEOUT_MS = max(
+        30_000,
+        min(180_000, int(os.getenv("GEMINI_STREAM_TIMEOUT_MS", "120000"))),
+    )
+except ValueError:
+    GEMINI_STREAM_TIMEOUT_MS = 120_000
 AI_PROVIDER_API_KEY = os.getenv("AI_PROVIDER_API_KEY") or GEMINI_API_KEY
 AI_PROVIDER_MODEL_NAME = os.getenv("AI_PROVIDER_MODEL_NAME") or GEMINI_MODEL_NAME
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID", "").strip()

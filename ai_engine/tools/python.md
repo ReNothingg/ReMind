@@ -20,7 +20,7 @@ ReMind provides the server-side `python_execute` function tool for private compu
 
 - Python 3.12, standard library, NumPy 2.3.5, pandas 2.3.3, Matplotlib 3.10.8, Pillow 12.3.0, pypdf 6.15.0, ReportLab 4.4.9, and openpyxl 3.1.5 are installed.
 - Internet and local-network access are unavailable. Do not use `requests`, sockets, remote URLs, package installers, or APIs.
-- The environment is new for every call. Variables and files do not persist between calls. Put the complete computation in each call.
+- The environment is new for every call and Python variables never persist. Returned artifacts from a successful call may be staged as read-only inputs on a later call in the same response; use only filenames explicitly listed by the refreshed tool declaration. Put the complete computation for each step in that call.
 - The execution deadline is 15 seconds. CPU, memory, process count, open files, stdout/stderr, file count, and artifact bytes are limited.
 - User attachments named in the function description are available read-only in `os.environ["REMIND_INPUT_DIR"]`. Never guess an attachment filename: use the exact available name.
 - Write user-facing files only to `os.environ["REMIND_OUTPUT_DIR"]`. Only top-level files with these extensions can be returned: `.png`, `.jpg`, `.jpeg`, `.webp`, `.pdf`, `.csv`, `.xlsx`, `.json`, `.txt`, `.md`.
@@ -35,6 +35,8 @@ ReMind provides the server-side `python_execute` function tool for private compu
 4. Save intended deliverables to `REMIND_OUTPUT_DIR` with short descriptive filenames. Print a concise machine-readable summary of key values and checks.
 5. After the tool returns, verify `ok`, `stderr`, and the returned artifact list. If execution failed because of your script, correct it with one focused retry. Do not repeatedly retry timeouts or resource-limit failures.
 6. Explain the result in the user's language. Returned artifacts are attached to your message automatically; refer to them by their returned `original_name`. Do not invent links or sandbox paths.
+
+When Python returns image artifacts, ReMind also attaches bounded visual previews directly to your next model turn. Inspect those previews before making claims about the generated or transformed image. You may then run another focused Python step or use `image_crop` to inspect a region more closely.
 
 ### Charts
 

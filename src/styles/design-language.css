@@ -1,0 +1,656 @@
+.ui-app-canvas-stage {
+  min-height: var(--app-viewport-height);
+  background: var(--color-bg-main);
+}
+
+.ui-app-main-shell {
+  isolation: isolate;
+  background: var(--color-bg-canvas);
+  transition:
+    padding-left var(--motion-layout),
+    background-color var(--motion-settle);
+}
+
+.ui-rail-shell,
+#appRail,
+html[data-theme='light'] #appRail,
+html[data-theme='light'] #appRail.expanded {
+  border-right: 0;
+  background: var(--color-bg-main);
+  transition:
+    width var(--motion-layout),
+    transform var(--motion-layout),
+    background-color var(--motion-settle);
+}
+
+.ui-rail-toggle-zone,
+.ui-rail-mobile-header,
+.ui-rail-search-wrap,
+.ui-rail-footer {
+  border-color: transparent;
+}
+
+.ui-rail-actions {
+  gap: 4px;
+  padding: 10px 8px;
+}
+
+.ui-rail-action-button,
+.ui-rail-pinned-mind,
+.ui-rail-pinned-minds-toggle,
+.ui-rail-menu-trigger,
+.ui-rail-toggle-button,
+.ui-rail-footer-button {
+  border: 0;
+  border-radius: 12px;
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick),
+    opacity var(--motion-quick);
+}
+
+.ui-rail-action-button:hover,
+.ui-rail-pinned-mind:hover,
+.ui-rail-pinned-minds-toggle:hover,
+.ui-rail-menu-trigger:hover,
+.ui-rail-toggle-button:hover,
+.ui-rail-footer-button:hover {
+  transform: none;
+}
+
+.ui-rail-action-button-active,
+.ui-rail-pinned-mind-active,
+.ui-rail-item-active {
+  border-color: transparent;
+  background: var(--color-bg-surface-alt);
+}
+
+.ui-rail-search-input {
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-bg-surface-alt);
+  transition:
+    background-color var(--motion-quick),
+    outline-color var(--motion-quick);
+}
+
+.ui-rail-search-input:focus {
+  border-color: transparent;
+  outline: 2px solid rgba(var(--color-accent-raw), 0.42);
+  outline-offset: 1px;
+  background: var(--color-bg-surface);
+}
+
+.ui-rail-item {
+  border-color: transparent;
+  border-radius: 12px;
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick);
+}
+
+.ui-rail-menu {
+  border: 0;
+  border-radius: var(--radius-layer);
+  background: var(--color-bg-surface);
+  animation: layer-settle var(--motion-settle);
+}
+
+.ui-rail-menu::before {
+  display: none;
+}
+
+.ui-landing-shell {
+  background: transparent;
+}
+
+.ui-landing-center-stack {
+  gap: 28px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  animation: layer-settle var(--motion-settle) both;
+}
+
+.ui-landing-copy {
+  padding-inline: clamp(4px, 2vw, 16px);
+}
+
+.ui-landing-greeting {
+  color: var(--color-text-primary);
+  font-size: clamp(2rem, 3vw, 2.55rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.ui-landing-temporary-note {
+  margin-top: -8px;
+}
+
+.ui-composer-shell,
+.input-wrapper {
+  min-height: 44px;
+  padding: 1px 6px;
+  border-color: transparent;
+  border-radius: var(--radius-layer);
+  background: var(--color-bg-surface);
+  transition:
+    background-color var(--motion-quick),
+    outline-color var(--motion-quick),
+  transform var(--motion-quick);
+}
+
+html .main-input-area .input-wrapper.ui-composer-shell {
+  border-color: transparent;
+}
+
+html body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing) {
+  bottom: calc(
+    12px +
+    env(safe-area-inset-bottom) +
+    var(--app-visual-viewport-bottom-inset)
+  ) !important;
+}
+
+html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
+  background: var(--color-bg-surface-alt);
+}
+
+.ui-composer-shell:focus-within,
+.main-input-area:focus-within .input-wrapper,
+.main-input-area.drag-over .input-wrapper {
+  border-color: transparent;
+  outline: 2px solid rgba(var(--color-accent-raw), 0.42);
+  outline-offset: 2px;
+  transform: translateY(-1px);
+}
+
+.ui-composer-icon-button,
+.attach-button,
+.send-button {
+  border-radius: 12px;
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick),
+    opacity var(--motion-quick),
+    transform var(--motion-quick);
+}
+
+.ui-composer-icon-button:hover,
+.attach-button:hover,
+.send-button:hover {
+  transform: none;
+}
+
+.ui-composer-icon-button:active,
+.attach-button:active,
+.send-button:active {
+  transform: scale(0.96);
+}
+
+.ui-main-input-shell:not(.landing) {
+  animation: composer-settle var(--motion-settle) both;
+}
+
+.ui-toolbar-shell {
+  gap: 10px;
+  transition:
+    left var(--motion-layout),
+    right var(--motion-layout);
+}
+
+.ui-toolbar-group,
+.ui-toolbar-actions {
+  min-height: 52px;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-layer);
+  background: var(--color-bg-surface);
+  animation: toolbar-settle var(--motion-settle) both;
+}
+
+.ui-toolbar-actions:empty {
+  display: none;
+}
+
+.ui-toolbar-trigger,
+.model-btn-trigger.ui-toolbar-trigger,
+.ui-toolbar-icon-button,
+.icon-btn,
+.ui-guest-button-secondary {
+  border-color: transparent;
+  border-radius: 13px;
+  background: transparent;
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick),
+    opacity var(--motion-quick);
+}
+
+html[data-theme='light'] .model-selector-new .model-btn-trigger,
+html[data-theme='light'] .censorship-button,
+html[data-theme='light'] .web-search-toggle {
+  border-color: transparent;
+  background: transparent;
+}
+
+.ui-toolbar-trigger:hover,
+.ui-toolbar-icon-button:hover,
+.icon-btn:hover,
+.ui-guest-button-secondary:hover {
+  border-color: transparent;
+  background: var(--color-bg-interactive);
+  transform: none;
+}
+
+.ui-guest-button-primary {
+  border-radius: 13px;
+}
+
+.ui-toolbar-dropdown,
+html[data-theme='light'] .model-selector-new .model-dropdown {
+  border: 0;
+  border-radius: var(--radius-layer);
+  padding: 6px;
+  background: var(--color-bg-surface);
+  transform-origin: top left;
+  transition:
+    opacity var(--motion-quick),
+    transform var(--motion-settle),
+    visibility 0s linear 320ms;
+}
+
+.ui-toolbar-dropdown-open {
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
+
+.ui-toolbar-dropdown-closed {
+  transform: translateY(-6px) scale(0.985);
+}
+
+.ui-toolbar-option {
+  border: 0;
+  border-radius: 12px;
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick);
+}
+
+.chat-container {
+  transition:
+    width var(--motion-layout),
+    max-width var(--motion-layout),
+    padding var(--motion-layout);
+}
+
+.chat-container-content {
+  gap: 28px;
+}
+
+.message,
+.ai-message,
+.user-message {
+  animation: content-arrive var(--motion-settle) both;
+}
+
+.icon-wrapper {
+  border: 0;
+  background: var(--color-bg-surface-alt);
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick);
+}
+
+.icon-wrapper:hover {
+  border-color: transparent;
+  transform: none;
+}
+
+.message-content {
+  transition: background-color var(--motion-quick);
+}
+
+.user-message .message-content,
+html[data-theme='light'] .user-message .message-content {
+  border: 0;
+  background: rgba(var(--color-accent-raw), 0.14);
+}
+
+.message-text {
+  color: var(--color-text-primary);
+  line-height: 1.72;
+}
+
+.actions-bar.ui-message-actions {
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-bg-surface-alt);
+}
+
+.action-btn,
+.message-action-btn {
+  border: 0;
+  transition:
+    background-color var(--motion-quick),
+    color var(--motion-quick),
+    opacity var(--motion-quick),
+    transform var(--motion-quick);
+}
+
+.action-btn:hover,
+.message-action-btn:hover,
+.action-btn:hover img,
+.action-btn:hover svg {
+  transform: none;
+}
+
+.action-btn:active,
+.message-action-btn:active {
+  transform: scale(0.96);
+}
+
+.ui-surface,
+.ui-surface-muted,
+.ui-inline-panel,
+.mind-card,
+.github-panel,
+.github-agent-panel,
+.github-plan-panel,
+.github-activity-panel,
+.github-result-panel,
+.admin-command-strip,
+.admin-metric-tile,
+.admin-server-row,
+.admin-server-panel,
+.admin-access-panel,
+.admin-ops-health,
+.admin-ops-panel {
+  border-color: transparent;
+  background: var(--color-bg-surface);
+}
+
+.minds-search,
+.minds-tabs button,
+.mind-category-tabs button,
+.mind-category-select-grid button,
+.mind-visibility-list button,
+.github-primary-action,
+.github-secondary-action,
+.github-installation-item,
+.github-repo-item,
+.admin-tabs button,
+.admin-filter-row button,
+.admin-restriction-editor button {
+  border-color: transparent;
+}
+
+.minds-search,
+.github-installation-item,
+.github-repo-item {
+  background: var(--color-bg-surface);
+}
+
+.user-settings-modal.ui-modal-overlay,
+.auth-modal,
+.file-modal,
+.share-modal-overlay {
+  background: var(--color-bg-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.user-settings-modal .user-settings-content,
+.auth-modal-content,
+.file-modal-content,
+.share-modal,
+.ui-modal-card {
+  border-color: transparent;
+  border-radius: var(--radius-workspace);
+  background: var(--color-bg-surface);
+}
+
+html .user-settings-modal .user-settings-content,
+html .auth-modal .auth-modal-content,
+html .file-modal .file-modal-content {
+  border-color: transparent;
+}
+
+.user-settings-modal.active .user-settings-content,
+.auth-modal-content,
+.file-modal.active .file-modal-content,
+.share-modal {
+  animation: modal-settle var(--motion-settle) both;
+}
+
+.user-settings-modal .user-settings-body,
+.user-settings-modal .settings-content {
+  background: var(--color-bg-canvas);
+}
+
+.user-settings-modal .settings-tabs {
+  border-right: 0;
+  background: var(--color-bg-main);
+}
+
+html .user-settings-modal .user-settings-header,
+html .user-settings-modal .settings-tabs {
+  border-color: transparent;
+}
+
+.user-settings-modal .settings-tab {
+  border: 0;
+  border-radius: 12px;
+}
+
+.user-settings-modal .settings-tab.active {
+  border-color: transparent;
+  background: var(--color-bg-surface);
+}
+
+.user-settings-modal .setting-group,
+.user-settings-modal .account-card,
+.user-settings-modal .mac-chat-panel-card {
+  border-color: transparent;
+  background: var(--color-bg-surface);
+}
+
+html .user-settings-modal .setting-group,
+html .user-settings-modal .account-card,
+html .user-settings-modal .mac-chat-panel-card {
+  border-color: transparent;
+  background: var(--color-bg-surface);
+}
+
+.user-settings-modal .setting-group:hover,
+.user-settings-modal .account-field:hover {
+  border-color: transparent;
+}
+
+html .user-settings-modal .custom-select-container,
+html .user-settings-modal .settings-input {
+  border-color: transparent;
+  background: var(--color-bg-surface-alt);
+}
+
+html .auth-modal .form-group input {
+  border-color: transparent;
+  background: var(--color-bg-surface-alt);
+}
+
+html .auth-modal .form-group input:focus {
+  border-color: transparent;
+  outline: 2px solid rgba(var(--color-accent-raw), 0.42);
+  outline-offset: 2px;
+}
+
+@keyframes layer-settle {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toolbar-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes composer-settle {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes content-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-settle {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .ui-app-main-shell {
+    border-radius: 0;
+  }
+
+  .ui-toolbar-group,
+  .ui-toolbar-actions {
+    min-height: 52px;
+  }
+
+  .ui-main-input-shell:not(.landing) {
+    animation-name: composer-settle-mobile;
+  }
+
+  .ui-landing-center-stack {
+    width: min(100%, 720px);
+    padding: 0;
+    border-radius: 0;
+    transform: translateY(-22px);
+  }
+
+  .ui-landing-greeting {
+    font-size: clamp(1.65rem, 7vw, 2.05rem);
+  }
+
+  #appRail {
+    background: var(--color-bg-main) !important;
+    transition: transform var(--motion-layout) !important;
+  }
+
+  body.mobile-menu-open::after {
+    background: rgba(var(--palette-bg-raw), 0.72);
+    animation: overlay-reveal var(--motion-settle) both;
+  }
+}
+
+@media screen and (max-width: 560px) {
+  .ui-toolbar-shell {
+    gap: 6px;
+  }
+
+  .ui-toolbar-group,
+  .ui-toolbar-actions {
+    padding: 3px;
+    border-radius: 15px;
+  }
+
+  .ui-landing-shell {
+    padding-inline: 12px;
+  }
+
+  .ui-landing-center-stack {
+    gap: 22px;
+    padding: 0;
+  }
+
+  .ui-composer-shell,
+  .input-wrapper {
+    min-height: 48px;
+    padding: 1px 6px;
+  }
+
+  .chat-container-content {
+    gap: 24px;
+  }
+
+  .user-settings-modal .user-settings-content,
+  .file-modal-content,
+  .share-modal,
+  .ui-modal-card {
+    border-radius: 24px;
+  }
+
+  .auth-modal-content {
+    border-radius: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-landing-center-stack,
+  .ui-toolbar-group,
+  .ui-toolbar-actions,
+  .ui-main-input-shell,
+  .message,
+  .ai-message,
+  .user-message,
+  .ui-rail-menu,
+  .user-settings-content,
+  .auth-modal-content,
+  .file-modal-content,
+  .share-modal {
+    animation: none !important;
+  }
+}
+
+@keyframes composer-settle-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlay-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

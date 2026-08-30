@@ -18,6 +18,7 @@ import {
 } from './http';
 
 const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
+const CHAT_STREAM_IDLE_TIMEOUT_MS = 135_000;
 
 type GuestSessionTokenMap = Record<string, string>;
 
@@ -87,6 +88,34 @@ type ChatCallbacks = {
     onWidgetUpdate?: (widgetData: ChatWidgetUpdate) => void;
     onOpen?: (data: { requestId: string; sessionToken: string }) => void;
 };
+
+type ChatStreamReader = {
+    cancel?: (reason?: unknown) => Promise<void>;
+    read: () => Promise<ReadableStreamReadResult<Uint8Array>>;
+};
+
+export async function readChatStreamChunk(
+    reader: ChatStreamReader,
+    timeoutMs = CHAT_STREAM_IDLE_TIMEOUT_MS,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+    const timeoutError = new Error('chat_stream_idle_timeout');
+    try {
+        return await Promise.race([
+            reader.read(),
+            new Promise<never>((_resolve, reject) => {
+                timeoutId = globalThis.setTimeout(() => {
+                    void reader.cancel?.(timeoutError).catch(() => undefined);
+                    reject(timeoutError);
+                }, Math.max(1, timeoutMs));
+            }),
+        ]);
+    } finally {
+        if (timeoutId !== undefined) {
+            globalThis.clearTimeout(timeoutId);
+        }
+    }
+}
 
 type ListSessionsOptions =
     | string
@@ -689,7 +718,7 @@ export const apiService = {
                 let receivedTerminalEvent = false;
 
                 while (true) {
-                    const { value, done } = await reader.read();
+                    const { value, done } = await readChatStreamChunk(reader);
                     if (done) break;
 
                     buffer += decoder.decode(value, { stream: true });

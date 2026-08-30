@@ -9,7 +9,7 @@ import { mergeThinkWidgets } from './thinkBlockUtils';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (key: string, options?: { value?: string | number; time?: string }) => ({
+        t: (key: string, options?: { value?: string | number; time?: string; filename?: string; count?: number }) => ({
             'think.collapse': 'Collapse thoughts',
             'think.expand': 'Expand thoughts',
             'think.label': 'Thoughts',
@@ -25,6 +25,17 @@ vi.mock('react-i18next', () => ({
             'think.python.hideOutput': 'Hide result',
             'think.python.showCode': 'Show code',
             'think.python.hideCode': 'Hide code',
+            'think.image.crop.running': 'Cropping image...',
+            'think.image.crop.completed': 'Image crop ready',
+            'think.image.crop.failed': 'Image crop failed',
+            'think.image.tile.running': 'Splitting image into sections...',
+            'think.image.tile.completed': 'Image sections ready',
+            'think.image.tile.failed': 'Image splitting failed',
+            'think.image.source': `Source: ${options?.filename}`,
+            'think.image.fragments': `Sections: ${options?.count}`,
+            'think.model.waiting': 'Waiting for the model to continue analysis...',
+            'think.model.responded': 'The model continued its analysis',
+            'think.model.failed': 'The model did not respond in time',
             'webSearch.queryLabel': 'Query',
             'webSearch.sourceFallback': 'Source',
             'webSearch.sourcesAria': 'Web search sources',
@@ -47,6 +58,18 @@ const encodePythonActivity = (payload: unknown) => {
     const bytes = new TextEncoder().encode(JSON.stringify(payload));
     const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
     return `<python_activity data-b64="${btoa(binary)}"></python_activity>`;
+};
+
+const encodeImageActivity = (payload: unknown) => {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    return `<image_activity data-b64="${btoa(binary)}"></image_activity>`;
+};
+
+const encodeModelActivity = (payload: unknown) => {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    return `<model_activity data-b64="${btoa(binary)}"></model_activity>`;
 };
 
 describe('ThinkBlock', () => {
@@ -398,6 +421,85 @@ describe('ThinkBlock', () => {
             .toBeTruthy();
         expect(review?.compareDocumentPosition(purposes[1] as Node) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
+    });
+
+    it('renders and merges native image inspection activity', () => {
+        const running = encodeImageActivity({
+            type: 'image_analysis',
+            id: 'image-1',
+            status: 'image_running',
+            operation: 'tile',
+            purpose: 'Inspect small details across the full image.',
+            filename: 'large-map.png',
+            image_count: 0,
+        });
+        const completed = encodeImageActivity({
+            type: 'image_analysis',
+            id: 'image-1',
+            status: 'image_completed',
+            operation: 'tile',
+            filename: 'large-map.png',
+            image_count: 9,
+        });
+
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        act(() => {
+            root?.render(React.createElement(ThinkBlock, {
+                content: `${running}\n${completed}`,
+                openTime: 100,
+                closeTime: 300,
+            }));
+        });
+        act(() => container?.querySelector<HTMLButtonElement>('.think-block-header')?.click());
+
+        expect(container.querySelectorAll('.think-block-step.is-image')).toHaveLength(1);
+        expect(container.querySelector('.think-block-step-title')?.textContent)
+            .toBe('Image sections ready');
+        expect(container.textContent).toContain('Inspect small details across the full image.');
+        expect(container.textContent).toContain('Source: large-map.png · Sections: 9');
+    });
+
+    it('shows model waiting after a tool and replaces it when the model responds', () => {
+        const waiting = encodeModelActivity({
+            type: 'model_response',
+            id: 'model-round-2',
+            status: 'model_waiting',
+            round: 2,
+        });
+        const responded = encodeModelActivity({
+            type: 'model_response',
+            id: 'model-round-2',
+            status: 'model_responded',
+            round: 2,
+        });
+
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+        act(() => {
+            root?.render(React.createElement(ThinkBlock, {
+                content: waiting,
+                openTime: 100,
+                isStreaming: true,
+            }));
+        });
+        expect(container.querySelector('.think-block-label')?.textContent)
+            .toBe('Waiting for the model to continue analysis...');
+
+        act(() => {
+            root?.render(React.createElement(ThinkBlock, {
+                content: `${waiting}\n${responded}`,
+                openTime: 100,
+                isStreaming: true,
+            }));
+        });
+        act(() => container?.querySelector<HTMLButtonElement>('.think-block-header')?.click());
+
+        expect(container.querySelectorAll('.think-block-step.is-model')).toHaveLength(1);
+        expect(container.querySelector('.think-block-step.is-model .think-block-step-title')?.textContent)
+            .toBe('The model continued its analysis');
     });
 });
 

@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -32,7 +33,12 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .input_validation import InputValidator, ValidationError
 from .mailer import send_email
-from .rate_limiting import login_limiter, rate_limit
+from .rate_limiting import (
+    login_limiter,
+    password_reset_limiter,
+    password_reset_verify_limiter,
+    rate_limit,
+)
 from .responses import make_error
 from .session_security import is_loopback_hostname, resolve_cookie_domain
 
@@ -72,6 +78,10 @@ APPLE_TOKEN_MAX_AGE_SECONDS = 86_400
 APPLE_ALLOWED_SIGNING_ALGORITHMS = ("RS256",)
 APPLE_CHALLENGE_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
 APPLE_SUBJECT_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
+PASSWORD_RESET_CODE_TTL_SECONDS = 600
+PASSWORD_RESET_CODE_MAX_ATTEMPTS = 5
+PASSWORD_RESET_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{24}$")
+PASSWORD_RESET_CODE_RE = re.compile(r"^\d{6}$")
 APPLE_OAUTH_BINDING_COOKIE = "__Secure-remind_apple_oauth"
 SUPPORTED_AUTH_PROVIDERS = frozenset({"apple", "google", "telegram"})
 _telegram_jwks_client = None
@@ -219,6 +229,7 @@ class User(db.Model):
     block_reason = db.Column(db.String(280), nullable=True)
     banned_until = db.Column(db.DateTime, nullable=True)
     blocked_until = db.Column(db.DateTime, nullable=True)
+    auth_version = db.Column(db.Integer, nullable=False, default=0)
     auth_identities = db.relationship(
         "AuthIdentity",
         back_populates="user",
@@ -258,6 +269,30 @@ class User(db.Model):
             "auth_methods": _user_auth_methods(self),
             "telegram_bot_ready": _telegram_bot_ready(self),
         }
+
+
+class PasswordResetChallenge(db.Model):
+    __tablename__ = "password_reset_challenge"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.String(24), unique=True, nullable=False, index=True)
+    code_hash = db.Column(db.String(64), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    failed_attempts = db.Column(db.Integer, nullable=False, default=0)
+    consumed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
+def _password_reset_code_hash(request_id: str, code: str) -> str:
+    secret = str(current_app.config["SECRET_KEY"]).encode("utf-8")
+    payload = f"{request_id}:{code}".encode("utf-8")
+    return hmac.new(secret, payload, hashlib.sha256).hexdigest()
 
 
 class AuthIdentity(db.Model):
@@ -348,9 +383,7 @@ def consume_telegram_link_token(token: str, telegram_user_id: str) -> str:
         return "invalid"
 
     link_request = (
-        TelegramLinkRequest.query.filter_by(
-            token_hash=_telegram_link_token_hash(normalized_token)
-        )
+        TelegramLinkRequest.query.filter_by(token_hash=_telegram_link_token_hash(normalized_token))
         .with_for_update()
         .first()
     )
@@ -1630,9 +1663,7 @@ def _clean_telegram_profile_name(value: Any, fallback: str) -> str:
 def _find_or_create_telegram_user(claims: dict) -> User:
     subject = _telegram_oidc_subject(claims)
     telegram_user_id = _telegram_provider_user_id(claims)
-    identity = _discard_orphan_auth_identity(
-        _find_auth_identity("telegram", telegram_user_id)
-    )
+    identity = _discard_orphan_auth_identity(_find_auth_identity("telegram", telegram_user_id))
     if not identity and subject != telegram_user_id:
         identity = _discard_orphan_auth_identity(_find_auth_identity("telegram", subject))
     user = identity.user if identity else None
@@ -1942,6 +1973,26 @@ def verify_turnstile(turnstile_response):
 
 def register_auth_routes(app):
 
+    @app.before_request
+    def enforce_authenticated_session_version():
+        if request.endpoint == "static":
+            return None
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        user = db.session.get(User, user_id)
+        if not user:
+            session.clear()
+            return None
+        current_version = int(user.auth_version or 0)
+        stored_version = session.get("_auth_version")
+        if stored_version is None and current_version == 0:
+            session["_auth_version"] = 0
+            return None
+        if stored_version != current_version:
+            session.clear()
+        return None
+
     @app.route("/register", methods=["GET", "POST"])
     def register():
         return redirect("/?auth=register", code=303 if request.method == "POST" else 302)
@@ -2037,6 +2088,7 @@ def register_auth_routes(app):
             session.clear()
             session["user_id"] = user.id
             session["username"] = InputValidator.sanitize_output(user.username)
+            session["_auth_version"] = int(user.auth_version or 0)
             regenerate_session()
 
             if remember:
@@ -2130,6 +2182,7 @@ def register_auth_routes(app):
                 user.password = ph.hash(password)
             except ImportError:
                 user.password = generate_password_hash(password, method="pbkdf2:sha256")
+            user.auth_version = int(user.auth_version or 0) + 1
             user.reset_token = None
             user.reset_token_expires = None
             db.session.commit()
@@ -2293,6 +2346,7 @@ def register_auth_routes(app):
                         session.clear()
                         session["user_id"] = link_user.id
                         session["username"] = InputValidator.sanitize_output(link_user.username)
+                        session["_auth_version"] = int(link_user.auth_version or 0)
                         regenerate_session()
                         session.permanent = True
                 except Exception as restore_exc:
@@ -2363,6 +2417,7 @@ def register_auth_routes(app):
             session.clear()
             session["user_id"] = user.id
             session["username"] = InputValidator.sanitize_output(user.username)
+            session["_auth_version"] = int(user.auth_version or 0)
             regenerate_session()
             session.permanent = True
             return finish_apple_redirect(metadata["redirect_to"] or "/")
@@ -2664,6 +2719,7 @@ def register_auth_routes(app):
             session.clear()
             session["user_id"] = user.id
             session["username"] = InputValidator.sanitize_output(user.username)
+            session["_auth_version"] = int(user.auth_version or 0)
             regenerate_session()
             session.permanent = True
             from config import SESSION_COOKIE_DOMAIN
@@ -2983,6 +3039,7 @@ def register_auth_routes(app):
         session.clear()
         session["user_id"] = user.id
         session["username"] = InputValidator.sanitize_output(user.username)
+        session["_auth_version"] = int(user.auth_version or 0)
         regenerate_session()
         session.permanent = True
         return jsonify({"message": "apple_authenticated", "user": user.to_dict()}), 200
@@ -3057,6 +3114,7 @@ def register_auth_routes(app):
         session.clear()
         session["user_id"] = user.id
         session["username"] = InputValidator.sanitize_output(user.username)
+        session["_auth_version"] = int(user.auth_version or 0)
         regenerate_session()
         session.permanent = True
 
@@ -3097,13 +3155,16 @@ def register_auth_routes(app):
             db.session.rollback()
             return jsonify({"error": "telegram_link_failed", "code": "telegram_link_failed"}), 503
 
-        return jsonify(
-            {
-                "url": f"https://t.me/{bot_username}?start=connect_{raw_token}",
-                "request_id": request_id,
-                "expires_in": TELEGRAM_LINK_TOKEN_TTL_SECONDS,
-            }
-        ), 201
+        return (
+            jsonify(
+                {
+                    "url": f"https://t.me/{bot_username}?start=connect_{raw_token}",
+                    "request_id": request_id,
+                    "expires_in": TELEGRAM_LINK_TOKEN_TTL_SECONDS,
+                }
+            ),
+            201,
+        )
 
     @app.route("/api/auth/telegram/link/status", methods=["POST"])
     def api_telegram_link_status():
@@ -3123,9 +3184,7 @@ def register_auth_routes(app):
             return jsonify({"error": "not_found", "code": "not_found"}), 404
         if link_request.consumed_at is not None:
             if link_request.failure_code:
-                return jsonify(
-                    {"status": "failed", "code": link_request.failure_code}
-                ), 200
+                return jsonify({"status": "failed", "code": link_request.failure_code}), 200
             return jsonify({"status": "linked", "user": user.to_dict()}), 200
         if link_request.expires_at <= datetime.utcnow():
             return jsonify({"status": "expired"}), 200
@@ -3158,6 +3217,7 @@ def register_auth_routes(app):
             session.clear()
             session["user_id"] = user.id
             session["username"] = InputValidator.sanitize_output(user.username)
+            session["_auth_version"] = int(user.auth_version or 0)
             regenerate_session()
             session.permanent = True
 
@@ -3280,6 +3340,234 @@ def register_auth_routes(app):
             app.logger.exception(f"API registration error: {e}")
             return jsonify({"error": "Ошибка при регистрации"}), 500
 
+    @app.route("/api/auth/password-reset/request", methods=["POST"])
+    @rate_limit(password_reset_limiter, "Too many password reset requests")
+    def api_password_reset_request():
+        from utils.audit_log import AuditEvents, log_auth_event
+        from utils.email_localization import password_reset_email_copy
+
+        data = request.get_json(silent=True) or {}
+        raw_email = data.get("email", "") if isinstance(data, dict) else ""
+        language = data.get("language", "en") if isinstance(data, dict) else "en"
+        reset_request_id = secrets.token_urlsafe(18)
+        generic_payload = {
+            "message": "password_reset_code_sent",
+            "reset_request_id": reset_request_id,
+            "expires_in": PASSWORD_RESET_CODE_TTL_SECONDS,
+        }
+
+        try:
+            email = InputValidator.validate_email(str(raw_email).strip())
+        except ValidationError:
+            log_auth_event(AuditEvents.AUTH_PASSWORD_RESET_REQUEST, str(raw_email), True)
+            return jsonify(generic_payload), 200
+
+        user = User.query.filter(func.lower(User.email) == email.lower()).first()
+        if not user or is_telegram_placeholder_email(user):
+            log_auth_event(AuditEvents.AUTH_PASSWORD_RESET_REQUEST, email, True)
+            return jsonify(generic_payload), 200
+
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        recent_count = PasswordResetChallenge.query.filter(
+            PasswordResetChallenge.user_id == user.id,
+            PasswordResetChallenge.created_at >= one_hour_ago,
+        ).count()
+        if recent_count >= 3:
+            log_auth_event(AuditEvents.AUTH_PASSWORD_RESET_REQUEST, email, True)
+            return jsonify(generic_payload), 200
+
+        now = datetime.utcnow()
+        PasswordResetChallenge.query.filter_by(user_id=user.id, consumed_at=None).update(
+            {"consumed_at": now},
+            synchronize_session=False,
+        )
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        challenge = PasswordResetChallenge(
+            request_id=reset_request_id,
+            code_hash=_password_reset_code_hash(reset_request_id, code),
+            user_id=user.id,
+            expires_at=now + timedelta(seconds=PASSWORD_RESET_CODE_TTL_SECONDS),
+        )
+        db.session.add(challenge)
+        db.session.commit()
+
+        settings = UserSettings.query.filter_by(user_id=user.id).first()
+        preferred_language = settings.language if settings and settings.language else language
+        copy = password_reset_email_copy(
+            preferred_language,
+            InputValidator.sanitize_output(user.username),
+        )
+        email_sent = bool(
+            send_email(
+                to_email=user.email,
+                subject=copy["subject"],
+                body="",
+                template_name="password_reset_code",
+                template_data={
+                    "heading": copy["heading"],
+                    "greeting": copy["greeting"],
+                    "intro": copy["intro"],
+                    "code": code,
+                    "expiry": copy["expiry"],
+                    "ignore": copy["ignore"],
+                },
+            )
+        )
+        if not email_sent:
+            db.session.delete(challenge)
+            db.session.commit()
+
+        log_auth_event(AuditEvents.AUTH_PASSWORD_RESET_REQUEST, email, True)
+        return jsonify(generic_payload), 200
+
+    @app.route("/api/auth/password-reset/complete", methods=["POST"])
+    @rate_limit(password_reset_verify_limiter, "Too many password reset attempts")
+    def api_password_reset_complete():
+        from utils.audit_log import AuditEvents, log_audit_event, log_security_event
+        from utils.email_localization import password_reset_email_copy
+
+        data = request.get_json(silent=True) or {}
+        reset_request_id = data.get("reset_request_id", "") if isinstance(data, dict) else ""
+        code = data.get("code", "") if isinstance(data, dict) else ""
+        password = data.get("password", "") if isinstance(data, dict) else ""
+        request_valid = isinstance(reset_request_id, str) and bool(
+            PASSWORD_RESET_REQUEST_ID_RE.fullmatch(reset_request_id)
+        )
+        code_valid = isinstance(code, str) and bool(PASSWORD_RESET_CODE_RE.fullmatch(code))
+
+        if not request_valid or not code_valid:
+            return make_error(
+                "Invalid or expired password reset code",
+                status=400,
+                code="invalid_or_expired_code",
+            )
+
+        challenge = PasswordResetChallenge.query.filter_by(request_id=reset_request_id).first()
+        now = datetime.utcnow()
+        unavailable = (
+            not challenge
+            or challenge.consumed_at is not None
+            or challenge.expires_at <= now
+            or challenge.failed_attempts >= PASSWORD_RESET_CODE_MAX_ATTEMPTS
+        )
+        if unavailable:
+            return make_error(
+                "Invalid or expired password reset code",
+                status=400,
+                code="invalid_or_expired_code",
+            )
+
+        latest_challenge_id = (
+            db.session.query(PasswordResetChallenge.id)
+            .filter_by(user_id=challenge.user_id)
+            .order_by(
+                PasswordResetChallenge.created_at.desc(),
+                PasswordResetChallenge.id.desc(),
+            )
+            .limit(1)
+            .scalar()
+        )
+        if latest_challenge_id != challenge.id:
+            return make_error(
+                "Invalid or expired password reset code",
+                status=400,
+                code="invalid_or_expired_code",
+            )
+
+        candidate_hash = _password_reset_code_hash(reset_request_id, code)
+        if not hmac.compare_digest(challenge.code_hash, candidate_hash):
+            PasswordResetChallenge.query.filter(
+                PasswordResetChallenge.id == challenge.id,
+                PasswordResetChallenge.consumed_at.is_(None),
+                PasswordResetChallenge.failed_attempts < PASSWORD_RESET_CODE_MAX_ATTEMPTS,
+            ).update(
+                {
+                    "failed_attempts": PasswordResetChallenge.failed_attempts + 1,
+                },
+                synchronize_session=False,
+            )
+            db.session.commit()
+            PasswordResetChallenge.query.filter(
+                PasswordResetChallenge.id == challenge.id,
+                PasswordResetChallenge.consumed_at.is_(None),
+                PasswordResetChallenge.failed_attempts >= PASSWORD_RESET_CODE_MAX_ATTEMPTS,
+            ).update({"consumed_at": now}, synchronize_session=False)
+            db.session.commit()
+            log_security_event(
+                AuditEvents.SECURITY_INVALID_TOKEN,
+                {"reason": "password_reset_code_mismatch"},
+            )
+            return make_error(
+                "Invalid or expired password reset code",
+                status=400,
+                code="invalid_or_expired_code",
+            )
+
+        try:
+            InputValidator.validate_password(password)
+        except ValidationError as error:
+            return make_error(
+                str(error),
+                status=400,
+                code="invalid_password",
+                extra={"field": "password"},
+            )
+
+        user = db.session.get(User, challenge.user_id)
+        if not user:
+            challenge.consumed_at = now
+            db.session.commit()
+            return make_error(
+                "Invalid or expired password reset code",
+                status=400,
+                code="invalid_or_expired_code",
+            )
+
+        claimed = PasswordResetChallenge.query.filter(
+            PasswordResetChallenge.id == challenge.id,
+            PasswordResetChallenge.consumed_at.is_(None),
+            PasswordResetChallenge.expires_at > now,
+            PasswordResetChallenge.failed_attempts < PASSWORD_RESET_CODE_MAX_ATTEMPTS,
+        ).update({"consumed_at": now}, synchronize_session=False)
+        if claimed != 1:
+            db.session.rollback()
+            return make_error(
+                "Invalid or expired password reset code",
+                status=400,
+                code="invalid_or_expired_code",
+            )
+
+        try:
+            from argon2 import PasswordHasher
+
+            user.password = PasswordHasher().hash(password)
+        except ImportError:
+            user.password = generate_password_hash(password, method="pbkdf2:sha256")
+        user.auth_version = int(user.auth_version or 0) + 1
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.session.commit()
+
+        log_audit_event(AuditEvents.AUTH_PASSWORD_RESET_COMPLETE, {}, user.id)
+        settings = UserSettings.query.filter_by(user_id=user.id).first()
+        copy = password_reset_email_copy(
+            settings.language if settings and settings.language else "en",
+            InputValidator.sanitize_output(user.username),
+        )
+        send_email(
+            to_email=user.email,
+            subject=copy["changedSubject"],
+            body="",
+            template_name="password_changed_localized",
+            template_data={
+                "heading": copy["changedHeading"],
+                "greeting": copy["greeting"],
+                "intro": copy["changedIntro"],
+                "warning": copy["changedWarning"],
+            },
+        )
+        return jsonify({"message": "password_reset_complete"}), 200
+
     @app.route("/api/auth/login", methods=["POST"])
     @rate_limit(login_limiter, "Too many login attempts")
     def api_login():
@@ -3331,6 +3619,7 @@ def register_auth_routes(app):
             session.clear()
             session["user_id"] = user.id
             session["username"] = InputValidator.sanitize_output(user.username)
+            session["_auth_version"] = int(user.auth_version or 0)
             regenerate_session()
             session.permanent = True
 
@@ -3545,6 +3834,7 @@ def setup_auth(app):
                 "block_reason": 'ALTER TABLE "user" ADD COLUMN block_reason VARCHAR(280)',
                 "banned_until": f'ALTER TABLE "user" ADD COLUMN banned_until {date_time_type}',
                 "blocked_until": f'ALTER TABLE "user" ADD COLUMN blocked_until {date_time_type}',
+                "auth_version": 'ALTER TABLE "user" ADD COLUMN auth_version INTEGER DEFAULT 0 NOT NULL',
             }
             missing_user_admin_columns = [
                 (column_name, ddl)
