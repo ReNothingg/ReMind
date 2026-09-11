@@ -8,7 +8,7 @@ from pathlib import Path
 
 try:
     import fcntl
-except ImportError:  # pragma: no cover - production images are Linux
+except ImportError:
     fcntl = None
 
 
@@ -51,14 +51,13 @@ class ProcessSafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
             try:
                 if self.stream is not None:
                     self.stream.close()
-                    self.stream = None  # type: ignore[assignment]
+                    self.stream = None
                 super().emit(record)
             finally:
                 if fcntl is not None:
                     fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def doRollover(self) -> None:
-        # Parent implementation is safe because emit holds the process lock.
         super().doRollover()
         try:
             os.chmod(self.baseFilename, 0o600)

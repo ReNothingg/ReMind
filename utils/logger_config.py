@@ -12,7 +12,6 @@ from utils.observability import get_request_id
 
 logger = logging.getLogger("remind")
 logger.addHandler(logging.NullHandler())
-# Fail closed before setup_logging() installs the real filtered handlers.
 logger.propagate = False
 
 
@@ -122,7 +121,6 @@ def setup_logging(app):
     logger.setLevel(logging.DEBUG if not IS_PRODUCTION else logging.INFO)
     logger.propagate = False
 
-    # Prevent duplicate handlers when app factory is reused (tests/CLI).
     if getattr(logger, "_remind_configured", False):
         app.logger.handlers = logger.handlers
         app.logger.setLevel(logger.level)
@@ -133,8 +131,6 @@ def setup_logging(app):
     formatter = _build_formatter()
 
     if IS_PRODUCTION:
-        # Containers emit a single stream. Docker/collector rotation is process-safe
-        # and bounded by the production Compose logging policy.
         handlers = [logging.StreamHandler()]
         levels = [logging.INFO]
     else:
@@ -173,8 +169,6 @@ def setup_logging(app):
 
     app.logger.handlers = logger.handlers
     app.logger.setLevel(logger.level)
-    # Flask's logger is outside the ``remind`` namespace. Once it owns the
-    # filtered application handlers it must not also emit through root.
     app.logger.propagate = False
     for handler in app.logger.handlers:
         handler.addFilter(pii_filter)

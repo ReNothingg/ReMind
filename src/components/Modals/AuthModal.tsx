@@ -160,9 +160,6 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         setPasswordResetStep(null);
     }, [initialView, linkMode]);
 
-    // Keep the convenience fields in sync after the browser/password manager
-    // has supplied a value. Do not poll the DOM: polling controlled inputs can
-    // close Safari's native autofill popover while it is being shown.
     useEffect(() => {
         if (isLoginView || linkMode) return;
         if (!username && email && !usernameAutofillAppliedRef.current) {
@@ -317,8 +314,6 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
             return;
         }
         void prepareTelegramLink();
-        // The request is intentionally issued once when bot-link configuration becomes available.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [linkMode, telegramBotLinkAvailable, isAuthenticated]);
 
     useEffect(() => {
@@ -610,9 +605,6 @@ const AuthModal = ({ onClose, initialView = 'login', authMode }: AuthModalProps)
         e.preventDefault();
         setFieldErrors({});
 
-        // Safari may update the DOM value without notifying React. Read the
-        // registered controls once on submit so autofilled values are never
-        // lost during validation or the request.
         const effectiveName = registerNameRef.current?.value || name;
         const effectiveUsername = registerUsernameRef.current?.value || username;
         const effectiveEmail = registerEmailRef.current?.value || email;

@@ -59,9 +59,6 @@ export const buildSpinwheelSegments = (
     );
   }
 
-  // Large ranges are sampled across their full extent instead of truncating the
-  // first values. Always retain the nearest selectable target so the visual
-  // result and the announced result cannot disagree.
   const sampledIndexes = Array.from({ length: MAX_SPINWHEEL_SEGMENTS }, (_, index) =>
     Math.round((index * lastIndex) / (MAX_SPINWHEEL_SEGMENTS - 1))
   );

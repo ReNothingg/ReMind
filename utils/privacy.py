@@ -20,11 +20,11 @@ def anonymize_ip(ip_address):
     if not ip_address:
         return None
 
-    if ":" in ip_address:  # IPv6
+    if ":" in ip_address:
         parts = ip_address.split(":")
         if len(parts) > 2:
             return ":".join(parts[:3]) + "::0"
-    else:  # IPv4
+    else:
         parts = ip_address.split(".")
         if len(parts) == 4:
             return ".".join(parts[:3]) + ".0"

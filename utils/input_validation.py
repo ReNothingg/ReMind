@@ -70,9 +70,6 @@ class InputValidator:
         if not re.search(r"\d", password):
             raise ValidationError("Password must contain at least one digit")
 
-        # Keep this rule aligned with the registration strength indicator:
-        # underscores, hyphens, slashes, and other non-whitespace symbols are
-        # valid special characters too.
         if not re.search(r"[^\sA-Za-z0-9]", password):
             raise ValidationError("Password must contain at least one special character")
 

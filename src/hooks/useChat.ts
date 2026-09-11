@@ -947,8 +947,6 @@ export const useChat = () => {
         const cachedActivity = sessionActivityRef.current[requestedSessionId];
         const requestedSlug = cachedData?.public_id || sessionIdToSlug(requestedSessionId);
 
-        // Activate the destination before changing visible state. Otherwise a late
-        // stream event from the previous session can be rendered into this view.
         const hasTrustedCachedSession = Array.isArray(cachedHistory) || !!cachedData;
         syncSessionIdentity(requestedSessionId, requestedSlug, {
             historyMode,
@@ -1346,8 +1344,6 @@ export const useChat = () => {
             timestamp: Date.now() / 1000
         };
 
-        // Show the conversation before inspecting or previewing attachments.
-        // File sniffing can be slow for large or non-image uploads.
         updateSessionHistory(sessionId, prev => [
             ...prev.filter((message) => !_queueId || message.queueId !== _queueId),
             userMsg,

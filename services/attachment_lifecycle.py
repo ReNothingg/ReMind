@@ -76,7 +76,6 @@ def _configured_path(key: str, fallback: Path) -> Path:
 
 def _database_references(url_path: str) -> bool:
     if not has_app_context():
-        # Without a database context, deletion cannot be proven safe.
         return True
     from utils.auth import UserChatHistory
 

@@ -83,10 +83,6 @@ SENSITIVE_FILE_SUFFIXES = {
     ".pfx",
 }
 
-# These files can change repository governance or execute privileged CI code. The
-# current GitHub workspace only has a single generic "run plan" confirmation, so
-# they must stay out of autonomous edits until a dedicated high-risk approval UI
-# exists.
 PROTECTED_REPOSITORY_PATHS = {
     ".github/codeowners",
     ".github/dependabot.yml",

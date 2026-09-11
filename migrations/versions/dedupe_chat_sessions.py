@@ -66,8 +66,6 @@ def _message_paths(messages: list[dict]) -> list[list[dict]]:
 
 def _merged_messages(rows: list[dict]) -> str:
     parsed: list[list[dict]] = []
-    # Rows arrive newest first. Replaying oldest-to-newest makes the newest
-    # conversation path the selected branch while retaining every older path.
     for row in reversed(rows):
         try:
             messages = json.loads(row.get("messages_data") or "[]")

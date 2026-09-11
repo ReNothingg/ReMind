@@ -9,7 +9,6 @@ from pathlib import Path
 IGNORED_DIRS = {
     ".git",
     ".mypy_cache",
-    ".pytest_cache",
     ".ruff_cache",
     ".venv",
     "__pycache__",

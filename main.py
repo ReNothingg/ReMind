@@ -13,11 +13,9 @@ if __name__ == "__main__":
     bind_host = os.getenv("APP_BIND_HOST", "127.0.0.1").strip() or "127.0.0.1"
     print("\n" + "=" * 60 + "\nReMind AI Server Running\n" + "=" * 60)
     try:
-        from waitress import serve  # type: ignore[import-untyped]
+        from waitress import serve
 
         try:
-            # Waitress access records include raw targets, which may contain OAuth or
-            # account-action tokens. Application logs retain safe route templates.
             logging.getLogger("waitress").setLevel(logging.WARNING)
             serve(
                 app,

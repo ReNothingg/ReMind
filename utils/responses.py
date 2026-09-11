@@ -3,9 +3,6 @@ from typing import Any, Optional, Union
 
 from flask import g, has_request_context, jsonify
 
-# Keep response and API-boundary logs inside the application's filtered logger
-# hierarchy. Configuring the process-wide root logger from this utility module
-# would let these records bypass the PII filter installed by setup_logging().
 logger = logging.getLogger("remind.responses")
 
 

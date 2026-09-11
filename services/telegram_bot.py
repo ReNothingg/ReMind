@@ -1005,7 +1005,6 @@ def _answer_inline_query(
         api.call("answerInlineQuery", base_payload)
     except TelegramAPIError:
         if base_payload.get("button"):
-            # Older payload can fail with unknown field name.
             legacy_payload = dict(base_payload)
             button = legacy_payload.pop("button")
             legacy_payload.pop("button", None)

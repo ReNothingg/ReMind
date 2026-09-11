@@ -225,7 +225,6 @@ const CanvasCodeEditor = ({
                 effects: languageCompartmentRef.current.reconfigure(support),
             });
         }).catch(() => {
-            // Keep the editor usable as plain text if a language chunk cannot load.
         });
 
         return () => {

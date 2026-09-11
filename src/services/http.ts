@@ -84,7 +84,6 @@ async function refreshCsrfToken(): Promise<string> {
         });
         rememberCsrfTokenFromResponse(response);
     } catch {
-        // The original unsafe request will surface the actionable API error.
     }
     return getCsrfToken();
 }

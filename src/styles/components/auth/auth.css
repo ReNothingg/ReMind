@@ -404,7 +404,6 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
   position: absolute;
   top: 0;
   bottom: 0;
-  /* Leave the native Safari/Password AutoFill control at the far right. */
   right: 2.65rem;
   margin-block: auto;
   transform: none;

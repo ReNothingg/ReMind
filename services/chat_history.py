@@ -789,9 +789,6 @@ def persist_chat_operation(
             result_graph = file_graph
 
         if user_id is not None and isinstance(user_id, int):
-            # Compare-and-swap the JSON graph so two web workers cannot silently
-            # overwrite one another's branches. The unique constraint handles
-            # the equivalent race while creating a brand-new session.
             for attempt in range(3):
                 try:
                     chat = UserChatHistory.query.filter_by(

@@ -871,7 +871,6 @@ html[data-theme='light'] {
   --news-meta-color: var(--color-text-tertiary);
 }
 
-/* Accent fills need a foreground chosen for the actual accent, not just the theme. */
 html[data-accent-color='black'] {
   --color-text-on-accent-bg: #f9fafb;
   --icon-filter-on-accent: brightness(0) invert(1);
@@ -904,7 +903,6 @@ html[data-theme='light'][data-accent-color='purple'] {
   --toggle-btn-icon-filter-active: var(--icon-filter-on-accent);
 }
 
-/* Link and focus colors stay legible even when the decorative accent is very light or dark. */
 html:not([data-theme='light'])[data-accent-color='black'] {
   --color-text-link: #d1d5db;
   --color-text-link-hover: #f3f4f6;

@@ -343,9 +343,6 @@ def register_system_routes(api_bp):
 
     @api_bp.route("/.well-known/http-opportunistic", methods=["GET"])
     def well_known_http_opportunistic():
-        # RFC 8164 is obsolete and this service does not opt into opportunistic
-        # HTTP. Return an explicit non-discovery response instead of involving
-        # the SPA/static-file fallback.
         response, status = _operational_not_found()
         response.headers["Cache-Control"] = "no-store"
         return response, status

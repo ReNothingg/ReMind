@@ -215,9 +215,9 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=True)
     is_confirmed = db.Column(db.Boolean, default=False)
     confirmation_token = db.Column(db.String(100), nullable=True)
-    confirmation_token_expires = db.Column(db.DateTime, nullable=True)  # TTL for confirmation
+    confirmation_token_expires = db.Column(db.DateTime, nullable=True)
     reset_token = db.Column(db.String(100), nullable=True)
-    reset_token_expires = db.Column(db.DateTime, nullable=True)  # TTL for reset token (1 hour)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     oauth_provider = db.Column(db.String(20), nullable=True)
     oauth_id = db.Column(db.String(100), nullable=True)
@@ -630,7 +630,7 @@ class UserSettings(db.Model):
         server_default=text("TRUE"),
         nullable=False,
     )
-    settings_data = db.Column(db.Text, default="{}")  # JSON for additional settings
+    settings_data = db.Column(db.Text, default="{}")
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
@@ -676,7 +676,7 @@ class UserChatHistory(db.Model):
     )
     external_ref_hash = db.Column(db.String(64), nullable=True, index=True)
     source_context_data = db.Column(db.Text, default="{}", nullable=False)
-    messages_data = db.Column(db.Text, default="[]")  # JSON array of messages
+    messages_data = db.Column(db.Text, default="[]")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1255,7 +1255,6 @@ def _issue_apple_auth_challenge(
         raise AppleAuthError("auth_required")
 
     now = datetime.utcnow()
-    # Keep the two digest-only tables bounded without retaining stale authentication data.
     AppleAuthChallenge.query.filter(AppleAuthChallenge.expires_at <= now).delete(
         synchronize_session=False
     )
@@ -2130,7 +2129,7 @@ def register_auth_routes(app):
             if user:
                 reset_token = secrets.token_urlsafe(32)
                 user.reset_token = reset_token
-                user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # 1 hour TTL
+                user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
                 db.session.commit()
                 reset_link = url_for("reset_password", token=reset_token, _external=True)
                 template_data = {"username": user.username, "reset_link": reset_link}
@@ -2340,9 +2339,6 @@ def register_auth_routes(app):
                 try:
                     link_user = db.session.get(User, metadata.get("link_user_id"))
                     if link_user and not is_account_disabled(link_user):
-                        # Apple's required form_post callback is cross-site, so the
-                        # SameSite=Lax session cookie is absent. Restore only the
-                        # account captured by the signed, one-time link challenge.
                         session.clear()
                         session["user_id"] = link_user.id
                         session["username"] = InputValidator.sanitize_output(link_user.username)
@@ -2611,7 +2607,6 @@ def register_auth_routes(app):
                 )
                 raise RuntimeError("google_oauth_missing_access_token")
 
-            # When token is obtained via fallback flow, Authlib may not populate client token state.
             oauth.google.token = token
             resp = oauth.google.get("https://www.googleapis.com/oauth2/v3/userinfo", token=token)
             user_info = resp.json()
@@ -3931,9 +3926,6 @@ def setup_auth(app):
                     )
                 app.logger.info("Added missing user_chat_history.mind_id column")
             ensure_chat_session_uniqueness(db.engine)
-        # ORM backfills must run only after every compatibility column above exists.
-        # Otherwise SQLAlchemy selects the full current model from a legacy table and
-        # fails before the schema upgrader gets a chance to add missing columns.
         _ensure_auth_identity_backfill(app)
         _remove_legacy_default_minds(app)
         app.logger.info("Database tables created successfully")

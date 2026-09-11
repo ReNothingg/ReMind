@@ -246,8 +246,6 @@ def create_app():
 
     @app.errorhandler(500)
     def handle_500(e):
-        # Flask already records uncaught exceptions through app.logger before
-        # invoking this handler. Logging again here duplicates the event.
         return make_error("Internal server error", status=500, code="internal_error")
 
     @app.errorhandler(502)

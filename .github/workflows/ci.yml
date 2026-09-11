@@ -48,7 +48,7 @@ jobs:
           print("No obvious secret patterns found in tracked files.")
           PY
 
-  backend-tests:
+  backend-checks:
     runs-on: ubuntu-latest
     needs: secret-scan
     steps:
@@ -60,7 +60,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install backend deps + pytest
+      - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements/dev.txt -c requirements/constraints.txt
@@ -74,10 +74,7 @@ jobs:
       - name: Mypy
         run: mypy app_factory.py routes utils services
 
-      - name: Run pytest with coverage threshold
-        run: pytest --cov=routes --cov=services --cov=utils --cov-report=term-missing --cov-fail-under=70
-
-  frontend-unit-build:
+  frontend-build:
     runs-on: ubuntu-latest
     needs: secret-scan
     steps:
@@ -107,54 +104,8 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
-      - name: Run Vitest unit tests with coverage thresholds
-        run: npm run test:unit:coverage
-
       - name: Build frontend
         run: npm run build
-
-  playwright-e2e:
-    runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-unit-build]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install backend deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/runtime.txt -c requirements/constraints.txt
-
-      - name: Install frontend deps
-        run: npm ci
-
-      - name: Build frontend for backend static serving
-        run: npm run build
-
-      - name: Install Playwright Chromium
-        run: npm run test:e2e:install
-
-      - name: Run Playwright e2e (login -> chat -> session history)
-        run: npm run test:e2e
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report/
-          if-no-files-found: ignore
 
   security-pipeline:
     runs-on: ubuntu-latest

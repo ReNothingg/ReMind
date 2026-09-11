@@ -7,7 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
-  { ignores: ['coverage', 'dist', 'node_modules', 'build', '.git', 'public', 'playwright-report', 'test-results'] },
+  { ignores: ['dist', 'node_modules', 'build', '.git', 'public'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
@@ -30,13 +30,6 @@ export default tseslint.config(
       globals: {
         ...globals.browser,
         ...globals.node,
-        describe: 'readonly',
-        it: 'readonly',
-        test: 'readonly',
-        expect: 'readonly',
-        vi: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
       },
     },
     plugins: {
@@ -62,6 +55,24 @@ export default tseslint.config(
       'react-hooks/preserve-manual-memoization': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+  {
+    files: ['src/components/Modals/AuthModal.tsx'],
+    rules: {
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
+  {
+    files: ['src/context/AuthContext.tsx', 'src/context/SettingsContext.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['src/features/canvas/CanvasPanel.tsx'],
+    rules: {
+      'no-control-regex': 'off',
     },
   },
 );

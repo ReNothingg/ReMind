@@ -1,6 +1,3 @@
-# ==========================
-# Secrets and environment
-# ==========================
 .env
 .env.*
 .env.dev.example
@@ -16,9 +13,6 @@
 *.pfx
 .db-journal
 
-# ==========================
-# Python
-# ==========================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -26,7 +20,6 @@ __pycache__/
 .Python
 .python-version
 
-# Virtual environments
 .venv/
 venv/
 env/
@@ -34,7 +27,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# Packaging/build
 build/
 dist/
 dist-ssr/
@@ -45,33 +37,15 @@ pip-wheel-metadata/
 *.egg
 MANIFEST
 
-# Tooling caches
 .mypy_cache/
-.pytest_cache/
 .ruff_cache/
 .pyre/
-.hypothesis/
-.tox/
-.nox/
 
-# Coverage and test artifacts
-.coverage
-.coverage.*
-coverage.xml
-htmlcov/
-nosetests.xml
-*.cover
-*.py,cover
-
-# ==========================
-# Flask / runtime data
-# ==========================
 instance/
 flask_session/
 logs/
 *.log
 database/
-test-results/
 upload/
 ssl/
 celerybeat-schedule
@@ -81,15 +55,11 @@ celerybeat.pid
 *.sqlite3
 *.sqlite3-journal
 
-# ==========================
-# Node / frontend
-# ==========================
 node_modules/
 .npm/
 .pnpm-store/
 .yarn/
 .vite/
-coverage/
 *.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*
@@ -97,9 +67,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# ==========================
-# IDE / editor
-# ==========================
 .vscode/
 .idea/
 *.iml
@@ -113,23 +80,11 @@ lerna-debug.log*
 *~
 *.agents
 
-# ==========================
-# OS junk
-# ==========================
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# ==========================
-# Misc
-# ==========================
 tmp/
-tests/
-!tests/
-tests/*
-!tests/test_*.py
-!tests/e2e/
-!tests/e2e/**
 temp/
 *.tmp
 *.bak

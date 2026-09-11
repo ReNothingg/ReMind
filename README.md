@@ -78,7 +78,7 @@
 | AI / Media | AI provider adapter, local `echo`, `demo_image`, Pillow, server-side speech synthesis |
 | Storage / Queue | SQLite for local development, PostgreSQL for deployment, Redis, Celery |
 | Infra | Docker, Docker Compose, Nginx |
-| Quality | Ruff, Black, MyPy, Pytest, Vitest, Playwright, GitHub Actions |
+| Quality | Ruff, Black, MyPy, ESLint, TypeScript, GitHub Actions |
 
 <a id="quick-start"></a>
 
@@ -253,7 +253,6 @@ pip install -r requirements/dev.txt -c requirements/constraints.txt
 ruff check .
 black --check .
 mypy app_factory.py routes utils services
-pytest --cov=routes --cov=services --cov=utils --cov-report=term-missing --cov-fail-under=70
 ```
 
 ### Frontend
@@ -262,18 +261,10 @@ pytest --cov=routes --cov=services --cov=utils --cov-report=term-missing --cov-f
 npm run typecheck
 npm run openapi:check
 npm run lint
-npm run test:unit:coverage
 npm run build
 ```
 
-### End-to-end
-
-```bash
-npm run test:e2e:install
-npm run test:e2e
-```
-
-CI покрывает secret scanning, backend checks, frontend checks, Playwright e2e и security pipeline через `pip-audit`, `npm audit`, `bandit` и `semgrep`.
+CI покрывает secret scanning, backend checks, frontend checks и security pipeline через `pip-audit`, `npm audit`, `bandit` и `semgrep`.
 
 <a id="repository-map"></a>
 

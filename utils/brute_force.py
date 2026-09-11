@@ -140,7 +140,7 @@ class BruteForceProtection:
     def _record_attempt_memory(self, identifier):
 
         current_time = time.time()
-        window_start = current_time - 3600  # 1 hour window
+        window_start = current_time - 3600
 
         with _store_lock:
             _attempt_store[identifier] = [
@@ -183,7 +183,7 @@ class BruteForceProtection:
                     f"{identifier}:lockout", int(lockout_duration), str(lockout_until)
                 )
                 self.redis_client.incr(f"{identifier}:lockout_count")
-                self.redis_client.expire(f"{identifier}:lockout_count", 86400 * 7)  # 7 days
+                self.redis_client.expire(f"{identifier}:lockout_count", 86400 * 7)
                 self.redis_client.delete(key)
 
                 return True, 0

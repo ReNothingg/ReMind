@@ -66,9 +66,6 @@ class RequestAwareSessionInterface(SecureCookieSessionInterface):
                 if is_loopback_hostname(request.host):
                     return False
             except Exception:
-                # Some reverse-proxy setups (Cloudflare tunnels with rotating hostnames)
-                # can report untrusted/unparseable hosts during request finalization.
-                # Keep cookie security behavior conservative without crashing the request.
                 return False
         return super().get_cookie_secure(app)
 
@@ -159,10 +156,10 @@ def secure_session_required(check_fingerprint=True, max_inactive_seconds=3600):
 class SessionConfig:
     COOKIE_SECURE = True
     COOKIE_HTTPONLY = True
-    COOKIE_SAMESITE = "Lax"  # CSRF
-    PERMANENT_SESSION_LIFETIME = 7 * 24 * 3600  # 7d
+    COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = 7 * 24 * 3600
     SESSION_REFRESH_EACH_REQUEST = True
-    MAX_INACTIVE_SECONDS = 3600  # 1h
+    MAX_INACTIVE_SECONDS = 3600
     SESSION_KEY_BITS = 256
 
 

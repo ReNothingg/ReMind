@@ -436,8 +436,6 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
             code=upload_error_code or "invalid_attachment",
         )
 
-    # Persistence is intentionally deferred until chat/session/model/idempotency
-    # validation has completed. Invalid requests must never leave orphan files.
     user_data["_pending_uploads"] = uploaded_files
     user_data["files"] = []
 
@@ -709,8 +707,6 @@ def _load_privacy_controls(db_user_id: int | None) -> dict[str, bool]:
 
 
 def _auto_web_search_enabled(_user_data: dict[str, Any], db_user_id: int | None) -> bool:
-    # Automatic search is an account setting, not a request-level privilege.
-    # A modified multipart field must not silently enable extra server work.
     return _db_auto_web_search_enabled(db_user_id)
 
 

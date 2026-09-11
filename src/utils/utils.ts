@@ -951,7 +951,6 @@ export const Utils = {
             try {
                 const renderId = `mermaid-${Date.now()}-${renderIndex++}`;
                 const result = await mermaid.render(renderId, diagramText);
-                // Safely parse the SVG string instead of assigning it directly to innerHTML
                 while (viz.firstChild) {
                     viz.removeChild(viz.firstChild);
                 }

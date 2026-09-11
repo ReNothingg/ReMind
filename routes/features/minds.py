@@ -71,9 +71,6 @@ def _clean_text_field(
             status=400,
             code="validation_error",
         )
-    # Mind instructions are stored and consumed as prompt text, never interpreted as
-    # browser markup. Allow literal HTML/SVG examples there while keeping markup out
-    # of user-facing names, descriptions, and conversation starters.
     has_invalid_markup = not allow_plain_text_markup and HTML_TAG_RE.search(text)
     if CONTROL_CHARS_RE.search(text) or has_invalid_markup:
         raise ApiError(

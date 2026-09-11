@@ -98,8 +98,6 @@ export function useGitHubWorkspace({ isAuthenticated, t }: UseGitHubWorkspaceOpt
         setError('');
 
         try {
-            // This endpoint is DB-only. Network calls to GitHub are deliberately
-            // reserved for an explicit repository load below.
             const data = await apiService._fetch<GitHubStatus>('/api/github/connection', {
                 method: 'GET',
             });
@@ -272,7 +270,6 @@ export function useGitHubWorkspace({ isAuthenticated, t }: UseGitHubWorkspaceOpt
             try {
                 setActiveTask(await apiService.getGitHubTask(taskId));
             } catch {
-                // Keep the actionable operation error visible.
             }
         } finally {
             setIsRunning(false);

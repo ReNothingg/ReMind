@@ -309,7 +309,6 @@ export default function GitHubWorkspace({ isAuthenticated, onOpenAuth }: GitHubW
                 const latestTask = await apiService.getGitHubTask(taskId);
                 setActiveTask(latestTask);
             } catch {
-                // Keep the visible API error when task refresh also fails.
             }
         } finally {
             setIsRunning(false);

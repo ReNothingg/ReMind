@@ -1,7 +1,5 @@
-# Default owners
 * @SynvexAI @renothingg
 
-# Critical areas
 /.github/ @SynvexAI @renothingg
 /routes/ @SynvexAI @renothingg
 /utils/ @SynvexAI @renothingg

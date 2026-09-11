@@ -669,10 +669,6 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                             continue
 
                         if text:
-                            # Gemini can emit user-facing prose before a function call in the
-                            # same round. Buffer it until the round is complete so intermediate
-                            # planning stays in the thought timeline instead of leaking into the
-                            # final answer ahead of the tool result.
                             round_answer_chunks.append(str(text))
 
                         function_call = getattr(part, "function_call", None)

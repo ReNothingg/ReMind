@@ -36,7 +36,6 @@ export function getAccountPasswordStrength(value: string) {
 
     score = Math.max(1, Math.min(score, 4));
 
-    // A password that registration will reject must not be presented as strong.
     if (!Object.values(getAccountPasswordRequirements(value)).every(Boolean)) {
         score = Math.min(score, 1);
     }
