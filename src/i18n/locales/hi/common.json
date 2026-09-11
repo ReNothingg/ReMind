@@ -617,6 +617,9 @@
     "accessibility": {
       "typographyGroup": "टाइपोग्राफी",
       "fontFamilyLabel": "फ़ॉन्ट परिवार",
+      "fontFamily": {
+        "system": "सिस्टम"
+      },
       "fontSizeLabel": "फ़ॉन्ट आकार",
       "fontSize": {
         "small": "छोटा",

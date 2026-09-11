@@ -144,7 +144,7 @@
 }
 
 .user-settings-modal .settings-tab:hover {
-  background: var(--color-bg-interactive);
+  background: transparent;
   color: var(--color-text-primary);
   transform: none;
 }
@@ -160,12 +160,16 @@
   box-shadow: none;
 }
 
+.user-settings-modal .settings-tab.active:hover {
+  background: var(--color-bg-surface);
+}
+
 .user-settings-modal .settings-tab.active::before {
   opacity: 1;
 }
 
 .user-settings-modal .settings-tab.active .settings-tab-icon {
-  background: rgba(var(--color-accent-raw), 0.12);
+  background: transparent;
   color: var(--color-accent);
 }
 

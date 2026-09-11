@@ -617,6 +617,9 @@
     "accessibility": {
       "typographyGroup": "Типографика",
       "fontFamilyLabel": "Семейство шрифтов",
+      "fontFamily": {
+        "system": "Системный"
+      },
       "fontSizeLabel": "Размер шрифта",
       "fontSize": {
         "small": "Маленький",

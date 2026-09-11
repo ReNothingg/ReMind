@@ -617,6 +617,9 @@
     "accessibility": {
       "typographyGroup": "Typography",
       "fontFamilyLabel": "Font family",
+      "fontFamily": {
+        "system": "System"
+      },
       "fontSizeLabel": "Font size",
       "fontSize": {
         "small": "Small",

@@ -617,6 +617,9 @@
     "accessibility": {
       "typographyGroup": "排版",
       "fontFamilyLabel": "字体",
+      "fontFamily": {
+        "system": "系统字体"
+      },
       "fontSizeLabel": "字号",
       "fontSize": {
         "small": "小",

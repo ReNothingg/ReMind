@@ -682,6 +682,46 @@ const ensureCodeLineNumberRows = (root: ParentNode) => {
         pre.appendChild(rows);
     });
 };
+
+const resizeCodeLineNumbers = (root: ParentNode) => {
+    root.querySelectorAll<HTMLElement>('pre.code-line-numbered').forEach((pre) => {
+        const code = pre.querySelector<HTMLElement>('code');
+        const rows = pre.querySelector<HTMLElement>('.line-numbers-rows');
+        if (!code || !rows) return;
+
+        const isWrapped = ['pre-wrap', 'pre-line'].includes(window.getComputedStyle(code).whiteSpace);
+        if (!isWrapped) {
+            Array.from(rows.children).forEach((row) => {
+                (row as HTMLElement).style.height = '';
+            });
+            return;
+        }
+
+        const normalizedCode = code.textContent?.endsWith('\n')
+            ? code.textContent.slice(0, -1)
+            : (code.textContent || '');
+        const lines = normalizedCode.split('\n');
+        if (rows.children.length !== lines.length) return;
+
+        const sizer = document.createElement('span');
+        sizer.className = 'code-line-number-sizer';
+        sizer.setAttribute('aria-hidden', 'true');
+        code.appendChild(sizer);
+
+        const lineHeights = lines.map((line) => {
+            const lineSizer = document.createElement('span');
+            lineSizer.textContent = line || '0';
+            sizer.appendChild(lineSizer);
+            return lineSizer;
+        }).map((lineSizer) => lineSizer.getBoundingClientRect().height);
+
+        sizer.remove();
+        lineHeights.forEach((height, index) => {
+            const row = rows.children[index] as HTMLElement | undefined;
+            if (row) row.style.height = `${height}px`;
+        });
+    });
+};
 const md = new MarkdownIt({
     html: true,
     linkify: true,
@@ -1004,11 +1044,13 @@ export const highlightCode = (container?: ParentNode) => {
     if (container) {
         Prism.highlightAllUnder(container);
         ensureCodeLineNumberRows(container);
+        resizeCodeLineNumbers(container);
         return;
     }
 
     Prism.highlightAll();
     ensureCodeLineNumberRows(document);
+    resizeCodeLineNumbers(document);
 };
 
 export const refreshCodeLineNumbers = (container?: ParentNode) => {
@@ -1022,4 +1064,5 @@ export const refreshCodeLineNumbers = (container?: ParentNode) => {
         return;
     }
 
+    resizeCodeLineNumbers(root);
 };

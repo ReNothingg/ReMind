@@ -177,6 +177,11 @@ html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
     transform var(--motion-quick);
 }
 
+.send-button,
+.ui-composer-shell .send-button.ui-composer-icon-button {
+  border-radius: var(--radius-pill);
+}
+
 .ui-composer-icon-button:hover,
 .attach-button:hover,
 .send-button:hover {
@@ -187,6 +192,188 @@ html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
 .attach-button:active,
 .send-button:active {
   transform: scale(0.96);
+}
+
+.composer-model-selector {
+  --composer-trailing-control-offset: 44px;
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: min(260px, 38vw);
+  flex: 0 1 auto;
+  align-items: center;
+}
+
+.composer-model-selector .model-btn-trigger {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-interactive);
+  color: var(--color-text-secondary);
+  box-shadow: none;
+}
+
+.composer-model-selector .model-btn-trigger:hover,
+.composer-model-selector .model-btn-trigger.open {
+  border-color: transparent;
+  background: rgba(var(--color-bg-surface-alt-raw), 0.96);
+  color: var(--color-text-primary);
+  transform: none;
+}
+
+.composer-model-selector .model-btn-trigger:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.composer-model-selector .model-btn-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.composer-model-selector .model-btn-name {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 620;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-model-selector .model-btn-variant {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--color-text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 520;
+  line-height: 1;
+}
+
+.composer-model-selector .model-btn-variant::before {
+  margin-right: 6px;
+  color: var(--color-text-tertiary);
+  content: '·';
+}
+
+.composer-model-selector .model-btn-chevron {
+  width: 15px;
+  height: 15px;
+}
+
+.composer-model-selector .model-dropdown {
+  position: absolute;
+  top: auto;
+  right: calc(-1 * var(--composer-trailing-control-offset));
+  bottom: calc(100% + 10px);
+  left: auto;
+  width: min(320px, calc(100vw - 24px));
+  min-width: 0;
+  max-width: none;
+  max-height: min(440px, calc(100dvh - 120px));
+  transform-origin: bottom right;
+}
+
+.composer-model-selector .model-options {
+  padding: 4px;
+}
+
+.composer-model-selector .model-option-card + .model-option-card {
+  margin-top: 2px;
+}
+
+.composer-model-selector .model-option {
+  padding: 9px 10px;
+}
+
+.composer-model-selector .model-option-card.is-selected .model-option {
+  padding-bottom: 5px;
+}
+
+.composer-model-selector .model-option-header {
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.composer-model-selector .model-option-name {
+  font-size: 0.84rem;
+}
+
+.composer-model-selector .model-option-desc {
+  font-size: 0.74rem;
+  line-height: 1.32;
+}
+
+.composer-model-selector .model-thinking-control {
+  padding: 0 10px 8px;
+}
+
+.composer-model-selector .model-thinking-slider {
+  height: 44px;
+}
+
+.composer-model-selector .model-thinking-track {
+  height: 28px;
+}
+
+.composer-model-selector .model-thinking-slider::after {
+  width: 36px;
+  height: 36px;
+}
+
+.composer-model-selector .ui-toolbar-dropdown-closed {
+  transform: translateY(6px) scale(0.985);
+}
+
+@media (min-width: 768px) {
+  .ui-toolbar-navigation-group.is-authenticated {
+    display: none;
+  }
+}
+
+@media (pointer: coarse), screen and (max-width: 640px) {
+  .composer-model-selector {
+    --composer-trailing-control-offset: 48px;
+    max-width: clamp(96px, 35vw, 150px);
+    flex-grow: 0;
+  }
+
+  .composer-model-selector .model-btn-trigger {
+    min-height: 44px;
+    height: 44px;
+    padding-inline: 10px;
+  }
+
+  .composer-model-selector.has-thinking-level .model-btn-name,
+  .composer-model-selector.has-thinking-level .model-btn-variant::before {
+    display: none;
+  }
+
+  .composer-model-selector .model-btn-variant {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .composer-model-selector .model-dropdown {
+    width: min(320px, calc(100vw - 24px));
+    max-height: min(58dvh, 440px);
+  }
 }
 
 .ui-main-input-shell:not(.landing) {
@@ -242,6 +429,17 @@ html[data-theme='light'] .web-search-toggle {
   border-color: transparent;
   background: var(--color-bg-interactive);
   transform: none;
+}
+
+.ui-toolbar-icon-button.ui-toolbar-temporary-button[aria-pressed='true'] {
+  border-color: rgba(var(--color-accent-raw), 0.32);
+  background: rgba(var(--color-accent-raw), 0.18);
+  color: var(--color-accent);
+}
+
+.ui-toolbar-icon-button.ui-toolbar-temporary-button[aria-pressed='true']:hover {
+  border-color: rgba(var(--color-accent-raw), 0.42);
+  background: rgba(var(--color-accent-raw), 0.24);
 }
 
 .ui-guest-button-primary {

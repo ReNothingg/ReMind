@@ -53,12 +53,27 @@ const MessageImageAttachmentContent = ({
     isInteractive,
     canRegenerate = true,
     downloadName,
+    width,
+    height,
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [naturalDimensions, setNaturalDimensions] = useState(null);
     const { t } = useTranslation();
 
     const isLocalPreview = typeof src === 'string' && (src.startsWith('blob:') || src.startsWith('data:'));
+    const numericWidth = Number(width);
+    const numericHeight = Number(height);
+    const hasDimensions = Number.isFinite(numericWidth)
+        && Number.isFinite(numericHeight)
+        && numericWidth > 0
+        && numericHeight > 0
+        && numericWidth <= 20_000
+        && numericHeight <= 20_000;
+    const displayWidth = hasDimensions ? numericWidth : naturalDimensions?.width;
+    const displayHeight = hasDimensions ? numericHeight : naturalDimensions?.height;
+    const hasDisplayDimensions = Number.isFinite(displayWidth) && Number.isFinite(displayHeight);
+    const displayName = downloadName || alt;
 
     const imageContent = (
         <>
@@ -75,7 +90,22 @@ const MessageImageAttachmentContent = ({
                         alt={alt}
                         loading={isLocalPreview ? 'eager' : 'lazy'}
                         decoding="async"
-                        onLoad={() => setIsLoaded(true)}
+                        onLoad={(event) => {
+                            const naturalWidth = event.currentTarget.naturalWidth;
+                            const naturalHeight = event.currentTarget.naturalHeight;
+                            if (
+                                !hasDimensions
+                                && Number.isFinite(naturalWidth)
+                                && Number.isFinite(naturalHeight)
+                                && naturalWidth > 0
+                                && naturalHeight > 0
+                                && naturalWidth <= 20_000
+                                && naturalHeight <= 20_000
+                            ) {
+                                setNaturalDimensions({ width: naturalWidth, height: naturalHeight });
+                            }
+                            setIsLoaded(true);
+                        }}
                         onError={() => {
                             setHasError(true);
                             setIsLoaded(false);
@@ -95,40 +125,58 @@ const MessageImageAttachmentContent = ({
                     </span>
                 </span>
             )}
-            {isInteractive && !hasError && (
-                <span className="message-image-overlay" aria-hidden="true">
-                    <span className="message-image-overlay-chip">
-                        {t('chatImage.open', { defaultValue: 'Открыть' })}
-                    </span>
-                </span>
-            )}
         </>
     );
 
+    const cardContent = (
+        <>
+            <span
+                className="message-image-visual"
+                style={hasDisplayDimensions ? { aspectRatio: `${displayWidth} / ${displayHeight}` } : undefined}
+            >
+                {imageContent}
+                {isInteractive && !hasError && (
+                    <span className="message-image-visual-action" aria-hidden="true">
+                        <ExternalLink size={14} strokeWidth={2} />
+                    </span>
+                )}
+            </span>
+            <span className="message-image-caption">
+                <span className="message-image-caption-name" title={displayName}>{displayName}</span>
+                {hasDisplayDimensions && (
+                    <span className="message-image-caption-dimensions" aria-hidden="true">
+                        {Math.round(displayWidth)} × {Math.round(displayHeight)}
+                    </span>
+                )}
+            </span>
+        </>
+    );
+
+    const cardClassName = cn(
+        'message-image-card message-image-button',
+        isInteractive ? 'is-interactive' : 'is-static',
+        isLoaded && 'is-loaded',
+        hasError && 'is-error',
+    );
+
+    if (!isInteractive) {
+        return <div className={cardClassName} role="img" aria-label={alt}>{cardContent}</div>;
+    }
+
     return (
-        <div className={cn('message-image-card', isLoaded && 'is-loaded', hasError && 'is-error')}>
-            {isInteractive ? (
-                <button
-                    type="button"
-                    className="message-image-button is-interactive"
-                    onClick={() => {
-                        if (window.openImageLightbox) {
-                            window.openImageLightbox(src, messageId, {
-                                canRegenerate,
-                                downloadName,
-                            });
-                        }
-                    }}
-                    aria-label={`${t('chatImage.open')}: ${alt}`}
-                >
-                    {imageContent}
-                </button>
-            ) : (
-                <div className="message-image-button is-static" role="img" aria-label={alt}>
-                    {imageContent}
-                </div>
-            )}
-        </div>
+        <button
+            type="button"
+            className={cardClassName}
+            onClick={() => {
+                window.openImageLightbox?.(src, messageId, {
+                    canRegenerate,
+                    downloadName,
+                });
+            }}
+            aria-label={`${t('chatImage.open')}: ${alt}`}
+        >
+            {cardContent}
+        </button>
     );
 };
 
@@ -1893,34 +1941,6 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     />
                 )}
 
-                {displayImages?.length > 0 && (
-                    <div
-                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
-                        data-count={displayImages.length}
-                    >
-                        {displayImages.map((src, idx) => {
-                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
-                            if (!imagePath) {
-                                return null;
-                            }
-
-                            const fullSrc = resolveMediaUrl(imagePath);
-                            const isPythonArtifact = typeof src === 'object' && src?.source === 'python';
-                            return (
-                                <MessageImageAttachment
-                                    key={`${message.id}-image-${idx}`}
-                                    src={fullSrc}
-                                    alt={t('chatImage.messageAlt', { number: idx + 1 })}
-                                    messageId={message.id}
-                                    isInteractive={!isUser}
-                                    canRegenerate={!isPythonArtifact}
-                                    downloadName={typeof src === 'object' ? src?.original_name : undefined}
-                                />
-                            );
-                        })}
-                    </div>
-                )}
-
                 {isGeneratingImage && (
                     <div className="image-generation-placeholder ui-message-image-placeholder">
                         <div className="image-placeholder-visual ui-message-image-visual">
@@ -1942,6 +1962,37 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     className="message-text ui-message-text"
                     dangerouslySetInnerHTML={{ __html: htmlContent }}
                 />
+
+                {displayImages?.length > 0 && (
+                    <div
+                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
+                        data-count={displayImages.length}
+                    >
+                        {displayImages.map((src, idx) => {
+                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
+                            if (!imagePath) {
+                                return null;
+                            }
+
+                            const fullSrc = resolveMediaUrl(imagePath);
+                            const isImageObject = typeof src === 'object';
+                            const isPythonArtifact = isImageObject && src?.source === 'python';
+                            return (
+                                <MessageImageAttachment
+                                    key={`${message.id}-image-${idx}`}
+                                    src={fullSrc}
+                                    alt={t('chatImage.messageAlt', { number: idx + 1 })}
+                                    messageId={message.id}
+                                    isInteractive={!isUser}
+                                    canRegenerate={!isPythonArtifact}
+                                    downloadName={isImageObject ? src?.original_name : undefined}
+                                    width={isImageObject ? (src?.metadata?.width ?? src?.width) : undefined}
+                                    height={isImageObject ? (src?.metadata?.height ?? src?.height) : undefined}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
 
                 {githubDiffPayload && (
                     <GitHubDiffCard payload={githubDiffPayload} t={t} />

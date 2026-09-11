@@ -617,6 +617,9 @@
     "accessibility": {
       "typographyGroup": "الطباعة",
       "fontFamilyLabel": "عائلة الخط",
+      "fontFamily": {
+        "system": "خط النظام"
+      },
       "fontSizeLabel": "حجم الخط",
       "fontSize": {
         "small": "صغير",

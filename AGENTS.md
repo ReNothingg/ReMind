@@ -1,3 +1,5 @@
+All tests file must be dealeted before finishing task.
+
 New UI must match the existing visual style of the website. Do not use gradients and shadow in the UI unless the user explicitly asks for gradients or other in the current request.
 
 Every new capability must undergo a cybersecurity review before it is considered complete and new end-user-visible capability must be adapted for the mobile web interface.

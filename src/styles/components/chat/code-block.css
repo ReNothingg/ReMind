@@ -408,6 +408,18 @@ pre.code-line-numbered > code {
   background: transparent !important;
 }
 
+.code-line-number-sizer {
+  display: block;
+  height: 0;
+  overflow: visible;
+  visibility: hidden;
+}
+
+.code-line-number-sizer > span {
+  display: block;
+  white-space: inherit;
+}
+
 .code-line-numbered .line-numbers-rows {
   grid-column: 1;
   grid-row: 1;

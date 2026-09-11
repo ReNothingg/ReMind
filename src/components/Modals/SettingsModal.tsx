@@ -1544,6 +1544,10 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
                                         value={settings.fontFamily}
                                         onChange={(value) => updateSetting('fontFamily', value)}
                                         options={[
+                                            {
+                                                value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                                label: t('settings.accessibility.fontFamily.system')
+                                            },
                                             { value: "'Nunito', 'SF Pro Text', 'Ubuntu', 'Segoe UI', sans-serif", label: 'Nunito' },
                                             { value: "'Inter', sans-serif", label: 'Inter' },
                                             { value: "'Manrope', sans-serif", label: 'Manrope' },

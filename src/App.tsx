@@ -1086,11 +1086,6 @@ const MainLayout = () => {
               <GlobalHeader
                 isAuthenticated={isAuthenticated}
                 onMenuToggle={handleRailToggle}
-                currentModel={selectedModel}
-                models={availableModels}
-                onModelChange={setCurrentModel}
-                thinkingLevel={selectedThinkingLevel}
-                onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
                 onOpenAuth={() => setAuthOpen('login')}
                 onShowRegister={() => setAuthOpen('register')}
                 shareInfo={isTemporaryChat ? null : sessionAccess}
@@ -1198,6 +1193,11 @@ const MainLayout = () => {
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
                       onOpenAuth={() => setAuthOpen('login')}
                       currentSessionId={currentSessionId}
+                      currentModel={selectedModel}
+                      models={availableModels}
+                      onModelChange={setCurrentModel}
+                      thinkingLevel={selectedThinkingLevel}
+                      onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
                     />
                   </LandingHero>
                 </div>
@@ -1284,6 +1284,11 @@ const MainLayout = () => {
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
                       onOpenAuth={() => setAuthOpen('login')}
                       currentSessionId={currentSessionId}
+                      currentModel={selectedModel}
+                      models={availableModels}
+                      onModelChange={setCurrentModel}
+                      thinkingLevel={selectedThinkingLevel}
+                      onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
                     />
                   </>
                 </Suspense>

@@ -9,6 +9,9 @@ import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
 import { imageFilesFromClipboard } from '../../utils/clipboardFiles';
 import { CHAT_UPLOAD_ACCEPT, CHAT_UPLOAD_MAX_TOTAL_BYTES } from '../../utils/constants';
+import ModelSelector from '../../features/chat/components/ModelSelector';
+import type { ChatModel } from '../../features/chat/modelSelection';
+import type { ThinkingLevel } from '../../services/api';
 import {
     deleteRemoteDraft,
     getDeviceId,
@@ -27,6 +30,11 @@ const InputArea = ({
     variant = 'default',
     showDynamicWarning = false,
     currentSessionId = null,
+    currentModel = '',
+    models = [] as ChatModel[],
+    onModelChange = undefined,
+    thinkingLevel = 'medium' as ThinkingLevel,
+    onThinkingLevelChange = undefined,
 }) => {
     const [text, setText] = useState(initialPrompt || '');
     const [quotes, setQuotes] = useState([]);
@@ -571,6 +579,16 @@ const InputArea = ({
                             onPaste={handlePaste}
                             disabled={isReadOnly}
                         ></textarea>
+
+                        {models.length > 0 && onModelChange && onThinkingLevelChange && (
+                            <ModelSelector
+                                currentModel={currentModel}
+                                models={models}
+                                onModelChange={onModelChange}
+                                thinkingLevel={thinkingLevel}
+                                onThinkingLevelChange={onThinkingLevelChange}
+                            />
+                        )}
 
                         <button
                             id="sendButton"

@@ -617,6 +617,9 @@
     "accessibility": {
       "typographyGroup": "টাইপোগ্রাফি",
       "fontFamilyLabel": "ফন্ট পরিবার",
+      "fontFamily": {
+        "system": "সিস্টেম"
+      },
       "fontSizeLabel": "ফন্ট সাইজ",
       "fontSize": {
         "small": "ছোট",
