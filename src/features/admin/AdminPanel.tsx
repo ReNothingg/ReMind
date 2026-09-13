@@ -923,7 +923,7 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                         </div>
                     </div>
 
-                    <div className="admin-ops-panel admin-ops-wide">
+                    <div className="admin-ops-panel admin-ops-wide admin-audit-panel">
                         <h2>
                             <Clock size={17} />
                             Audit stream
@@ -931,12 +931,12 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
                         <div className="admin-audit-list">
                             {(overview?.operations.recent_audit || []).map((event, index) => (
                                 <div className={cn('admin-audit-item', `tone-${normalizeTone(event.severity === 'warning' ? 'warning' : 'muted')}`)} key={`${event.timestamp}-${event.event_type}-${index}`}>
-                                    <span>
-                                        <strong>{event.event_type}</strong>
+                                    <span className="admin-audit-event">
+                                        <strong title={event.event_type}>{event.event_type}</strong>
                                         <small>{event.method || '—'} {event.endpoint || '—'}</small>
                                     </span>
-                                    <span>
-                                        <strong>{formatDate(event.timestamp)}</strong>
+                                    <span className="admin-audit-meta">
+                                        <time dateTime={event.timestamp || undefined}>{formatDate(event.timestamp)}</time>
                                         <small>{event.client_type || event.user_hash || 'system'}</small>
                                     </span>
                                 </div>

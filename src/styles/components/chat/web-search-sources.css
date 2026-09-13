@@ -99,7 +99,12 @@
   max-width: min(520px, calc(100vw - 40px));
   padding: calc(var(--spacing-unit) * 1.15);
   padding-bottom: calc(var(--spacing-unit) * 1.45);
-  background: transparent;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow:
+    0 18px 48px rgba(var(--color-black-raw), 0.62),
+    0 4px 16px rgba(var(--color-black-raw), 0.34);
   opacity: 0;
   pointer-events: none;
   transform: translateY(4px);
@@ -132,9 +137,19 @@
   min-width: 0;
   max-width: none;
   padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   opacity: 1;
   pointer-events: auto;
   transform: none;
+}
+
+html[data-theme='light'] .web-sources-container:not(.is-inline) .web-sources-pills {
+  box-shadow:
+    0 18px 44px rgba(var(--color-black-raw), 0.18),
+    0 4px 14px rgba(var(--color-black-raw), 0.1);
 }
 
 .source-pill {

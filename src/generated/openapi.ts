@@ -146,6 +146,14 @@ export interface components {
       ok: boolean;
       request_id?: string | null;
     };
+    GuestChatImportRequest: {
+      history: components["schemas"]["ChatMessage"][];
+      mind_id?: string | null;
+      session_id: string;
+    };
+    GuestChatImportResponse: components["schemas"]["SessionHistoryResponse"] | {
+      created: boolean;
+    };
     HealthResponse: {
       checks?: Record<string, unknown>;
       latency_ms: number;
@@ -749,6 +757,42 @@ export interface paths {
         "200": {
           content: {
             "application/json": components["schemas"]["SessionListResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/sessions/import-active-guest": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["GuestChatImportRequest"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["GuestChatImportResponse"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "413": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
           };
         };
       };

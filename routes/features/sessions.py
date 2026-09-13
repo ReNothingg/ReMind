@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from datetime import datetime
 
 from flask import request, session
 from sqlalchemy import and_, or_
@@ -18,10 +19,12 @@ from services.attachment_lifecycle import (
 )
 from services.canvas_tools import MAX_TEXTDOC_CONTENT_LENGTH
 from services.chat_history import (
+    _generate_title_from_history,
     _verify_guest_session_token,
     build_share_url,
     chat_file_exists,
     delete_guest_chat_file,
+    ensure_conversation_graph,
     has_valid_guest_session_token,
     load_chat_history,
     materialize_conversation_history,
@@ -34,9 +37,20 @@ from services.chat_history import (
 )
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.input_validation import InputValidator, ValidationError
+from utils.rate_limiting import RateLimiter, rate_limit
 from utils.responses import make_ok
 
 MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
+MAX_GUEST_CHAT_IMPORT_BYTES = 1_000_000
+MAX_GUEST_CHAT_IMPORT_MESSAGES = 200
+MAX_GUEST_CHAT_IMPORT_PARTS_PER_MESSAGE = 32
+MAX_GUEST_CHAT_IMPORT_TEXT_CHARS = 64_000
+MAX_GUEST_CHAT_IMPORT_TOTAL_TEXT_CHARS = 500_000
+guest_chat_import_limiter = RateLimiter(
+    max_requests=10,
+    time_window=3600,
+    namespace="guest_chat_import",
+)
 
 
 def _safe_session_preview(messages: list) -> str:
@@ -91,6 +105,49 @@ def _parse_guest_tokens_header() -> dict[str, str]:
     if not isinstance(parsed, dict):
         raise ApiError("Invalid guest token map", status=400, code="invalid_guest_tokens")
     return parsed
+
+
+def _sanitize_imported_guest_history(raw_history: object) -> list[dict]:
+    if not isinstance(raw_history, list) or not raw_history:
+        raise ApiError("Invalid chat history", status=400, code="invalid_chat_history")
+    if len(raw_history) > MAX_GUEST_CHAT_IMPORT_MESSAGES:
+        raise ApiError("Chat history is too large", status=413, code="chat_history_too_large")
+
+    sanitized: list[dict] = []
+    total_text_chars = 0
+    for raw_message in raw_history:
+        if not isinstance(raw_message, dict) or raw_message.get("role") not in {"user", "model"}:
+            raise ApiError("Invalid chat message", status=400, code="invalid_chat_history")
+        raw_parts = raw_message.get("parts")
+        if not isinstance(raw_parts, list):
+            raise ApiError("Invalid chat message", status=400, code="invalid_chat_history")
+        if len(raw_parts) > MAX_GUEST_CHAT_IMPORT_PARTS_PER_MESSAGE:
+            raise ApiError("Invalid chat message", status=400, code="invalid_chat_history")
+
+        text_parts: list[dict[str, str]] = []
+        for raw_part in raw_parts:
+            if not isinstance(raw_part, dict) or "text" not in raw_part:
+                continue
+            text = raw_part.get("text")
+            if not isinstance(text, str) or not text:
+                continue
+            if len(text) > MAX_GUEST_CHAT_IMPORT_TEXT_CHARS:
+                raise ApiError(
+                    "Chat message is too large", status=413, code="chat_history_too_large"
+                )
+            total_text_chars += len(text)
+            if total_text_chars > MAX_GUEST_CHAT_IMPORT_TOTAL_TEXT_CHARS:
+                raise ApiError(
+                    "Chat history is too large", status=413, code="chat_history_too_large"
+                )
+            text_parts.append({"text": text})
+
+        if text_parts:
+            sanitized.append({"role": raw_message["role"], "parts": text_parts})
+
+    if not sanitized or not any(message["role"] == "user" for message in sanitized):
+        raise ApiError("Invalid chat history", status=400, code="invalid_chat_history")
+    return ensure_conversation_graph(sanitized)
 
 
 def register_session_routes(api_bp):
@@ -229,6 +286,81 @@ def register_session_routes(api_bp):
             }
         )
 
+    @api_bp.route("/sessions/import-active-guest", methods=["POST"])
+    @rate_limit(guest_chat_import_limiter)
+    @api_error_boundary("guest_chat_import_failed")
+    def import_active_guest_chat():
+        db_user_id = require_authenticated_user_id()
+        if request.content_length and request.content_length > MAX_GUEST_CHAT_IMPORT_BYTES:
+            raise ApiError("Chat history is too large", status=413, code="chat_history_too_large")
+
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
+        if set(payload) - {"session_id", "history", "mind_id"}:
+            raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
+
+        raw_session_id = payload.get("session_id")
+        if not isinstance(raw_session_id, str):
+            raise ApiError("Invalid session ID", status=400, code="invalid_session_id")
+        try:
+            parsed_session_id = uuid.UUID(raw_session_id)
+        except (ValueError, AttributeError) as exc:
+            raise ApiError("Invalid session ID", status=400, code="invalid_session_id") from exc
+        if parsed_session_id.version != 4 or str(parsed_session_id) != raw_session_id:
+            raise ApiError("Invalid session ID", status=400, code="invalid_session_id")
+
+        history = _sanitize_imported_guest_history(payload.get("history"))
+        mind = None
+        raw_mind_id = payload.get("mind_id")
+        if raw_mind_id is not None and (not isinstance(raw_mind_id, str) or len(raw_mind_id) > 128):
+            raise ApiError("Invalid Mind ID", status=400, code="invalid_mind_id")
+        if isinstance(raw_mind_id, str) and raw_mind_id.strip():
+            mind = get_mind_for_session_binding(raw_mind_id, db_user_id)
+            if mind is None:
+                raise ApiError("Mind not found", status=404, code="not_found")
+
+        existing = UserChatHistory.query.filter_by(
+            user_id=db_user_id,
+            session_id=raw_session_id,
+        ).first()
+        created = existing is None
+        if existing is None:
+            existing = UserChatHistory(
+                user_id=db_user_id,
+                session_id=raw_session_id,
+                title=_generate_title_from_history(materialize_conversation_history(history)),
+                source="web",
+                mind_id=mind.id if mind else None,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            existing.set_messages(history)
+            db.session.add(existing)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                existing = UserChatHistory.query.filter_by(
+                    user_id=db_user_id,
+                    session_id=raw_session_id,
+                ).first()
+                if existing is None:
+                    raise
+                created = False
+
+        return make_ok(
+            {
+                "session_id": existing.session_id,
+                "history": materialize_conversation_history(existing.get_messages()),
+                "title": existing.title,
+                "mind": _session_mind_payload(existing, db_user_id),
+                "is_public": False,
+                "is_owner": True,
+                "created": created,
+            }
+        )
+
     @api_bp.route("/sessions", methods=["GET"])
     @api_error_boundary("sessions_list_failed")
     def list_sessions():
@@ -274,7 +406,9 @@ def register_session_routes(api_bp):
             if source_filter == "web":
                 base_query = base_query.filter(UserChatHistory.source == "web")
             elif source_filter == "telegram":
-                base_query = base_query.filter(UserChatHistory.source.like("telegram\\_%", escape="\\"))
+                base_query = base_query.filter(
+                    UserChatHistory.source.like("telegram\\_%", escape="\\")
+                )
             total = base_query.count()
             has_more = (page * page_size) < total
             rows = (

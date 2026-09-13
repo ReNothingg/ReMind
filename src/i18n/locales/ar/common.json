@@ -990,6 +990,7 @@
     "unavailableTitle": "المعاينة غير متاحة",
     "unavailableDescription": "تعذّر تحميل الصورة.",
     "messageAlt": "صورة الدردشة {{number}}",
+    "gallery": "معرض الصور",
     "generating": "جارٍ إنشاء الصورة: {{prompt}}"
   },
   "imageLightbox": {

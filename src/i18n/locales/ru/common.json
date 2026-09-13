@@ -726,6 +726,7 @@
     "unavailableTitle": "Превью недоступно",
     "unavailableDescription": "Изображение не удалось загрузить.",
     "messageAlt": "Изображение в чате {{number}}",
+    "gallery": "Галерея изображений",
     "generating": "Создание изображения: {{prompt}}"
   },
   "imageLightbox": {

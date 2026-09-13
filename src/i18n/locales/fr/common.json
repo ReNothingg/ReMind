@@ -990,6 +990,7 @@
     "unavailableTitle": "Aperçu indisponible",
     "unavailableDescription": "Impossible de charger l’image.",
     "messageAlt": "Image du chat {{number}}",
+    "gallery": "Galerie d’images",
     "generating": "Création de l’image : {{prompt}}"
   },
   "imageLightbox": {

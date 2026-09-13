@@ -1965,8 +1965,10 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
 
                 {displayImages?.length > 0 && (
                     <div
-                        className={cn('message-image-grid', isUser ? 'user-image-grid' : 'ai-image-grid')}
+                        className={cn('message-image-grid ui-scrollbar-thin', isUser ? 'user-image-grid' : 'ai-image-grid')}
                         data-count={displayImages.length}
+                        tabIndex={displayImages.length > 1 ? 0 : undefined}
+                        aria-label={displayImages.length > 1 ? t('chatImage.gallery') : undefined}
                     >
                         {displayImages.map((src, idx) => {
                             const imagePath = typeof src === 'string' ? src : (src?.url_path || '');

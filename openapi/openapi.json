@@ -376,6 +376,45 @@
         }
       }
     },
+    "/sessions/import-active-guest": {
+      "post": {
+        "summary": "Import the active guest conversation after authentication",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GuestChatImportRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Imported session history",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GuestChatImportResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid guest chat snapshot",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "413": {
+            "description": "Guest chat snapshot is too large",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "429": {
+            "description": "Too many import attempts",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
     "/sessions/{session_id}/history": {
       "get": {
         "summary": "Get history for a session",
@@ -1072,6 +1111,31 @@
           "read_only": { "type": "boolean" }
         },
         "additionalProperties": true
+      },
+      "GuestChatImportRequest": {
+        "type": "object",
+        "required": ["session_id", "history"],
+        "properties": {
+          "session_id": { "type": "string", "format": "uuid" },
+          "history": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": { "$ref": "#/components/schemas/ChatMessage" }
+          },
+          "mind_id": { "type": ["string", "null"], "maxLength": 128 }
+        },
+        "additionalProperties": false
+      },
+      "GuestChatImportResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/SessionHistoryResponse" },
+          {
+            "type": "object",
+            "required": ["created"],
+            "properties": { "created": { "type": "boolean" } }
+          }
+        ]
       },
       "CanvasTextdoc": {
         "type": "object",

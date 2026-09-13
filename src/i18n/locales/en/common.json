@@ -726,6 +726,7 @@
     "unavailableTitle": "Preview unavailable",
     "unavailableDescription": "The image could not be loaded.",
     "messageAlt": "Chat image {{number}}",
+    "gallery": "Image gallery",
     "generating": "Creating image: {{prompt}}"
   },
   "imageLightbox": {

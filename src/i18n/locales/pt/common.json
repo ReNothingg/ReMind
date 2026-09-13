@@ -990,6 +990,7 @@
     "unavailableTitle": "Pré-visualização indisponível",
     "unavailableDescription": "Não foi possível carregar a imagem.",
     "messageAlt": "Imagem do chat {{number}}",
+    "gallery": "Galeria de imagens",
     "generating": "A criar imagem: {{prompt}}"
   },
   "imageLightbox": {

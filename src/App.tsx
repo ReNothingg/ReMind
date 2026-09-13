@@ -41,6 +41,13 @@ import {
 } from './features/chat/modelSelection';
 import { useSessionList, type SessionSummary } from './features/sessions/hooks/useSessionList';
 import type { CanvasHtmlPreviewHandle } from './features/canvas/CanvasHtmlPreview';
+import {
+  clearGuestChatTransfer,
+  hasPendingGuestChatTransfer,
+  prepareGuestChatTransferHistory,
+  readGuestChatTransfer,
+  stageGuestChatTransfer,
+} from './services/guestChatTransfer';
 
 type AuthModalState = false | 'login' | 'register' | 'link';
 
@@ -184,6 +191,7 @@ const MainLayout = () => {
     startTemporaryChat,
     enableSharing,
     disableSharing,
+    buildHistoryForAPI,
   } = useChat();
 
   const { sessions, refreshSessions, removeSession, onSessionRenamed } = useSessionList({
@@ -383,6 +391,7 @@ const MainLayout = () => {
   const canvasWidthRef = useRef(canvasWidth);
   const canvasPreviewRef = useRef<CanvasHtmlPreviewHandle | null>(null);
   const canvasSaveTimerRef = useRef<number | null>(null);
+  const guestChatImportStartedRef = useRef(false);
 
   useEffect(() => {
     canvasWidthRef.current = canvasWidth;
@@ -484,6 +493,9 @@ const MainLayout = () => {
         const slug = decodeURIComponent(path.split('/c/')[1]);
         if (slug) {
           setActiveMind(null);
+          if (isAuthenticated && hasPendingGuestChatTransfer(slug)) {
+            return;
+          }
           void loadSession(slug, { historyMode: 'replace' }).then((data) => {
             if (data) {
               setActiveMind(data.mind || null);
@@ -502,7 +514,7 @@ const MainLayout = () => {
     window.addEventListener('popstate', handleRouteChange);
 
     return () => window.removeEventListener('popstate', handleRouteChange);
-  }, [loadSession, clearChat]);
+  }, [loadSession, clearChat, isAuthenticated]);
 
   useEffect(() => {
     if (routePath !== '/') {
@@ -839,6 +851,58 @@ const MainLayout = () => {
   const canvasTextdocVersion = canvasTextdoc
     ? `${canvasTextdoc.id || ''}:${canvasTextdoc.updated_at || 0}`
     : '';
+
+  useEffect(() => {
+    if (
+      !isAuthOpen
+      || isAuthenticated
+      || isTemporaryChat
+      || !currentSessionId
+      || history.length === 0
+      || !(routePath === '/' || routePath.startsWith('/c/'))
+    ) {
+      return;
+    }
+
+    const transferableHistory = prepareGuestChatTransferHistory(
+      buildHistoryForAPI(null, history)
+    );
+    if (transferableHistory.length === 0) return;
+    stageGuestChatTransfer({
+      sessionId: currentSessionId,
+      history: transferableHistory,
+      mindId: activeMind?.public_id || null,
+    });
+  }, [
+    activeMind?.public_id,
+    buildHistoryForAPI,
+    currentSessionId,
+    history,
+    isAuthOpen,
+    isAuthenticated,
+    isTemporaryChat,
+    routePath,
+  ]);
+
+  useEffect(() => {
+    if (isAuthLoading || !isAuthenticated || guestChatImportStartedRef.current) return;
+    const transfer = readGuestChatTransfer();
+    if (!transfer) return;
+
+    guestChatImportStartedRef.current = true;
+    void apiService.importActiveGuestChat(transfer)
+      .then(async (data) => {
+        clearGuestChatTransfer();
+        const sessionId = data.session_id || transfer.sessionId;
+        const loaded = await loadSession(sessionId, { historyMode: 'replace' });
+        setActiveMind(loaded?.mind || data.mind || null);
+        await refreshSessions();
+      })
+      .catch((error) => {
+        guestChatImportStartedRef.current = false;
+        console.warn('Failed to import active guest chat', error);
+      });
+  }, [isAuthLoading, isAuthenticated, loadSession, refreshSessions]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

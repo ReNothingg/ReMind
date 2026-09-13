@@ -990,6 +990,7 @@
     "unavailableTitle": "पूर्वावलोकन उपलब्ध नहीं है",
     "unavailableDescription": "चित्र लोड नहीं किया जा सका।",
     "messageAlt": "चैट चित्र {{number}}",
+    "gallery": "छवि गैलरी",
     "generating": "चित्र बनाया जा रहा है: {{prompt}}"
   },
   "imageLightbox": {

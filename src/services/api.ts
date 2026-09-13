@@ -140,6 +140,10 @@ type SessionRenameResponse = {
     [key: string]: unknown;
 };
 
+export type GuestChatImportResponse = SessionHistoryWithMind & {
+    created?: boolean;
+};
+
 type CanvasSaveResponse = {
     session_id?: string;
     textdoc: CanvasTextdoc;
@@ -899,6 +903,22 @@ export const apiService = {
             ? { Authorization: `Bearer ${token}` }
             : undefined;
         return apiGetSessionHistory(sessionId, headers) as Promise<SessionHistoryWithMind>;
+    },
+
+    async importActiveGuestChat(payload: {
+        sessionId: string;
+        history: unknown[];
+        mindId?: string | null;
+    }): Promise<GuestChatImportResponse> {
+        return fetchApi<GuestChatImportResponse>('/sessions/import-active-guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: payload.sessionId,
+                history: payload.history,
+                mind_id: payload.mindId || null,
+            }),
+        });
     },
 
     async selectSessionBranch(sessionId: string, messageId: string): Promise<SessionHistoryWithMind> {

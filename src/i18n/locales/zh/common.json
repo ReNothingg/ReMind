@@ -990,6 +990,7 @@
     "unavailableTitle": "预览不可用",
     "unavailableDescription": "无法加载图片。",
     "messageAlt": "聊天图片 {{number}}",
+    "gallery": "图片库",
     "generating": "正在创建图片：{{prompt}}"
   },
   "imageLightbox": {
