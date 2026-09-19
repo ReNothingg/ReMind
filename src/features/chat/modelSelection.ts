@@ -90,3 +90,8 @@ export function normalizeThinkingLevel(
 export function getFallbackModelId(models: ChatModel[]): string {
     return models[0]?.id ?? '';
 }
+
+
+export function isImageToolModel(model: Pick<ChatModel, 'id'>): boolean {
+    return model.id === 'demo_image' || model.id === 'mindart';
+}

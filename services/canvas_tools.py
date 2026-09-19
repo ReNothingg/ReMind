@@ -70,7 +70,7 @@ def process_canmore_calls(raw_reply: str, current_textdoc: Any = None) -> Canvas
     updates: list[dict[str, Any]] = []
     working_textdoc = deepcopy(textdoc)
     for call in calls:
-        applied = _apply_canmore_call(call, working_textdoc)
+        applied = apply_canmore_call(call, working_textdoc)
         if not applied:
             continue
         working_textdoc = applied["textdoc"]
@@ -103,7 +103,7 @@ def find_canmore_marker(text: str) -> int:
     return marker_index
 
 
-def _apply_canmore_call(
+def apply_canmore_call(
     call: dict[str, Any], current_textdoc: dict[str, Any] | None
 ) -> dict[str, Any] | None:
     function_name = _normalize_function_name(call.get("function") or call.get("name"))

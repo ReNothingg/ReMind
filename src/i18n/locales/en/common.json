@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Image analysis",
+      "image_analysisDescription": "Inspect attached images and their details",
+      "visualize": "Visualization",
+      "visualizeDescription": "Interactive diagrams, simulations and mini apps",
+      "github": "GitHub",
+      "githubDescription": "Read code in connected repositories",
+      "python": "Python",
+      "pythonDescription": "Run calculations, analyze data and create files",
+      "canvas": "Canvas",
+      "canvasDescription": "Create and edit documents and code",
+      "charts": "Charts",
+      "chartsDescription": "Plot data and build charts",
+      "diagrams": "Diagrams",
+      "diagramsDescription": "Show processes and relationships",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Create and edit rhythms",
+      "quiz": "Quiz",
+      "quizDescription": "Create interactive quizzes",
+      "githubConnect": "Connect GitHub in settings",
+      "signIn": "Sign in to use this tool",
+      "unavailable": "This tool is currently unavailable",
+      "web": "Web search",
+      "webDescription": "Find up-to-date information",
+      "image": "Image",
+      "imageDescription": "Create an image",
+      "imageDemoDescription": "Internal demo image generator",
+      "choose": "Choose a tool",
+      "empty": "No tools found",
+      "remove": "Remove {{tool}}"
+    },
     "attachFiles": "Attach files",
     "attachUnavailable": "Attachment unavailable",
     "attachRequiresAccount": "Sign up to attach files",
@@ -349,6 +380,15 @@
     "readOnly": "Read-only"
   },
   "models": {
+    "think": "Think",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Internal test model"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Internal streaming test model"
+    },
     "choose": "Choose a model",
     "thinkingLevel": "Thinking level",
     "thinkingLevelDescription": "Controls response speed and reasoning depth",

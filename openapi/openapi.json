@@ -706,6 +706,23 @@
           }
         }
       }
+    },
+    "/api/models": {
+      "get": {
+        "summary": "List models and server-resolved composer capabilities for the current account",
+        "responses": {
+          "200": {
+            "description": "Model and capability catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -926,22 +943,44 @@
       },
       "ChatOperationRequest": {
         "type": "object",
-        "required": ["session_id", "assistant_message_id", "request_id"],
+        "required": [
+          "session_id",
+          "assistant_message_id",
+          "request_id"
+        ],
         "properties": {
-          "session_id": { "type": "string", "minLength": 1, "maxLength": 100 },
-          "message": { "type": "string" },
-          "model": { "type": "string" },
+          "session_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "message": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
           "operation": {
             "type": "string",
-            "enum": ["send", "regenerate", "edit"],
+            "enum": [
+              "send",
+              "regenerate",
+              "edit"
+            ],
             "default": "send"
           },
           "target_message_id": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "pattern": "^[A-Za-z0-9_-]{1,120}$"
           },
           "user_message_id": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "pattern": "^[A-Za-z0-9_-]{1,120}$"
           },
           "assistant_message_id": {
@@ -954,9 +993,43 @@
           },
           "history": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/ChatMessage" }
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
           },
-          "temporary_chat": { "type": "boolean", "default": false }
+          "temporary_chat": {
+            "type": "boolean",
+            "default": false
+          },
+          "selected_tools": {
+            "description": "Capability IDs from /api/models. Multipart requests serialize this array as JSON. Availability is revalidated on every request.",
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "string",
+                "maxLength": 512
+              }
+            ]
+          },
+          "composer_content": {
+            "type": "string",
+            "maxLength": 34048,
+            "description": "Optional presentation text with selected tool markers. Removing authorized markers must reproduce message text."
+          },
+          "thinkingLevel": {
+            "type": "string",
+            "enum": [
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ]
+          }
         },
         "additionalProperties": true
       },
@@ -981,40 +1054,143 @@
       },
       "ChatMessage": {
         "type": "object",
-        "required": ["role", "parts"],
+        "required": [
+          "role",
+          "parts"
+        ],
         "properties": {
-          "id": { "type": ["string", "null"] },
-          "role": { "type": "string" },
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
           "parts": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/MessagePart" }
+            "items": {
+              "$ref": "#/components/schemas/MessagePart"
+            }
           },
-          "timestamp": { "type": ["integer", "null"] }
-          ,"request_id": { "type": ["string", "null"] }
-          ,"delivery_status": { "type": ["string", "null"], "enum": ["complete", "interrupted", null] }
-          ,"parent_id": { "type": ["string", "null"] }
-          ,"is_active": { "type": "boolean" }
-          ,"variants": {
+          "timestamp": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "complete",
+              "interrupted",
+              null
+            ]
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "variants": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/ChatMessageVariant" }
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageVariant"
+            }
+          },
+          "current_variant_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selected_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "composer_content": {
+            "type": "string"
+          },
+          "model_id": {
+            "type": "string"
           }
-          ,"current_variant_index": { "type": "integer", "minimum": 0 }
         },
         "additionalProperties": true
       },
       "ChatMessageVariant": {
-        "type":"object",
-        "required":["id","role","parts"],
-        "properties":{
-          "id":{"type":"string"},
-          "variant_id":{"type":"string"},
-          "role":{"type":"string"},
-          "parts":{"type":"array","items":{"$ref":"#/components/schemas/MessagePart"}},
-          "timestamp":{"type":["integer","null"]},
-          "request_id":{"type":["string","null"]},
-          "delivery_status":{"type":["string","null"],"enum":["complete","interrupted",null]}
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "parts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessagePart"
+            }
+          },
+          "timestamp": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delivery_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "complete",
+              "interrupted",
+              null
+            ]
+          },
+          "selected_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "composer_content": {
+            "type": "string"
+          },
+          "model_id": {
+            "type": "string"
+          }
         },
-        "additionalProperties":true
+        "additionalProperties": true
       },
       "SessionSummary": {
         "type": "object",
@@ -1366,6 +1542,112 @@
               "code": { "type": ["string", "null"] }
             },
             "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModelCatalogEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "subtitle",
+          "stage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "release",
+              "beta",
+              "dev",
+              "alpha"
+            ]
+          },
+          "titleKey": {
+            "type": "string"
+          },
+          "subtitleKey": {
+            "type": "string"
+          },
+          "thinkingLevels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          },
+          "defaultThinkingLevel": {
+            "type": "string",
+            "enum": [
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ComposerToolEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "available",
+          "titleKey",
+          "descriptionKey"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "titleKey": {
+            "type": "string"
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "unavailableKey": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModelCatalogResponse": {
+        "type": "object",
+        "required": [
+          "models",
+          "tools"
+        ],
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelCatalogEntry"
+            }
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComposerToolEntry"
+            }
           }
         },
         "additionalProperties": false

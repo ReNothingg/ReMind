@@ -1,3 +1,4 @@
+import { isKnownComposerTool } from '../features/chat/composerTools';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/api';
@@ -49,6 +50,8 @@ type ClearChatOptions = {
 };
 
 type SendMessageOptions = {
+    composerContent?: string;
+    tools?: string[];
     webSearch?: boolean;
     autoWebSearch?: boolean;
     mindId?: string | null;
@@ -212,6 +215,9 @@ function normalizeHistoryVariant(value) {
         canvasUpdates: Array.isArray(value.canvas_updates || value.canvasUpdates)
             ? (value.canvas_updates || value.canvasUpdates)
             : [],
+        composerContent: value.composer_content || value.composerContent,
+        selectedTools: value.selected_tools || value.selectedTools || [],
+        modelId: value.model_id || value.modelId,
         thinkingTime: value.thinkingTime,
         timestamp: value.timestamp,
         deliveryState: value.delivery_status === 'interrupted' ? 'interrupted' : undefined,
@@ -259,7 +265,7 @@ function patchThinkingUpdate(message, update) {
     };
 }
 
-export function normalizeHistoryMessage(msg) {
+export function normalizeHistoryMessage(msg, index?: number, messages?: Array<Record<string, unknown>>) {
     const parts = msg.parts || [];
     let text = parts.find((part) => part.text)?.text || '';
 
@@ -298,9 +304,18 @@ export function normalizeHistoryMessage(msg) {
         : undefined;
     const currentVariant = currentVariantIndex !== undefined ? variants[currentVariantIndex] : null;
 
+    const followingReply = index !== undefined ? messages?.[index + 1] : undefined;
+    const legacyTools = Array.isArray(followingReply?.selected_tools)
+        ? followingReply.selected_tools.filter((id): id is string => typeof id === 'string' && isKnownComposerTool(id)) : [];
+    if (followingReply?.model_id === 'demo_image' || followingReply?.model_id === 'mindart') legacyTools.push(followingReply.model_id);
+
     return {
+        toolBadges: msg.role === 'user' ? [...new Set(legacyTools)] : [],
         id: msg.id || Math.random().toString(36).substr(2, 9),
         role: msg.role,
+        composerContent: currentVariant ? currentVariant.composerContent : (msg.composer_content || msg.composerContent),
+        selectedTools: currentVariant?.selectedTools || msg.selected_tools || msg.selectedTools || [],
+        modelId: currentVariant?.modelId || msg.model_id || msg.modelId,
         content: currentVariant?.content ?? text.trim(),
         images: currentVariant?.images ?? images,
         files: currentVariant?.files?.length ? currentVariant.files : files,
@@ -1181,6 +1196,8 @@ export const useChat = () => {
     }, [history]);
     const sendMessage = useCallback(async (text, files = [], model = '', options: SendMessageOptions = {}) => {
         const {
+            composerContent,
+            tools = [],
             webSearch = false,
             autoWebSearch: requestedAutoWebSearch,
             mindId = undefined,
@@ -1266,6 +1283,8 @@ export const useChat = () => {
                     text,
                     model,
                     options: {
+                        composerContent,
+                        tools,
                         webSearch,
                         autoWebSearch,
                         mindId,
@@ -1326,6 +1345,7 @@ export const useChat = () => {
             id: userMessageId,
             role: 'user',
             content: text,
+            composerContent,
             images: [],
             files: pendingFiles,
             localAttachments: temporaryChat ? files : [],
@@ -1335,6 +1355,8 @@ export const useChat = () => {
         const aiMsg = {
             id: aiMsgId,
             role: 'model',
+            modelId: model,
+            selectedTools: tools,
             content: '',
             isLoading: true,
             sources: [],
@@ -1385,6 +1407,8 @@ export const useChat = () => {
 
         const formData = new FormData();
         formData.append('message', text);
+        if (composerContent) formData.append('composer_content', composerContent);
+        formData.append('selected_tools', JSON.stringify(tools));
         appendModelIfSelected(formData, model);
         appendThinkingLevelIfValid(formData, thinkingLevel);
         formData.append('session_id', sessionId);
@@ -1762,6 +1786,9 @@ export const useChat = () => {
                                         text,
                                         model,
                                         options: {
+                                            composerContent,
+                                            tools,
+                                            thinkingLevel,
                                             webSearch,
                                             autoWebSearch,
                                             mindId,
@@ -1949,11 +1976,15 @@ export const useChat = () => {
                         sources: msg.sources || [],
                         githubTool: msg.githubTool || null,
                         canvasTextdoc: msg.canvasTextdoc || null,
+                        selectedTools: msg.selectedTools || [],
+                        modelId: msg.modelId,
                         thinkingTime: msg.thinkingTime,
                     }];
                 const pendingVariant = {
                     id: assistantMessageId,
                     variantId: assistantMessageId,
+                    modelId: model,
+                    selectedTools: history[aiIndex].selectedTools || [],
                     content: '',
                     images: [],
                     sources: [],
@@ -1973,6 +2004,7 @@ export const useChat = () => {
         }));
         const formData = new FormData();
         formData.append('message', userMessage.content);
+        formData.append('selected_tools', JSON.stringify(history[aiIndex].selectedTools || []));
         appendModelIfSelected(formData, model);
         appendThinkingLevelIfValid(formData, thinkingLevel);
         formData.append('session_id', sessionId);
@@ -2105,6 +2137,8 @@ export const useChat = () => {
                             const newVariant = {
                                 id: assistantMessageId,
                                 variantId: assistantMessageId,
+                                modelId: model,
+                                selectedTools: history[aiIndex].selectedTools || [],
                                 content: typeof finalData.reply === 'string' ? finalData.reply : fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
@@ -2252,6 +2286,9 @@ export const useChat = () => {
             return {
                 ...item,
                 id: selectedMessageId || item.id,
+                composerContent: selectedVariant.composerContent,
+                selectedTools: selectedVariant.selectedTools || [],
+                modelId: selectedVariant.modelId,
                 content: selectedVariant.content,
                 images: selectedVariant.images || [],
                 files: selectedVariant.files || item.files || [],
@@ -2326,6 +2363,7 @@ export const useChat = () => {
                         id: msg.id,
                         variantId: msg.id,
                         content: msg.content,
+                        composerContent: msg.composerContent,
                         images: msg.images || [],
                         files: msg.files || [],
                         sources: [],
@@ -2334,6 +2372,7 @@ export const useChat = () => {
                     id: editedUserMessageId,
                     variantId: editedUserMessageId,
                     content: newText,
+                    composerContent: undefined,
                     images: msg.images || [],
                     files: msg.files || [],
                     sources: [],
@@ -2341,6 +2380,7 @@ export const useChat = () => {
                 return {
                     ...msg,
                     content: newText,
+                    composerContent: undefined,
                     variants: [...baselineVariants, editedVariant],
                     currentVariantIndex: baselineVariants.length,
                 };
@@ -2360,6 +2400,8 @@ export const useChat = () => {
         const aiMsg = {
             id: aiMsgId,
             role: 'model',
+            modelId: model,
+            selectedTools: history[userIndex + 1]?.selectedTools || [],
             content: '',
             isLoading: true,
             timestamp: Date.now() / 1000
@@ -2370,6 +2412,7 @@ export const useChat = () => {
         const historyBefore = buildHistoryForAPI(userIndex);
         const formData = new FormData();
         formData.append('message', newText);
+        formData.append('selected_tools', JSON.stringify(history[userIndex + 1]?.selectedTools || []));
         appendModelIfSelected(formData, model);
         appendThinkingLevelIfValid(formData, thinkingLevel);
         formData.append('session_id', sessionId);

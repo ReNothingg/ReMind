@@ -1,3 +1,4 @@
+import type { ComposerToolOption } from './services/api';
 import {
   Suspense,
   lazy,
@@ -34,6 +35,7 @@ import GlobalHeader from './features/chat/components/GlobalHeader';
 import {
   FALLBACK_MODELS,
   getFallbackModelId,
+  isImageToolModel,
   isModelAvailable,
   normalizeModelOptions,
   normalizeThinkingLevel,
@@ -152,6 +154,7 @@ const MainLayout = () => {
     }
     return normalizeThinkingLevel(window.localStorage.getItem(THINKING_LEVEL_STORAGE_KEY));
   });
+  const [availableTools, setAvailableTools] = useState<ComposerToolOption[]>([]);
   const [availableModels, setAvailableModels] = useState<ChatModel[]>(FALLBACK_MODELS);
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
   const [routePath, setRoutePath] = useState(() =>
@@ -201,9 +204,9 @@ const MainLayout = () => {
 
   const isRailExpanded = isMobileViewport ? isMobileRailOpen : isRailExpandedDesktop;
   const selectedModel =
-    isAuthLoading || isModelAvailable(currentModel, availableModels)
+    isAuthLoading || isModelAvailable(currentModel, availableModels.filter((model) => !isImageToolModel(model)))
       ? currentModel
-      : getFallbackModelId(availableModels);
+      : getFallbackModelId(availableModels.filter((model) => !isImageToolModel(model)));
   const selectedModelDefinition = availableModels.find((model) => model.id === selectedModel);
   const selectedThinkingLevel = selectedModelDefinition?.thinkingLevels.includes(thinkingLevel)
     ? thinkingLevel
@@ -239,23 +242,21 @@ const MainLayout = () => {
 
   useEffect(() => {
     let cancelled = false;
-
-    void apiService
-      .listModels()
-      .then((models) => {
-        if (!cancelled) {
+    let revision = 0;
+    const refreshCatalog = () => {
+      const currentRevision = ++revision;
+      void apiService.listModelCatalog().then(({ models, tools }) => {
+        if (!cancelled && revision === currentRevision) {
           setAvailableModels(normalizeModelOptions(models));
+          setAvailableTools(tools);
         }
-      })
-      .catch((error) => {
-        console.warn('Failed to load model catalog:', error);
-        if (!cancelled) {
-          setAvailableModels(FALLBACK_MODELS);
-        }
-      });
-
+      }).catch((error) => console.warn('Failed to load model catalog:', error));
+    };
+    refreshCatalog();
+    window.addEventListener('focus', refreshCatalog);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', refreshCatalog);
     };
   }, [isAuthenticated, user?.id]);
 
@@ -547,7 +548,7 @@ const MainLayout = () => {
   }, [routePath]);
 
   const handleSendMessage = useCallback(
-    (text: string, files: File[], options = {}) => {
+    (text: string, files: File[], options: { composerContent?: string; tools?: string[]; webSearch?: boolean; autoWebSearch?: boolean } = {}) => {
       setInitialPrompt(null);
       const path = window.location.pathname;
       if (!isTemporaryChat && (path === '/' || !path.startsWith('/c/'))) {
@@ -564,6 +565,13 @@ const MainLayout = () => {
     },
     [activeMind, clearChat, isTemporaryChat, selectedModel, selectedThinkingLevel, sendMessage]
   );
+
+  const modelForMessage = (messageId: string | null, editing = false) => {
+    const index = history.findIndex((message) => message.id === messageId);
+    const message = history[index + (editing ? 1 : 0)];
+    const imageModel = availableModels.find((model) => model.id === message?.modelId && isImageToolModel(model));
+    return imageModel?.id || selectedModel;
+  };
 
   const handleRepairPython = useCallback((error: string, code: string) => {
     const repairPrompt = t('canvas.pythonTerminal.repairPrompt', {
@@ -1259,6 +1267,7 @@ const MainLayout = () => {
                       currentSessionId={currentSessionId}
                       currentModel={selectedModel}
                       models={availableModels}
+                      availableTools={availableTools}
                       onModelChange={setCurrentModel}
                       thinkingLevel={selectedThinkingLevel}
                       onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
@@ -1318,13 +1327,13 @@ const MainLayout = () => {
                       onRegenerate={(messageId) => {
                         if (regenerateMessage) {
                           notifyOnDoneRef.current = true;
-                          regenerateMessage(messageId, selectedModel, selectedThinkingLevel);
+                          regenerateMessage(messageId, modelForMessage(messageId), selectedThinkingLevel);
                         }
                       }}
                       onEdit={(messageId, newText) => {
                         if (editMessage) {
                           notifyOnDoneRef.current = true;
-                          editMessage(messageId, newText, selectedModel, selectedThinkingLevel);
+                          editMessage(messageId, newText, modelForMessage(messageId, true), selectedThinkingLevel);
                         }
                       }}
                       onSwitchVariant={(messageId, direction) => {
@@ -1350,6 +1359,7 @@ const MainLayout = () => {
                       currentSessionId={currentSessionId}
                       currentModel={selectedModel}
                       models={availableModels}
+                      availableTools={availableTools}
                       onModelChange={setCurrentModel}
                       thinkingLevel={selectedThinkingLevel}
                       onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
@@ -1460,7 +1470,7 @@ const MainLayout = () => {
               canRegenerate: true,
               downloadName: null,
             })}
-            currentModel={selectedModel}
+            currentModel={history.find((message) => message.id === imageLightbox.messageId)?.selectedTools?.includes('demo_image') ? 'demo_image' : modelForMessage(imageLightbox.messageId)}
             sessionId={currentSessionId}
             canRegenerate={imageLightbox.canRegenerate}
             downloadName={imageLightbox.downloadName}

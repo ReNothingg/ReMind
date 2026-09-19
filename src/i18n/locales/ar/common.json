@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "تحليل الصور",
+      "image_analysisDescription": "فحص الصور المرفقة وتفاصيلها",
+      "visualize": "تصور تفاعلي",
+      "visualizeDescription": "مخططات تفاعلية ومحاكاة وتطبيقات مصغرة",
+      "github": "GitHub",
+      "githubDescription": "قراءة كود المستودعات المتصلة",
+      "python": "Python",
+      "pythonDescription": "إجراء حسابات وتحليل بيانات وإنشاء ملفات",
+      "canvas": "لوحة",
+      "canvasDescription": "إنشاء المستندات والكود وتحريرهما",
+      "charts": "رسوم بيانية",
+      "chartsDescription": "تمثيل البيانات برسوم بيانية",
+      "diagrams": "مخططات",
+      "diagramsDescription": "عرض العمليات والعلاقات",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "إنشاء الإيقاعات وتحريرها",
+      "quiz": "اختبار",
+      "quizDescription": "إنشاء اختبارات تفاعلية",
+      "githubConnect": "اربط GitHub في الإعدادات",
+      "signIn": "سجّل الدخول لاستخدام الأداة",
+      "unavailable": "هذه الأداة غير متاحة حاليًا",
+      "web": "البحث على الويب",
+      "webDescription": "البحث عن معلومات حديثة",
+      "image": "صورة",
+      "imageDescription": "إنشاء صورة",
+      "imageDemoDescription": "مولّد صور تجريبي داخلي",
+      "choose": "اختيار أداة",
+      "empty": "لم يتم العثور على أدوات",
+      "remove": "إزالة {{tool}}"
+    },
     "attachFiles": "إرفاق ملفات",
     "attachUnavailable": "الإرفاق غير متاح",
     "attachRequiresAccount": "سجّل لتتمكن من إرفاق الملفات",
@@ -349,6 +380,15 @@
     "readOnly": "للقراءة فقط"
   },
   "models": {
+    "think": "التفكير",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "نموذج اختبار داخلي"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "نموذج اختبار داخلي متدفق"
+    },
     "choose": "اختر نموذجًا",
     "thinkingLevel": "مستوى التفكير",
     "thinkingLevelDescription": "يتحكم في سرعة الاستجابة وعمق الاستدلال",

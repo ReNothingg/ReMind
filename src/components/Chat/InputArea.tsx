@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { readComposerTools, toolIconPath } from '../../features/chat/composerTools';
+import { ComposerTextEditor, type ComposerTextEditorHandle } from '../../features/chat/components/ComposerTextEditor';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
@@ -10,8 +12,8 @@ import { cn } from '../../utils/cn';
 import { imageFilesFromClipboard } from '../../utils/clipboardFiles';
 import { CHAT_UPLOAD_ACCEPT, CHAT_UPLOAD_MAX_TOTAL_BYTES } from '../../utils/constants';
 import ModelSelector from '../../features/chat/components/ModelSelector';
-import type { ChatModel } from '../../features/chat/modelSelection';
-import type { ThinkingLevel } from '../../services/api';
+import { isImageToolModel, type ChatModel } from '../../features/chat/modelSelection';
+import type { ComposerToolOption, ThinkingLevel } from '../../services/api';
 import {
     deleteRemoteDraft,
     getDeviceId,
@@ -32,6 +34,7 @@ const InputArea = ({
     currentSessionId = null,
     currentModel = '',
     models = [] as ChatModel[],
+    availableTools = [] as ComposerToolOption[],
     onModelChange = undefined,
     thinkingLevel = 'medium' as ThinkingLevel,
     onThinkingLevelChange = undefined,
@@ -40,12 +43,16 @@ const InputArea = ({
     const [quotes, setQuotes] = useState([]);
     const [fileModal, setFileModal] = useState({ isOpen: false, file: null, content: null });
     const [expanded, setExpanded] = useState(false);
-    const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+    const [mention, setMention] = useState<{ start: number; end: number; query: string } | null>(null);
+    const [activeSuggestion, setActiveSuggestion] = useState(0);
+    const toolMenuId = useId();
+    const composerRef = useRef<HTMLElement | null>(null);
 
-    const textareaRef = useRef(null);
+    const textareaRef = useRef<ComposerTextEditorHandle | null>(null);
     const quoteButtonRef = useRef(null);
     const draftRevisionRef = useRef<number | null>(null);
     const draftLoadedRef = useRef(false);
+    const [draftLoadRevision, setDraftLoadRevision] = useState(0);
 
     const { isAuthenticated } = useAuth();
     const { settings } = useSettings();
@@ -54,7 +61,69 @@ const InputArea = ({
     const fileUploadsEnabled = isAuthenticated && !isReadOnly;
     const automaticWebSearch = !!settings.automaticWebSearch;
 
-    const manualWebSearchEnabled = !automaticWebSearch && webSearchEnabled;
+    const tools = [
+        ...availableTools.map((tool) => ({
+            id: tool.id, label: t(tool.titleKey), available: tool.available,
+            description: t(!tool.available && tool.unavailableKey ? tool.unavailableKey : tool.descriptionKey),
+            aliases: tool.id === 'web' ? 'web search поиск сеть' : tool.id,
+        })),
+        ...models.filter(isImageToolModel).filter((model) => !availableTools.some((tool) => tool.id === model.id)).map((model) => ({
+            id: model.id, label: t('composer.tools.image'),
+            description: t(model.id === 'demo_image' ? 'composer.tools.imageDemoDescription' : 'composer.tools.imageDescription'),
+            available: true, aliases: 'image изображение картинка ' + model.id,
+        })),
+    ];
+    const editorTools = tools.filter((tool) => tool.available).map((tool) => ({ ...tool, removeLabel: t('composer.tools.remove', { tool: tool.label }) }));
+    const { text: messageText, selected: selectedTools } = readComposerTools(text, editorTools);
+    const toolQuery = mention?.query.toLocaleLowerCase() || '';
+    const exactToolMatch = (tool: typeof tools[number]) => toolQuery !== '' && (
+        tool.id === toolQuery || tool.label.toLocaleLowerCase() === toolQuery || tool.aliases.split(' ').includes(toolQuery)
+    );
+    const suggestions = tools
+        .filter((tool) => `${tool.label} ${tool.aliases}`.toLocaleLowerCase().includes(toolQuery))
+        .sort((a, b) => Number(exactToolMatch(b)) - Number(exactToolMatch(a)));
+    const manualWebSearchEnabled = selectedTools.some((tool) => tool.id === 'web');
+
+    const updateMention = (value: string, caret: number) => {
+        const match = /(?:^|\s)@([^\s@{}]*)$/.exec(value.slice(0, caret));
+        setMention(match ? { start: caret - match[1].length - 1, end: caret, query: match[1] } : null);
+        setActiveSuggestion(0);
+    };
+    const selectTool = (id: string) => {
+        if (!mention || isReadOnly || !tools.some((tool) => tool.id === id && tool.available)) return;
+        textareaRef.current?.insertTool(mention.start, mention.end, id);
+        setMention(null);
+    };
+    useEffect(() => {
+        const menu = document.getElementById(toolMenuId);
+        const option = document.getElementById(`${toolMenuId}-${activeSuggestion}`);
+        if (!menu || !option) return;
+        if (option.offsetTop < menu.scrollTop) menu.scrollTop = option.offsetTop;
+        else if (option.offsetTop + option.offsetHeight > menu.scrollTop + menu.clientHeight) {
+            menu.scrollTop = option.offsetTop + option.offsetHeight - menu.clientHeight;
+        }
+    }, [activeSuggestion, mention?.query, toolMenuId]);
+
+    useEffect(() => {
+        const dismiss = (event: Event) => {
+            if (!composerRef.current?.contains(event.target as Node)) setMention(null);
+        };
+        const blur = () => setMention(null);
+        document.addEventListener('pointerdown', dismiss);
+        document.addEventListener('focusin', dismiss);
+        window.addEventListener('blur', blur);
+        return () => {
+            document.removeEventListener('pointerdown', dismiss);
+            document.removeEventListener('focusin', dismiss);
+            window.removeEventListener('blur', blur);
+        };
+    }, []);
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => {
+            setMention(null);
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [currentSessionId]);
     const draftStorageKey = `remind_chat_draft_v2:${currentSessionId || 'new'}`;
 
     useEffect(() => {
@@ -65,13 +134,18 @@ const InputArea = ({
         const local = localRaw ? (() => {
             try { return JSON.parse(localRaw); } catch { return null; }
         })() : null;
-        if (!initialPrompt && typeof local?.content === 'string') {
+        if (!initialPrompt) {
             queueMicrotask(() => {
-                if (!cancelled) setText(local.content);
+                if (!cancelled) setText(typeof local?.content === 'string' ? local.content : '');
             });
         }
-        if (!isAuthenticated || !navigator.onLine) {
+        const finishLoading = () => {
+            if (cancelled) return;
             draftLoadedRef.current = true;
+            setDraftLoadRevision((revision) => revision + 1);
+        };
+        if (!isAuthenticated || !navigator.onLine) {
+            queueMicrotask(finishLoading);
             return () => { cancelled = true; };
         }
         void getRemoteDraft().then((remote) => {
@@ -84,9 +158,7 @@ const InputArea = ({
             ) {
                 setText(remote.content);
             }
-        }).catch(() => undefined).finally(() => {
-            if (!cancelled) draftLoadedRef.current = true;
-        });
+        }).catch(() => undefined).finally(finishLoading);
         return () => { cancelled = true; };
     }, [currentSessionId, draftStorageKey, initialPrompt, isAuthenticated]);
 
@@ -118,7 +190,7 @@ const InputArea = ({
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [currentSessionId, draftStorageKey, isAuthenticated, text]);
+    }, [currentSessionId, draftStorageKey, draftLoadRevision, isAuthenticated, text]);
 
     useEffect(() => {
         if (!initialPrompt) {
@@ -157,30 +229,6 @@ const InputArea = ({
     } = useFileHandler({ enabled: fileUploadsEnabled });
 
     useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            const nextHeight = text.trim()
-                ? Math.min(textareaRef.current.scrollHeight, 200)
-                : 40;
-            textareaRef.current.style.height = `${nextHeight}px`;
-        }
-    }, [text, quotes]);
-
-    useEffect(() => {
-        const el = textareaRef.current;
-        if (!el) return;
-
-        const frame = window.requestAnimationFrame(() => {
-            const threshold = 110;
-            const scrollHeight = el.scrollHeight;
-            const nextExpanded = scrollHeight > threshold || el.clientHeight > threshold;
-            setExpanded((current) => (current === nextExpanded ? current : nextExpanded));
-        });
-
-        return () => window.cancelAnimationFrame(frame);
-    }, [text, quotes]);
-
-    useEffect(() => {
         document.addEventListener('dragenter', handleDragEnter);
         document.addEventListener('dragleave', handleDragLeave);
         document.addEventListener('dragover', handleDragOver);
@@ -205,22 +253,27 @@ const InputArea = ({
         }
 
         const effectiveFiles = fileUploadsEnabled ? files : [];
-        const hasMessageContent = text.trim() || effectiveFiles.length > 0 || quotes.length > 0;
+        const hasMessageContent = messageText.trim() || effectiveFiles.length > 0 || quotes.length > 0;
         if (!hasMessageContent) return;
 
-        let fullText = text;
+        let fullText = messageText;
+        let composerContent = text;
         if (quotes.length > 0) {
             const quotedText = quotes.map((quote) => `> ${quote}`).join('\n');
-            fullText = quotedText + (text ? `\n\n${text}` : '');
+            fullText = quotedText + (messageText ? `\n\n${messageText}` : '');
+            composerContent = quotedText + (text ? `\n\n${text}` : '');
         }
 
         onSendMessage(fullText, effectiveFiles, {
             webSearch: manualWebSearchEnabled,
             autoWebSearch: automaticWebSearch,
+            composerContent: selectedTools.length ? composerContent : undefined,
+            tools: [...new Set(selectedTools.map((tool) => tool.id))],
         });
         onInitialPromptConsumed?.();
 
         setText('');
+        setMention(null);
         localStorage.removeItem(draftStorageKey);
         if (isAuthenticated && navigator.onLine) void deleteRemoteDraft().catch(() => undefined);
         setQuotes([]);
@@ -228,6 +281,18 @@ const InputArea = ({
     };
 
     const handleKeyDown = (event) => {
+        if (event.isComposing || event.nativeEvent?.isComposing) return;
+        if (mention) {
+            if (event.key === 'Escape') { event.preventDefault(); setMention(null); return; }
+            if (suggestions.length && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+                event.preventDefault();
+                setActiveSuggestion((index) => (index + (event.key === 'ArrowDown' ? 1 : -1) + suggestions.length) % suggestions.length);
+                return;
+            }
+            if (suggestions.length && event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); selectTool(suggestions[activeSuggestion]?.id || suggestions[0].id); return;
+            }
+        }
         if (event.key !== 'Enter') {
             return;
         }
@@ -398,7 +463,7 @@ const InputArea = ({
     }, [handleMouseUp, hideQuoteButton]);
 
     const effectiveFileCount = fileUploadsEnabled ? files.length : 0;
-    const hasContent = Boolean(text.trim() || effectiveFileCount > 0 || quotes.length > 0);
+    const hasContent = Boolean(messageText.trim() || effectiveFileCount > 0 || quotes.length > 0);
     const hasQuotes = quotes.length > 0;
     const sendButtonClass = isLoading ? 'stop-button' : 'send-mode-button';
 
@@ -444,6 +509,7 @@ const InputArea = ({
             </div>
 
             <footer
+                ref={composerRef}
                 className={cn(
                     'main-input-area ui-main-input-shell',
                     variant === 'landing' && 'landing',
@@ -546,39 +612,45 @@ const InputArea = ({
                             />
                         )}
 
-                        {!automaticWebSearch && (
-                            <button
-                                type="button"
-                                className={cn('web-search-toggle', manualWebSearchEnabled && 'active')}
-                                title={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
-                                aria-label={manualWebSearchEnabled ? t('composer.webSearchOn') : t('composer.webSearchOff')}
-                                aria-pressed={manualWebSearchEnabled}
-                                disabled={isReadOnly}
-                                onClick={() => {
-                                    if (!isReadOnly) {
-                                        setWebSearchEnabled((enabled) => !enabled);
-                                    }
+                        <div className="composer-editor">
+                            <ComposerTextEditor
+                                ref={textareaRef}
+                                value={text}
+                                tools={editorTools}
+                                placeholder={isReadOnly ? t('composer.placeholderReadOnly') : t('composer.placeholder')}
+                                label={t('composer.ariaInput')}
+                                descriptionId={showDynamicWarning && dynamicWarning ? 'dynamicWarningLabel' : undefined}
+                                readOnly={isReadOnly}
+                                onChange={(value, caret) => { setText(value); updateMention(value, caret); }}
+                                onSelection={updateMention}
+                                menuId={mention ? toolMenuId : undefined}
+                                activeOptionId={mention && suggestions.length ? `${toolMenuId}-${activeSuggestion}` : undefined}
+                                onBlur={() => setMention(null)}
+                                onKeyDown={handleKeyDown}
+                                onPaste={handlePaste}
+                                onHeightChange={(_height, unwrappedWidth) => {
+                                    const row = composerRef.current?.querySelector<HTMLElement>('.ui-composer-input-row');
+                                    if (!row) return;
+                                    const controls = Array.from(row.children).filter((child) =>
+                                        child.matches('.attach-button, .composer-model-selector, .send-button'));
+                                    const controlsWidth = controls.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+                                    const gap = parseFloat(getComputedStyle(row).columnGap) || 4;
+                                    const compactWidth = row.clientWidth - controlsWidth - gap * controls.length - 8;
+                                    composerRef.current?.style.setProperty('--composer-available-width', `${row.clientWidth}px`);
+                                    setExpanded(row.clientWidth <= 640 || unwrappedWidth > compactWidth);
                                 }}
-                            >
-                                <img src="/icons/ui/web.svg" alt="" aria-hidden="true" />
-                                <span>{t('composer.webSearchLabel')}</span>
-                            </button>
-                        )}
-
-                        <textarea
-                            id="promptInput"
-                            ref={textareaRef}
-                            className="ui-composer-textarea"
-                            placeholder={isReadOnly ? t('composer.placeholderReadOnly') : t('composer.placeholder')}
-                            aria-label={t('composer.ariaInput')}
-                            aria-describedby={showDynamicWarning && dynamicWarning ? 'dynamicWarningLabel' : undefined}
-                            rows={1}
-                            value={text}
-                            onChange={(event) => setText(event.target.value)}
-                            onKeyDown={handleKeyDown}
-                            onPaste={handlePaste}
-                            disabled={isReadOnly}
-                        ></textarea>
+                            />
+                        </div>
+                        {mention && !isReadOnly && <div id={toolMenuId} className="composer-tool-menu" role="listbox" aria-label={t('composer.tools.choose')}>
+                            {suggestions.map((tool, index) => <button type="button" role="option" id={`${toolMenuId}-${index}`} key={tool.id}
+                                aria-selected={index === activeSuggestion} aria-disabled={!tool.available} disabled={!tool.available} className="composer-tool-option"
+                                onPointerDown={(event) => event.preventDefault()}
+                                onMouseEnter={() => setActiveSuggestion(index)} onClick={() => selectTool(tool.id)}>
+                                <svg className="composer-tool-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d={toolIconPath(tool.id)} /></svg>
+                                <span className="composer-tool-copy"><span className="composer-tool-name">{tool.label}</span><span className="composer-tool-description">{tool.description}</span></span>
+                            </button>)}
+                            {suggestions.length === 0 && <div className="composer-tool-hint">{t('composer.tools.empty')}</div>}
+                        </div>}
 
                         {models.length > 0 && onModelChange && onThinkingLevelChange && (
                             <ModelSelector

@@ -12,15 +12,15 @@ from typing import Any, Generator
 from google import genai
 from google.genai import errors, types
 
-from ai_engine.personalization import build_system_prompt
+from ai_engine.output_contract import output_contract_errors
+from ai_engine.prompt_templates import render_prompt
 from config import GEMINI_API_KEY, GEMINI_STREAM_TIMEOUT_MS
 from services.files import restore_stored_file_for_model
-from services.model_tools import (
+from services.model_runtime import ModelRuntime, tool_call_key
+from services.tool_protocol import (
     MAX_TOOL_CALLS_PER_ROUND,
     MAX_TOOL_CALLS_TOTAL,
     MAX_TOOL_ROUNDS,
-    execute_model_tool,
-    model_tool_declarations,
     serialize_tool_output,
 )
 
@@ -62,12 +62,6 @@ def _manual_web_search_requested(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _web_tool_enabled(user_message_data: dict[str, Any]) -> bool:
-    return _manual_web_search_requested(
-        user_message_data.get("webSearch")
-    ) or _manual_web_search_requested(user_message_data.get("autoWebSearch"))
 
 
 def _function_declarations(
@@ -386,7 +380,7 @@ def _python_activity_token(
 
 
 def _python_activity_output(result: dict[str, Any]) -> str:
-    """Prepare a bounded, plain-text execution result for the activity timeline."""
+
     if not isinstance(result, dict):
         return ""
     output = str(result.get("stdout") or result.get("stderr") or "")
@@ -513,24 +507,10 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
     db_user_id = _db_user_id(user_id)
     client: genai.Client | None = None
     try:
-        system_prompt = build_system_prompt(db_user_id, user_message_data)
-        tools_enabled = user_message_data.get("toolsEnabled", True) is not False and not isinstance(
-            user_message_data.get("telegram_context"), dict
-        )
-        declarations = (
-            model_tool_declarations(
-                db_user_id,
-                enable_web=_web_tool_enabled(user_message_data),
-                input_files=user_message_data.get("files"),
-            )
-            if tools_enabled
-            else []
-        )
-        working_files = [
-            dict(file_info)
-            for file_info in user_message_data.get("files", [])
-            if isinstance(file_info, dict)
-        ]
+        runtime = ModelRuntime.create(db_user_id, user_message_data)
+        tools_enabled = bool(runtime.prompts.access.available)
+        working_files = runtime.files
+        output_repairs = 0
         client = _create_gemini_client()
         chat = client.chats.create(
             model=GEMINI_31_FLASH_LITE_MODEL_ID,
@@ -608,12 +588,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             )
 
         for tool_round in range(MAX_TOOL_ROUNDS + 1):
-            if tools_enabled:
-                declarations = model_tool_declarations(
-                    db_user_id,
-                    enable_web=_web_tool_enabled(user_message_data),
-                    input_files=working_files,
-                )
+            declarations = runtime.declarations()
+            system_prompt = runtime.prompts.render(runtime.canvas)
             function_calls: list[tuple[str, dict[str, Any]]] = []
             round_answer_chunks: list[str] = []
             model_wait_id = ""
@@ -707,6 +683,15 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                     yield model_wait_failed
 
             if not function_calls:
+                contract_errors = output_contract_errors("".join(round_answer_chunks))
+                if contract_errors:
+                    if output_repairs >= 2 or tool_round >= MAX_TOOL_ROUNDS:
+                        raise RuntimeError("invalid_model_output")
+                    output_repairs += 1
+                    next_message = render_prompt(
+                        "context/output_repair.md", {"CONTRACT_ERRORS": ", ".join(contract_errors)}
+                    )
+                    continue
                 yield from finalize_thought()
                 for answer_chunk in round_answer_chunks:
                     yield answer_chunk
@@ -723,12 +708,12 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             if tool_round >= MAX_TOOL_ROUNDS:
                 logger.warning("Gemini 3.1 Flash-Lite tool loop limit reached for user %s", user_id)
                 yield from finalize_thought()
-                break
+                raise RuntimeError("tool_round_limit_reached")
 
             unique_calls: list[tuple[str, dict[str, Any]]] = []
             round_keys: set[str] = set()
             for name, arguments in function_calls:
-                call_key = f"{name}:{serialize_tool_output(arguments)}"
+                call_key = tool_call_key(name, arguments)
                 if call_key in round_keys:
                     continue
                 round_keys.add(call_key)
@@ -738,17 +723,16 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             unique_calls = unique_calls[: min(MAX_TOOL_CALLS_PER_ROUND, remaining_calls)]
             if not unique_calls:
                 logger.warning("Gemini 3.1 Flash-Lite tool call limit reached for user %s", user_id)
-                break
+                raise RuntimeError("tool_call_limit_reached")
             total_tool_calls += len(unique_calls)
 
             response_parts: list[types.Part] = []
             for name, arguments in unique_calls:
-                call_key = f"{name}:{serialize_tool_output(arguments)}"
+                call_key = tool_call_key(name, arguments)
                 result_model_artifacts: list[dict[str, Any]] = []
                 if call_key in completed_tool_calls:
                     result_output = {"ok": False, "error": "duplicate_tool_call"}
                 else:
-                    completed_tool_calls.add(call_key)
                     python_activity_id = ""
                     python_started_at = 0.0
                     image_activity_id = ""
@@ -785,13 +769,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                         if image_started:
                             yield image_started
                     try:
-                        result = execute_model_tool(
-                            name,
-                            arguments,
-                            user_id=db_user_id,
-                            input_files=working_files,
-                            allow_artifacts=not bool(user_message_data.get("temporary_chat")),
-                        )
+                        result = runtime.execute(name, arguments)
                     except Exception:
                         logger.exception("Gemini 3.1 Flash-Lite tool execution failed: %s", name)
                         result_output = {"ok": False, "error": "tool_execution_failed"}
@@ -828,6 +806,16 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                                 yield search_failed
                     else:
                         result_output = result.output
+                        if result.output.get("ok") is True:
+                            completed_tool_calls.add(call_key)
+                        if any(
+                            "reply_part" in event
+                            or "canvas_update" in event
+                            or bool(event.get("images"))
+                            for event in result.events
+                        ):
+                            yield from finalize_thought()
+                            any_answer_generated = True
                         result_model_artifacts = result.model_artifacts
                         if result.reusable_files:
                             known_paths = {

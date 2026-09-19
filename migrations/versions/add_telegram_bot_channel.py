@@ -1,9 +1,9 @@
-"""Add Telegram bot chat sources and inline-result synchronization.
 
-Revision ID: add_telegram_bot_channel
-Revises: add_linked_auth_identities
-Create Date: 2026-08-04
-"""
+
+
+
+
+
 
 import sqlalchemy as sa
 from alembic import op

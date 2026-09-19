@@ -44,6 +44,7 @@ from services.chat_history import (
     persist_chat_operation,
     resolve_session_identifier,
 )
+from services.composer_tools import validate_composer_content, validate_selected_tools
 from services.files import (
     handle_file_upload,
     restore_stored_file_for_model,
@@ -101,6 +102,8 @@ CHAT_REQUEST_FIELDS = frozenset(
         "session_id",
         "target_message_id",
         "temporary_chat",
+        "composer_content",
+        "selected_tools",
         "thinkingLevel",
         "thinking_level",
         "user_message_id",
@@ -920,7 +923,10 @@ def _stream_chat_response(
                     target_message_id=user_data.get("target_message_id"),
                     parent_message_id=user_data.get("parent_message_id"),
                     user_message=user_message_for_history,
-                    model_message=model_message,
+                    model_message={
+                        **model_message,
+                        "selected_tools": user_data.get("selected_tools", []),
+                    },
                     model_name=model_name,
                     user_id=db_user_id,
                     allow_guest_file_persistence=allow_guest_file_persistence,
@@ -959,10 +965,16 @@ def _stream_chat_response(
                             continue
 
                         if "canvas_update" in chunk:
-                            yield _stream_event({"canvas_update": chunk["canvas_update"]})
-                            final_data.update(
-                                {k: v for k, v in chunk.items() if k != "canvas_update"}
+                            update = chunk["canvas_update"]
+                            current_canvas_textdoc = normalize_canvas_textdoc(
+                                chunk.get("canvas_textdoc") or update.get("textdoc")
                             )
+                            final_data["canvas_textdoc"] = current_canvas_textdoc
+                            final_data["canvas_updates"] = [
+                                *final_data.get("canvas_updates", []),
+                                update,
+                            ]
+                            yield _stream_event({"canvas_update": update})
                             continue
 
                         if "widget_update" in chunk:
@@ -1006,7 +1018,10 @@ def _stream_chat_response(
 
                 canvas_result = process_canmore_calls(full_response, current_canvas_textdoc)
                 if canvas_result.updates:
-                    final_data["canvas_updates"] = canvas_result.updates
+                    final_data["canvas_updates"] = [
+                        *final_data.get("canvas_updates", []),
+                        *canvas_result.updates,
+                    ]
                     final_data["canvas_textdoc"] = canvas_result.textdoc
                     for canvas_update in canvas_result.updates:
                         yield _stream_event({"canvas_update": canvas_update})
@@ -1087,6 +1102,18 @@ def register_chat_routes(api_bp):
                 code="model_access_denied",
                 extra={"model": model_name, "stage": stage},
             )
+
+        user_data["selected_tools"] = validate_selected_tools(
+            user_data.get("selected_tools"), db_user_id
+        )
+        user_data["composer_content"] = validate_composer_content(
+            user_data.get("composer_content"),
+            str(user_data.get("message") or ""),
+            user_data["selected_tools"],
+            model_name,
+        )
+        if "web" in user_data["selected_tools"]:
+            user_data["webSearch"] = True
 
         operation = str(user_data.get("operation") or "send").strip().lower()
         if operation not in CHAT_OPERATIONS:
@@ -1267,6 +1294,7 @@ def register_chat_routes(api_bp):
                     "id": user_message_id,
                     "role": "user",
                     "parts": user_message_parts,
+                    "composer_content": user_data.get("composer_content"),
                     "request_id": raw_request_id,
                 }
             )
@@ -1346,7 +1374,10 @@ def register_chat_routes(api_bp):
                 target_message_id=target_message_id,
                 parent_message_id=parent_message_id,
                 user_message=user_message_for_history,
-                model_message=model_message_for_history,
+                model_message={
+                    **model_message_for_history,
+                    "selected_tools": user_data.get("selected_tools", []),
+                },
                 model_name=model_name,
                 user_id=db_user_id,
                 allow_guest_file_persistence=allow_guest_file_persistence,

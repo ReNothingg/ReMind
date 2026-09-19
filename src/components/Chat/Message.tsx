@@ -1,3 +1,6 @@
+import { applyMessageWidgetUpdate, parseMessagePresentation } from '../../features/chat/messagePresentation';
+import { toolMarker, isKnownComposerTool } from '../../features/chat/composerTools';
+import { renderComposerMentions } from '../../features/chat/renderComposerMentions';
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
@@ -10,7 +13,6 @@ import Spinwheel from '../Widgets/Spinwheel';
 import Beatbox from '../Widgets/Beatbox';
 import Visualization from '../Widgets/Visualization';
 import ThinkBlock from '../Widgets/ThinkBlock';
-import { mergeThinkWidgets } from '../Widgets/thinkBlockUtils';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
 import {
     normalizeAndMergeWebSources,
@@ -20,7 +22,6 @@ import { extractCompletedSearchSources } from '../Widgets/searchActivityUtils';
 import { useAudio } from '../../hooks/useAudio';
 import { Utils } from '../../utils/utils';
 import TranslationPanel from './TranslationPanel';
-import { hasEquivalentWidget } from './widgetUtils';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
@@ -870,6 +871,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     const currentVariant = variants && variants.length > 0 && currentVariantIndex !== undefined
         ? variants[currentVariantIndex]
         : null;
+    const composerContent = currentVariant ? currentVariant.composerContent : message.composerContent;
     const liveThinking = currentVariant?.thinking || message.thinking;
     const streamedThinking = !isUser && isLoading && liveThinking?.id ? liveThinking : null;
     const displayDeliveryState = currentVariant?.deliveryState || deliveryState;
@@ -939,7 +941,6 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
     const hasMultipleVariants = variants && variants.length > 1;
     const contentRef = useRef(null);
     const waveformCanvasRef = useRef(null);
-    const [widgets, setWidgets] = useState([]);
     const [showTranslation, setShowTranslation] = useState(false);
     const [feedbackRating, setFeedbackRating] = useState(null);
     const [feedbackReasons, setFeedbackReasons] = useState([]);
@@ -976,294 +977,19 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
             creating: t('widgets.creating'),
         },
     }), [t]);
-    useEffect(() => {
-        if (!isUser) {
-            const newWidgets = [];
-            const fromBase64 = (str) => {
-                try {
-                    return decodeURIComponent(escape(atob(str)));
-                } catch (e) {
-                    console.warn('Base64 decoding failed:', e);
-                    return str;
-                }
-            };
-            if (parts && Array.isArray(parts)) {
-                parts.forEach((part, partIdx) => {
-                    if (part.text && typeof part.text === 'string') {
-                        const text = part.text;
-                        const beatboxRegex = /<beatbox>([\s\S]*?)<\/beatbox>/gi;
-                        let beatboxMatch;
-                        let beatboxIdx = 0;
-                        while ((beatboxMatch = beatboxRegex.exec(text)) !== null) {
-                            try {
-                                const state = JSON.parse(beatboxMatch[1].trim());
-                                newWidgets.push({
-                                    type: 'beatbox',
-                                    id: `beatbox-${message.id}-${partIdx}-${beatboxIdx}`,
-                                    state
-                                });
-                                beatboxIdx++;
-                            } catch (e) {
-                                console.warn('Failed to parse beatbox from parts', e, beatboxMatch[1]);
-                            }
-                        }
-                        const quizRegex = /<quiz>([\s\S]*?)<\/quiz>/gi;
-                        let quizMatch;
-                        let quizIdx = 0;
-                        while ((quizMatch = quizRegex.exec(text)) !== null) {
-                            try {
-                                const state = JSON.parse(quizMatch[1].trim());
-                                newWidgets.push({
-                                    type: 'quiz',
-                                    id: `quiz-${message.id}-${partIdx}-${quizIdx}`,
-                                    state
-                                });
-                                quizIdx++;
-                            } catch (e) {
-                                console.warn('Failed to parse quiz from parts', e, quizMatch[1]);
-                            }
-                        }
-                        const spinwheelRegex = /<spinwheel>([\s\S]*?)<\/spinwheel>/gi;
-                        let spinwheelMatch;
-                        let spinwheelIdx = 0;
-                        while ((spinwheelMatch = spinwheelRegex.exec(text)) !== null) {
-                            try {
-                                const state = JSON.parse(spinwheelMatch[1].trim());
-                                newWidgets.push({
-                                    type: 'spinwheel',
-                                    id: `spinwheel-${message.id}-${partIdx}-${spinwheelIdx}`,
-                                    state
-                                });
-                                spinwheelIdx++;
-                            } catch (e) {
-                                console.warn('Failed to parse spinwheel from parts', e, spinwheelMatch[1]);
-                            }
-                        }
-                        const thinkRegex = /<think(?:\s+data-open="(\d+)")?(?:\s+data-close="(\d+)")?>([\s\S]*?)<\/think>/gi;
-                        let thinkMatch;
-                        let thinkIdx = 0;
-                        while ((thinkMatch = thinkRegex.exec(text)) !== null) {
-                            try {
-                                const openTime = thinkMatch[1] ? parseInt(thinkMatch[1], 10) : Date.now();
-                                const closeTime = thinkMatch[2] ? parseInt(thinkMatch[2], 10) : Date.now();
-                                const content = thinkMatch[3].trim();
-                                newWidgets.push({
-                                    type: 'think',
-                                    id: `think-${message.id}-${partIdx}-${thinkIdx}`,
-                                    content,
-                                    openTime,
-                                    closeTime
-                                });
-                                thinkIdx++;
-                            } catch (e) {
-                                console.warn('Failed to parse think from parts', e, thinkMatch[0]);
-                            }
-                        }
-                    }
-                });
-            }
-            if (contentRef.current && displayContent) {
-                const beatboxHosts = contentRef.current.querySelectorAll('.beatbox-instance-host');
-                const quizHosts = contentRef.current.querySelectorAll('.quiz-instance-host');
-                const spinwheelHosts = contentRef.current.querySelectorAll('.spinwheel-instance-host');
-                const visualizeHosts = contentRef.current.querySelectorAll('.visualize-instance-host');
-                const thinkHosts = contentRef.current.querySelectorAll('.think-instance-host');
-
-                beatboxHosts.forEach((host, idx) => {
-                    let stateJson = host.getAttribute('data-beatbox-state-b64') || host.getAttribute('data-beatbox-state');
-                    if (stateJson) {
-                        try {
-                            if (host.getAttribute('data-beatbox-state-b64')) {
-                                stateJson = fromBase64(stateJson);
-                            }
-                            const state = JSON.parse(stateJson);
-                            const existingId = `beatbox-${message.id}-${idx}`;
-                            if (
-                                !hasEquivalentWidget(newWidgets, 'beatbox', state)
-                                && !newWidgets.some(w => w.id === existingId)
-                            ) {
-                                newWidgets.push({
-                                    type: 'beatbox',
-                                    id: existingId,
-                                    state
-                                });
-                            }
-                        } catch (e) {
-                            console.warn('Failed to parse beatbox state', e, stateJson);
-                        }
-                    }
-                });
-
-                quizHosts.forEach((host, idx) => {
-                    let stateJson = host.getAttribute('data-quiz-state-b64') || host.getAttribute('data-quiz-state');
-                    if (stateJson) {
-                        try {
-                            if (host.getAttribute('data-quiz-state-b64')) {
-                                stateJson = fromBase64(stateJson);
-                            }
-                            const state = JSON.parse(stateJson);
-                            const existingId = `quiz-${message.id}-${idx}`;
-                            if (
-                                !hasEquivalentWidget(newWidgets, 'quiz', state)
-                                && !newWidgets.some(w => w.id === existingId)
-                            ) {
-                                newWidgets.push({
-                                    type: 'quiz',
-                                    id: existingId,
-                                    state
-                                });
-                            }
-                        } catch (e) {
-                            console.warn('Failed to parse quiz state', e, stateJson);
-                        }
-                    }
-                });
-
-                spinwheelHosts.forEach((host, idx) => {
-                    let stateJson = host.getAttribute('data-spinwheel-state-b64') || host.getAttribute('data-spinwheel-state');
-                    if (stateJson) {
-                        try {
-                            if (host.getAttribute('data-spinwheel-state-b64')) {
-                                stateJson = fromBase64(stateJson);
-                            }
-                            const state = JSON.parse(stateJson);
-                            const existingId = `spinwheel-${message.id}-${idx}`;
-                            if (
-                                !hasEquivalentWidget(newWidgets, 'spinwheel', state)
-                                && !newWidgets.some(w => w.id === existingId)
-                            ) {
-                                newWidgets.push({
-                                    type: 'spinwheel',
-                                    id: existingId,
-                                    state
-                                });
-                            }
-                        } catch (e) {
-                            console.warn('Failed to parse spinwheel state', e, stateJson);
-                        }
-                    }
-                });
-
-                visualizeHosts.forEach((host, idx) => {
-                    const encodedSource = host.getAttribute('data-visualize-source-b64');
-                    if (!encodedSource) return;
-                    const state = {
-                        html: fromBase64(encodedSource),
-                        title: host.getAttribute('data-visualize-title') || '',
-                        mode: host.getAttribute('data-visualize-mode') === 'wide' ? 'wide' : 'normal',
-                    };
-                    const existingId = `visualize-${message.id}-${idx}`;
-                    if (
-                        !hasEquivalentWidget(newWidgets, 'visualize', state)
-                        && !newWidgets.some(w => w.id === existingId)
-                    ) {
-                        newWidgets.push({
-                            type: 'visualize',
-                            id: existingId,
-                            state,
-                        });
-                    }
-                });
-
-                thinkHosts.forEach((host, idx) => {
-                    const openTime = host.getAttribute('data-think-open');
-                    const closeTime = host.getAttribute('data-think-close');
-                    const encodedContent = host.getAttribute('data-think-content-b64');
-                    const content = encodedContent
-                        ? fromBase64(encodedContent)
-                        : host.getAttribute('data-think-content');
-                    if (content && openTime && closeTime) {
-                        const parsedOpenTime = parseInt(openTime, 10);
-                        const parsedCloseTime = parseInt(closeTime, 10);
-                        const existingId = `think-${message.id}-${idx}`;
-                        const alreadyCollected = newWidgets.some(w =>
-                            w.type === 'think'
-                            && w.openTime === parsedOpenTime
-                            && w.closeTime === parsedCloseTime
-                        );
-                        if (!alreadyCollected && !newWidgets.some(w => w.id === existingId)) {
-                            newWidgets.push({
-                                type: 'think',
-                                id: existingId,
-                                content,
-                                openTime: parsedOpenTime,
-                                closeTime: parsedCloseTime
-                            });
-                        }
-                    }
-                });
-                beatboxHosts.forEach(host => {
-                    if (!host.hasAttribute('data-from-parts')) {
-                        host.remove();
-                    }
-                });
-                quizHosts.forEach(host => {
-                    if (!host.hasAttribute('data-from-parts')) {
-                        host.remove();
-                    }
-                });
-                spinwheelHosts.forEach(host => {
-                    if (!host.hasAttribute('data-from-parts')) {
-                        host.remove();
-                    }
-                });
-                visualizeHosts.forEach(host => {
-                    host.remove();
-                });
-                thinkHosts.forEach(host => {
-                    if (!host.hasAttribute('data-from-parts')) {
-                        host.remove();
-                    }
-                });
-            }
-            setTimeout(() => {
-                setWidgets(mergeThinkWidgets(newWidgets, `think-${message.id}-merged`));
-            }, 0);
-        }
-    }, [displayContent, isUser, message.id, parts]);
-    useEffect(() => {
-        if (widgetUpdate && !isUser) {
-            const { tag, state } = widgetUpdate;
-            try {
-                let widgetState = state;
-                if (typeof state === 'string') {
-                    try {
-                        widgetState = JSON.parse(state);
-                    } catch {
-                        widgetState = state;
-                    }
-                }
-                setTimeout(() => {
-                    setWidgets(prev => {
-                        const existingIndex = prev.findLastIndex(w => w.type === tag);
-                        if (existingIndex !== -1) {
-                            return prev.map((w, idx) =>
-                                idx === existingIndex
-                                    ? { ...w, state: widgetState }
-                                    : w
-                            );
-                        } else {
-                            return [...prev, {
-                                type: tag,
-                                id: `${tag}-${message.id}-${Date.now()}`,
-                                state: widgetState
-                            }];
-                        }
-                    });
-                }, 0);
-            } catch (error) {
-                console.warn('Failed to update widget', error);
-            }
-        }
-    }, [widgetUpdate, message.id, isUser]);
-
     const markdownEnabledForMessage = isUser || !!settings.renderMarkdown;
-    const htmlContent = useMemo(() => {
+    const formattedContent = useMemo(() => {
         if (isUser) {
-            return formatUserMessageText(content || '', {
+            const html = formatUserMessageText(composerContent || content || '', {
                 labels: formatLabels,
                 renderMarkdown: markdownEnabledForMessage,
             });
+            const legacyMarkers = !composerContent && Array.isArray(message.toolBadges)
+                ? message.toolBadges.filter((id) => typeof id === 'string' && isKnownComposerTool(id)).map(toolMarker).join(' ') : '';
+            return composerContent || legacyMarkers ? renderComposerMentions(
+                legacyMarkers ? `${legacyMarkers} ${html}` : html,
+                (id) => t(`composer.tools.${id === 'demo_image' || id === 'mindart' ? 'image' : id}`),
+            ) : html;
         }
         if (!markdownEnabledForMessage) {
             return formatPlainText(displayContent || '');
@@ -1276,7 +1002,15 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 fragmentSources: t('webSearch.fragmentSources')
             }
         );
-    }, [displayContent, displayContentWithSourceLinks, displaySourceItems, isUser, content, markdownEnabledForMessage, t, formatLabels]);
+    }, [displayContent, displayContentWithSourceLinks, displaySourceItems, isUser, content, composerContent, message.toolBadges, markdownEnabledForMessage, t, formatLabels]);
+
+    const presentation = useMemo(() => isUser
+        ? { html: formattedContent, widgets: [] }
+        : parseMessagePresentation(formattedContent, parts, message.id),
+    [formattedContent, isUser, message.id, parts]);
+    const htmlContent = presentation.html;
+    const widgets = useMemo(() => applyMessageWidgetUpdate(presentation.widgets, isUser ? null : widgetUpdate, message.id),
+        [presentation.widgets, widgetUpdate, isUser, message.id]);
 
     useLayoutEffect(() => {
         if (!markdownEnabledForMessage || !contentRef.current) return;

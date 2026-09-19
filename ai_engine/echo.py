@@ -1,6 +1,18 @@
+import html
+import time
+
+
+def _thinking_block(payload):
+    if not isinstance(payload, dict) or payload.get("thinkingLevel") != "high":
+        return ""
+    text = str(payload.get("message") or payload.get("text") or "")[:40000]
+    timestamp = int(time.time() * 1000)
+    return f'<think data-open="{timestamp}" data-close="{timestamp}">{html.escape(text, quote=False)}</think>'
+
+
 def echo(_, payload):
     return {
-        "reply": (
+        "reply": _thinking_block(payload) + (
             payload
             if isinstance(payload, str)
             else (
@@ -20,6 +32,9 @@ def echo_stream(_, payload):
         text = payload.get("message", "")
     elif isinstance(payload, str):
         text = payload
+    thought = _thinking_block(payload)
+    if thought:
+        yield {"reply_part": thought}
     for i in range(0, len(text), 40):
         chunk = text[i : i + 40]
         yield {"reply_part": chunk}

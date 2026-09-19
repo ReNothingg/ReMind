@@ -1,10 +1,10 @@
-"""Add AI response feedback table
 
-Revision ID: add_ai_response_feedback
-Revises: add_github_agent_feature
-Create Date: 2026-06-27
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

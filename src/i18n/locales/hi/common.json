@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "चित्र विश्लेषण",
+      "image_analysisDescription": "संलग्न चित्रों और उनके विवरणों की जाँच करें",
+      "visualize": "विज़ुअलाइज़ेशन",
+      "visualizeDescription": "इंटरैक्टिव आरेख, सिमुलेशन और छोटे ऐप",
+      "github": "GitHub",
+      "githubDescription": "जुड़े रिपॉज़िटरी का कोड पढ़ें",
+      "python": "Python",
+      "pythonDescription": "गणना करें, डेटा का विश्लेषण करें और फ़ाइलें बनाएँ",
+      "canvas": "कैनवास",
+      "canvasDescription": "दस्तावेज़ और कोड बनाएँ और संपादित करें",
+      "charts": "चार्ट",
+      "chartsDescription": "डेटा के चार्ट बनाएँ",
+      "diagrams": "आरेख",
+      "diagramsDescription": "प्रक्रियाएँ और संबंध दिखाएँ",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "ताल बनाएँ और संपादित करें",
+      "quiz": "क्विज़",
+      "quizDescription": "इंटरैक्टिव क्विज़ बनाएँ",
+      "githubConnect": "सेटिंग में GitHub जोड़ें",
+      "signIn": "टूल का उपयोग करने के लिए साइन इन करें",
+      "unavailable": "यह टूल अभी उपलब्ध नहीं है",
+      "web": "वेब खोज",
+      "webDescription": "ताज़ा जानकारी खोजें",
+      "image": "चित्र",
+      "imageDescription": "चित्र बनाएँ",
+      "imageDemoDescription": "आंतरिक डेमो चित्र जनरेटर",
+      "choose": "टूल चुनें",
+      "empty": "कोई टूल नहीं मिला",
+      "remove": "{{tool}} हटाएँ"
+    },
     "attachFiles": "फ़ाइलें संलग्न करें",
     "attachUnavailable": "संलग्न करना उपलब्ध नहीं है",
     "attachRequiresAccount": "फ़ाइलें संलग्न करने के लिए साइन अप करें",
@@ -349,6 +380,15 @@
     "readOnly": "केवल पढ़ने के लिए"
   },
   "models": {
+    "think": "सोचें",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "आंतरिक परीक्षण मॉडल"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "आंतरिक स्ट्रीमिंग परीक्षण मॉडल"
+    },
     "choose": "मॉडल चुनें",
     "thinkingLevel": "चिंतन स्तर",
     "thinkingLevelDescription": "उत्तर की गति और तर्क की गहराई नियंत्रित करता है",

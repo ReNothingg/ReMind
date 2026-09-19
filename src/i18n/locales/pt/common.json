@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Análise de imagens",
+      "image_analysisDescription": "Examinar imagens anexadas e seus detalhes",
+      "visualize": "Visualização",
+      "visualizeDescription": "Diagramas interativos, simulações e miniaplicativos",
+      "github": "GitHub",
+      "githubDescription": "Ler código dos repositórios conectados",
+      "python": "Python",
+      "pythonDescription": "Calcular, analisar dados e criar arquivos",
+      "canvas": "Tela",
+      "canvasDescription": "Criar e editar documentos e código",
+      "charts": "Gráficos",
+      "chartsDescription": "Representar dados em gráficos",
+      "diagrams": "Diagramas",
+      "diagramsDescription": "Mostrar processos e relações",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Criar e editar ritmos",
+      "quiz": "Quiz",
+      "quizDescription": "Criar questionários interativos",
+      "githubConnect": "Conecte o GitHub nas configurações",
+      "signIn": "Entre para usar esta ferramenta",
+      "unavailable": "Esta ferramenta está indisponível",
+      "web": "Pesquisa na web",
+      "webDescription": "Buscar informações atualizadas",
+      "image": "Imagem",
+      "imageDescription": "Criar uma imagem",
+      "imageDemoDescription": "Gerador interno de imagens de demonstração",
+      "choose": "Escolher ferramenta",
+      "empty": "Nenhuma ferramenta encontrada",
+      "remove": "Remover {{tool}}"
+    },
     "attachFiles": "Anexar ficheiros",
     "attachUnavailable": "Anexo indisponível",
     "attachRequiresAccount": "Registe-se para anexar ficheiros",
@@ -349,6 +380,15 @@
     "readOnly": "Só leitura"
   },
   "models": {
+    "think": "Pensar",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Modelo interno de teste"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Modelo interno de teste em streaming"
+    },
     "choose": "Escolher um modelo",
     "thinkingLevel": "Nível de raciocínio",
     "thinkingLevelDescription": "Controla a velocidade e a profundidade do raciocínio",

@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Análisis de imágenes",
+      "image_analysisDescription": "Examinar imágenes adjuntas y sus detalles",
+      "visualize": "Visualización",
+      "visualizeDescription": "Diagramas interactivos, simulaciones y miniaplicaciones",
+      "github": "GitHub",
+      "githubDescription": "Leer código de repositorios conectados",
+      "python": "Python",
+      "pythonDescription": "Calcular, analizar datos y crear archivos",
+      "canvas": "Lienzo",
+      "canvasDescription": "Crear y editar documentos y código",
+      "charts": "Gráficos",
+      "chartsDescription": "Representar datos en gráficos",
+      "diagrams": "Diagramas",
+      "diagramsDescription": "Mostrar procesos y relaciones",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Crear y editar ritmos",
+      "quiz": "Cuestionario",
+      "quizDescription": "Crear cuestionarios interactivos",
+      "githubConnect": "Conecta GitHub en ajustes",
+      "signIn": "Inicia sesión para usar esta herramienta",
+      "unavailable": "Esta herramienta no está disponible",
+      "web": "Buscar en la web",
+      "webDescription": "Buscar información actualizada",
+      "image": "Imagen",
+      "imageDescription": "Crear una imagen",
+      "imageDemoDescription": "Generador interno de imágenes de demostración",
+      "choose": "Elegir herramienta",
+      "empty": "No se encontraron herramientas",
+      "remove": "Quitar {{tool}}"
+    },
     "attachFiles": "Adjuntar archivos",
     "attachUnavailable": "Adjunto no disponible",
     "attachRequiresAccount": "Regístrate para adjuntar archivos",
@@ -349,6 +380,15 @@
     "readOnly": "Solo lectura"
   },
   "models": {
+    "think": "Pensar",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Modelo interno de prueba"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Modelo interno de prueba en streaming"
+    },
     "choose": "Elige un modelo",
     "thinkingLevel": "Nivel de razonamiento",
     "thinkingLevelDescription": "Controla la velocidad y la profundidad del razonamiento",

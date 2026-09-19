@@ -93,38 +93,47 @@ export interface components {
       [key: string]: unknown;
     };
     ChatMessage: {
+      composer_content?: string;
       current_variant_index?: number;
       delivery_status?: "complete" | "interrupted" | null;
       id?: string | null;
       is_active?: boolean;
+      model_id?: string;
       parent_id?: string | null;
       parts: components["schemas"]["MessagePart"][];
       request_id?: string | null;
       role: string;
+      selected_tools?: string[];
       timestamp?: number | null;
       variants?: components["schemas"]["ChatMessageVariant"][];
       [key: string]: unknown;
     };
     ChatMessageVariant: {
+      composer_content?: string;
       delivery_status?: "complete" | "interrupted" | null;
       id: string;
+      model_id?: string;
       parts: components["schemas"]["MessagePart"][];
       request_id?: string | null;
       role: string;
+      selected_tools?: string[];
       timestamp?: number | null;
       variant_id?: string;
       [key: string]: unknown;
     };
     ChatOperationRequest: {
       assistant_message_id: string;
+      composer_content?: string;
       history?: components["schemas"]["ChatMessage"][];
       message?: string;
       model?: string;
       operation?: "send" | "regenerate" | "edit";
       request_id: string;
+      selected_tools?: string[] | string;
       session_id: string;
       target_message_id?: string | null;
       temporary_chat?: boolean;
+      thinkingLevel?: "minimal" | "low" | "medium" | "high";
       user_message_id?: string | null;
       [key: string]: unknown;
     };
@@ -136,6 +145,13 @@ export interface components {
       request_id: string;
       sessionId: string;
       [key: string]: unknown;
+    };
+    ComposerToolEntry: {
+      available: boolean;
+      descriptionKey: string;
+      id: string;
+      titleKey: string;
+      unavailableKey?: string;
     };
     ErrorResponse: {
       error: {
@@ -197,6 +213,20 @@ export interface components {
       updated_at?: string | null;
       visibility: "private" | "link" | "store";
       [key: string]: unknown;
+    };
+    ModelCatalogEntry: {
+      defaultThinkingLevel?: "minimal" | "low" | "medium" | "high";
+      id: string;
+      stage: "release" | "beta" | "dev" | "alpha";
+      subtitle: string;
+      subtitleKey?: string;
+      thinkingLevels?: ("minimal" | "low" | "medium" | "high")[];
+      title: string;
+      titleKey?: string;
+    };
+    ModelCatalogResponse: {
+      models: components["schemas"]["ModelCatalogEntry"][];
+      tools: components["schemas"]["ComposerToolEntry"][];
     };
     PasswordResetCompleteRequest: {
       code: string;
@@ -571,6 +601,17 @@ export interface paths {
         "401": {
           content: {
             "application/json": components["schemas"]["AuthErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/models": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ModelCatalogResponse"];
           };
         };
       };

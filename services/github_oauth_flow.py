@@ -33,7 +33,7 @@ return value
 
 
 class GitHubOAuthFlowError(RuntimeError):
-    """поток оауф не может быть завершен без раскрытия его данных."""
+    pass
 
 @dataclass(frozen=True, slots=True)
 class GitHubOAuthStart:
@@ -70,7 +70,7 @@ def _identifier(value: str | None) -> str:
 
 
 class GitHubOAuthFlowStore:
-    """Keeps short-lived GitHub OAuth credentials outside browser cookies."""
+
 
     def __init__(
         self,

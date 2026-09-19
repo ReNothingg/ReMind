@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Анализ изображений",
+      "image_analysisDescription": "Изучать прикреплённые изображения и их фрагменты",
+      "visualize": "Визуализация",
+      "visualizeDescription": "Интерактивные схемы, симуляции и мини-приложения",
+      "github": "GitHub",
+      "githubDescription": "Читать код подключённых репозиториев",
+      "python": "Python",
+      "pythonDescription": "Выполнять расчёты, анализировать данные и создавать файлы",
+      "canvas": "Холст",
+      "canvasDescription": "Создавать и редактировать документы и код",
+      "charts": "Графики",
+      "chartsDescription": "Строить графики и диаграммы данных",
+      "diagrams": "Схемы",
+      "diagramsDescription": "Показывать процессы и связи на диаграммах",
+      "beatbox": "Битбокс",
+      "beatboxDescription": "Создавать и редактировать ритмы",
+      "quiz": "Викторина",
+      "quizDescription": "Создавать интерактивные тесты",
+      "githubConnect": "Подключите GitHub в настройках",
+      "signIn": "Войдите, чтобы использовать инструмент",
+      "unavailable": "Инструмент сейчас недоступен",
+      "web": "Поиск в сети",
+      "webDescription": "Искать актуальную информацию",
+      "image": "Изображение",
+      "imageDescription": "Создать изображение",
+      "imageDemoDescription": "Внутренний демонстрационный генератор изображений",
+      "choose": "Выберите инструмент",
+      "empty": "Инструменты не найдены",
+      "remove": "Убрать: {{tool}}"
+    },
     "attachFiles": "Прикрепить файлы",
     "attachUnavailable": "Прикрепление недоступно",
     "attachRequiresAccount": "Зарегистрируйтесь для прикрепления файлов",
@@ -349,6 +380,15 @@
     "readOnly": "Только чтение"
   },
   "models": {
+    "think": "Думать",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Внутренняя тестовая модель"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Внутренняя потоковая тестовая модель"
+    },
     "choose": "Выберите модель",
     "thinkingLevel": "Уровень размышлений",
     "thinkingLevelDescription": "Баланс скорости ответа и глубины рассуждений",

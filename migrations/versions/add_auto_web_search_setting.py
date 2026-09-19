@@ -1,10 +1,10 @@
-"""Add automatic web search setting
 
-Revision ID: add_auto_web_search_setting
-Revises: add_admin_restriction_expiry_fields
-Create Date: 2026-05-27
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

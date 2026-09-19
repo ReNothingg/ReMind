@@ -74,3 +74,10 @@ def _render(template: str, replacements: Mapping[str, object]) -> str:
         return str(replacements[key])
 
     return _PLACEHOLDER_RE.sub(replace_placeholder, template)
+
+
+def require_prompt(relative_path: str) -> str:
+    content = load_prompt(relative_path)
+    if not content:
+        raise ValueError(f"missing_prompt_resource:{relative_path}")
+    return content

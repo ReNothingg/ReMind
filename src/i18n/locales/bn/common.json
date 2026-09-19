@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "ছবি বিশ্লেষণ",
+      "image_analysisDescription": "সংযুক্ত ছবি ও তার বিস্তারিত পরীক্ষা করুন",
+      "visualize": "ভিজুয়ালাইজেশন",
+      "visualizeDescription": "ইন্টারঅ্যাক্টিভ চিত্র, সিমুলেশন ও ছোট অ্যাপ",
+      "github": "GitHub",
+      "githubDescription": "সংযুক্ত রিপোজিটরির কোড পড়ুন",
+      "python": "Python",
+      "pythonDescription": "হিসাব করুন, ডেটা বিশ্লেষণ করুন ও ফাইল তৈরি করুন",
+      "canvas": "ক্যানভাস",
+      "canvasDescription": "নথি ও কোড তৈরি এবং সম্পাদনা করুন",
+      "charts": "চার্ট",
+      "chartsDescription": "ডেটার চার্ট তৈরি করুন",
+      "diagrams": "চিত্র",
+      "diagramsDescription": "প্রক্রিয়া ও সম্পর্ক দেখান",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "ছন্দ তৈরি ও সম্পাদনা করুন",
+      "quiz": "কুইজ",
+      "quizDescription": "ইন্টারঅ্যাক্টিভ কুইজ তৈরি করুন",
+      "githubConnect": "সেটিংসে GitHub সংযুক্ত করুন",
+      "signIn": "টুল ব্যবহার করতে সাইন ইন করুন",
+      "unavailable": "এই টুলটি এখন উপলব্ধ নয়",
+      "web": "ওয়েব অনুসন্ধান",
+      "webDescription": "সাম্প্রতিক তথ্য খুঁজুন",
+      "image": "ছবি",
+      "imageDescription": "ছবি তৈরি করুন",
+      "imageDemoDescription": "অভ্যন্তরীণ ডেমো ছবি জেনারেটর",
+      "choose": "টুল বেছে নিন",
+      "empty": "কোনো টুল পাওয়া যায়নি",
+      "remove": "{{tool}} সরান"
+    },
     "attachFiles": "ফাইল সংযুক্ত করুন",
     "attachUnavailable": "সংযুক্তি উপলভ্য নয়",
     "attachRequiresAccount": "ফাইল সংযুক্ত করতে সাইন আপ করুন",
@@ -349,6 +380,15 @@
     "readOnly": "শুধুমাত্র পড়ার জন্য"
   },
   "models": {
+    "think": "ভাবুন",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "অভ্যন্তরীণ পরীক্ষামূলক মডেল"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "অভ্যন্তরীণ স্ট্রিমিং পরীক্ষামূলক মডেল"
+    },
     "choose": "মডেল নির্বাচন করুন",
     "thinkingLevel": "চিন্তার স্তর",
     "thinkingLevelDescription": "উত্তরের গতি ও যুক্তির গভীরতা নিয়ন্ত্রণ করে",

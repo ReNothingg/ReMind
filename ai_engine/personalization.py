@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 from flask import request
 
 from ai_engine.prompt_templates import load_prompt, render_prompt
-from config import PYTHON_RUNNER_ENABLED
 from utils.auth import User, UserSettings, db
 
 logger = logging.getLogger(__name__)
@@ -81,7 +80,7 @@ def build_interaction_metadata(user_data: dict, history: list) -> Dict[str, Any]
         "user_agent": meta.get("user_agent") or req_user_agent,
         "platform_type": meta.get("platform_type") or req_platform_type,
         "device_type": meta.get("device_type"),
-        "local_hour": meta.get("local_hour") or datetime.utcnow().hour,
+        "local_hour": meta.get("local_hour") or datetime.now(timezone.utc).hour,
         "time_since_visit_seconds": meta.get("time_since_visit_seconds"),
         "avg_conversation_depth": meta.get("avg_conversation_depth")
         or (len(history) if isinstance(history, list) else 0),
@@ -167,60 +166,26 @@ def render_user_md_with_settings(
         "INTERFACE_LANGUAGE": metadata.get("interface_language") or "ru",
     }
 
-    return render_prompt("user.md", mapping)
-
-
-def user_has_github_connection(user_id: Optional[int]) -> bool:
-    if not user_id:
-        return False
-    try:
-        from services.github_app import github_app_configured
-        from utils.auth import GitHubInstallation
-
-        if not github_app_configured():
-            return False
-        return GitHubInstallation.query.filter_by(user_id=int(user_id)).first() is not None
-    except Exception as e:
-        logger.exception(f"Failed to resolve GitHub tool connection for {user_id}: {e}")
-        return False
-
-
-def render_github_tool_prompt(user_id: Optional[int]) -> str:
-    if not user_has_github_connection(user_id):
-        return ""
-
-    tool_prompt = load_prompt("tools/github.md")
-    if not tool_prompt:
-        return ""
-    return tool_prompt.strip()
-
-
-def render_web_tool_prompt() -> str:
-    tool_prompt = load_prompt("tools/web.md")
-    if not tool_prompt:
-        return ""
-    return tool_prompt.strip()
-
-
-def render_visualize_tool_prompt() -> str:
-    tool_prompt = load_prompt("tools/visualize.md")
-    if not tool_prompt:
-        return ""
-    return tool_prompt.strip()
-
-
-def render_python_tool_prompt() -> str:
-    tool_prompt = load_prompt("tools/python.md")
-    if not tool_prompt:
-        return ""
-    return tool_prompt.strip()
-
-
-def render_image_tool_prompt() -> str:
-    tool_prompt = load_prompt("tools/image.md")
-    if not tool_prompt:
-        return ""
-    return tool_prompt.strip()
+    preferences = {
+        "preferred_name": mapping["PREFERRED_NAME"],
+        "profession": mapping["ROLE"],
+        "additional_context": mapping["OTHER_INFORMATION"],
+        "instructions": mapping["USER_INSTRUCTIONS"],
+        "interface_language": mapping["INTERFACE_LANGUAGE"],
+    }
+    preferences = {key: str(value)[:8000] for key, value in preferences.items()}
+    interaction = {
+        key.lower(): str(value)[:1000]
+        for key, value in mapping.items()
+        if key not in {"PREFERRED_NAME", "ROLE", "OTHER_INFORMATION", "USER_INSTRUCTIONS"}
+    }
+    return render_prompt(
+        "user.md",
+        {
+            "PREFERENCES_JSON": json.dumps(preferences, ensure_ascii=False),
+            "INTERACTION_JSON": json.dumps(interaction, ensure_ascii=False),
+        },
+    )
 
 
 def render_current_canvas_textdoc(user_data: dict[str, Any]) -> str:
@@ -231,20 +196,19 @@ def render_current_canvas_textdoc(user_data: dict[str, Any]) -> str:
     name = str(canvas.get("name") or "").strip()
     textdoc_type = str(canvas.get("type") or "").strip()
     content = str(canvas.get("content") or "")
-    fence_language = "text"
-    if textdoc_type.startswith("code/"):
-        raw_language = textdoc_type.split("/", 1)[1].strip().lower()
-        if re.match(r"^[a-z0-9_-]{1,32}$", raw_language):
-            fence_language = raw_language
     content = _truncate_prompt_value(content, 24_000)
-
     return render_prompt(
         "context/current_canvas.md",
         {
-            "NAME": name,
-            "TYPE": textdoc_type,
-            "FENCE_LANGUAGE": fence_language,
-            "CONTENT": content,
+            "CANVAS_JSON": json.dumps(
+                {
+                    "id": str(canvas.get("id") or "")[:80],
+                    "name": name[:140],
+                    "type": textdoc_type[:64],
+                    "content": content,
+                },
+                ensure_ascii=False,
+            )
         },
     )
 
@@ -315,87 +279,6 @@ def _format_numeric_metadata(value: Any, default: str = "") -> str:
     if isinstance(value, float) and not math.isfinite(value):
         return default
     return str(value)
-
-
-def _current_datetime() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def build_system_prompt(user_id: Optional[int], user_data: dict) -> str:
-    base = render_prompt("prompt.md", {"currentDateTime": _current_datetime()})
-    tools_enabled = user_data.get("toolsEnabled", True) is not False
-    history = user_data.get("history") or []
-    metadata = build_interaction_metadata(user_data, history)
-    telegram_context = (
-        user_data.get("telegram_context")
-        if isinstance(user_data.get("telegram_context"), dict)
-        else None
-    )
-    user_md = render_user_md_with_settings(user_id, metadata, telegram_context)
-    web_tool_prompt = (
-        render_web_tool_prompt()
-        if tools_enabled
-        and str(user_data.get("webSearch") or user_data.get("autoWebSearch") or "").strip().lower()
-        in {"1", "true", "yes", "on"}
-        else ""
-    )
-    widget_tool_prompt = render_prompt("tools/widgets.md", {}) if tools_enabled else ""
-    visualize_tool_prompt = (
-        render_visualize_tool_prompt() if tools_enabled and telegram_context is None else ""
-    )
-    python_tool_prompt = (
-        render_python_tool_prompt()
-        if (
-            tools_enabled
-            and telegram_context is None
-            and user_id is not None
-            and PYTHON_RUNNER_ENABLED
-        )
-        else ""
-    )
-    image_tool_prompt = (
-        render_image_tool_prompt()
-        if (
-            tools_enabled
-            and telegram_context is None
-            and user_id is not None
-            and PYTHON_RUNNER_ENABLED
-            and any(
-                isinstance(file_info, dict)
-                and str(file_info.get("mime_type") or "").startswith("image/")
-                for file_info in user_data.get("files", [])
-            )
-        )
-        else ""
-    )
-    current_canvas_textdoc = render_current_canvas_textdoc(user_data) if tools_enabled else ""
-    beatbox_state_prompt = render_beatbox_state_prompt(user_data) if tools_enabled else ""
-    github_tool_prompt = render_github_tool_prompt(user_id) if tools_enabled else ""
-    telegram_context_prompt = render_telegram_context_prompt(user_data)
-    mind_prompt = render_active_mind_prompt(user_data.get("active_mind"))
-    prompt = "\n\n".join(section for section in (base, user_md) if section)
-
-    tool_prompts = [
-        tool
-        for tool in [
-            widget_tool_prompt,
-            visualize_tool_prompt,
-            python_tool_prompt,
-            image_tool_prompt,
-            web_tool_prompt,
-            current_canvas_textdoc,
-            beatbox_state_prompt,
-            github_tool_prompt,
-            telegram_context_prompt,
-        ]
-        if tool
-    ]
-    if tool_prompts:
-        prompt = prompt + "\n\n" + "\n\n".join(tool_prompts)
-
-    if mind_prompt:
-        return prompt + "\n\n" + mind_prompt
-    return prompt
 
 
 def render_active_mind_prompt(active_mind: Any) -> str:

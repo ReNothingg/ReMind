@@ -1,10 +1,10 @@
-"""Add token expiry fields for security
 
-Revision ID: add_token_expiry
-Revises: 57c7ee8ff8ec
-Create Date: 2026-01-25
 
-"""
+
+
+
+
+
 from alembic import op
 import sqlalchemy as sa
 revision = 'add_token_expiry'

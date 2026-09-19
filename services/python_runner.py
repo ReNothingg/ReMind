@@ -101,7 +101,7 @@ def available_input_files(files: Any) -> list[str]:
 
 
 def resolve_input_files(files: Any) -> list[tuple[str, Path]]:
-    """Return validated, upload-root-contained files available to model tools."""
+
     return _resolve_input_files(files)
 
 
@@ -624,7 +624,7 @@ def _artifact_metadata(path: Path, extension: str) -> dict[str, Any]:
 
 
 def _text_artifact_preview(path: Path, extension: str) -> str:
-    """Return a bounded UTF-8 preview only for already validated text artifacts."""
+
     if extension not in {".csv", ".json", ".md", ".txt"}:
         return ""
     try:

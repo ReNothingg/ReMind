@@ -1,10 +1,10 @@
-"""Bind chat sessions to minds
 
-Revision ID: add_chat_mind_binding
-Revises: add_minds_feature
-Create Date: 2026-04-29
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

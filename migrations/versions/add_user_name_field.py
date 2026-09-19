@@ -1,10 +1,10 @@
-"""Add user name field
 
-Revision ID: add_user_name_field
-Revises: add_token_expiry
-Create Date: 2026-03-26
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

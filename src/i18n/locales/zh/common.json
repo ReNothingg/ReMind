@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "图像分析",
+      "image_analysisDescription": "检查附件图像及其细节",
+      "visualize": "可视化",
+      "visualizeDescription": "交互式图解、模拟和小应用",
+      "github": "GitHub",
+      "githubDescription": "读取已连接仓库的代码",
+      "python": "Python",
+      "pythonDescription": "执行计算、分析数据和创建文件",
+      "canvas": "画布",
+      "canvasDescription": "创建和编辑文档及代码",
+      "charts": "图表",
+      "chartsDescription": "绘制数据图表",
+      "diagrams": "图解",
+      "diagramsDescription": "展示流程和关系",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "创建和编辑节奏",
+      "quiz": "测验",
+      "quizDescription": "创建交互式测验",
+      "githubConnect": "在设置中连接 GitHub",
+      "signIn": "登录后使用此工具",
+      "unavailable": "此工具暂不可用",
+      "web": "网络搜索",
+      "webDescription": "查找最新信息",
+      "image": "图像",
+      "imageDescription": "创建图像",
+      "imageDemoDescription": "内部演示图像生成器",
+      "choose": "选择工具",
+      "empty": "未找到工具",
+      "remove": "移除{{tool}}"
+    },
     "attachFiles": "附加文件",
     "attachUnavailable": "无法附加",
     "attachRequiresAccount": "注册后可附加文件",
@@ -349,6 +380,15 @@
     "readOnly": "只读"
   },
   "models": {
+    "think": "思考",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "内部测试模型"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "内部流式测试模型"
+    },
     "choose": "选择模型",
     "thinkingLevel": "思考级别",
     "thinkingLevelDescription": "控制响应速度和推理深度",

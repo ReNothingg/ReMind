@@ -296,6 +296,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Analyse d’images",
+      "image_analysisDescription": "Examiner les images jointes et leurs détails",
+      "visualize": "Visualisation",
+      "visualizeDescription": "Schémas interactifs, simulations et mini-applications",
+      "github": "GitHub",
+      "githubDescription": "Lire le code des dépôts connectés",
+      "python": "Python",
+      "pythonDescription": "Calculer, analyser des données et créer des fichiers",
+      "canvas": "Canevas",
+      "canvasDescription": "Créer et modifier des documents et du code",
+      "charts": "Graphiques",
+      "chartsDescription": "Représenter des données graphiquement",
+      "diagrams": "Diagrammes",
+      "diagramsDescription": "Montrer les processus et les relations",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Créer et modifier des rythmes",
+      "quiz": "Quiz",
+      "quizDescription": "Créer des quiz interactifs",
+      "githubConnect": "Connectez GitHub dans les paramètres",
+      "signIn": "Connectez-vous pour utiliser cet outil",
+      "unavailable": "Cet outil est indisponible",
+      "web": "Recherche web",
+      "webDescription": "Rechercher des informations récentes",
+      "image": "Image",
+      "imageDescription": "Créer une image",
+      "imageDemoDescription": "Générateur interne d’images de démonstration",
+      "choose": "Choisir un outil",
+      "empty": "Aucun outil trouvé",
+      "remove": "Retirer {{tool}}"
+    },
     "attachFiles": "Joindre des fichiers",
     "attachUnavailable": "Pièce jointe indisponible",
     "attachRequiresAccount": "Inscrivez-vous pour joindre des fichiers",
@@ -349,6 +380,15 @@
     "readOnly": "Lecture seule"
   },
   "models": {
+    "think": "Réfléchir",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Modèle de test interne"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Modèle de test interne en streaming"
+    },
     "choose": "Choisir un modèle",
     "thinkingLevel": "Niveau de réflexion",
     "thinkingLevelDescription": "Contrôle la vitesse et la profondeur du raisonnement",
