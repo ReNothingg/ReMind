@@ -21,6 +21,9 @@ export function readComposerTools(value: string, tools: readonly ComposerTool[])
 
 
 const TOOL_ICONS: Record<string, string> = {
+    files: 'M14 2H5v20h14V7ZM14 2v5h5M8 12h8M8 16h6',
+    data: 'M4 4h16v16H4ZM4 9h16M9 4v16M4 14h16',
+    workflow: 'M8 5h12M8 12h12M8 19h12M3 5h1M3 12h1M3 19h1',
     web: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3c4 5 4 13 0 18-4-5-4-13 0-18Z',
     visualize: 'M3 3h18v14H3ZM8 21l4-4 4 4M7 12l3-4 4 5 3-6',
     github: 'M9 19c-5 1-5-3-7-3M15 22v-4a4 4 0 0 0-1-3c4 0 6-2 6-5a4 4 0 0 0-1-3 4 4 0 0 0 0-4s-2 0-4 2a13 13 0 0 0-6 0C7 3 5 3 5 3a4 4 0 0 0 0 4 4 4 0 0 0-1 3c0 3 2 5 6 5a4 4 0 0 0-1 3v4',

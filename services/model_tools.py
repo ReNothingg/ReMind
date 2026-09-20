@@ -14,7 +14,6 @@ from services.python_runner import (
     execute_python,
 )
 from services.tool_protocol import ModelToolResult
-from services.web_search import public_sources, run_web_search
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +28,18 @@ def execute_model_tool(
     user_id: int | None,
     input_files: Any = None,
     allow_artifacts: bool = True,
+    artifact_limit: int = 10,
 ) -> ModelToolResult:
-    if name == "web_search":
-        return _execute_web_search(arguments)
     if name == "github_list_repositories":
         return _execute_github_list_repositories(user_id)
     if name == "github_get_repository_map":
         return _execute_github_repository_map(user_id, arguments)
     if name == "github_read_file":
         return _execute_github_read_file(user_id, arguments)
+    if name in {"github_read_files", "github_search_code"}:
+        return _execute_github_files(user_id, arguments, search=name == "github_search_code")
     if name == "python_execute":
-        return _execute_python(user_id, arguments, input_files, allow_artifacts)
+        return _execute_python(user_id, arguments, input_files, allow_artifacts, artifact_limit)
     if name == "image_crop":
         result = crop_image(
             arguments,
@@ -68,6 +68,7 @@ def _execute_python(
     arguments: dict[str, Any],
     input_files: Any,
     allow_artifacts: bool,
+    artifact_limit: int,
 ) -> ModelToolResult:
     result = execute_python(
         arguments.get("code"),
@@ -75,6 +76,7 @@ def _execute_python(
         input_files=input_files,
         allow_artifacts=allow_artifacts,
         include_model_artifacts=True,
+        max_artifacts=artifact_limit,
     )
     events = [{"python_artifacts": result.artifacts}] if result.artifacts else []
     return ModelToolResult(
@@ -82,43 +84,6 @@ def _execute_python(
         events=events,
         model_artifacts=result.model_artifacts,
         reusable_files=result.reusable_files,
-    )
-
-
-def _execute_web_search(arguments: dict[str, Any]) -> ModelToolResult:
-    query = str(arguments.get("query") or "").strip()[:500]
-    if not query:
-        return ModelToolResult({"ok": False, "error": "invalid_query"})
-
-    events: list[dict[str, Any]] = [
-        {"status": "web_search_started", "query": query},
-        {"status": "web_search_fetching", "query": query},
-    ]
-    try:
-        payload = run_web_search(query)
-    except Exception:
-        logger.exception("Model-requested web search failed")
-        events.append({"status": "web_search_failed", "query": query})
-        return ModelToolResult(
-            {"ok": False, "error": "web_search_failed", "query": query}, events=events
-        )
-
-    sources = public_sources(payload)
-    events.append(
-        {
-            "status": "web_search_done" if sources else "web_search_no_results",
-            "query": query,
-            "sources": sources,
-        }
-    )
-    return ModelToolResult(
-        {
-            "ok": True,
-            "query": query,
-            "context": str(payload.get("context") or ""),
-        },
-        events=events,
-        sources=sources,
     )
 
 
@@ -247,6 +212,61 @@ def _safe_github_read_path(raw_path: str) -> str:
     if _is_sensitive_or_protected_path(path):
         raise ValueError("sensitive_path_blocked")
     return path
+
+
+def _execute_github_files(
+    user_id: int | None, arguments: dict[str, Any], *, search: bool
+) -> ModelToolResult:
+    try:
+        repository_name = arguments["repo_full_name"]
+        paths = list(dict.fromkeys(_safe_github_read_path(path) for path in arguments["paths"]))
+        service, repository = _repository_service(user_id, repository_name)
+        owner, repo = parse_repo_full_name(repository_name)
+        ref = _bounded_ref(arguments.get("ref")) or repository.get("default_branch", "main")
+        results: list[dict[str, Any]] = []
+        total_matches = 0
+        for path in paths:
+            try:
+                file = service.client.get_text_file(owner, repo, path, ref)
+            except (GitHubAPIError, ValueError):
+                results.append({"path": path, "error": "github_file_unavailable"})
+                continue
+            content = str(file.get("content") or "")
+            if len(content) > 1_000_000:
+                results.append({"path": path, "error": "file_too_large"})
+                continue
+            if search:
+                needle = arguments["query"].casefold()
+                matches = []
+                for line_number, line in enumerate(content.splitlines(), 1):
+                    if needle in line.casefold():
+                        matches.append({"line": line_number, "text": line[:500]})
+                        total_matches += 1
+                        if total_matches >= 40:
+                            break
+                results.append({"path": path, "matches": matches})
+                if total_matches >= 40:
+                    break
+            else:
+                results.append(
+                    {
+                        "path": path,
+                        "sha": file.get("sha"),
+                        "content": content[:8000],
+                        "truncated": len(content) > 8000,
+                    }
+                )
+        return ModelToolResult(
+            {
+                "ok": any(not item.get("error") for item in results),
+                "repository": repository_name,
+                "ref": ref,
+                "files": results,
+                "truncated": total_matches >= 40,
+            }
+        )
+    except (GitHubAPIError, ValueError):
+        return ModelToolResult({"ok": False, "error": "github_repository_unavailable"})
 
 
 def _bounded_ref(value: Any) -> str | None:

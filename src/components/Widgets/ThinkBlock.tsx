@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-python';
 import { cn } from '../../utils/cn';
+import { decodeToolActivity, type ToolActivity } from './toolActivityUtils';
 import WebSourcesPanel from './WebSourcesPanel';
 import {
     decodeSearchActivity,
@@ -44,7 +45,7 @@ type ModelActivity = DecodedModelActivity & {
     kind: 'model';
 };
 
-type ThoughtTimelineItem = ThoughtSection | SearchActivity | PythonActivity | ImageActivity | ModelActivity;
+type ThoughtTimelineItem = ThoughtSection | SearchActivity | PythonActivity | ImageActivity | ModelActivity | ToolActivity;
 
 type ThinkBlockProps = {
     content?: string;
@@ -76,7 +77,7 @@ function renderPythonSyntaxToken(token: PythonSyntaxToken, key: string): ReactNo
     );
 }
 
-function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
+function PythonExecutionStep({ activity, isStreaming }: { activity: PythonActivity; isStreaming: boolean }) {
     const [isCodeExpanded, setIsCodeExpanded] = useState(false);
     const [isOutputExpanded, setIsOutputExpanded] = useState(false);
     const codeId = useId();
@@ -89,7 +90,9 @@ function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
             return [activity.code];
         }
     }, [activity.code]);
-    const statusLabel = t(`think.python.${activity.status === 'python_running'
+    const statusLabel = activity.status === 'python_running' && !isStreaming
+        ? t('think.tools.interrupted', { name: t('composer.tools.python') })
+        : t(`think.python.${activity.status === 'python_running'
         ? 'running'
         : activity.status === 'python_completed'
             ? 'completed'
@@ -135,6 +138,7 @@ function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
                 inert={!isCodeExpanded}
             >
                 <div className="think-block-python-disclosure-inner">
+                    {activity.codeTruncated && <div className="think-block-step-meta">{t('think.tools.previewTruncated')}</div>}
                     <pre className="think-block-python-code" tabIndex={0}>
                         <code className="language-python">
                             {highlightedCode.map((token, index) => (
@@ -177,6 +181,7 @@ function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
                         inert={!isOutputExpanded}
                     >
                         <div className="think-block-python-output-disclosure-inner">
+                            {activity.outputTruncated && <div className="think-block-step-meta">{t('think.tools.previewTruncated')}</div>}
                             <pre className="think-block-python-output-content">{activity.output}</pre>
                         </div>
                     </div>
@@ -186,7 +191,7 @@ function PythonExecutionStep({ activity }: { activity: PythonActivity }) {
     );
 }
 
-function ImageAnalysisStep({ activity }: { activity: ImageActivity }) {
+function ImageAnalysisStep({ activity, isStreaming }: { activity: ImageActivity; isStreaming: boolean }) {
     const { t } = useTranslation();
     const statusKey = activity.status === 'image_running'
         ? 'running'
@@ -195,7 +200,9 @@ function ImageAnalysisStep({ activity }: { activity: ImageActivity }) {
             : 'failed';
     return (
         <div className="think-block-image-analysis">
-            <div className="think-block-step-title">{t(`think.image.${activity.operation}.${statusKey}`)}</div>
+            <div className="think-block-step-title">{activity.status === 'image_running' && !isStreaming
+                ? t('think.tools.interrupted', { name: t('composer.tools.image_analysis') })
+                : t(`think.image.${activity.operation}.${statusKey}`)}</div>
             {activity.purpose && (
                 <div className="think-block-step-body">{activity.purpose}</div>
             )}
@@ -211,14 +218,36 @@ function ImageAnalysisStep({ activity }: { activity: ImageActivity }) {
     );
 }
 
-function ModelResponseStep({ activity }: { activity: ModelActivity }) {
+function ModelResponseStep({ activity, isStreaming }: { activity: ModelActivity; isStreaming: boolean }) {
     const { t } = useTranslation();
     const statusKey = activity.status === 'model_waiting'
         ? 'waiting'
         : activity.status === 'model_responded'
             ? 'responded'
             : 'failed';
-    return <div className="think-block-step-title">{t(`think.model.${statusKey}`)}</div>;
+    return <div className="think-block-step-title">{activity.status === 'model_waiting' && !isStreaming
+        ? t('think.tools.interrupted', { name: t('think.label') })
+        : t(`think.model.${statusKey}`)}</div>;
+}
+
+function ToolExecutionStep({ activity, isStreaming }: { activity: ToolActivity; isStreaming: boolean }) {
+    const { t } = useTranslation();
+    const name = t(`think.tools.names.${activity.name}`, { defaultValue: t('think.tools.generic') });
+    const status = activity.status === 'running' && !isStreaming ? 'interrupted' : activity.status;
+    return (
+        <div>
+            <div className="think-block-step-title">
+                {activity.name === 'model_progress' ? name : t(`think.tools.${status}`, { name })}
+            </div>
+            {activity.detail && <div className="think-block-step-body">{activity.detail}</div>}
+            {activity.durationMs > 0 && <div className="think-block-step-meta">
+                {t('think.timeSeconds', { value: (activity.durationMs / 1000).toFixed(1) })}
+            </div>}
+            {activity.error && <div className="think-block-step-meta">
+                {t(`think.tools.errors.${activity.error}`, { defaultValue: t('think.tools.error') })}
+            </div>}
+        </div>
+    );
 }
 
 function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
@@ -226,7 +255,7 @@ function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
     if (!text) {
         return [];
     }
-    const markerRegex = /<search_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/search_activity>|<python_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/python_activity>|<image_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/image_activity>|<model_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/model_activity>|\*\*([^*\n]+?)\*\*/g;
+    const markerRegex = /<search_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/search_activity>|<python_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/python_activity>|<image_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/image_activity>|<model_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/model_activity>|<tool_activity\s+data-b64="([A-Za-z0-9_+/=-]+)"\s*><\/tool_activity>|\*\*([^*\n]+?)\*\*/g;
     const items: ThoughtTimelineItem[] = [];
     let cursor = 0;
     let pendingHeading: string | undefined;
@@ -263,7 +292,10 @@ function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
                 items.push({ kind: 'model', ...activity });
             }
         } else if (match[5]) {
-            pendingHeading = match[5].trim();
+            const activity = decodeToolActivity(match[5]);
+            if (activity) items.push(activity);
+        } else if (match[6]) {
+            pendingHeading = match[6].trim();
         }
         cursor = match.index + match[0].length;
     }
@@ -272,7 +304,18 @@ function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
     const pythonIndexes = new Map<string, number>();
     const imageIndexes = new Map<string, number>();
     const modelIndexes = new Map<string, number>();
+    const toolIndexes = new Map<string, number>();
     items.forEach((item) => {
+        if (item.kind === 'tool') {
+            const existingIndex = toolIndexes.get(item.id);
+            if (existingIndex === undefined) {
+                toolIndexes.set(item.id, mergedItems.length);
+                mergedItems.push(item);
+            } else {
+                mergedItems[existingIndex] = item;
+            }
+            return;
+        }
         if (item.kind === 'model') {
             const existingIndex = modelIndexes.get(item.id);
             if (existingIndex === undefined) {
@@ -373,6 +416,7 @@ export default function ThinkBlock({
             || item.kind === 'python'
             || item.kind === 'image'
             || item.kind === 'model'
+            || item.kind === 'tool'
             || item.heading
             || item.body
         )), [headlineIndex, items]);
@@ -388,6 +432,9 @@ export default function ThinkBlock({
     ));
     const waitingModel = items.findLast((item): item is ModelActivity => (
         item.kind === 'model' && item.status === 'model_waiting'
+    ));
+    const runningTool = items.findLast((item): item is ToolActivity => (
+        item.kind === 'tool' && item.status === 'running'
     ));
 
     useEffect(() => {
@@ -420,7 +467,9 @@ export default function ThinkBlock({
                 ? t(`think.image.${runningImage.operation}.running`)
                 : waitingModel
                     ? t('think.model.waiting')
-                    : currentSearchQuery || headline || t('think.loading'))
+                    : runningTool
+                        ? t('think.tools.running', { name: t(`think.tools.names.${runningTool.name}`, { defaultValue: t('think.tools.generic') }) })
+                        : currentSearchQuery || headline || t('think.loading'))
         : openTime
             ? t('think.completedLabel', { time: formattedTime })
             : (headline || t('think.label'));
@@ -475,9 +524,9 @@ export default function ThinkBlock({
                                     item.kind === 'search' && 'is-search',
                                     item.kind === 'python' && 'is-python',
                                     item.kind === 'image' && 'is-image',
-                                    item.kind === 'model' && 'is-model',
+                                    (item.kind === 'model' || item.kind === 'tool') && 'is-model',
                                 )}
-                                key={`${item.kind === 'thought' ? item.heading || 'step' : item.kind === 'python' || item.kind === 'image' || item.kind === 'model' ? item.id : item.status}-${index}`}
+                                key={`${item.kind === 'thought' ? item.heading || 'step' : item.kind === 'python' || item.kind === 'image' || item.kind === 'model' || item.kind === 'tool' ? item.id : item.status}-${index}`}
                             >
                                 <span className="think-block-step-marker" aria-hidden="true">
                                     {item.kind === 'search' && (
@@ -497,7 +546,7 @@ export default function ThinkBlock({
                                             <path d="m7 16 3.5-4 2.5 3 2-2.5L18 16M15.5 8.5h.01" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
                                     )}
-                                    {item.kind === 'model' && (
+                                    {(item.kind === 'model' || item.kind === 'tool') && (
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                                             <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" strokeLinecap="round" />
                                             <circle cx="12" cy="12" r="3.5" />
@@ -536,11 +585,13 @@ export default function ThinkBlock({
                                             )}
                                         </>
                                     ) : item.kind === 'python' ? (
-                                        <PythonExecutionStep activity={item} />
+                                        <PythonExecutionStep activity={item} isStreaming={isStreaming} />
                                     ) : item.kind === 'image' ? (
-                                        <ImageAnalysisStep activity={item} />
+                                        <ImageAnalysisStep activity={item} isStreaming={isStreaming} />
+                                    ) : item.kind === 'tool' ? (
+                                        <ToolExecutionStep activity={item} isStreaming={isStreaming} />
                                     ) : (
-                                        <ModelResponseStep activity={item} />
+                                        <ModelResponseStep activity={item} isStreaming={isStreaming} />
                                     )}
                                 </div>
                             </div>

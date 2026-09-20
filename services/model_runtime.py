@@ -2,18 +2,26 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from ai_engine.prompt_builder import PromptBundle, build_prompt_bundle
 from ai_engine.skills import SKILLS, WIDGET_SKILLS, function_skill
+from services.artifact_workspace import ArtifactWorkspace
 from services.canvas_tools import normalize_canvas_textdoc
+from services.data_tools import execute_data_tool
+from services.document_tools import execute_document_tool
+from services.files import restore_stored_file_for_model
+from services.interaction_tools import InteractionState
 from services.model_tools import execute_model_tool
 from services.presentation_tools import render_visualization, render_widget, write_canvas
 from services.python_runner import available_input_files, resolve_input_files
+from services.research_tools import ResearchSession, navigation_url_key
 from services.tool_protocol import ModelToolResult
+from services.tool_validation import argument_errors
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "ai_engine" / "tool_schemas.json"
 
@@ -31,6 +39,13 @@ class ModelRuntime:
     allow_artifacts: bool
     canvas: dict | None
     schemas: dict[str, dict]
+    research: ResearchSession = field(default_factory=ResearchSession)
+    interaction: InteractionState = field(default_factory=InteractionState)
+    workspace: ArtifactWorkspace = field(init=False)
+    artifact_count: int = 0
+
+    def __post_init__(self):
+        self.workspace = ArtifactWorkspace(self.user_id, self.allow_artifacts)
 
     @classmethod
     def create(cls, user_id: int | None, data: dict[str, Any]) -> ModelRuntime:
@@ -40,14 +55,52 @@ class ModelRuntime:
         expected = {name for skill in SKILLS for name in skill.functions} | {"read_skill"}
         if len(schemas) != len(raw_schemas) or set(schemas) != expected:
             raise ValueError("invalid_tool_schema_registry")
-        return cls(
+        files = [dict(item) for item in (data.get("files") or []) if isinstance(item, dict)]
+        known = {item.get("url_path") for item in files}
+        if data.get("history_is_canonical"):
+            remaining = 8 * 1024 * 1024
+            for message in reversed(data.get("history") or []):
+                for part in message.get("parts", []) if isinstance(message, dict) else []:
+                    attachment = (
+                        (part.get("file") or part.get("image")) if isinstance(part, dict) else None
+                    )
+                    if (
+                        not isinstance(attachment, dict)
+                        or attachment.get("url_path") in known
+                        or len(files) >= 24
+                    ):
+                        continue
+                    restored = restore_stored_file_for_model(attachment, max_bytes=remaining)
+                    if restored:
+                        files.append(restored)
+                        known.add(attachment.get("url_path"))
+                        remaining -= int(restored.get("size") or 0)
+        runtime = cls(
             user_id,
             bundle,
-            [dict(item) for item in (data.get("files") or []) if isinstance(item, dict)],
+            files,
             not bool(data.get("temporary_chat")),
             normalize_canvas_textdoc(data.get("canvas_textdoc")),
             schemas,
         )
+        runtime.research.rate_key = str(data.get("tool_rate_key") or f"user_{user_id}")[:180]
+        user_text = str(data.get("message") or "")
+        if data.get("history_is_canonical"):
+            for message in (data.get("history") or [])[-40:]:
+                if not isinstance(message, dict):
+                    continue
+                if message.get("role") == "user":
+                    user_text += "\n" + "\n".join(
+                        str(part.get("text") or "")
+                        for part in message.get("parts", [])
+                        if isinstance(part, dict)
+                    )
+                for source in message.get("sources") or []:
+                    if isinstance(source, dict) and isinstance(source.get("url"), str):
+                        runtime.research.allowed_urls.add(navigation_url_key(source["url"]))
+        for match in re.findall(r'https?://[^\s<>"\']+', user_text):
+            runtime.research.allowed_urls.add(navigation_url_key(match.rstrip(".,;!")))
+        return runtime
 
     def declarations(self) -> list[dict[str, Any]]:
         available = self.prompts.access.available
@@ -56,6 +109,8 @@ class ModelRuntime:
         names = {
             function for skill in SKILLS if skill.id in available for function in skill.functions
         } | {"read_skill"}
+        if self.user_id is None or not self.allow_artifacts:
+            names -= {"file_write", "file_edit", "canvas_export"}
         image_names = [
             name
             for name, path in resolve_input_files(self.files)
@@ -86,13 +141,19 @@ class ModelRuntime:
         return declarations
 
     def execute(self, name: str, arguments: dict[str, Any]) -> ModelToolResult:
-        if name not in {declaration["name"] for declaration in self.declarations()}:
+        declarations = {declaration["name"]: declaration for declaration in self.declarations()}
+        if name not in declarations:
             return ModelToolResult({"ok": False, "error": "tool_not_available"})
         if (
             not isinstance(arguments, dict)
             or len(json.dumps(arguments, ensure_ascii=False, default=str).encode()) > 1_100_000
         ):
             return ModelToolResult({"ok": False, "error": "invalid_tool_arguments"})
+        violations = argument_errors(arguments, declarations[name]["parameters"])
+        if violations:
+            return ModelToolResult(
+                {"ok": False, "error": "invalid_tool_arguments", "details": violations}
+            )
         if name == "read_skill":
             skill_id = arguments.get("skill_id")
             if not isinstance(skill_id, str) or skill_id not in self.prompts.access.available:
@@ -111,7 +172,32 @@ class ModelRuntime:
                     "required_function": "read_skill",
                 }
             )
-        if name == "generate_demo_image":
+        artifact_slots = max(0, 20 - self.artifact_count)
+        if not artifact_slots and (
+            name in {"file_write", "file_edit", "canvas_export"}
+            or (name == "table_query" and arguments.get("export_filename"))
+        ):
+            return ModelToolResult({"ok": False, "error": "artifact_limit_reached"})
+        if name in {"web_search", "web_search_batch", "web_fetch", "web_find", "web_links"}:
+            result = self.research.execute(name, arguments)
+        elif name in {"file_write", "file_edit", "canvas_export"}:
+            result = self.workspace.execute(name, arguments, self.files, self.canvas)
+        elif name in {"table_inspect", "table_query"}:
+            result = execute_data_tool(name, arguments, self.files, self.workspace)
+        elif name in {"plan_update", "ask_user"}:
+            result = self.interaction.execute(name, arguments)
+        elif name in {
+            "file_list",
+            "file_read",
+            "file_search",
+            "file_search_all",
+            "file_glob",
+            "file_diff",
+            "canvas_read",
+            "canvas_edit",
+        }:
+            result = execute_document_tool(name, arguments, self.files, self.canvas)
+        elif name == "generate_demo_image":
             if not self.allow_artifacts:
                 return ModelToolResult(
                     {"ok": False, "error": "demo_image_requires_persistent_chat"}
@@ -147,8 +233,12 @@ class ModelRuntime:
                 arguments,
                 user_id=self.user_id,
                 input_files=self.files,
-                allow_artifacts=self.allow_artifacts,
+                allow_artifacts=self.allow_artifacts and artifact_slots > 0,
+                artifact_limit=artifact_slots,
             )
+        self.artifact_count += sum(
+            len(event.get("python_artifacts") or []) for event in result.events
+        )
         for event in result.events:
             if "canvas_textdoc" in event:
                 self.canvas = event["canvas_textdoc"]

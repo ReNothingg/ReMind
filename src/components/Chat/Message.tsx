@@ -13,6 +13,7 @@ import Spinwheel from '../Widgets/Spinwheel';
 import Beatbox from '../Widgets/Beatbox';
 import Visualization from '../Widgets/Visualization';
 import ThinkBlock from '../Widgets/ThinkBlock';
+import ToolPanel from '../Widgets/ToolPanel';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
 import {
     normalizeAndMergeWebSources,
@@ -992,7 +993,7 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
             ) : html;
         }
         if (!markdownEnabledForMessage) {
-            return formatPlainText(displayContent || '');
+            return formatPlainText((displayContent || '').replace(/<tool_panel data-kind="(?:plan|questions)" data-b64="[A-Za-z0-9+/=]{1,32000}"><\/tool_panel>/g, '').replace(/<tool_panel[\s\S]*$/, ''));
         }
 
         return decorateSourceCitations(
@@ -1006,8 +1007,8 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
 
     const presentation = useMemo(() => isUser
         ? { html: formattedContent, widgets: [] }
-        : parseMessagePresentation(formattedContent, parts, message.id),
-    [formattedContent, isUser, message.id, parts]);
+        : parseMessagePresentation(formattedContent, [...(Array.isArray(parts) ? parts : []), { text: displayContent }], message.id),
+    [formattedContent, isUser, message.id, parts, displayContent]);
     const htmlContent = presentation.html;
     const widgets = useMemo(() => applyMessageWidgetUpdate(presentation.widgets, isUser ? null : widgetUpdate, message.id),
         [presentation.widgets, widgetUpdate, isUser, message.id]);
@@ -1735,6 +1736,9 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                 )}
 
                 {widgets.map(widget => {
+                    if (widget.type === 'plan' || widget.type === 'questions') {
+                        return <ToolPanel key={`${widget.id}:${JSON.stringify(widget.state)}`} kind={widget.type} state={widget.state} disabled={isLoading} onReply={onSendMessage ? (prompt) => onSendMessage(prompt, [], {}) : undefined} />;
+                    }
                     if (widget.type === 'quiz') {
                         return <Quiz key={widget.id} initialState={widget.state} />;
                     } else if (widget.type === 'spinwheel') {

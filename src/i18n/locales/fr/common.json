@@ -1,4 +1,19 @@
 {
+  "toolPanels": {
+    "plan": "Plan",
+    "questions": "Questions",
+    "status": {
+      "pending": "En attente",
+      "in_progress": "En cours",
+      "completed": "Terminé"
+    },
+    "customAnswer": "Votre réponse",
+    "send": "Envoyer les réponses",
+    "sent": "Réponses envoyées",
+    "answerMessage": "Réponses à : {{title}}",
+    "readOnly": "Ouvrez une conversation modifiable pour répondre.",
+    "sendFailed": "Envoi impossible. Réessayez."
+  },
   "reliability": {"offline":"Hors ligne · les messages seront mis en attente","reconnecting":"Rétablissement de la connexion…","queued":"Messages en attente : {{count}}","draftSyncing":"Synchronisation du brouillon…","draftSynced":"Brouillon synchronisé","draftLocal":"Brouillon enregistré localement","queueFull":"La file hors ligne est pleine. Reconnectez-vous avant d’envoyer d’autres fichiers.","temporaryOffline":"Les chats temporaires nécessitent une connexion et ne sont jamais enregistrés dans la file hors ligne.","interrupted":"La génération a été interrompue. Vous pouvez régénérer cette version."},
   "language": {
     "ru": "RU",

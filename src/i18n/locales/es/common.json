@@ -1,4 +1,19 @@
 {
+  "toolPanels": {
+    "plan": "Plan",
+    "questions": "Preguntas",
+    "status": {
+      "pending": "Pendiente",
+      "in_progress": "En curso",
+      "completed": "Completado"
+    },
+    "customAnswer": "Tu propia respuesta",
+    "send": "Enviar respuestas",
+    "sent": "Respuestas enviadas",
+    "answerMessage": "Respuestas a: {{title}}",
+    "readOnly": "Abre un chat editable para responder.",
+    "sendFailed": "No se pudo enviar. Inténtalo de nuevo."
+  },
   "reliability": {"offline":"Sin conexión · los mensajes se pondrán en cola","reconnecting":"Restableciendo la conexión…","queued":"Mensajes en cola: {{count}}","draftSyncing":"Sincronizando borrador…","draftSynced":"Borrador sincronizado","draftLocal":"Borrador guardado localmente","queueFull":"La cola sin conexión está llena. Conéctate antes de enviar más archivos.","temporaryOffline":"Los chats temporales requieren conexión y nunca se guardan en la cola sin conexión.","interrupted":"La generación se interrumpió. Puedes regenerar esta versión."},
   "language": {
     "ru": "RU",

@@ -1,4 +1,19 @@
 {
+  "toolPanels": {
+    "plan": "Plano",
+    "questions": "Perguntas",
+    "status": {
+      "pending": "Pendente",
+      "in_progress": "Em andamento",
+      "completed": "Concluído"
+    },
+    "customAnswer": "Sua resposta",
+    "send": "Enviar respostas",
+    "sent": "Respostas enviadas",
+    "answerMessage": "Respostas para: {{title}}",
+    "readOnly": "Abra uma conversa editável para responder.",
+    "sendFailed": "Não foi possível enviar. Tente novamente."
+  },
   "reliability": {"offline":"Offline · as mensagens serão enfileiradas","reconnecting":"Restaurando conexão…","queued":"Mensagens na fila: {{count}}","draftSyncing":"Sincronizando rascunho…","draftSynced":"Rascunho sincronizado","draftLocal":"Rascunho salvo localmente","queueFull":"A fila offline está cheia. Reconecte antes de enviar mais arquivos.","temporaryOffline":"Chats temporários exigem conexão e nunca são salvos na fila offline.","interrupted":"A geração foi interrompida. Você pode gerar esta versão novamente."},
   "language": {
     "ru": "RU",

@@ -1,4 +1,19 @@
 {
+  "toolPanels": {
+    "plan": "计划",
+    "questions": "问题",
+    "status": {
+      "pending": "待处理",
+      "in_progress": "进行中",
+      "completed": "已完成"
+    },
+    "customAnswer": "自定义回答",
+    "send": "发送回答",
+    "sent": "回答已发送",
+    "answerMessage": "回答：{{title}}",
+    "readOnly": "请打开可编辑的聊天以回答。",
+    "sendFailed": "发送失败，请重试。"
+  },
   "reliability": {"offline":"离线 · 消息将进入队列","reconnecting":"正在恢复连接…","queued":"队列中有 {{count}} 条消息","draftSyncing":"正在同步草稿…","draftSynced":"草稿已同步","draftLocal":"草稿已保存在本地","queueFull":"离线队列已满。请联网后再发送更多文件。","temporaryOffline":"临时聊天需要网络连接，且不会保存到离线队列。","interrupted":"生成已中断。你可以重新生成此版本。"},
   "language": {
     "ru": "RU",

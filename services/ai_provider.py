@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any
 
-from config import AI_PROVIDER_API_KEY, AI_PROVIDER_MODEL_NAME
+from config import AI_PROVIDER_API_KEY, AI_PROVIDER_MODEL_NAME, GEMINI_STREAM_TIMEOUT_MS
 
-DEFAULT_PROVIDER_MODEL = AI_PROVIDER_MODEL_NAME or "gemini-1.5-flash"
+DEFAULT_PROVIDER_MODEL = AI_PROVIDER_MODEL_NAME or "gemini-3.1-flash-lite"
 
 
 def _activity(
@@ -61,20 +61,24 @@ def _generate_content(
     max_output_tokens: int | None = None,
     response_mime_type: str | None = None,
 ) -> str:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key=AI_PROVIDER_API_KEY)
     generation_config: dict[str, Any] = {"temperature": temperature}
     if max_output_tokens is not None:
         generation_config["max_output_tokens"] = max_output_tokens
     if response_mime_type:
         generation_config["response_mime_type"] = response_mime_type
 
-    model = genai.GenerativeModel(DEFAULT_PROVIDER_MODEL)
-    response = model.generate_content(
-        prompt,
-        generation_config=cast(Any, generation_config),
-    )
+    with genai.Client(
+        api_key=AI_PROVIDER_API_KEY,
+        http_options=types.HttpOptions(timeout=GEMINI_STREAM_TIMEOUT_MS),
+    ) as client:
+        response = client.models.generate_content(
+            model=DEFAULT_PROVIDER_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(**generation_config),
+        )
     return (getattr(response, "text", None) or "").strip()
 
 
@@ -94,11 +98,11 @@ def generate_json_with_trace(
             max_output_tokens=max_output_tokens,
             response_mime_type="application/json",
         )
-    except Exception as exc:
+    except Exception:
         return None, _activity(
             "aiProviderRequestFailed",
             "error",
-            {"message": str(exc)[:500]},
+            {"message": "provider_request_failed"},
         )
 
     parsed = _json_from_text(text)
@@ -143,11 +147,11 @@ def generate_text_with_trace(
             temperature=temperature,
             max_output_tokens=max_output_tokens,
         )
-    except Exception as exc:
+    except Exception:
         return None, _activity(
             "aiProviderTextRequestFailed",
             "error",
-            {"message": str(exc)[:500]},
+            {"message": "provider_request_failed"},
         )
     if not text.strip():
         return None, _activity("aiProviderTextEmpty", "error")

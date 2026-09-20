@@ -28,7 +28,7 @@ from utils.secure_upload import detect_mime_from_content
 logger = logging.getLogger(__name__)
 
 MAX_CODE_CHARS = 24_000
-MAX_INPUT_FILES = 8
+MAX_INPUT_FILES = 24
 MAX_INPUT_TOTAL_BYTES = 8 * 1024 * 1024
 MAX_RESPONSE_BYTES = 64 * 1024
 MAX_ARTIFACT_FILES = 10
@@ -113,6 +113,7 @@ def execute_python(
     allow_artifacts: bool = True,
     inline_artifacts: bool = False,
     include_model_artifacts: bool = False,
+    max_artifacts: int = MAX_ARTIFACT_FILES,
 ) -> PythonExecutionResult:
     if not python_runner_available(user_id):
         return PythonExecutionResult({"ok": False, "error": "python_runner_unavailable"})
@@ -163,7 +164,11 @@ def execute_python(
                 {"version": 1, "code": code, "input_files": copied_names},
             )
         response = _wait_for_response(response_manifest)
-        persisted_artifacts = _persist_artifacts(job_id, response) if allow_artifacts else []
+        persisted_artifacts = (
+            _persist_artifacts(job_id, response, max_artifacts=max_artifacts)
+            if allow_artifacts
+            else []
+        )
         artifacts = [_public_artifact(artifact) for artifact in persisted_artifacts]
         reusable_files = [
             {
@@ -336,7 +341,9 @@ def _code_quality_issues(code: str) -> list[str]:
     return list(dict.fromkeys(issues))[:20]
 
 
-def _persist_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, Any]]:
+def _persist_artifacts(
+    job_id: str, response: dict[str, Any], *, max_artifacts: int = MAX_ARTIFACT_FILES
+) -> list[dict[str, Any]]:
     if not JOB_ID_RE.fullmatch(job_id):
         return []
     raw_artifacts = response.get("artifacts")
@@ -348,7 +355,7 @@ def _persist_artifacts(job_id: str, response: dict[str, Any]) -> list[dict[str, 
     persisted: list[dict[str, Any]] = []
     total_bytes = 0
 
-    for raw_artifact in raw_artifacts[:MAX_ARTIFACT_FILES]:
+    for raw_artifact in raw_artifacts[: max(0, min(MAX_ARTIFACT_FILES, max_artifacts))]:
         if not isinstance(raw_artifact, dict):
             continue
         stored_name = str(raw_artifact.get("stored_name") or "")

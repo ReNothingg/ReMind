@@ -1,0 +1,118 @@
+.chat-tool-panel {
+  width: 100%;
+  min-width: 0;
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 14px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-main);
+  overflow-wrap: anywhere;
+}
+
+.chat-tool-panel h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.chat-tool-plan {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-tool-plan li {
+  display: grid;
+  gap: 4px;
+}
+
+.chat-tool-step-status {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.chat-tool-plan li[data-status='completed'] .chat-tool-step-status {
+  color: var(--color-text-primary);
+}
+
+.chat-tool-panel fieldset {
+  min-width: 0;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.chat-tool-panel legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.chat-tool-choices {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chat-tool-choices label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.chat-tool-choices input {
+  flex: none;
+}
+
+.chat-tool-panel textarea {
+  display: block;
+  width: 100%;
+  min-height: 70px;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 10px;
+  background: var(--color-bg-main);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+
+.chat-tool-panel button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 10px;
+  background: var(--color-bg-main);
+  color: inherit;
+  cursor: pointer;
+}
+
+.chat-tool-panel button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.chat-tool-panel p {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 480px) {
+  .chat-tool-panel {
+    padding: 12px;
+  }
+
+  .chat-tool-panel button {
+    width: 100%;
+  }
+}
