@@ -119,6 +119,33 @@
     "close": "Закрыть"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} вызов инструмента",
+      "toolCount_few": "{{count}} вызова инструментов",
+      "toolCount_many": "{{count}} вызовов инструментов",
+      "toolCount_other": "{{count}} вызова инструментов",
+      "messageCount_one": "{{count}} сообщение",
+      "messageCount_few": "{{count}} сообщения",
+      "messageCount_many": "{{count}} сообщений",
+      "messageCount_other": "{{count}} сообщения",
+
+      "think": "Размышления",
+      "working": "Работаю",
+      "search": "Поиск",
+      "model": "Модель",
+      "input": "Ввод",
+      "output": "Вывод",
+      "details": "Детали",
+      "status": "Статус",
+      "toolCount": "Вызовы инструментов: {{count}}",
+      "messageCount": "Сообщения: {{count}}",
+      "states": {
+        "running": "Выполняется",
+        "complete": "Выполнено",
+        "failed": "Ошибка",
+        "interrupted": "Прервано"
+      }
+    },
     "tools": {
       "previewTruncated": "Показан сокращённый фрагмент.",
       "names": {

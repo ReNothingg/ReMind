@@ -119,6 +119,29 @@
     "close": "Cerrar"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} llamada a herramienta",
+      "toolCount_other": "{{count}} llamadas a herramientas",
+      "messageCount_one": "{{count}} mensaje",
+      "messageCount_other": "{{count}} mensajes",
+
+      "think": "Pensar",
+      "working": "Trabajando",
+      "search": "Buscar",
+      "model": "Modelo",
+      "input": "Entrada",
+      "output": "Salida",
+      "details": "Detalles",
+      "status": "Estado",
+      "toolCount": "{{count}} llamadas a herramientas",
+      "messageCount": "{{count}} mensajes",
+      "states": {
+        "running": "En curso",
+        "complete": "Completado",
+        "failed": "Error",
+        "interrupted": "Interrumpido"
+      }
+    },
     "label": "Pensamientos",
     "loading": "Pensando...",
     "expand": "Expandir pensamientos",

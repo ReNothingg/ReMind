@@ -119,6 +119,24 @@
     "close": "बंद करें"
   },
   "think": {
+    "presentation": {
+      "think": "विचार",
+      "working": "काम जारी है",
+      "search": "खोज",
+      "model": "मॉडल",
+      "input": "इनपुट",
+      "output": "आउटपुट",
+      "details": "विवरण",
+      "status": "स्थिति",
+      "toolCount": "{{count}} टूल कॉल",
+      "messageCount": "{{count}} संदेश",
+      "states": {
+        "running": "जारी",
+        "complete": "पूर्ण",
+        "failed": "विफल",
+        "interrupted": "बाधित"
+      }
+    },
     "label": "विचार",
     "loading": "सोच रहा हूं...",
     "expand": "विचार दिखाएं",

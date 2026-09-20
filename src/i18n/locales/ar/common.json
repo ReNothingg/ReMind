@@ -119,6 +119,24 @@
     "close": "إغلاق"
   },
   "think": {
+    "presentation": {
+      "think": "التفكير",
+      "working": "جارٍ العمل",
+      "search": "البحث",
+      "model": "النموذج",
+      "input": "الإدخال",
+      "output": "الإخراج",
+      "details": "التفاصيل",
+      "status": "الحالة",
+      "toolCount": "استدعاءات الأدوات: {{count}}",
+      "messageCount": "الرسائل: {{count}}",
+      "states": {
+        "running": "جارٍ التنفيذ",
+        "complete": "مكتمل",
+        "failed": "فشل",
+        "interrupted": "متوقف"
+      }
+    },
     "label": "الأفكار",
     "loading": "جارٍ التفكير...",
     "expand": "توسيع الأفكار",

@@ -119,6 +119,29 @@
     "close": "Close"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} tool call",
+      "toolCount_other": "{{count}} tool calls",
+      "messageCount_one": "{{count}} message",
+      "messageCount_other": "{{count}} messages",
+
+      "think": "Think",
+      "working": "Working",
+      "search": "Search",
+      "model": "Model",
+      "input": "Input",
+      "output": "Output",
+      "details": "Details",
+      "status": "Status",
+      "toolCount": "{{count}} tool calls",
+      "messageCount": "{{count}} messages",
+      "states": {
+        "running": "Running",
+        "complete": "Completed",
+        "failed": "Failed",
+        "interrupted": "Interrupted"
+      }
+    },
     "tools": {
       "previewTruncated": "A shortened preview is shown.",
       "names": {

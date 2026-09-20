@@ -1644,26 +1644,17 @@ const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, on
                     </div>
                 )}
 
-                {!isUser && isLoading && webSearchStatus && (
+                {!isUser && isLoading && webSearchStatus && !streamedThinking && (
                     <WebSearchProgress status={webSearchStatus} t={t} />
                 )}
 
-                {streamedThinking && (
+                {(streamedThinking ? [streamedThinking] : widgets.filter(widget => widget.type === 'think')).map((thought, index) => (
                     <ThinkBlock
-                        key={streamedThinking.id}
-                        content={streamedThinking.content}
-                        openTime={streamedThinking.openTime}
-                        closeTime={streamedThinking.closeTime}
-                        isStreaming={streamedThinking.status !== 'complete'}
-                    />
-                )}
-
-                {!streamedThinking && widgets.filter(widget => widget.type === 'think').map(widget => (
-                    <ThinkBlock
-                        key={widget.id}
-                        content={widget.content}
-                        openTime={widget.openTime}
-                        closeTime={widget.closeTime}
+                        key={`${message.id}-thinking-${currentVariantIndex ?? 0}-${index}`}
+                        content={thought.content}
+                        openTime={thought.openTime}
+                        closeTime={thought.closeTime}
+                        isStreaming={Boolean(streamedThinking && streamedThinking.status !== 'complete')}
                     />
                 ))}
 

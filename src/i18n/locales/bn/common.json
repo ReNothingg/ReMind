@@ -119,6 +119,24 @@
     "close": "বন্ধ করুন"
   },
   "think": {
+    "presentation": {
+      "think": "চিন্তা",
+      "working": "কাজ চলছে",
+      "search": "অনুসন্ধান",
+      "model": "মডেল",
+      "input": "ইনপুট",
+      "output": "আউটপুট",
+      "details": "বিস্তারিত",
+      "status": "অবস্থা",
+      "toolCount": "টুল কল: {{count}}",
+      "messageCount": "বার্তা: {{count}}",
+      "states": {
+        "running": "চলছে",
+        "complete": "সম্পন্ন",
+        "failed": "ব্যর্থ",
+        "interrupted": "বাধাপ্রাপ্ত"
+      }
+    },
     "label": "ভাবনা",
     "loading": "ভাবছি...",
     "expand": "ভাবনা প্রসারিত করুন",

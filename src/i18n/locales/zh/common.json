@@ -119,6 +119,24 @@
     "close": "关闭"
   },
   "think": {
+    "presentation": {
+      "think": "思考",
+      "working": "处理中",
+      "search": "搜索",
+      "model": "模型",
+      "input": "输入",
+      "output": "输出",
+      "details": "详情",
+      "status": "状态",
+      "toolCount": "{{count}} 次工具调用",
+      "messageCount": "{{count}} 条消息",
+      "states": {
+        "running": "进行中",
+        "complete": "已完成",
+        "failed": "失败",
+        "interrupted": "已中断"
+      }
+    },
     "label": "思考",
     "loading": "正在思考...",
     "expand": "展开思考",
