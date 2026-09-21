@@ -1,5 +1,4 @@
 import ContextUsagePopover from '../../../components/Chat/ContextUsagePopover';
-import { readContextUsage } from '../contextUsage';
 import { useEffect, useLayoutEffect, useId, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,8 +54,6 @@ export function ModelSelector({
     const [view, setView] = useState<'thinking' | 'models'>('thinking');
     const dropdownId = useId();
     const triggerGroupRef = useRef<HTMLDivElement | null>(null);
-    const context = readContextUsage(contextUsage);
-    const contextPercent = context ? Math.min(100, context.input_tokens / context.context_limit * 100) : 0;
     const dropdownRef = useRef<HTMLDivElement | null>(null);
     const panelHeightRef = useRef<number | null>(null);
     const selectorRef = useRef<HTMLDivElement | null>(null);
@@ -175,8 +172,10 @@ export function ModelSelector({
                     hoverTarget={triggerGroupRef} suppressed={isDropdownOpen} onOpen={() => setIsDropdownOpen(false)}>
                     <svg className="model-effort-dial" viewBox="0 0 20 20" aria-hidden="true">
                         <circle className="model-effort-orbit" cx="10" cy="10" r="7" />
-                        <circle className="model-effort-ring" cx="10" cy="10" r="7" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - contextPercent} />
-                        <circle className="model-effort-core" cx="10" cy="10" r="1.5" />
+                        <circle className="model-effort-ring" cx="10" cy="10" r="7" pathLength="100" strokeDasharray="100"
+                            strokeDashoffset={100 - (thinkingLevelIndex + 1) / Math.max(1, supportedThinkingLevels.length) * 100} />
+                        <circle className="model-effort-core" cx="10" cy="10" r="1.5"
+                            style={{ opacity: 0.35 + (thinkingLevelIndex + 1) / Math.max(1, supportedThinkingLevels.length) * 0.65 }} />
                     </svg>
                 </ContextUsagePopover>
                 <button type="button" className="model-chevron-trigger"
