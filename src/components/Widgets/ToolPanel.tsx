@@ -1,5 +1,6 @@
 import { type FormEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Check, Circle, LoaderCircle } from 'lucide-react';
 
 type Step = { id: string; title: string; status: 'pending' | 'in_progress' | 'completed' };
 type Question = { id: string; question: string; options: string[] };
@@ -58,12 +59,15 @@ export default function ToolPanel({ kind, state, onReply, disabled = false }: {
         }
     };
     return (
-        <section className="chat-tool-panel" aria-label={t(`toolPanels.${kind}`)}>
+        <section className={`chat-tool-panel chat-tool-panel-${kind}`} aria-label={t(`toolPanels.${kind}`)}>
             <h3>{panel.title}</h3>
             {panel.steps && <ol className="chat-tool-plan">
                 {panel.steps.map(step => <li key={step.id} data-status={step.status}>
-                    <span className="chat-tool-step-status">{t(`toolPanels.status.${step.status}`)}</span>
-                    <span>{step.title}</span>
+                    <span className="chat-tool-step-icon" title={t(`toolPanels.status.${step.status}`)}>
+                        {step.status === 'completed' ? <Check aria-hidden="true" /> : step.status === 'in_progress' ? <LoaderCircle aria-hidden="true" /> : <Circle aria-hidden="true" />}
+                        <span className="think-sr-only">{t(`toolPanels.status.${step.status}`)}</span>
+                    </span>
+                    <span className="chat-tool-step-title">{step.title}</span>
                 </li>)}
             </ol>}
             {panel.questions && <form onSubmit={submit}>

@@ -122,12 +122,13 @@ function TimelineRow({ item, active }: { item: ThoughtTimelineItem; active: bool
         </DisclosureRow>;
     }
     if (item.kind === 'search') {
-        return <DisclosureRow title={t('think.presentation.search')} summary={item.query} icon={<Search />} state={state}>
-            <div className="think-detail-card">
-                <p>{item.query}</p>
-                {item.sources.length > 0 ? <WebSourcesPanel mode="inline" sources={item.sources} /> : <p className="think-row-note">{t(state === 'failed' ? 'webSearch.status.failed' : state === 'running' ? 'webSearch.status.fetching' : state === 'interrupted' ? 'think.presentation.states.interrupted' : 'webSearch.status.noResults')}</p>}
+        return <div className="think-search-step" data-state={state}>
+            <Search className="think-search-icon" aria-hidden="true" />
+            <div className="think-search-copy">
+                <div className="think-search-query">{item.query || t('think.presentation.search')}</div>
+                {item.sources.length > 0 ? <WebSourcesPanel mode="inline" className="think-search-sources" sources={item.sources} /> : <div className="think-row-note">{t(state === 'failed' ? 'webSearch.status.failed' : state === 'running' ? 'webSearch.status.fetching' : state === 'interrupted' ? 'think.presentation.states.interrupted' : 'webSearch.status.noResults')}</div>}
             </div>
-        </DisclosureRow>;
+        </div>;
     }
     if (item.kind === 'image') {
         return <DisclosureRow title={t('composer.tools.image_analysis')} summary={item.filename || item.purpose} icon={<Image />} state={state}>

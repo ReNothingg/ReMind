@@ -94,6 +94,7 @@ export interface components {
     };
     ChatMessage: {
       composer_content?: string;
+      context_usage?: components["schemas"]["ContextUsage"];
       current_variant_index?: number;
       delivery_status?: "complete" | "interrupted" | null;
       id?: string | null;
@@ -138,6 +139,7 @@ export interface components {
       [key: string]: unknown;
     };
     ChatOperationResponse: {
+      context_usage?: components["schemas"]["ContextUsage"];
       delivery_status?: "complete" | "interrupted";
       history: components["schemas"]["ChatMessage"][];
       ok: boolean;
@@ -152,6 +154,14 @@ export interface components {
       id: string;
       titleKey: string;
       unavailableKey?: string;
+    };
+    ContextUsage: {
+      context_limit: number;
+      estimated_breakdown: boolean;
+      input_tokens: number;
+      message_tokens: number;
+      system_tokens: number;
+      tool_tokens: number;
     };
     ErrorResponse: {
       error: {

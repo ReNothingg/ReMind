@@ -379,3 +379,39 @@
     display: block;
   }
 }
+
+.think-search-step {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0 12px;
+}
+
+.think-search-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+}
+
+.think-search-copy {
+  min-width: 0;
+}
+
+.think-search-query {
+  margin-bottom: 6px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.think-search-sources .web-sources-pills {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.think-search-sources .source-pill {
+  max-width: 100%;
+}

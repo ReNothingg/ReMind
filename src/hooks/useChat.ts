@@ -219,6 +219,7 @@ function normalizeHistoryVariant(value) {
         selectedTools: value.selected_tools || value.selectedTools || [],
         modelId: value.model_id || value.modelId,
         thinkingTime: value.thinkingTime,
+        contextUsage: value.context_usage || value.contextUsage,
         timestamp: value.timestamp,
         deliveryState: value.delivery_status === 'interrupted' ? 'interrupted' : undefined,
         parts
@@ -316,6 +317,7 @@ export function normalizeHistoryMessage(msg, index?: number, messages?: Array<Re
         composerContent: currentVariant ? currentVariant.composerContent : (msg.composer_content || msg.composerContent),
         selectedTools: currentVariant?.selectedTools || msg.selected_tools || msg.selectedTools || [],
         modelId: currentVariant?.modelId || msg.model_id || msg.modelId,
+        contextUsage: currentVariant ? currentVariant.contextUsage : msg.context_usage || msg.contextUsage,
         content: currentVariant?.content ?? text.trim(),
         images: currentVariant?.images ?? images,
         files: currentVariant?.files?.length ? currentVariant.files : files,
@@ -1715,6 +1717,7 @@ export const useChat = () => {
                                 images: [...(finalData.images || []), ...pythonArtifactImages],
                                 files: pythonArtifactFiles,
                                 sources: finalData.sources || [],
+                                contextUsage: finalData.context_usage,
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
                                 thinkingTime: finalData.thinkingTime,
@@ -1729,6 +1732,7 @@ export const useChat = () => {
                                 images: [...(finalData.images || []), ...pythonArtifactImages],
                                 files: pythonArtifactFiles,
                                 sources: finalData.sources || [],
+                                contextUsage: finalData.context_usage,
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
                                 canvasUpdates: Array.isArray(finalData.canvas_updates)
@@ -1979,6 +1983,7 @@ export const useChat = () => {
                         selectedTools: msg.selectedTools || [],
                         modelId: msg.modelId,
                         thinkingTime: msg.thinkingTime,
+                        contextUsage: msg.contextUsage,
                     }];
                 const pendingVariant = {
                     id: assistantMessageId,
@@ -2142,6 +2147,7 @@ export const useChat = () => {
                                 content: typeof finalData.reply === 'string' ? finalData.reply : fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
+                                contextUsage: finalData.context_usage,
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
                                 thinkingTime: finalData.thinkingTime,
@@ -2173,6 +2179,7 @@ export const useChat = () => {
                                     ? finalData.canvas_updates
                                     : msg.canvasUpdates || [],
                                 thinkingTime: newVariant.thinkingTime,
+                                contextUsage: newVariant.contextUsage,
                                 deliveryState: newVariant.deliveryState,
                                 variants: newVariants,
                                 currentVariantIndex: newCurrentIndex
@@ -2297,6 +2304,7 @@ export const useChat = () => {
                 canvasTextdoc: selectedVariant.canvasTextdoc || null,
                 canvasUpdates: selectedVariant.canvasUpdates || [],
                 thinkingTime: selectedVariant.thinkingTime,
+                contextUsage: selectedVariant.contextUsage,
                 currentVariantIndex: newIndex,
                 parts: selectedVariant.parts || item.parts,
             };
@@ -2531,6 +2539,7 @@ export const useChat = () => {
                                 content: typeof finalData.reply === 'string' ? finalData.reply : fullReply,
                                 images: finalData.images || [],
                                 sources: finalData.sources || [],
+                                contextUsage: finalData.context_usage,
                                 githubTool: finalGitHubTool,
                                 canvasTextdoc: finalCanvasTextdoc,
                                 canvasUpdates: Array.isArray(finalData.canvas_updates)

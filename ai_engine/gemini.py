@@ -15,6 +15,7 @@ from google.genai import errors, types
 from ai_engine.output_contract import output_contract_errors
 from ai_engine.prompt_templates import render_prompt
 from config import GEMINI_API_KEY, GEMINI_STREAM_TIMEOUT_MS
+from services.context_usage import build_context_usage, context_weights
 from services.files import restore_stored_file_for_model
 from services.interaction_tools import readable_panel_history
 from services.model_runtime import ModelRuntime
@@ -722,6 +723,10 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 else []
             )
             system_prompt = runtime.prompts.render(runtime.canvas)
+            weights = context_weights(
+                system_prompt, declarations, [chat.get_history(curated=True), next_message]
+            )
+            round_usage = None
             function_calls: list[ToolCall] = []
             round_answer_chunks: list[str] = []
             answer_chars = 0
@@ -756,6 +761,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 force_web_search = False
 
                 for chunk in response_stream:
+                    if getattr(chunk, "usage_metadata", None) is not None:
+                        round_usage = chunk.usage_metadata
                     if waiting_for_first_chunk:
                         model_wait_finished = append_thought_content(
                             _model_activity_token(
@@ -835,6 +842,9 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 )
                 if model_wait_failed:
                     yield model_wait_failed
+
+            if context_usage := build_context_usage(round_usage, weights):
+                yield {"context_usage": context_usage}
 
             if not function_calls:
                 contract_errors = output_contract_errors("".join(round_answer_chunks))

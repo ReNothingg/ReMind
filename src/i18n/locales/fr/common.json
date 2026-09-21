@@ -1,4 +1,20 @@
 {
+  "contextUsage": {
+    "label": "Contexte de la session actuelle",
+    "used": "{{percent}} du contexte utilisé",
+    "system": "Instructions système",
+    "tools": "Définitions des outils",
+    "messages": "Messages",
+    "estimate": "Estimation de tout l’historique actif et des pièces jointes. Les instructions et outils sont comptés une seule fois.",
+    "unavailable": "Aucune donnée de contexte pour cette session et ce modèle. Elles apparaîtront après une réponse."
+  },
+  "artifactDownload": {
+    "action": "Télécharger {{name}}",
+    "label": "Télécharger",
+    "loading": "Téléchargement…",
+    "unavailable": "Le fichier est indisponible ou vous n’y avez pas accès.",
+    "failed": "Téléchargement impossible. Réessayez."
+  },
   "toolPanels": {
     "plan": "Plan",
     "questions": "Questions",

@@ -1,4 +1,20 @@
 {
+  "contextUsage": {
+    "label": "当前会话上下文",
+    "used": "已使用 {{percent}} 上下文",
+    "system": "系统提示词",
+    "tools": "工具定义",
+    "messages": "消息",
+    "estimate": "估算整个当前会话的有效历史和附件。系统提示词与工具只计算一次。",
+    "unavailable": "此会话和模型暂无上下文数据，收到回答后将显示。"
+  },
+  "artifactDownload": {
+    "action": "下载 {{name}}",
+    "label": "下载",
+    "loading": "正在下载…",
+    "unavailable": "文件不可用或你没有访问权限。",
+    "failed": "无法下载文件，请重试。"
+  },
   "toolPanels": {
     "plan": "计划",
     "questions": "问题",

@@ -1,3 +1,4 @@
+import type { ContextUsage } from '../../../features/chat/contextUsage';
 
 export type ChatWidgetUpdate = Record<string, unknown>;
 
@@ -46,6 +47,7 @@ export type ChatStreamResult = {
     sources?: unknown[];
     status?: string;
     thinkingTime?: number;
+    context_usage?: ContextUsage;
     thinking_update?: ChatThinkingUpdate;
     widget_update?: ChatWidgetUpdate;
     [key: string]: unknown;

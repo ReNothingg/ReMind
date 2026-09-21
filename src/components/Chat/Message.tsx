@@ -13,6 +13,7 @@ import Spinwheel from '../Widgets/Spinwheel';
 import Beatbox from '../Widgets/Beatbox';
 import Visualization from '../Widgets/Visualization';
 import ThinkBlock from '../Widgets/ThinkBlock';
+import ArtifactDownloadCard from './ArtifactDownloadCard';
 import ToolPanel from '../Widgets/ToolPanel';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
 import {
@@ -224,6 +225,8 @@ const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
                         downloadName: fileName,
                     });
                 };
+
+                if (!isImage) return <ArtifactDownloadCard key={`${file.url_path || fileName}-${index}`} path={fullUrl} filename={fileName} size={Number(file.size) || undefined} />;
 
                 return (
                     <div

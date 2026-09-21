@@ -1,4 +1,20 @@
 {
+  "contextUsage": {
+    "label": "Current session context",
+    "used": "{{percent}} of context used",
+    "system": "System prompt",
+    "tools": "Tool definitions",
+    "messages": "Messages",
+    "estimate": "Estimate of the entire active session history and attachments. System prompt and tools are counted once.",
+    "unavailable": "No context data for this session and model yet. It will appear after a response."
+  },
+  "artifactDownload": {
+    "action": "Download {{name}}",
+    "label": "Download",
+    "loading": "Downloading…",
+    "unavailable": "The file is unavailable or you do not have access.",
+    "failed": "Could not download the file. Please try again."
+  },
   "toolPanels": {
     "plan": "Plan",
     "questions": "Questions",

@@ -949,6 +949,16 @@ html .auth-modal .form-group input:focus {
   padding-inline: 12px;
   background: var(--color-bg-surface-alt);
 }
+.composer-model-selector.compact-model-selector {
+  max-width: min(260px, 60vw);
+  flex: 0 1 auto;
+}
+.composer-model-selector.compact-model-selector .model-trigger-group {
+  gap: 0;
+  padding: 0;
+  height: auto;
+}
+.composer-model-selector .model-dropdown[inert] { display: none; }
 .compact-model-selector .model-btn-name {
   font-weight: 450;
   color: var(--color-text-secondary);

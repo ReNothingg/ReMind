@@ -29,15 +29,6 @@
   gap: 4px;
 }
 
-.chat-tool-step-status {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-}
-
-.chat-tool-plan li[data-status='completed'] .chat-tool-step-status {
-  color: var(--color-text-primary);
-}
-
 .chat-tool-panel fieldset {
   min-width: 0;
   margin: 0 0 16px;
@@ -114,5 +105,79 @@
 
   .chat-tool-panel button {
     width: 100%;
+  }
+}
+
+.chat-tool-panel-plan {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-color: var(--color-border-subtle);
+  border-radius: 10px;
+  background: transparent;
+}
+
+.chat-tool-panel-plan h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 20px;
+}
+
+.chat-tool-panel-plan .chat-tool-plan {
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.chat-tool-panel-plan .chat-tool-plan li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--color-text-secondary);
+}
+
+.chat-tool-step-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 20px;
+  color: var(--color-text-tertiary);
+}
+
+.chat-tool-step-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chat-tool-plan [data-status='in_progress'] .chat-tool-step-icon {
+  color: var(--color-accent);
+}
+
+.chat-tool-plan [data-status='in_progress'] .chat-tool-step-icon svg {
+  animation: tool-plan-spin 1.5s linear infinite;
+}
+
+.chat-tool-plan [data-status='completed'] .chat-tool-step-icon {
+  color: var(--color-text-secondary);
+}
+
+.chat-tool-step-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@keyframes tool-plan-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-tool-plan [data-status='in_progress'] .chat-tool-step-icon svg {
+    animation: none;
   }
 }

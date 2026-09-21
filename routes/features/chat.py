@@ -46,6 +46,7 @@ from services.chat_history import (
     resolve_session_identifier,
 )
 from services.composer_tools import validate_composer_content, validate_selected_tools
+from services.context_usage import normalize_context_usage
 from services.files import (
     handle_file_upload,
     restore_stored_file_for_model,
@@ -608,6 +609,7 @@ def _build_model_message_for_history(
     request_id: str | None = None,
     delivery_status: str | None = None,
     message_id: str | None = None,
+    context_usage: Any = None,
 ) -> dict:
     message: dict[str, Any] = {
         "id": message_id or f"a_{uuid.uuid4().hex}",
@@ -616,6 +618,8 @@ def _build_model_message_for_history(
     }
     if isinstance(sources, list) and sources:
         message["sources"] = sources
+    if usage := normalize_context_usage(context_usage):
+        message["context_usage"] = usage
     if isinstance(github_tool, dict) and github_tool:
         message["github_tool"] = github_tool
     normalized_canvas = normalize_canvas_textdoc(canvas_textdoc)
@@ -648,6 +652,7 @@ def _find_previous_delivery(history: list, request_id: str) -> dict[str, Any] | 
             "sources": message.get("sources") or [],
             "canvas_textdoc": message.get("canvas_textdoc"),
             "canvas_updates": message.get("canvas_updates") or [],
+            "context_usage": normalize_context_usage(message.get("context_usage")),
             "recovered": True,
         }
     return None
@@ -927,6 +932,7 @@ def _stream_chat_response(
                     request_id=user_data.get("request_id"),
                     delivery_status=delivery_status,
                     message_id=user_data.get("assistant_message_id"),
+                    context_usage=final_data.get("context_usage"),
                 )
                 history = persist_chat_operation(
                     resolved_session_id,
