@@ -179,7 +179,7 @@
     "model": {
       "waiting": "正在等待模型继续分析...",
       "responded": "模型已继续分析",
-      "failed": "模型未能及时响应"
+      "failed": "模型未响应"
     }
   },
   "landing": {

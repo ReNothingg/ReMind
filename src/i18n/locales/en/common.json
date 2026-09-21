@@ -239,7 +239,7 @@
     "model": {
       "waiting": "Waiting for the model to continue analysis...",
       "responded": "The model continued its analysis",
-      "failed": "The model did not respond in time"
+      "failed": "The model did not respond"
     }
   },
   "landing": {

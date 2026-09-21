@@ -20,13 +20,13 @@ export default function ContextUsagePopover({ value, children, className = '', h
     const popup = useRef<HTMLDivElement>(null);
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const id = useId();
-    const visible = open && !suppressed;
+    const visible = Boolean(usage) && open && !suppressed;
     const cancelClose = useCallback(() => { if (closeTimer.current) clearTimeout(closeTimer.current); closeTimer.current = null; }, []);
     const scheduleClose = useCallback(() => { cancelClose(); closeTimer.current = setTimeout(() => setOpen(false), 180); }, [cancelClose]);
     useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
     useEffect(() => {
         const target = hoverTarget?.current;
-        if (!target) return;
+        if (!target || !usage) return;
         const enter = (event: PointerEvent) => {
             if (event.pointerType !== 'touch' && !suppressed) { cancelClose(); setOpen(true); }
         };
@@ -36,7 +36,7 @@ export default function ContextUsagePopover({ value, children, className = '', h
             target.removeEventListener('pointerenter', enter);
             target.removeEventListener('pointerleave', scheduleClose);
         };
-    }, [hoverTarget, suppressed, cancelClose, scheduleClose]);
+    }, [hoverTarget, suppressed, usage, cancelClose, scheduleClose]);
     useLayoutEffect(() => {
         if (!visible) return;
         const update = () => {
@@ -72,19 +72,19 @@ export default function ContextUsagePopover({ value, children, className = '', h
         { key: 'messages', tokens: usage.message_tokens },
     ] : [];
     return <>
-        <button ref={anchor} type="button" className={`context-usage-trigger ${className}`} aria-label={t('contextUsage.label')} aria-expanded={visible} aria-describedby={visible ? id : undefined}
-            onPointerEnter={event => { if (event.pointerType !== 'touch' && !suppressed) { cancelClose(); setOpen(true); } }} onPointerLeave={scheduleClose}
+        <button ref={anchor} type="button" className={`context-usage-trigger ${className}`} aria-label={t('contextUsage.label')} aria-expanded={visible} aria-describedby={visible ? id : undefined} disabled={!usage}
+            onPointerEnter={event => { if (usage && event.pointerType !== 'touch' && !suppressed) { cancelClose(); setOpen(true); } }} onPointerLeave={scheduleClose}
             onBlur={scheduleClose}
-            onClick={() => { cancelClose(); onOpen?.(); setOpen(true); }}>
+            onClick={() => { if (!usage) return; cancelClose(); onOpen?.(); setOpen(true); }}>
             {children || <><Gauge aria-hidden="true" />{usage && <span>{percent}</span>}</>}
         </button>
-        {visible && createPortal(<div ref={popup} id={id} role="tooltip" className="context-usage-popover" style={position} onPointerEnter={cancelClose} onPointerLeave={scheduleClose}>
-            {usage ? <>
+        {visible && usage && createPortal(<div ref={popup} id={id} role="tooltip" className="context-usage-popover" style={position} onPointerEnter={cancelClose} onPointerLeave={scheduleClose}>
+            <>
                 <div className="context-usage-heading"><span>{t('contextUsage.used', { percent })}</span><span>{usage.estimated_total ? '≈' : ''}{compact.format(usage.input_tokens)} / {compact.format(usage.context_limit)}</span></div>
                 <div className="context-usage-bar" aria-hidden="true">{entries.map(entry => <span key={entry.key} data-category={entry.key} style={{ width: `${Math.min(100, entry.tokens / usage.context_limit * 100)}%` }} />)}</div>
                 <dl>{entries.map(entry => <div key={entry.key}><dt><span className="context-usage-dot" data-category={entry.key} />{t(`contextUsage.${entry.key}`)}</dt><dd>≈{compact.format(entry.tokens)}</dd></div>)}</dl>
                 <p>{t('contextUsage.estimate')}</p>
-            </> : <p>{t('contextUsage.unavailable')}</p>}
+            </>
         </div>, document.body)}
     </>;
 }

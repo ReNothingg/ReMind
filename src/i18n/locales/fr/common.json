@@ -184,7 +184,7 @@
     "model": {
       "waiting": "En attente de la poursuite de l’analyse par le modèle...",
       "responded": "Le modèle a poursuivi son analyse",
-      "failed": "Le modèle n’a pas répondu à temps"
+      "failed": "Le modèle n’a pas répondu"
     }
   },
   "landing": {
