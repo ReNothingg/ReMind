@@ -180,7 +180,8 @@ jobs:
           with open("semgrep.json", encoding="utf-8") as handle:
               report = json.load(handle)
           for error in report.get("errors", []):
-              print("Semgrep report issue:", error.get("level"), error.get("type"), error.get("path"), error.get("rule_id"))
+              details = {key: error.get(key) for key in ("level", "type", "path", "rule_id")}
+              print("::error title=Semgrep report issue::" + json.dumps(details, ensure_ascii=True))
           PYCODE
 
       - name: Enforce high-severity security gate
