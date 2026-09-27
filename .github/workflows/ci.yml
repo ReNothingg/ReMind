@@ -168,7 +168,7 @@ jobs:
             --volume "$PWD:/src" \
             --workdir /src \
             semgrep/semgrep:1.170.0 \
-            semgrep scan --error --config p/security-audit --config p/secrets \
+            semgrep scan --error --timeout 30 --jobs 2 --config p/security-audit --config p/secrets \
               --exclude node_modules --exclude dist --json . > semgrep.json || status=$?
           if [ "$status" -gt 1 ]; then
             echo "Semgrep failed operationally with exit code $status"
