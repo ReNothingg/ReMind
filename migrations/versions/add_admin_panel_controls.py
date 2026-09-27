@@ -1,10 +1,10 @@
-"""Add admin roles and moderation controls
 
-Revision ID: add_admin_panel_controls
-Revises: add_chat_mind_binding
-Create Date: 2026-05-03
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

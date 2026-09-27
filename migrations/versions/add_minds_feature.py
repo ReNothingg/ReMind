@@ -1,10 +1,10 @@
-"""Add minds feature
 
-Revision ID: add_minds_feature
-Revises: add_user_name_field
-Create Date: 2026-04-28
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

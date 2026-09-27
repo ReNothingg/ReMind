@@ -1,10 +1,10 @@
-"""Add GitHub agent feature
 
-Revision ID: add_github_agent_feature
-Revises: add_auto_web_search_setting
-Create Date: 2026-06-05
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

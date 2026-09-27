@@ -1,10 +1,10 @@
-"""Add admin restriction reasons and expirations
 
-Revision ID: add_admin_restriction_expiry_fields
-Revises: add_admin_panel_controls
-Create Date: 2026-05-04
 
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

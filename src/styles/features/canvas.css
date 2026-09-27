@@ -86,7 +86,7 @@ body.has-canvas-dock {
   --canvas-panel-width: 520px;
   --canvas-dock-collapsed-width: 68px;
   --canvas-dock-width: var(--canvas-dock-collapsed-width);
-  --canvas-dock-gap: 28px;
+  --canvas-dock-gap: 0px;
   --canvas-layout-right-offset: calc(var(--canvas-dock-width) + var(--canvas-dock-gap));
   --canvas-workspace-left: calc(var(--app-rail-offset) + var(--spacing-unit) * 6 + env(safe-area-inset-left));
   --canvas-workspace-right: calc(var(--canvas-layout-right-offset) + var(--spacing-unit) * 6 + env(safe-area-inset-right));
@@ -97,6 +97,7 @@ body.has-canvas-dock {
 
 body.has-canvas-dock.canvas-open {
   --canvas-dock-width: var(--canvas-panel-width);
+  --canvas-dock-gap: 28px;
 }
 
 body.has-canvas-dock .ui-app-canvas-stage {

@@ -1,9 +1,9 @@
-"""Add one-time Apple authentication challenge and replay tables.
 
-Revision ID: add_apple_auth_security
-Revises: add_telegram_link_requests
-Create Date: 2026-08-10
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

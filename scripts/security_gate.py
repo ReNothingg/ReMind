@@ -7,7 +7,7 @@ HIGH_WORDS = {"high", "critical", "error", "err"}
 
 
 class SecurityReportError(ValueError):
-    """репотрет безопасности"""
+    pass
 
 
 def load_json_file(path: Optional[str], scanner: str = "security scanner") -> Any:

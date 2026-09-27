@@ -25,6 +25,7 @@ from config import (
     SECRET_KEY,
 )
 from services.canvas_tools import normalize_canvas_textdoc
+from services.context_usage import normalize_context_usage
 from utils.auth import ChatShare, UserChatHistory, db
 from utils.responses import logger
 
@@ -367,6 +368,18 @@ def normalize_message(msg: Any) -> dict:
             "parts": parts,
             "timestamp": msg.get("timestamp") or int(time.time()),
         }
+        if isinstance(msg.get("model_id"), str):
+            normalized["model_id"] = msg["model_id"][:100]
+        if usage := normalize_context_usage(msg.get("context_usage")):
+            normalized["context_usage"] = usage
+        if isinstance(msg.get("selected_tools"), list):
+            from services.composer_tools import TOOL_IDS
+
+            normalized["selected_tools"] = [
+                tool for tool in msg["selected_tools"] if isinstance(tool, str) and tool in TOOL_IDS
+            ]
+        if role == "user" and isinstance(msg.get("composer_content"), str):
+            normalized["composer_content"] = msg["composer_content"][:34048]
         sources = msg.get("sources")
         if isinstance(sources, list) and sources:
             normalized["sources"] = sources
@@ -758,6 +771,7 @@ def persist_chat_operation(
     allow_guest_file_persistence: bool = False,
     mind_id: int | None = None,
 ) -> list[dict]:
+    model_message = {**model_message, "model_id": model_name}
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
         raise ValueError("invalid_session_id")

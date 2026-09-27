@@ -36,6 +36,8 @@ ALLOWED_FILE_EXTENSIONS = {
     "yaml",
     "yml",
 }
+CHAT_SOURCE_EXTENSIONS = {"py", "js", "jsx", "tsx", "html", "sql", "sh", "toml"}
+ALLOWED_FILE_EXTENSIONS.update(CHAT_SOURCE_EXTENSIONS)
 CHAT_IMAGE_MIME_TYPES = {
     "gif": "image/gif",
     "jpeg": "image/jpeg",
@@ -64,6 +66,7 @@ CHAT_TEXT_MIME_TYPES = {
     "yaml": "application/yaml",
     "yml": "application/yaml",
 }
+CHAT_TEXT_MIME_TYPES.update({extension: "text/plain" for extension in CHAT_SOURCE_EXTENSIONS})
 CHAT_TEXTUAL_DETECTED_MIME_TYPES = {
     "application/json",
     "application/xml",
@@ -169,6 +172,9 @@ def _read_model_text(filepath: Path) -> str | None:
 
 
 def _classify_chat_file(filepath: Path, extension: str) -> tuple[str, str | None] | None:
+    if extension in CHAT_SOURCE_EXTENSIONS:
+        text = _read_model_text(filepath)
+        return ("text/plain", text) if text is not None else None
     is_valid, detected_mime = validate_mime_type(str(filepath))
 
     if extension in CHAT_IMAGE_MIME_TYPES:
@@ -251,7 +257,11 @@ def handle_file_upload(file_storage, user_id):
 
     try:
         file_storage.save(str(filepath))
-        is_valid, error = validate_file_content(str(filepath))
+        is_valid, error = (
+            (True, None)
+            if extension in CHAT_SOURCE_EXTENSIONS
+            else validate_file_content(str(filepath))
+        )
         if not is_valid:
             _safe_unlink(filepath)
             return None
@@ -271,7 +281,7 @@ def handle_file_upload(file_storage, user_id):
             _safe_unlink(filepath)
             return None
 
-        if not is_safe_to_serve(str(filepath)):
+        if extension not in CHAT_SOURCE_EXTENSIONS and not is_safe_to_serve(str(filepath)):
             _safe_unlink(filepath)
             return None
     except Exception:
@@ -305,10 +315,20 @@ def restore_stored_file_for_model(
         return None
 
     upload_root = Path(UPLOAD_FOLDER).resolve()
-    filepath = (upload_root / filename).resolve()
-    if filepath.parent != upload_root or not filepath.is_file() or not is_safe_to_serve(filepath):
+    if (upload_root / filename).is_symlink():
         return None
-    is_valid, _error = validate_file_content(str(filepath))
+    filepath = (upload_root / filename).resolve()
+    if (
+        filepath.parent != upload_root
+        or not filepath.is_file()
+        or (extension not in CHAT_SOURCE_EXTENSIONS and not is_safe_to_serve(filepath))
+    ):
+        return None
+    is_valid, _error = (
+        (True, None)
+        if extension in CHAT_SOURCE_EXTENSIONS
+        else validate_file_content(str(filepath))
+    )
     if not is_valid:
         return None
     file_size = filepath.stat().st_size

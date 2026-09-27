@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "سياق الجلسة الحالية",
+    "used": "تم استخدام {{percent}} من السياق",
+    "system": "تعليمات النظام",
+    "tools": "تعريفات الأدوات",
+    "messages": "الرسائل",
+    "estimate": "تقدير لسجل الجلسة النشط بالكامل والمرفقات. تُحسب تعليمات النظام والأدوات مرة واحدة.",
+    "unavailable": "لا توجد بيانات سياق لهذه الجلسة والنموذج بعد. ستظهر بعد الرد."
+  },
+  "artifactDownload": {
+    "action": "تنزيل {{name}}",
+    "label": "تنزيل",
+    "loading": "جارٍ التنزيل…",
+    "unavailable": "الملف غير متاح أو ليس لديك إذن بالوصول إليه.",
+    "failed": "تعذر تنزيل الملف. حاول مرة أخرى."
+  },
+  "toolPanels": {
+    "plan": "الخطة",
+    "questions": "الأسئلة",
+    "status": {
+      "pending": "قيد الانتظار",
+      "in_progress": "جارٍ التنفيذ",
+      "completed": "مكتمل"
+    },
+    "customAnswer": "إجابتك الخاصة",
+    "send": "إرسال الإجابات",
+    "sent": "تم إرسال الإجابات",
+    "answerMessage": "إجابات على: {{title}}",
+    "readOnly": "افتح محادثة قابلة للتعديل للإجابة.",
+    "sendFailed": "تعذر الإرسال. حاول مرة أخرى."
+  },
   "reliability": {"offline":"غير متصل · ستتم إضافة الرسائل إلى قائمة الانتظار","reconnecting":"جارٍ استعادة الاتصال…","queued":"الرسائل في قائمة الانتظار: {{count}}","draftSyncing":"جارٍ مزامنة المسودة…","draftSynced":"تمت مزامنة المسودة","draftLocal":"تم حفظ المسودة محليًا","queueFull":"قائمة الانتظار دون اتصال ممتلئة. أعد الاتصال قبل إرسال ملفات إضافية.","temporaryOffline":"تتطلب المحادثات المؤقتة اتصالًا ولا تُحفظ أبدًا في قائمة الانتظار دون اتصال.","interrupted":"توقّف إنشاء الرد. يمكنك إعادة إنشاء هذا الإصدار."},
   "language": {
     "ru": "RU",
@@ -104,6 +135,24 @@
     "close": "إغلاق"
   },
   "think": {
+    "presentation": {
+      "think": "التفكير",
+      "working": "جارٍ العمل",
+      "search": "البحث",
+      "model": "النموذج",
+      "input": "الإدخال",
+      "output": "الإخراج",
+      "details": "التفاصيل",
+      "status": "الحالة",
+      "toolCount": "استدعاءات الأدوات: {{count}}",
+      "messageCount": "الرسائل: {{count}}",
+      "states": {
+        "running": "جارٍ التنفيذ",
+        "complete": "مكتمل",
+        "failed": "فشل",
+        "interrupted": "متوقف"
+      }
+    },
     "label": "الأفكار",
     "loading": "جارٍ التفكير...",
     "expand": "توسيع الأفكار",
@@ -130,7 +179,7 @@
     "model": {
       "waiting": "في انتظار متابعة النموذج للتحليل...",
       "responded": "تابع النموذج التحليل",
-      "failed": "لم يستجب النموذج في الوقت المحدد"
+      "failed": "لم يستجب النموذج"
     }
   },
   "landing": {
@@ -296,6 +345,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "تحليل الصور",
+      "image_analysisDescription": "فحص الصور المرفقة وتفاصيلها",
+      "visualize": "تصور تفاعلي",
+      "visualizeDescription": "مخططات تفاعلية ومحاكاة وتطبيقات مصغرة",
+      "github": "GitHub",
+      "githubDescription": "قراءة كود المستودعات المتصلة",
+      "python": "Python",
+      "pythonDescription": "إجراء حسابات وتحليل بيانات وإنشاء ملفات",
+      "canvas": "لوحة",
+      "canvasDescription": "إنشاء المستندات والكود وتحريرهما",
+      "charts": "رسوم بيانية",
+      "chartsDescription": "تمثيل البيانات برسوم بيانية",
+      "diagrams": "مخططات",
+      "diagramsDescription": "عرض العمليات والعلاقات",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "إنشاء الإيقاعات وتحريرها",
+      "quiz": "اختبار",
+      "quizDescription": "إنشاء اختبارات تفاعلية",
+      "githubConnect": "اربط GitHub في الإعدادات",
+      "signIn": "سجّل الدخول لاستخدام الأداة",
+      "unavailable": "هذه الأداة غير متاحة حاليًا",
+      "web": "البحث على الويب",
+      "webDescription": "البحث عن معلومات حديثة",
+      "image": "صورة",
+      "imageDescription": "إنشاء صورة",
+      "imageDemoDescription": "مولّد صور تجريبي داخلي",
+      "choose": "اختيار أداة",
+      "empty": "لم يتم العثور على أدوات",
+      "remove": "إزالة {{tool}}"
+    },
     "attachFiles": "إرفاق ملفات",
     "attachUnavailable": "الإرفاق غير متاح",
     "attachRequiresAccount": "سجّل لتتمكن من إرفاق الملفات",
@@ -349,6 +429,15 @@
     "readOnly": "للقراءة فقط"
   },
   "models": {
+    "think": "التفكير",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "نموذج اختبار داخلي"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "نموذج اختبار داخلي متدفق"
+    },
     "choose": "اختر نموذجًا",
     "thinkingLevel": "مستوى التفكير",
     "thinkingLevelDescription": "يتحكم في سرعة الاستجابة وعمق الاستدلال",

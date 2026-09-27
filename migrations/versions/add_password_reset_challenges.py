@@ -1,9 +1,9 @@
-"""Add hashed one-time password reset codes.
 
-Revision ID: add_password_reset_challenges
-Revises: add_apple_auth_security
-Create Date: 2026-08-28
-"""
+
+
+
+
+
 
 import sqlalchemy as sa
 from alembic import op

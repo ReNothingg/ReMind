@@ -12,7 +12,7 @@ export const ALLOW_GUEST_CHATS_SAVE = false;
 
 export const TEXT_FILE_EXTENSIONS = [
     'txt', 'md', 'json', 'csv', 'xml', 'yaml', 'yml',
-    'css', 'java', 'rs', 'go', 'ts',
+    'css', 'java', 'rs', 'go', 'ts', 'py', 'js', 'jsx', 'tsx', 'html', 'sql', 'sh', 'toml',
 ];
 
 export const IMAGE_FILE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];

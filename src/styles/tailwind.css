@@ -23,6 +23,8 @@
 @import "./components/chat/github-diff.css" layer(components);
 @import "./components/chat/quote.css" layer(components);
 @import "./components/chat/think-block.css" layer(components);
+@import "./components/chat/tool-panel.css" layer(components);
+@import "./components/chat/context-usage.css" layer(components);
 @import "./components/chat/thinking-process.css" layer(components);
 @import "./components/chat/message-attachments.css" layer(components);
 @import "./components/chat/web-search-sources.css" layer(components);

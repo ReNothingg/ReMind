@@ -1,34 +1,14 @@
-# Visualize
+# Interactive visualization
 
-"Create visualizations and interactive tools directly in conversation. Use when asked to show how something works, make simulators or labs, maps, plots, charts or graphs, comparisons, UI mockups, scenarios, adjustable inputs, and exploration beyond regular text."
+Create interactive explanations, simulations, charts, maps and small UI demos inside the conversation.
 
-## Instructions
+## Delivery contract
 
-Namespace: visualize
+Call `render_visualization` with an accessible title and the complete HTML fragment in `html`. The server publishes the component into the current response. If an existing HTML file is listed among the current request's available files, pass its exact `filename` instead of `html`. A sandbox path, local path, or URL is not a filename reference. Never emit a file-reference glyph, invent a rendering namespace, or claim that a local file has been displayed.
 
-You can create interactive visualizations that render natively inside a ReMind assistant message. Use them when direct manipulation, spatial behavior, adjustable inputs, a chart, a map, a simulator, or a compact UI mockup materially helps the user understand or explore the answer. Do not create one for ordinary prose, a simple fact, or data that is clearer as a short Markdown table. Use Mermaid for a static labeled node-and-edge diagram.
+Use Python for actual computations or exportable scientific figures when requested. Use Canvas for a complete application or an editable document. Tool acceptance proves that the fragment was delivered, not that its JavaScript or business logic was tested. Keep claims proportional to actual verification. Do not repeat the published HTML in the final prose.
 
-Tool boundary: when the user explicitly asks to run Python or names Python, Matplotlib, NumPy, pandas, Pillow, pypdf, ReportLab, or openpyxl, use the `python_execute` function tool when it is available. Never replace that request with `visualize`, Canvas/canmore, or an unexecuted code sample. Use `visualize` for an interactive in-chat result only when the user asks for interactivity or when no Python execution tool is available.
-
-Output one HTML fragment in a fenced block. The optional text after the colon is the accessible title:
-
-````text
-```visualize:Accessible title
-<section>...</section>
-<style>...</style>
-<script>...</script>
-```
-````
-
-Use `visualize-wide` only for several compact panels that must remain side by side at desktop width. Both forms must remain usable down to 320px:
-
-````text
-```visualize-wide:Comparison title
-...
-```
-````
-
-The fragment is stored with the assistant message and restored from chat history. Write only the fragment: no doctype, html, head, body, meta, iframe, object, embed, or base elements. Keep it below 768 KiB. Make the first render useful before any interaction. Keep all presentation-only state local to the fragment.
+The HTML must be a fragment with no doctype, html, head, body, iframe, object, embed or base elements. Include CSS and JavaScript only as required. Stay below 768 KiB. Do not put a bare Markdown fence on its own line inside the fragment.
 
 ### ReMind fields
 
@@ -70,115 +50,8 @@ SVG and canvas APIs cannot resolve CSS variables directly. Resolve colors first 
   inline visual merely because the request involves data, charts, or an
   interactive page.
 - Use Mermaid when labeled nodes and edges fully explain a static structure;
-  return a normal fenced Mermaid block and no visualization file. Use HTML for
+  call `render_widget` with format `mermaid`. Use HTML for
   dynamics, spatial motion, adjustable inputs, and other visuals.
-- Work silently unless blocked or the user explicitly asks for progress. Never
-  send commentary or progress updates while reading this skill or writing or
-  updating the file; the final response must be your first user-facing message.
-- In user-facing prose, describe only what the visual helps the user see or
-  decide. Keep it concise and do not repeat information already clear from the
-  visual. Never announce this skill, a visualization surface, widgets, HTML,
-  SVG, scripts, local files, inline data, or implementation details.
-
-## Context compaction
-
-Copy into every compaction summary:
-`Reload the full visualize skill before creating or updating a visualization.`
-
-## Inline HTML output contract
-
-### File
-
-- For each new or updated visualization, choose a concise ASCII
-  lowercase-hyphenated title and write `<title>.html` in an explicitly writable,
-  durable, task-owned location outside the checked-out repository. Prefer the
-  thread-scoped visualization directory when it appears in the writable roots;
-  otherwise choose another approved writable root or scratch directory. Use a
-  thread-isolated temporary directory only when the visualization will be
-  ingested immediately.
-- Use the absolute path on the executor that creates the file. Never assume
-  `~/.codex` is writable unless its thread directory appears in the writable
-  roots.
-- Build the visual in the conversation. Use the open project when the user asks
-  for a site, app page, component, or change to existing project files.
-
-### Fragment
-
-- Write only an HTML fragment: no `<!doctype>`, `<html>`, `<head>`, or `<body>`.
-- Write literal markup: use `<div class="card">Hi</div>` plus a real newline,
-  never `<div class=\"card\">Hi</div>\n`. Never embed the fragment in an inline
-  Python, JavaScript, or shell string. Read it back; rewrite literal `\"` or
-  `\n`.
-- Keep CSS and JavaScript in the fragment only when base classes are
-  insufficient. Load static resources only from the CDN allowlist. Never use
-  `fetch`, XHR, WebSocket, or other API calls.
-- Give the fragment root a unique ID and select it with
-  `document.getElementById(...)`. Never derive the root from
-  `document.currentScript`; scripts may sit outside the root.
-- Keep visualizations under 1 MB. Aggregate, bin, downsample, reduce precision,
-  or drop unused fields from large inline datasets.
-- Check that JavaScript has no undefined identifiers, every queried element
-  exists, and the primary interaction updates the visual. The bundled
-  `python3 scripts/render.py <absolute-fragment-path> [<destination>.html] [--serve]`
-  can wrap a fragment as standalone HTML or temporarily serve it for browser
-  inspection when a preview would help with layout, theme, or runtime behavior.
-
-### Content and response
-
-- Keep the fragment focused on the visualization. Do not include explanatory
-  paragraphs, formulas, instructions, or narrative callouts. Include only
-  necessary labels, legends, values, and accessible text alternatives.
-- Use the normal response flow. Put any necessary concise explanation outside
-  the fragment, and add this visualization content reference on its own line
-  where the visual should appear, using the absolute executor-side file path:
-
-```text
-visualize{"path":"<absolute-path>/<title>.html"}
-```
-
-- Add `"mode":"wide"` only when several compact chart panels must remain side
-  by side for direct comparison and would be unreadable at the normal width.
-  Never widen a single plot, map, grid, diagram, or timeline merely because
-  it is dense. Never widen full-size mockups or other self-contained views;
-  stack them vertically instead. Wide visualizations render in an expandable
-  inline surface up to 1,024px:
-
-```text
-visualize{"path":"<absolute-path>/<title>.html","mode":"wide"}
-```
-
-- Whenever you create or update an inline visualization, include its content
-  reference in that same turn's final response, even when editing an existing
-  file or reusing a path shown in an earlier turn.
-- The JSON object may also include a `title` when needed.
-- Emit only the content reference for the fragment. Never announce it as an
-  artifact, website, output, attachment, link, or download, and never add a
-  Markdown link to it. Do not append a Markdown table or repeat the visual's
-  data; add at most one short conclusion when the user needs an explanation.
-
-### External resources
-
-- The CSP allows only `cdnjs.cloudflare.com`, `esm.sh`, `cdn.jsdelivr.net`,
-  `unpkg.com`, `fonts.googleapis.com`, `fonts.gstatic.com`, and
-  `fonts.bunny.net`. Other origins are blocked and fail silently.
-
-## Exporting an existing visualization
-
-- Keep the fragment as the editable inline source. When the user explicitly asks
-  to save, export, or publish a visualization that is already shown in the
-  conversation, render it with
-  `python3 scripts/render.py <absolute-fragment-path> <destination>.html`.
-- Apply this export flow only when the user explicitly asks to turn the existing
-  inline source or visualization into a website. For a general website request,
-  build a new responsive site in the output directory or open project, using
-  Sites when appropriate, without applying this skill's guidance.
-- If the visualization calls `window.openai`, replace that host-only interaction
-  before using the standalone HTML outside Codex.
-- When the user asks to publish or host an existing visualization and the Sites
-  skills are available, use `sites-building` to choose the project and write the
-  rendered standalone document as `index.html`, then use `sites-hosting`.
-- If Sites is unavailable, offer the standalone HTML without claiming it was
-  published.
 
 ## Composition
 
@@ -188,8 +61,8 @@ Choose the smallest composition that fits.
   or long stacks. Add only requested controls, use one mechanism per state, and
   never invent search, filter, or reset controls.
 - Keep filters, selections, and other presentation-only interactions local. For
-  drill-down actions that ask Codex to investigate or explain selected data,
-  call `await window.openai.sendFollowUpMessage({ prompt, title })`, where the
+  drill-down actions that ask ReMind to investigate or explain selected data,
+  call `await window.remind.sendFollowUpMessage({ prompt, title })`, where the
   optional `title` is a concise confirmation-dialog heading of up to 250
   characters. Include the selected values and requested investigation in the
   prompt, and label the action clearly.

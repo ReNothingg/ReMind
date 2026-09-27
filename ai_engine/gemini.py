@@ -12,15 +12,17 @@ from typing import Any, Generator
 from google import genai
 from google.genai import errors, types
 
-from ai_engine.personalization import build_system_prompt
+from ai_engine.output_contract import output_contract_errors
+from ai_engine.prompt_templates import render_prompt
 from config import GEMINI_API_KEY, GEMINI_STREAM_TIMEOUT_MS
+from services.context_usage import build_context_usage, context_weights
 from services.files import restore_stored_file_for_model
-from services.model_tools import (
-    MAX_TOOL_CALLS_PER_ROUND,
-    MAX_TOOL_CALLS_TOTAL,
+from services.interaction_tools import readable_panel_history
+from services.model_runtime import ModelRuntime
+from services.tool_execution import ToolCall, ToolExecution
+from services.tool_protocol import (
     MAX_TOOL_ROUNDS,
-    execute_model_tool,
-    model_tool_declarations,
+    ModelToolResult,
     serialize_tool_output,
 )
 
@@ -29,11 +31,6 @@ logger = logging.getLogger(__name__)
 GEMINI_31_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite"
 HISTORY_ATTACHMENT_MAX_COUNT = 8
 HISTORY_ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024
-EMPTY_RESPONSE = (
-    "Пустой ответ. "
-    "Модель не сгенерировала ответ. Это могло произойти из-за внутренних правил "
-    "безопасности или временной ошибки. Пожалуйста, попробуйте еще раз."
-)
 DEFAULT_THINKING_LEVEL = "medium"
 THINKING_LEVELS: dict[str, types.ThinkingLevel] = {
     "minimal": types.ThinkingLevel.MINIMAL,
@@ -43,7 +40,7 @@ THINKING_LEVELS: dict[str, types.ThinkingLevel] = {
 }
 MAX_THOUGHT_SUMMARY_CHARS = 160_000
 _THINK_BLOCK_RE = re.compile(r"<think(?:\s[^>]*)?>[\s\S]*?</think>", re.IGNORECASE)
-MAX_SEARCH_ACTIVITY_ENCODED_CHARS = 48_000
+MAX_SEARCH_ACTIVITY_ENCODED_CHARS = 4_000
 MAX_PYTHON_ACTIVITY_CODE_CHARS = 24_000
 MAX_PYTHON_ACTIVITY_PURPOSE_CHARS = 1_000
 MAX_PYTHON_ACTIVITY_RESULT_CHARS = 12_000
@@ -62,12 +59,6 @@ def _manual_web_search_requested(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _web_tool_enabled(user_message_data: dict[str, Any]) -> bool:
-    return _manual_web_search_requested(
-        user_message_data.get("webSearch")
-    ) or _manual_web_search_requested(user_message_data.get("autoWebSearch"))
 
 
 def _function_declarations(
@@ -200,7 +191,7 @@ def _prepare_history(
 def _part_from_legacy(part: dict[str, Any]) -> types.Part | None:
     text = part.get("text")
     if text is not None:
-        cleaned = _THINK_BLOCK_RE.sub("", str(text)).strip()
+        cleaned = readable_panel_history(_THINK_BLOCK_RE.sub("", str(text))).strip()
         return types.Part.from_text(text=cleaned) if cleaned else None
 
     inline_data = part.get("inline_data")
@@ -246,13 +237,41 @@ def _prepare_new_message(user_message_data: dict[str, Any]) -> list[types.Part]:
     return content_parts
 
 
-def _history_for_client(user_message_data: dict[str, Any]) -> list[types.Content]:
+def _history_for_client(
+    user_message_data: dict[str, Any],
+) -> list[types.Content | types.ContentDict]:
     legacy_history = _prepare_history(
         user_message_data.get("history", []),
         allow_stored_attachments=bool(user_message_data.get("history_is_canonical")),
     )
-    history: list[types.Content] = []
-    for message in legacy_history:
+    history: list[types.Content | types.ContentDict] = []
+    recent_history = []
+    history_chars = 0
+    for message in reversed(legacy_history[-40:]):
+        bounded_parts = []
+        remaining = 60_000
+        for part in message.get("parts", []):
+            if "text" not in part:
+                bounded_parts.append(part)
+                continue
+            if remaining <= 0:
+                continue
+            text = readable_panel_history(_THINK_BLOCK_RE.sub("", str(part["text"])))
+            if len(text) > remaining:
+                marker = render_prompt("context/truncation_marker.md")
+                half = max(0, (remaining - len(marker)) // 2)
+                text = text[:half] + marker + (text[-half:] if half else "")
+                text = text[:remaining]
+            bounded_parts.append({"text": text})
+            remaining -= len(text)
+        size = 60_000 - remaining
+        if history_chars + size > 180_000:
+            break
+        recent_history.append({**message, "parts": bounded_parts})
+        history_chars += size
+    for message in reversed(recent_history):
+        if not history and message.get("role") != "user":
+            continue
         parts = [
             converted
             for part in message.get("parts", [])
@@ -358,6 +377,8 @@ def _python_activity_token(
     duration_ms: Any = 0,
     artifact_count: Any = 0,
     output: Any = "",
+    code_truncated: bool = False,
+    output_truncated: bool = False,
 ) -> str:
     safe_status = (
         status
@@ -378,6 +399,8 @@ def _python_activity_token(
         "duration_ms": _bounded_activity_int(duration_ms, 60_000),
         "artifact_count": _bounded_activity_int(artifact_count, 10),
         "output": str(output or "")[:MAX_PYTHON_ACTIVITY_RESULT_CHARS],
+        "code_truncated": code_truncated,
+        "output_truncated": output_truncated,
     }
     encoded = base64.urlsafe_b64encode(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -386,7 +409,7 @@ def _python_activity_token(
 
 
 def _python_activity_output(result: dict[str, Any]) -> str:
-    """Prepare a bounded, plain-text execution result for the activity timeline."""
+
     if not isinstance(result, dict):
         return ""
     output = str(result.get("stdout") or result.get("stderr") or "")
@@ -451,12 +474,112 @@ def _model_activity_token(activity_id: str, status: str, *, round_number: int) -
     return f'<model_activity data-b64="{encoded}"></model_activity>'
 
 
-def _model_artifact_response_parts(artifacts: Any) -> list[types.FunctionResponsePart]:
+def _generic_activity_token(
+    activity_id: str,
+    name: str,
+    status: str,
+    *,
+    detail: str = "",
+    duration_ms: float = 0,
+    error: str = "",
+) -> str:
+    payload = {
+        "type": "tool_execution",
+        "id": activity_id,
+        "name": name,
+        "status": status,
+        "detail": detail[:4000],
+        "duration_ms": int(duration_ms),
+        "error": error[:100],
+    }
+    encoded = base64.urlsafe_b64encode(json.dumps(payload, ensure_ascii=False).encode()).decode(
+        "ascii"
+    )
+    return f'<tool_activity data-b64="{encoded}"></tool_activity>'
+
+
+def _execution_activity(
+    call: ToolCall, activity_id: str, result: ModelToolResult | None = None, duration_ms: float = 0
+) -> str:
+    arguments = call.arguments if isinstance(call.arguments, dict) else {}
+    output = result.output if result is not None else {}
+    status = "running" if result is None else "completed" if output.get("ok") else "failed"
+
+    def preview(value: Any, limit: int) -> str:
+        return str(value or "").encode("utf-8")[:limit].decode("utf-8", errors="ignore")
+
+    if call.name == "python_execute":
+        return _python_activity_token(
+            activity_id,
+            f"python_{status}",
+            code=preview(arguments.get("code"), 2000) if result is None else "",
+            purpose=preview(arguments.get("purpose"), 256) if result is None else "",
+            duration_ms=duration_ms,
+            artifact_count=len(output.get("artifacts") or []),
+            output=preview(_python_activity_output(output), 1000),
+            code_truncated=len(str(arguments.get("code") or "").encode()) > 2000,
+            output_truncated=len(_python_activity_output(output).encode()) > 1000,
+        )
+    if call.name in {"image_crop", "image_tile"}:
+        return _image_activity_token(
+            activity_id,
+            f"image_{status}",
+            operation="crop" if call.name == "image_crop" else "tile",
+            purpose=preview(arguments.get("purpose"), 256),
+            filename=arguments.get("filename"),
+            image_count=len(result.model_artifacts) if result is not None else 0,
+        )
+    if call.name == "web_search":
+        search_status = (
+            "web_search_started"
+            if result is None
+            else (
+                "web_search_failed"
+                if not output.get("ok")
+                else "web_search_done" if result.sources else "web_search_no_results"
+            )
+        )
+        return _search_activity_token(
+            search_status, arguments.get("query"), result.sources if result is not None else None
+        )
+    detail = next(
+        (
+            str(arguments[key])
+            for key in (
+                "filename",
+                "url",
+                "path",
+                "repo_full_name",
+                "skill_id",
+                "title",
+                "name",
+                "format",
+            )
+            if isinstance(arguments.get(key), str)
+        ),
+        "",
+    )
+    return _generic_activity_token(
+        activity_id,
+        call.name,
+        status,
+        detail=preview(detail, 512),
+        duration_ms=duration_ms,
+        error=str(output.get("error") or ""),
+    )
+
+
+def _model_artifact_response_parts(
+    artifacts: Any,
+    *,
+    max_images: int = MAX_MODEL_FEEDBACK_IMAGES_PER_ROUND,
+    max_bytes: int = MAX_MODEL_FEEDBACK_BYTES_PER_ROUND,
+) -> list[types.FunctionResponsePart]:
     if not isinstance(artifacts, list):
         return []
     parts: list[types.FunctionResponsePart] = []
     total_bytes = 0
-    for artifact in artifacts[:MAX_MODEL_FEEDBACK_IMAGES_PER_ROUND]:
+    for artifact in artifacts[:max_images]:
         if not isinstance(artifact, dict):
             continue
         data = artifact.get("data")
@@ -467,7 +590,7 @@ def _model_artifact_response_parts(artifacts: Any) -> list[types.FunctionRespons
             or mime_type not in {"image/jpeg", "image/png", "image/webp"}
         ):
             continue
-        if total_bytes + len(data) > MAX_MODEL_FEEDBACK_BYTES_PER_ROUND:
+        if total_bytes + len(data) > max_bytes:
             break
         total_bytes += len(data)
         name = _bounded_activity_text(artifact.get("original_name"), 180) or "image"
@@ -513,24 +636,10 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
     db_user_id = _db_user_id(user_id)
     client: genai.Client | None = None
     try:
-        system_prompt = build_system_prompt(db_user_id, user_message_data)
-        tools_enabled = user_message_data.get("toolsEnabled", True) is not False and not isinstance(
-            user_message_data.get("telegram_context"), dict
-        )
-        declarations = (
-            model_tool_declarations(
-                db_user_id,
-                enable_web=_web_tool_enabled(user_message_data),
-                input_files=user_message_data.get("files"),
-            )
-            if tools_enabled
-            else []
-        )
-        working_files = [
-            dict(file_info)
-            for file_info in user_message_data.get("files", [])
-            if isinstance(file_info, dict)
-        ]
+        runtime = ModelRuntime.create(db_user_id, user_message_data)
+        tools_enabled = bool(runtime.prompts.access.available)
+        execution = ToolExecution(runtime)
+        output_repairs = 0
         client = _create_gemini_client()
         chat = client.chats.create(
             model=GEMINI_31_FLASH_LITE_MODEL_ID,
@@ -538,17 +647,15 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
         )
         next_message: Any = _prepare_new_message(user_message_data)
         if not next_message:
-            yield EMPTY_RESPONSE
-            return
+            raise RuntimeError("empty_model_input")
 
-        completed_tool_calls: set[str] = set()
-        total_tool_calls = 0
         any_answer_generated = False
         force_web_search = tools_enabled and _manual_web_search_requested(
             user_message_data.get("webSearch")
         )
         thought_chunks: list[str] = []
         thought_chars = 0
+        summary_chars = 0
         thought_opened_at: int | None = None
         thought_sequence = 0
         thought_id = ""
@@ -594,6 +701,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             if remaining_chars <= 0:
                 return None
             separator = "\n\n" if (separate or thought_needs_separator) and thought_chunks else ""
+            if content.startswith("<") and len(separator) + len(content) > remaining_chars:
+                return None
             thought_chunk = f"{separator}{content}"[:remaining_chars]
             if not thought_chunk:
                 return None
@@ -608,32 +717,37 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             )
 
         for tool_round in range(MAX_TOOL_ROUNDS + 1):
-            if tools_enabled:
-                declarations = model_tool_declarations(
-                    db_user_id,
-                    enable_web=_web_tool_enabled(user_message_data),
-                    input_files=working_files,
-                )
-            function_calls: list[tuple[str, dict[str, Any]]] = []
+            declarations = (
+                runtime.declarations()
+                if tool_round < MAX_TOOL_ROUNDS and not execution.exhausted
+                else []
+            )
+            system_prompt = runtime.prompts.render(runtime.canvas)
+            weights = context_weights(
+                system_prompt, declarations, [chat.get_history(curated=True), next_message]
+            )
+            round_usage = None
+            function_calls: list[ToolCall] = []
             round_answer_chunks: list[str] = []
+            answer_chars = 0
             model_wait_id = ""
             waiting_for_first_chunk = False
-            if tool_round > 0:
-                model_wait_id = hashlib.sha256(
-                    f"{user_message_data.get('request_id') or 'model'}:{tool_round}".encode("utf-8")
-                ).hexdigest()[:24]
-                model_wait_started = append_thought_content(
-                    _model_activity_token(
-                        model_wait_id,
-                        "model_waiting",
-                        round_number=tool_round + 1,
-                    ),
-                    separate=True,
-                )
-                if model_wait_started:
-                    yield model_wait_started
-                waiting_for_first_chunk = True
+            model_wait_id = hashlib.sha256(
+                f"{user_message_data.get('request_id') or 'model'}:{tool_round}".encode("utf-8")
+            ).hexdigest()[:24]
+            model_wait_started = append_thought_content(
+                _model_activity_token(
+                    model_wait_id,
+                    "model_waiting",
+                    round_number=tool_round + 1,
+                ),
+                separate=True,
+            )
+            if model_wait_started:
+                yield model_wait_started
+            waiting_for_first_chunk = True
 
+            response_stream = None
             try:
                 response_stream = chat.send_message_stream(
                     next_message,
@@ -647,6 +761,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 force_web_search = False
 
                 for chunk in response_stream:
+                    if getattr(chunk, "usage_metadata", None) is not None:
+                        round_usage = chunk.usage_metadata
                     if waiting_for_first_chunk:
                         model_wait_finished = append_thought_content(
                             _model_activity_token(
@@ -660,25 +776,43 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                             yield model_wait_finished
                         waiting_for_first_chunk = False
 
+                    candidates = getattr(chunk, "candidates", None) or []
+                    finish = (
+                        str(getattr(candidates[0], "finish_reason", "") or "") if candidates else ""
+                    )
+                    if finish and finish.split(".")[-1] not in {
+                        "STOP",
+                        "FINISH_REASON_UNSPECIFIED",
+                    }:
+                        raise RuntimeError("incomplete_model_response")
                     for part in _parts_from_chunk(chunk):
                         text = getattr(part, "text", None)
                         if text and getattr(part, "thought", False):
-                            thought_event = append_thought_content(str(text))
+                            summary = str(text)[: max(0, 32_000 - summary_chars)]
+                            summary_chars += len(summary)
+                            thought_event = append_thought_content(
+                                summary.replace("&", "＆").replace("<", "‹").replace(">", "›")
+                            )
                             if thought_event:
                                 yield thought_event
                             continue
 
                         if text:
                             round_answer_chunks.append(str(text))
+                            answer_chars += len(str(text))
+                            if answer_chars > 1_000_000:
+                                raise RuntimeError("model_output_too_large")
 
                         function_call = getattr(part, "function_call", None)
                         name = str(getattr(function_call, "name", "") or "").strip()
                         if name:
-                            try:
-                                arguments = dict(getattr(function_call, "args", None) or {})
-                            except (TypeError, ValueError):
-                                arguments = {}
-                            function_calls.append((name, arguments))
+                            function_calls.append(
+                                ToolCall(
+                                    name=name,
+                                    arguments=getattr(function_call, "args", None),
+                                    provider_id=getattr(function_call, "id", None),
+                                )
+                            )
             except Exception:
                 if model_wait_id:
                     model_wait_failed = append_thought_content(
@@ -693,6 +827,9 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                         yield model_wait_failed
                 yield from finalize_thought()
                 raise
+            finally:
+                if response_stream is not None and hasattr(response_stream, "close"):
+                    response_stream.close()
 
             if waiting_for_first_chunk:
                 model_wait_failed = append_thought_content(
@@ -706,201 +843,104 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 if model_wait_failed:
                     yield model_wait_failed
 
+            if context_usage := build_context_usage(round_usage, weights):
+                yield {"context_usage": context_usage}
+
             if not function_calls:
+                contract_errors = output_contract_errors("".join(round_answer_chunks))
+                if contract_errors:
+                    if output_repairs >= 2 or tool_round >= MAX_TOOL_ROUNDS:
+                        raise RuntimeError("invalid_model_output")
+                    output_repairs += 1
+                    next_message = render_prompt(
+                        "context/output_repair.md", {"CONTRACT_ERRORS": ", ".join(contract_errors)}
+                    )
+                    continue
                 yield from finalize_thought()
                 for answer_chunk in round_answer_chunks:
                     yield answer_chunk
                     any_answer_generated = True
                 break
 
-            for index, answer_chunk in enumerate(round_answer_chunks):
-                thought_event = append_thought_content(
-                    answer_chunk,
-                    separate=index == 0,
-                )
-                if thought_event:
-                    yield thought_event
             if tool_round >= MAX_TOOL_ROUNDS:
-                logger.warning("Gemini 3.1 Flash-Lite tool loop limit reached for user %s", user_id)
                 yield from finalize_thought()
-                break
+                raise RuntimeError("tool_round_limit_reached")
 
-            unique_calls: list[tuple[str, dict[str, Any]]] = []
-            round_keys: set[str] = set()
-            for name, arguments in function_calls:
-                call_key = f"{name}:{serialize_tool_output(arguments)}"
-                if call_key in round_keys:
-                    continue
-                round_keys.add(call_key)
-                unique_calls.append((name, arguments))
-
-            remaining_calls = MAX_TOOL_CALLS_TOTAL - total_tool_calls
-            unique_calls = unique_calls[: min(MAX_TOOL_CALLS_PER_ROUND, remaining_calls)]
-            if not unique_calls:
-                logger.warning("Gemini 3.1 Flash-Lite tool call limit reached for user %s", user_id)
-                break
-            total_tool_calls += len(unique_calls)
+            if round_answer_chunks:
+                progress = _generic_activity_token(
+                    f"progress-{tool_round}",
+                    "model_progress",
+                    "completed",
+                    detail="".join(round_answer_chunks)
+                    .encode("utf-8")[:1000]
+                    .decode("utf-8", errors="ignore"),
+                )
+                event = append_thought_content(progress, separate=True)
+                if event:
+                    yield event
 
             response_parts: list[types.Part] = []
-            for name, arguments in unique_calls:
-                call_key = f"{name}:{serialize_tool_output(arguments)}"
-                result_model_artifacts: list[dict[str, Any]] = []
-                if call_key in completed_tool_calls:
-                    result_output = {"ok": False, "error": "duplicate_tool_call"}
-                else:
-                    completed_tool_calls.add(call_key)
-                    python_activity_id = ""
-                    python_started_at = 0.0
-                    image_activity_id = ""
-                    if name == "python_execute":
-                        python_activity_id = hashlib.sha256(call_key.encode("utf-8")).hexdigest()[
-                            :24
-                        ]
-                        python_started_at = time.monotonic()
-                        python_started = append_thought_content(
-                            _python_activity_token(
-                                python_activity_id,
-                                "python_running",
-                                code=arguments.get("code"),
-                                purpose=arguments.get("purpose"),
-                            ),
-                            separate=True,
-                        )
-                        if python_started:
-                            yield python_started
-                    elif name in {"image_crop", "image_tile"}:
-                        image_activity_id = hashlib.sha256(call_key.encode("utf-8")).hexdigest()[
-                            :24
-                        ]
-                        image_started = append_thought_content(
-                            _image_activity_token(
-                                image_activity_id,
-                                "image_running",
-                                operation="crop" if name == "image_crop" else "tile",
-                                purpose=arguments.get("purpose"),
-                                filename=arguments.get("filename"),
-                            ),
-                            separate=True,
-                        )
-                        if image_started:
-                            yield image_started
-                    try:
-                        result = execute_model_tool(
-                            name,
-                            arguments,
-                            user_id=db_user_id,
-                            input_files=working_files,
-                            allow_artifacts=not bool(user_message_data.get("temporary_chat")),
-                        )
-                    except Exception:
-                        logger.exception("Gemini 3.1 Flash-Lite tool execution failed: %s", name)
-                        result_output = {"ok": False, "error": "tool_execution_failed"}
-                        if python_activity_id:
-                            python_failed = append_thought_content(
-                                _python_activity_token(
-                                    python_activity_id,
-                                    "python_failed",
-                                    duration_ms=(time.monotonic() - python_started_at) * 1000,
-                                ),
-                                separate=True,
-                            )
-                            if python_failed:
-                                yield python_failed
-                        if image_activity_id:
-                            image_failed = append_thought_content(
-                                _image_activity_token(
-                                    image_activity_id,
-                                    "image_failed",
-                                    operation="crop" if name == "image_crop" else "tile",
-                                    purpose=arguments.get("purpose"),
-                                    filename=arguments.get("filename"),
-                                ),
-                                separate=True,
-                            )
-                            if image_failed:
-                                yield image_failed
-                        if name == "web_search":
-                            search_failed = append_thought_content(
-                                _search_activity_token("web_search_failed", arguments.get("query")),
-                                separate=True,
-                            )
-                            if search_failed:
-                                yield search_failed
-                    else:
-                        result_output = result.output
-                        result_model_artifacts = result.model_artifacts
-                        if result.reusable_files:
-                            known_paths = {
-                                str(file_info.get("path") or "")
-                                for file_info in working_files
-                                if isinstance(file_info, dict)
-                            }
-                            for reusable_file in result.reusable_files:
-                                reusable_path = str(reusable_file.get("path") or "")
-                                if reusable_path and reusable_path not in known_paths:
-                                    working_files.append(reusable_file)
-                                    known_paths.add(reusable_path)
-                        yield from result.events
-                        if python_activity_id:
-                            python_finished = append_thought_content(
-                                _python_activity_token(
-                                    python_activity_id,
-                                    (
-                                        "python_completed"
-                                        if result.output.get("ok")
-                                        else "python_failed"
-                                    ),
-                                    duration_ms=result.output.get("duration_ms")
-                                    or (time.monotonic() - python_started_at) * 1000,
-                                    artifact_count=len(result.output.get("artifacts") or []),
-                                    output=_python_activity_output(result.output),
-                                ),
-                                separate=True,
-                            )
-                            if python_finished:
-                                yield python_finished
-                        if image_activity_id:
-                            image_finished = append_thought_content(
-                                _image_activity_token(
-                                    image_activity_id,
-                                    (
-                                        "image_completed"
-                                        if result.output.get("ok")
-                                        else "image_failed"
-                                    ),
-                                    operation="crop" if name == "image_crop" else "tile",
-                                    purpose=arguments.get("purpose"),
-                                    filename=arguments.get("filename"),
-                                    image_count=len(result.model_artifacts),
-                                ),
-                                separate=True,
-                            )
-                            if image_finished:
-                                yield image_finished
-                        if name == "web_search":
-                            search_status = (
-                                "web_search_done" if result.sources else "web_search_no_results"
-                            )
-                            if not result.output.get("ok"):
-                                search_status = "web_search_failed"
-                            search_finished = append_thought_content(
-                                _search_activity_token(
-                                    search_status,
-                                    arguments.get("query"),
-                                    result.sources,
-                                ),
-                                separate=True,
-                            )
-                            if search_finished:
-                                yield search_finished
-                        if result.sources:
-                            yield {"sources": result.sources}
-
+            feedback_images = 0
+            feedback_bytes = 0
+            for index, call in enumerate(function_calls):
+                activity_id = f"tool-{tool_round}-{index}"
+                started_at = time.monotonic()
+                started = append_thought_content(
+                    _execution_activity(call, activity_id), separate=True
+                )
+                if started:
+                    yield started
+                if call.name == "web_search":
+                    yield {
+                        "status": "web_search_started",
+                        "query": (
+                            (call.arguments or {}).get("query", "")
+                            if isinstance(call.arguments, dict)
+                            else ""
+                        ),
+                    }
+                result = execution.execute(call, index)
+                for event in result.events:
+                    if (
+                        "reply_part" in event
+                        or "canvas_update" in event
+                        or event.get("images")
+                        or event.get("python_artifacts")
+                    ):
+                        any_answer_generated = True
+                    yield event
+                finished = append_thought_content(
+                    _execution_activity(
+                        call, activity_id, result, (time.monotonic() - started_at) * 1000
+                    ),
+                    separate=True,
+                )
+                if finished:
+                    yield finished
+                if result.output.get("awaiting_user"):
+                    yield from finalize_thought()
+                    return
+                if result.sources:
+                    yield {"sources": result.sources}
+                feedback = _model_artifact_response_parts(
+                    result.model_artifacts,
+                    max_images=MAX_MODEL_FEEDBACK_IMAGES_PER_ROUND - feedback_images,
+                    max_bytes=MAX_MODEL_FEEDBACK_BYTES_PER_ROUND - feedback_bytes,
+                )
+                feedback_images += len(feedback)
+                for part in feedback:
+                    if part.inline_data and isinstance(part.inline_data.data, bytes):
+                        feedback_bytes += len(part.inline_data.data)
+                if len(feedback) < len(result.model_artifacts):
+                    result.output = {**result.output, "model_feedback_truncated": True}
                 response_parts.append(
-                    types.Part.from_function_response(
-                        name=name,
-                        response={"result": serialize_tool_output(result_output)},
-                        parts=_model_artifact_response_parts(result_model_artifacts) or None,
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            id=call.provider_id,
+                            name=call.name,
+                            response=json.loads(serialize_tool_output(result.output)),
+                            parts=feedback or None,
+                        )
                     )
                 )
             next_message = response_parts
@@ -909,7 +949,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
 
         yield from finalize_thought()
         if not any_answer_generated:
-            yield EMPTY_RESPONSE
+            raise RuntimeError("empty_model_response")
     except errors.APIError as exc:
         logger.error("Gemini 3.1 Flash-Lite API request failed: %s", exc, exc_info=True)
         raise RuntimeError("gemini_api_request_failed") from exc

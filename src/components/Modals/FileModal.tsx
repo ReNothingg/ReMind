@@ -1,6 +1,7 @@
 import {
     useEffect,
     useId,
+    useMemo,
     useRef,
     useState,
     type KeyboardEvent as ReactKeyboardEvent,
@@ -11,6 +12,7 @@ import { Utils } from '../../utils/utils';
 import { highlightCode } from '../../utils/formatting';
 import ModalShell from '../UI/ModalShell';
 import { cn } from '../../utils/cn';
+import { safeFilePreview } from '../../utils/safeFilePreview';
 
 type FileTab = 'preview' | 'code';
 
@@ -19,6 +21,7 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
     const [activeTab, setActiveTab] = useState<FileTab>('preview');
     const contentRef = useRef<HTMLDivElement | null>(null);
     const tabGroupId = useId();
+    const previewHtml = useMemo(() => file?.name?.toLowerCase().endsWith('.html') && typeof content === 'string' ? safeFilePreview(content) : '', [file?.name, content]);
 
     const tabId = (tab: FileTab) => `${tabGroupId}-${tab}-tab`;
     const panelId = (tab: FileTab) => `${tabGroupId}-${tab}-panel`;
@@ -215,8 +218,9 @@ const FileModal = ({ isOpen, onClose, file, content }) => {
                                 hidden={activeTab !== 'preview'}
                             >
                                 <iframe
-                                    srcDoc={content}
-                                    sandbox="allow-forms"
+                                    srcDoc={previewHtml}
+                                    sandbox=""
+                                    referrerPolicy="no-referrer"
                                     className="h-full w-full border-0"
                                     title={t('files.previewAlt', { name: file.name })}
                                 />

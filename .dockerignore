@@ -40,7 +40,6 @@ MANIFEST
 .git/
 .github/
 .agents/
-.codex/
 .mypy_cache/
 .ruff_cache/
 .pyre/

@@ -313,7 +313,7 @@ class AuthIdentity(db.Model):
 
 
 class AppleAuthChallenge(db.Model):
-    """Short-lived one-time challenge. Raw state and nonce values are never persisted."""
+
 
     __tablename__ = "apple_auth_challenge"
 
@@ -332,7 +332,7 @@ class AppleAuthChallenge(db.Model):
 
 
 class AppleTokenReplay(db.Model):
-    """Digest-only replay ledger for verified Apple identity tokens."""
+
 
     __tablename__ = "apple_token_replay"
 
@@ -372,7 +372,7 @@ def _fail_telegram_link_request(request_id: int, code: str, now: datetime) -> st
 
 
 def consume_telegram_link_token(token: str, telegram_user_id: str) -> str:
-    """Consume an opaque bot deep-link token and attach the Telegram identity."""
+
     normalized_token = str(token or "").strip()
     normalized_telegram_id = str(telegram_user_id or "").strip()
     if not TELEGRAM_LINK_TOKEN_RE.fullmatch(normalized_token):
@@ -2783,7 +2783,7 @@ def register_auth_routes(app):
 
     @app.route("/api/auth/turnstile/mobile", methods=["GET"])
     def api_mobile_turnstile():
-        """Serve a minimal, first-party Turnstile shell for native app authentication."""
+
         from config import LOCALHOST_MODE, TURNSTILE_SITE_KEY
 
         nonce = getattr(g, "csp_nonce", "") or secrets.token_urlsafe(24)

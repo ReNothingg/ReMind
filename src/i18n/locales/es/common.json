@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "Contexto de la sesión actual",
+    "used": "{{percent}} del contexto utilizado",
+    "system": "Instrucciones del sistema",
+    "tools": "Definiciones de herramientas",
+    "messages": "Mensajes",
+    "estimate": "Estimación de todo el historial activo y los archivos. Las instrucciones y herramientas se cuentan una sola vez.",
+    "unavailable": "Aún no hay datos de contexto para esta sesión y modelo. Aparecerán después de una respuesta."
+  },
+  "artifactDownload": {
+    "action": "Descargar {{name}}",
+    "label": "Descargar",
+    "loading": "Descargando…",
+    "unavailable": "El archivo no está disponible o no tienes acceso.",
+    "failed": "No se pudo descargar el archivo. Inténtalo de nuevo."
+  },
+  "toolPanels": {
+    "plan": "Plan",
+    "questions": "Preguntas",
+    "status": {
+      "pending": "Pendiente",
+      "in_progress": "En curso",
+      "completed": "Completado"
+    },
+    "customAnswer": "Tu propia respuesta",
+    "send": "Enviar respuestas",
+    "sent": "Respuestas enviadas",
+    "answerMessage": "Respuestas a: {{title}}",
+    "readOnly": "Abre un chat editable para responder.",
+    "sendFailed": "No se pudo enviar. Inténtalo de nuevo."
+  },
   "reliability": {"offline":"Sin conexión · los mensajes se pondrán en cola","reconnecting":"Restableciendo la conexión…","queued":"Mensajes en cola: {{count}}","draftSyncing":"Sincronizando borrador…","draftSynced":"Borrador sincronizado","draftLocal":"Borrador guardado localmente","queueFull":"La cola sin conexión está llena. Conéctate antes de enviar más archivos.","temporaryOffline":"Los chats temporales requieren conexión y nunca se guardan en la cola sin conexión.","interrupted":"La generación se interrumpió. Puedes regenerar esta versión."},
   "language": {
     "ru": "RU",
@@ -104,6 +135,29 @@
     "close": "Cerrar"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} llamada a herramienta",
+      "toolCount_other": "{{count}} llamadas a herramientas",
+      "messageCount_one": "{{count}} mensaje",
+      "messageCount_other": "{{count}} mensajes",
+
+      "think": "Pensar",
+      "working": "Trabajando",
+      "search": "Buscar",
+      "model": "Modelo",
+      "input": "Entrada",
+      "output": "Salida",
+      "details": "Detalles",
+      "status": "Estado",
+      "toolCount": "{{count}} llamadas a herramientas",
+      "messageCount": "{{count}} mensajes",
+      "states": {
+        "running": "En curso",
+        "complete": "Completado",
+        "failed": "Error",
+        "interrupted": "Interrumpido"
+      }
+    },
     "label": "Pensamientos",
     "loading": "Pensando...",
     "expand": "Expandir pensamientos",
@@ -130,7 +184,7 @@
     "model": {
       "waiting": "Esperando a que el modelo continúe el análisis...",
       "responded": "El modelo continuó el análisis",
-      "failed": "El modelo no respondió a tiempo"
+      "failed": "El modelo no respondió"
     }
   },
   "landing": {
@@ -296,6 +350,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Análisis de imágenes",
+      "image_analysisDescription": "Examinar imágenes adjuntas y sus detalles",
+      "visualize": "Visualización",
+      "visualizeDescription": "Diagramas interactivos, simulaciones y miniaplicaciones",
+      "github": "GitHub",
+      "githubDescription": "Leer código de repositorios conectados",
+      "python": "Python",
+      "pythonDescription": "Calcular, analizar datos y crear archivos",
+      "canvas": "Lienzo",
+      "canvasDescription": "Crear y editar documentos y código",
+      "charts": "Gráficos",
+      "chartsDescription": "Representar datos en gráficos",
+      "diagrams": "Diagramas",
+      "diagramsDescription": "Mostrar procesos y relaciones",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Crear y editar ritmos",
+      "quiz": "Cuestionario",
+      "quizDescription": "Crear cuestionarios interactivos",
+      "githubConnect": "Conecta GitHub en ajustes",
+      "signIn": "Inicia sesión para usar esta herramienta",
+      "unavailable": "Esta herramienta no está disponible",
+      "web": "Buscar en la web",
+      "webDescription": "Buscar información actualizada",
+      "image": "Imagen",
+      "imageDescription": "Crear una imagen",
+      "imageDemoDescription": "Generador interno de imágenes de demostración",
+      "choose": "Elegir herramienta",
+      "empty": "No se encontraron herramientas",
+      "remove": "Quitar {{tool}}"
+    },
     "attachFiles": "Adjuntar archivos",
     "attachUnavailable": "Adjunto no disponible",
     "attachRequiresAccount": "Regístrate para adjuntar archivos",
@@ -349,6 +434,15 @@
     "readOnly": "Solo lectura"
   },
   "models": {
+    "think": "Pensar",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Modelo interno de prueba"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Modelo interno de prueba en streaming"
+    },
     "choose": "Elige un modelo",
     "thinkingLevel": "Nivel de razonamiento",
     "thinkingLevelDescription": "Controla la velocidad y la profundidad del razonamiento",

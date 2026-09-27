@@ -1,9 +1,9 @@
-"""Add one-time Telegram bot linking requests.
 
-Revision ID: add_telegram_link_requests
-Revises: add_telegram_bot_channel
-Create Date: 2026-08-07
-"""
+
+
+
+
+
 
 import sqlalchemy as sa
 from alembic import op

@@ -16,7 +16,7 @@ import requests
 from bs4 import BeautifulSoup
 from defusedxml import ElementTree as ET
 
-from ai_engine.prompt_templates import render_prompt
+from ai_engine.prompt_templates import render_prompt_section
 from config import (
     USER_AGENT,
     WEB_SEARCH_ENABLED,
@@ -25,6 +25,7 @@ from config import (
     WEB_SEARCH_PAGE_TEXT_CHARS,
 )
 from services.ai_provider import generate_text, is_ai_provider_configured
+from utils.public_http import public_http_get
 
 SEARCH_HEADERS = {
     "User-Agent": USER_AGENT,
@@ -38,7 +39,7 @@ BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal")
 ROBOTS_USER_AGENT = "ReMindBot"
 ROBOTS_MAX_BYTES = 512 * 1024
 WEB_SEARCH_MAX_REDIRECTS = 5
-WEB_SEARCH_MAX_QUERY_VARIANTS = 3
+WEB_SEARCH_MAX_QUERY_VARIANTS = 2
 WEB_SEARCH_FETCH_WORKERS = 4
 WEB_SEARCH_CONTEXT_MAX_CHARS = 36_000
 WEB_SEARCH_CONTEXT_SOURCE_MAX_CHARS = 3_200
@@ -138,8 +139,8 @@ QUERY_MONTH_TERMS = {
 }
 
 
-def _render_web_tool_prompt(**replacements: str) -> str:
-    return render_prompt("tools/web.md", replacements)
+def _render_web_tool_prompt(section: str, **replacements: str) -> str:
+    return render_prompt_section("tools/web.md", section, replacements)
 
 
 @dataclass(frozen=True)
@@ -338,6 +339,7 @@ def decide_auto_web_search(query: str) -> dict[str, Any]:
 
     try:
         prompt = _render_web_tool_prompt(
+            "Search Router Prompt",
             USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
         if not prompt:
@@ -372,6 +374,7 @@ def rewrite_web_search_query(query: str) -> dict[str, Any]:
 
     try:
         prompt = _render_web_tool_prompt(
+            "Search Query Writer Prompt",
             CURRENT_UTC_DATE=datetime.now(timezone.utc).date().isoformat(),
             USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
@@ -421,7 +424,7 @@ def official_site_hint(query: str) -> str | None:
 
 
 def build_search_query_variants(query: str) -> list[str]:
-    normalized = safe_query(query)
+    normalized = safe_query(query, max_len=2000)
     if not normalized:
         return []
 
@@ -435,13 +438,11 @@ def build_search_query_variants(query: str) -> list[str]:
     official_host = official_site_hint(normalized)
     if official_host and "site:" not in lower:
         variants.append(f"{normalized} site:{official_host}")
-    elif not re.search(r"\b(official|официальн\w+|site:)\b", lower):
-        variants.append(f"{normalized} official")
 
     deduped: list[str] = []
     seen: set[str] = set()
     for variant in variants:
-        cleaned = safe_query(variant)
+        cleaned = safe_query(variant, max_len=2000)
         key = cleaned.lower()
         if cleaned and key not in seen:
             deduped.append(cleaned)
@@ -637,7 +638,7 @@ def _robots_policy_for_origin(origin: str, user_agent: str = ROBOTS_USER_AGENT) 
 
     robots_url = urljoin(f"{origin.rstrip('/')}/", "/robots.txt")
     try:
-        with requests.get(
+        with public_http_get(
             robots_url,
             headers=SEARCH_HEADERS,
             timeout=WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
@@ -851,6 +852,8 @@ def extract_text_from_html(html: str) -> str:
 
     for tag in soup(["script", "style", "noscript", "svg", "template"]):
         tag.decompose()
+    for tag in soup.select('[hidden], [aria-hidden="true"]'):
+        tag.decompose()
 
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
     body = soup.body or soup
@@ -867,7 +870,8 @@ def compact_text(text: str, max_chars: int = WEB_SEARCH_PAGE_TEXT_CHARS) -> str:
     return cleaned[: max_chars - 1].rstrip() + "..."
 
 
-def fetch_full_page(url: str) -> dict[str, Any]:
+def fetch_full_page(url: str, *, max_chars: int | None = None) -> dict[str, Any]:
+    text_limit = min(100_000, max(500, max_chars or WEB_SEARCH_PAGE_TEXT_CHARS))
     if not is_public_http_url(url, resolve_hostname=True):
         return {
             "ok": False,
@@ -903,7 +907,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                     "error": "blocked_redirect_url",
                 }
 
-            with requests.get(
+            with public_http_get(
                 current_url,
                 headers=SEARCH_HEADERS,
                 timeout=WEB_SEARCH_FETCH_TIMEOUT_SECONDS,
@@ -953,7 +957,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                 for chunk in response.iter_content(chunk_size=16384):
                     if not chunk:
                         continue
-                    chunks.append(chunk)
+                    chunks.append(chunk[: max(0, WEB_SEARCH_MAX_RESPONSE_BYTES - size)])
                     size += len(chunk)
                     if size >= WEB_SEARCH_MAX_RESPONSE_BYTES:
                         break
@@ -966,6 +970,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                 favicon_url = None
                 text = ""
                 published_at = None
+                links = []
 
                 if "text/html" in content_type.lower() or "<html" in html[:2048].lower():
                     candidate_favicon = get_favicon_url(final_url, html)
@@ -975,15 +980,34 @@ def fetch_full_page(url: str) -> dict[str, Any]:
                         favicon_url = candidate_favicon
                     published_at = extract_published_at(html)
                     text = extract_text_from_html(html)
+                    soup = BeautifulSoup(html, "html.parser")
+                    seen_links = set()
+                    for anchor in soup.select("a[href]"):
+                        linked = urljoin(final_url, str(anchor.get("href") or ""))
+                        if linked in seen_links or not is_public_http_url(linked):
+                            continue
+                        seen_links.add(linked)
+                        links.append(
+                            {"url": linked[:2048], "title": anchor.get_text(" ", strip=True)[:160]}
+                        )
+                        if len(links) >= 40:
+                            break
+                elif (
+                    content_type.lower().startswith("text/")
+                    or "application/json" in content_type.lower()
+                ):
+                    text = html
 
                 return {
                     "ok": True,
                     "final_url": final_url,
                     "status_code": response.status_code,
                     "content_type": content_type,
-                    "text": compact_text(text),
+                    "text": text[:text_limit],
                     "favicon_url": favicon_url,
                     "published_at": published_at,
+                    "links": links,
+                    "truncated": size >= WEB_SEARCH_MAX_RESPONSE_BYTES or len(text) > text_limit,
                     "error": None,
                 }
 
@@ -996,7 +1020,7 @@ def fetch_full_page(url: str) -> dict[str, Any]:
             "favicon_url": None,
             "error": "too_many_redirects",
         }
-    except Exception as exc:
+    except Exception:
         return {
             "ok": False,
             "final_url": current_url,
@@ -1004,15 +1028,17 @@ def fetch_full_page(url: str) -> dict[str, Any]:
             "content_type": None,
             "text": "",
             "favicon_url": None,
-            "error": str(exc),
+            "error": "page_fetch_failed",
         }
 
 
-def _ddgs_text_search(query: str, max_results: int | None) -> list[dict[str, Any]]:
+def _ddgs_text_search(
+    query: str, max_results: int | None, timelimit: str | None = None
+) -> list[dict[str, Any]]:
     from ddgs import DDGS
 
-    with DDGS() as ddgs:
-        results = ddgs.text(query, max_results=max_results)
+    with DDGS(timeout=8) as ddgs:
+        results = ddgs.text(query, max_results=max_results or 8, timelimit=timelimit)
 
     return list(results or [])
 
@@ -1020,7 +1046,7 @@ def _ddgs_text_search(query: str, max_results: int | None) -> list[dict[str, Any
 def _ddgs_news_search(query: str, max_results: int | None) -> list[dict[str, Any]]:
     from ddgs import DDGS
 
-    with DDGS() as ddgs:
+    with DDGS(timeout=8) as ddgs:
         results = ddgs.news(query, max_results=max_results)
 
     return list(results or [])
@@ -1055,12 +1081,16 @@ def _duckduckgo_html_search(query: str, max_results: int | None) -> list[dict[st
     return results
 
 
-def web_search_free(query: str, max_results: int | None = None) -> list[dict[str, Any]]:
+def web_search_free(
+    query: str, max_results: int | None = None, timelimit: str | None = None
+) -> list[dict[str, Any]]:
     if max_results is not None:
         max_results = max(1, int(max_results))
     try:
-        raw_results = _ddgs_text_search(query, max_results)
+        raw_results = _ddgs_text_search(query, max_results, timelimit)
     except Exception:
+        raw_results = []
+    if not raw_results and timelimit is None:
         raw_results = _duckduckgo_html_search(query, max_results)
 
     results: list[dict[str, Any]] = []
@@ -1173,7 +1203,9 @@ def google_news_rss_search(query: str) -> list[dict[str, Any]]:
 def collect_web_search_candidates(
     query: str,
     max_candidates: int | None = None,
+    timelimit: str | None = None,
 ) -> list[dict[str, Any]]:
+    max_candidates = min(16, max(1, max_candidates or 12))
     candidates_by_url: dict[str, dict[str, Any]] = {}
     query_variants = build_search_query_variants(query)
     if not query_variants:
@@ -1181,36 +1213,38 @@ def collect_web_search_candidates(
 
     per_query_limit = max(4, max_candidates) if max_candidates is not None else None
     search_batches: list[tuple[int, str, list[dict[str, Any]]]] = []
-    if query_looks_time_sensitive(query):
+    if query_looks_time_sensitive(query) and timelimit is None:
         try:
-            search_batches.append((0, query, google_news_rss_search(query)))
+            news_results = google_news_rss_search(query)
         except Exception:
-            pass
-        for news_variant_index, news_variant in enumerate(
-            build_news_query_variants(query),
-            start=len(search_batches),
-        ):
+            news_results = []
+        if not news_results:
             try:
-                search_batches.append(
-                    (
-                        news_variant_index,
-                        news_variant,
-                        web_search_news_free(news_variant, max_results=per_query_limit),
-                    )
-                )
+                news_results = web_search_news_free(query, max_results=per_query_limit)
             except Exception:
-                continue
+                news_results = []
+        if news_results:
+            search_batches.append((0, query, news_results))
 
     variant_offset = len(search_batches)
     for variant_index, variant in enumerate(query_variants, start=variant_offset):
         try:
-            raw_results = web_search_free(variant, max_results=per_query_limit)
+            raw_results = web_search_free(variant, max_results=per_query_limit, timelimit=timelimit)
         except Exception:
             continue
         search_batches.append((variant_index, variant, raw_results))
 
-    for variant_index, variant, raw_results in search_batches:
-        for result_index, raw in enumerate(raw_results):
+    if not search_batches:
+        raise RuntimeError("search_provider_unavailable")
+
+    interleaved_batches = [
+        (variant_index, variant, [(result_index, raw_results[result_index])])
+        for result_index in range(max(len(raw_results) for _, _, raw_results in search_batches))
+        for variant_index, variant, raw_results in search_batches
+        if result_index < len(raw_results)
+    ]
+    for variant_index, variant, ranked_results in interleaved_batches:
+        for result_index, raw in ranked_results:
             url = normalize_search_url(raw.get("url") or raw.get("href") or "")
             if not url:
                 continue
@@ -1381,15 +1415,17 @@ def score_web_source(source: dict[str, Any], query: str) -> float:
     return score
 
 
-def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[str, Any] | None:
+def build_source_from_candidate(
+    candidate: dict[str, Any], query: str, *, fetch_page: bool = True
+) -> dict[str, Any] | None:
     url = normalize_search_url(candidate.get("url") or "")
     if not url:
         return None
-    if not is_public_http_url(url, resolve_hostname=True):
+    if not is_public_http_url(url, resolve_hostname=fetch_page):
         return None
 
     is_rss_metadata = candidate.get("result_type") == "news_rss"
-    if is_rss_metadata:
+    if is_rss_metadata or not fetch_page:
         page: dict[str, Any] = {
             "ok": False,
             "final_url": url,
@@ -1450,10 +1486,16 @@ def build_source_from_candidate(candidate: dict[str, Any], query: str) -> dict[s
     return source
 
 
-def run_web_search(query: str, max_results: int | None = None) -> dict[str, Any]:
-    if max_results is not None:
-        max_results = max(1, int(max_results))
-    normalized_query = safe_query(query)
+def run_web_search(
+    query: str,
+    max_results: int | None = None,
+    *,
+    fetch_pages: bool = True,
+    timelimit: str | None = None,
+    domains: list[str] | None = None,
+) -> dict[str, Any]:
+    max_results = max(1, min(8, int(max_results or 6)))
+    normalized_query = safe_query(query, max_len=2000)
     if not normalized_query:
         return {
             "query": "",
@@ -1462,18 +1504,33 @@ def run_web_search(query: str, max_results: int | None = None) -> dict[str, Any]
             "context": "",
         }
 
-    candidates = collect_web_search_candidates(normalized_query)
+    candidates = collect_web_search_candidates(
+        normalized_query, max_candidates=12, timelimit=timelimit
+    )
+    if domains:
+        candidates = [
+            item
+            for item in candidates
+            if any(
+                (urlparse(item.get("url") or "").hostname or "").lower() == domain
+                or (urlparse(item.get("url") or "").hostname or "").lower().endswith("." + domain)
+                for domain in domains
+            )
+        ]
     candidates.sort(
         key=lambda candidate: score_search_candidate(candidate, normalized_query),
         reverse=True,
     )
+    candidates = candidates[: max_results + 2]
     sources: list[dict[str, Any]] = []
     if candidates:
         with ThreadPoolExecutor(
             max_workers=min(WEB_SEARCH_FETCH_WORKERS, len(candidates))
         ) as executor:
             future_to_candidate = {
-                executor.submit(build_source_from_candidate, candidate, normalized_query): candidate
+                executor.submit(
+                    build_source_from_candidate, candidate, normalized_query, fetch_page=fetch_pages
+                ): candidate
                 for candidate in candidates
             }
             for future in as_completed(future_to_candidate):
@@ -1516,7 +1573,7 @@ def run_web_search(query: str, max_results: int | None = None) -> dict[str, Any]
         diversity_adjusted_score = (
             float(source.get("score") or 0) + authority_adjustment - diversity_penalty
         )
-        if diversity_adjusted_score < source_quality_floor:
+        if selected_sources and diversity_adjusted_score < source_quality_floor:
             continue
         host_counts[host] = host_count + 1
         public_source = dict(source)

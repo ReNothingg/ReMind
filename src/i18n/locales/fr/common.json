@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "Contexte de la session actuelle",
+    "used": "{{percent}} du contexte utilisé",
+    "system": "Instructions système",
+    "tools": "Définitions des outils",
+    "messages": "Messages",
+    "estimate": "Estimation de tout l’historique actif et des pièces jointes. Les instructions et outils sont comptés une seule fois.",
+    "unavailable": "Aucune donnée de contexte pour cette session et ce modèle. Elles apparaîtront après une réponse."
+  },
+  "artifactDownload": {
+    "action": "Télécharger {{name}}",
+    "label": "Télécharger",
+    "loading": "Téléchargement…",
+    "unavailable": "Le fichier est indisponible ou vous n’y avez pas accès.",
+    "failed": "Téléchargement impossible. Réessayez."
+  },
+  "toolPanels": {
+    "plan": "Plan",
+    "questions": "Questions",
+    "status": {
+      "pending": "En attente",
+      "in_progress": "En cours",
+      "completed": "Terminé"
+    },
+    "customAnswer": "Votre réponse",
+    "send": "Envoyer les réponses",
+    "sent": "Réponses envoyées",
+    "answerMessage": "Réponses à : {{title}}",
+    "readOnly": "Ouvrez une conversation modifiable pour répondre.",
+    "sendFailed": "Envoi impossible. Réessayez."
+  },
   "reliability": {"offline":"Hors ligne · les messages seront mis en attente","reconnecting":"Rétablissement de la connexion…","queued":"Messages en attente : {{count}}","draftSyncing":"Synchronisation du brouillon…","draftSynced":"Brouillon synchronisé","draftLocal":"Brouillon enregistré localement","queueFull":"La file hors ligne est pleine. Reconnectez-vous avant d’envoyer d’autres fichiers.","temporaryOffline":"Les chats temporaires nécessitent une connexion et ne sont jamais enregistrés dans la file hors ligne.","interrupted":"La génération a été interrompue. Vous pouvez régénérer cette version."},
   "language": {
     "ru": "RU",
@@ -104,6 +135,29 @@
     "close": "Fermer"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} appel d’outil",
+      "toolCount_other": "{{count}} appels d’outils",
+      "messageCount_one": "{{count}} message",
+      "messageCount_other": "{{count}} messages",
+
+      "think": "Réflexion",
+      "working": "En cours",
+      "search": "Recherche",
+      "model": "Modèle",
+      "input": "Entrée",
+      "output": "Sortie",
+      "details": "Détails",
+      "status": "État",
+      "toolCount": "{{count}} appels d’outils",
+      "messageCount": "{{count}} messages",
+      "states": {
+        "running": "En cours",
+        "complete": "Terminé",
+        "failed": "Échec",
+        "interrupted": "Interrompu"
+      }
+    },
     "label": "Pensées",
     "loading": "Réflexion...",
     "expand": "Développer les pensées",
@@ -130,7 +184,7 @@
     "model": {
       "waiting": "En attente de la poursuite de l’analyse par le modèle...",
       "responded": "Le modèle a poursuivi son analyse",
-      "failed": "Le modèle n’a pas répondu à temps"
+      "failed": "Le modèle n’a pas répondu"
     }
   },
   "landing": {
@@ -296,6 +350,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "Analyse d’images",
+      "image_analysisDescription": "Examiner les images jointes et leurs détails",
+      "visualize": "Visualisation",
+      "visualizeDescription": "Schémas interactifs, simulations et mini-applications",
+      "github": "GitHub",
+      "githubDescription": "Lire le code des dépôts connectés",
+      "python": "Python",
+      "pythonDescription": "Calculer, analyser des données et créer des fichiers",
+      "canvas": "Canevas",
+      "canvasDescription": "Créer et modifier des documents et du code",
+      "charts": "Graphiques",
+      "chartsDescription": "Représenter des données graphiquement",
+      "diagrams": "Diagrammes",
+      "diagramsDescription": "Montrer les processus et les relations",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Créer et modifier des rythmes",
+      "quiz": "Quiz",
+      "quizDescription": "Créer des quiz interactifs",
+      "githubConnect": "Connectez GitHub dans les paramètres",
+      "signIn": "Connectez-vous pour utiliser cet outil",
+      "unavailable": "Cet outil est indisponible",
+      "web": "Recherche web",
+      "webDescription": "Rechercher des informations récentes",
+      "image": "Image",
+      "imageDescription": "Créer une image",
+      "imageDemoDescription": "Générateur interne d’images de démonstration",
+      "choose": "Choisir un outil",
+      "empty": "Aucun outil trouvé",
+      "remove": "Retirer {{tool}}"
+    },
     "attachFiles": "Joindre des fichiers",
     "attachUnavailable": "Pièce jointe indisponible",
     "attachRequiresAccount": "Inscrivez-vous pour joindre des fichiers",
@@ -349,6 +434,15 @@
     "readOnly": "Lecture seule"
   },
   "models": {
+    "think": "Réfléchir",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Modèle de test interne"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Modèle de test interne en streaming"
+    },
     "choose": "Choisir un modèle",
     "thinkingLevel": "Niveau de réflexion",
     "thinkingLevelDescription": "Contrôle la vitesse et la profondeur du raisonnement",

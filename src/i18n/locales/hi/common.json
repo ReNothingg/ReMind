@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "वर्तमान सत्र का संदर्भ",
+    "used": "{{percent}} संदर्भ उपयोग हुआ",
+    "system": "सिस्टम निर्देश",
+    "tools": "टूल परिभाषाएँ",
+    "messages": "संदेश",
+    "estimate": "पूरे सक्रिय सत्र के इतिहास और संलग्नकों का अनुमान। सिस्टम निर्देश और टूल केवल एक बार गिने जाते हैं।",
+    "unavailable": "इस सत्र और मॉडल का संदर्भ डेटा अभी उपलब्ध नहीं है। उत्तर के बाद दिखाई देगा।"
+  },
+  "artifactDownload": {
+    "action": "{{name}} डाउनलोड करें",
+    "label": "डाउनलोड",
+    "loading": "डाउनलोड हो रहा है…",
+    "unavailable": "फ़ाइल उपलब्ध नहीं है या आपके पास पहुँच नहीं है।",
+    "failed": "फ़ाइल डाउनलोड नहीं हो सकी। फिर कोशिश करें।"
+  },
+  "toolPanels": {
+    "plan": "योजना",
+    "questions": "प्रश्न",
+    "status": {
+      "pending": "लंबित",
+      "in_progress": "जारी",
+      "completed": "पूर्ण"
+    },
+    "customAnswer": "अपना उत्तर",
+    "send": "उत्तर भेजें",
+    "sent": "उत्तर भेज दिए गए",
+    "answerMessage": "इसके उत्तर: {{title}}",
+    "readOnly": "उत्तर देने के लिए संपादन योग्य चैट खोलें।",
+    "sendFailed": "भेजा नहीं जा सका। फिर कोशिश करें।"
+  },
   "reliability": {"offline":"ऑफ़लाइन · संदेश कतार में रखे जाएंगे","reconnecting":"कनेक्शन बहाल किया जा रहा है…","queued":"कतार में संदेश: {{count}}","draftSyncing":"ड्राफ़्ट सिंक हो रहा है…","draftSynced":"ड्राफ़्ट सिंक हो गया","draftLocal":"ड्राफ़्ट स्थानीय रूप से सहेजा गया","queueFull":"ऑफ़लाइन कतार भर गई है। और फ़ाइलें भेजने से पहले कनेक्ट करें।","temporaryOffline":"अस्थायी चैट के लिए नेटवर्क चाहिए और उन्हें ऑफ़लाइन कतार में सहेजा नहीं जाता।","interrupted":"उत्तर बनना रुक गया। आप इस संस्करण को फिर से बना सकते हैं।"},
   "language": {
     "ru": "RU",
@@ -104,6 +135,24 @@
     "close": "बंद करें"
   },
   "think": {
+    "presentation": {
+      "think": "विचार",
+      "working": "काम जारी है",
+      "search": "खोज",
+      "model": "मॉडल",
+      "input": "इनपुट",
+      "output": "आउटपुट",
+      "details": "विवरण",
+      "status": "स्थिति",
+      "toolCount": "{{count}} टूल कॉल",
+      "messageCount": "{{count}} संदेश",
+      "states": {
+        "running": "जारी",
+        "complete": "पूर्ण",
+        "failed": "विफल",
+        "interrupted": "बाधित"
+      }
+    },
     "label": "विचार",
     "loading": "सोच रहा हूं...",
     "expand": "विचार दिखाएं",
@@ -130,7 +179,7 @@
     "model": {
       "waiting": "मॉडल के विश्लेषण जारी रखने की प्रतीक्षा हो रही है...",
       "responded": "मॉडल ने विश्लेषण जारी रखा",
-      "failed": "मॉडल ने समय पर उत्तर नहीं दिया"
+      "failed": "मॉडल ने उत्तर नहीं दिया"
     }
   },
   "landing": {
@@ -296,6 +345,37 @@
     }
   },
   "composer": {
+    "tools": {
+      "image_analysis": "चित्र विश्लेषण",
+      "image_analysisDescription": "संलग्न चित्रों और उनके विवरणों की जाँच करें",
+      "visualize": "विज़ुअलाइज़ेशन",
+      "visualizeDescription": "इंटरैक्टिव आरेख, सिमुलेशन और छोटे ऐप",
+      "github": "GitHub",
+      "githubDescription": "जुड़े रिपॉज़िटरी का कोड पढ़ें",
+      "python": "Python",
+      "pythonDescription": "गणना करें, डेटा का विश्लेषण करें और फ़ाइलें बनाएँ",
+      "canvas": "कैनवास",
+      "canvasDescription": "दस्तावेज़ और कोड बनाएँ और संपादित करें",
+      "charts": "चार्ट",
+      "chartsDescription": "डेटा के चार्ट बनाएँ",
+      "diagrams": "आरेख",
+      "diagramsDescription": "प्रक्रियाएँ और संबंध दिखाएँ",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "ताल बनाएँ और संपादित करें",
+      "quiz": "क्विज़",
+      "quizDescription": "इंटरैक्टिव क्विज़ बनाएँ",
+      "githubConnect": "सेटिंग में GitHub जोड़ें",
+      "signIn": "टूल का उपयोग करने के लिए साइन इन करें",
+      "unavailable": "यह टूल अभी उपलब्ध नहीं है",
+      "web": "वेब खोज",
+      "webDescription": "ताज़ा जानकारी खोजें",
+      "image": "चित्र",
+      "imageDescription": "चित्र बनाएँ",
+      "imageDemoDescription": "आंतरिक डेमो चित्र जनरेटर",
+      "choose": "टूल चुनें",
+      "empty": "कोई टूल नहीं मिला",
+      "remove": "{{tool}} हटाएँ"
+    },
     "attachFiles": "फ़ाइलें संलग्न करें",
     "attachUnavailable": "संलग्न करना उपलब्ध नहीं है",
     "attachRequiresAccount": "फ़ाइलें संलग्न करने के लिए साइन अप करें",
@@ -349,6 +429,15 @@
     "readOnly": "केवल पढ़ने के लिए"
   },
   "models": {
+    "think": "सोचें",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "आंतरिक परीक्षण मॉडल"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "आंतरिक स्ट्रीमिंग परीक्षण मॉडल"
+    },
     "choose": "मॉडल चुनें",
     "thinkingLevel": "चिंतन स्तर",
     "thinkingLevelDescription": "उत्तर की गति और तर्क की गहराई नियंत्रित करता है",

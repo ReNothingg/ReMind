@@ -25,6 +25,7 @@ from config import (
     PUBLIC_OPENAPI_ENABLED,
 )
 from routes.api_errors import ApiError, api_error_boundary
+from services.composer_tools import composer_tool_catalog
 from services.model_access import list_accessible_models
 from utils.auth import db
 from utils.observability import export_prometheus_metrics
@@ -120,7 +121,7 @@ def register_system_routes(api_bp):
             db_user_id = int(user_id) if user_id is not None else None
         except (TypeError, ValueError):
             db_user_id = None
-        return jsonify({"models": list_accessible_models(db_user_id)}), 200
+        return jsonify({"models": list_accessible_models(db_user_id), "tools": composer_tool_catalog(db_user_id)}), 200
 
     @api_bp.route("/voice/")
     @api_bp.route("/voice/index.html")

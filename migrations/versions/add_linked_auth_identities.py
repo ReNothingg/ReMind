@@ -1,9 +1,9 @@
-"""Add linked authentication identities.
 
-Revision ID: add_linked_auth_identities
-Revises: enable_auto_web_search_default
-Create Date: 2026-08-04
-"""
+
+
+
+
+
 
 from alembic import op
 import sqlalchemy as sa

@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "Current session context",
+    "used": "{{percent}} of context used",
+    "system": "System prompt",
+    "tools": "Tool definitions",
+    "messages": "Messages",
+    "estimate": "Estimate of the entire active session history and attachments. System prompt and tools are counted once.",
+    "unavailable": "No context data for this session and model yet. It will appear after a response."
+  },
+  "artifactDownload": {
+    "action": "Download {{name}}",
+    "label": "Download",
+    "loading": "Downloading…",
+    "unavailable": "The file is unavailable or you do not have access.",
+    "failed": "Could not download the file. Please try again."
+  },
+  "toolPanels": {
+    "plan": "Plan",
+    "questions": "Questions",
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In progress",
+      "completed": "Completed"
+    },
+    "customAnswer": "Your own answer",
+    "send": "Send answers",
+    "sent": "Answers sent",
+    "answerMessage": "Answers to: {{title}}",
+    "readOnly": "Open an editable chat to answer.",
+    "sendFailed": "Could not send. Try again."
+  },
   "reliability": {"offline":"Offline · messages will be queued","reconnecting":"Restoring connection…","queued":"{{count}} message(s) queued","draftSyncing":"Syncing draft…","draftSynced":"Draft synced","draftLocal":"Draft saved locally","queueFull":"The offline queue is full. Reconnect before sending more files.","temporaryOffline":"Temporary chats require a network connection and are never stored in the offline queue.","interrupted":"Generation was interrupted. You can regenerate this version."},
   "language": {
     "ru": "RU",
@@ -104,6 +135,84 @@
     "close": "Close"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} tool call",
+      "toolCount_other": "{{count}} tool calls",
+      "messageCount_one": "{{count}} message",
+      "messageCount_other": "{{count}} messages",
+
+      "think": "Think",
+      "working": "Working",
+      "search": "Search",
+      "model": "Model",
+      "input": "Input",
+      "output": "Output",
+      "details": "Details",
+      "status": "Status",
+      "toolCount": "{{count}} tool calls",
+      "messageCount": "{{count}} messages",
+      "states": {
+        "running": "Running",
+        "complete": "Completed",
+        "failed": "Failed",
+        "interrupted": "Interrupted"
+      }
+    },
+    "tools": {
+      "previewTruncated": "A shortened preview is shown.",
+      "names": {
+        "web_links": "Read page links",
+        "web_search_batch": "Search several queries",
+        "web_find": "Find in web page",
+        "file_glob": "Find files",
+        "file_search_all": "Search across files",
+        "file_diff": "Compare files",
+        "file_write": "Create file",
+        "file_edit": "Save revised file",
+        "canvas_export": "Export Canvas",
+        "table_inspect": "Inspect data",
+        "table_query": "Process data",
+        "plan_update": "Update plan",
+        "ask_user": "Ask for details",
+        "github_read_files": "Read repository files",
+        "github_search_code": "Search repository code",
+        "read_skill": "Capability instructions",
+        "web_fetch": "Read web page",
+        "file_list": "List files",
+        "file_read": "Read file",
+        "file_search": "Search file",
+        "canvas_read": "Read Canvas",
+        "canvas_edit": "Edit Canvas",
+        "canvas_write": "Save Canvas",
+        "render_visualization": "Publish visualization",
+        "render_widget": "Publish widget",
+        "generate_demo_image": "Create test image",
+        "github_list_repositories": "List repositories",
+        "github_get_repository_map": "Read repository tree",
+        "github_read_file": "Read repository file",
+        "model_progress": "Progress"
+      },
+      "generic": "Tool",
+      "running": "{{name}} · running",
+      "completed": "{{name}} · completed",
+      "failed": "{{name}} · failed",
+      "interrupted": "{{name}} · interrupted",
+      "error": "The operation did not complete.",
+      "errors": {
+        "file_revision_changed": "The file has changed. Read it again.",
+        "persistent_account_required": "File export requires a signed-in account and a saved chat.",
+        "web_rate_limit": "Too many web operations. Try again later.",
+        "search_provider_unavailable": "The search service did not respond.",
+        "tool_time_limit_reached": "The time budget for this response has been reached.",
+        "repeated_tool_failure": "The same call failed repeatedly; its arguments need to change.",
+        "invalid_tool_arguments": "The tool arguments need correction.",
+        "tool_call_limit_reached": "The tool budget for this response has been reached.",
+        "canvas_revision_changed": "The document has changed. Read its current version.",
+        "ambiguous_edit": "Several matches found. More context is required.",
+        "file_not_available": "This file is not available in the current request.",
+        "skill_required": "The capability instructions must be loaded first."
+      }
+    },
     "label": "Thoughts",
     "loading": "Thinking...",
     "expand": "Expand thoughts",
@@ -130,7 +239,7 @@
     "model": {
       "waiting": "Waiting for the model to continue analysis...",
       "responded": "The model continued its analysis",
-      "failed": "The model did not respond in time"
+      "failed": "The model did not respond"
     }
   },
   "landing": {
@@ -296,6 +405,43 @@
     }
   },
   "composer": {
+    "tools": {
+      "data": "Data",
+      "dataDescription": "Inspect, filter and export CSV/JSON",
+      "workflow": "Plan and questions",
+      "workflowDescription": "Track steps and clarify missing details",
+      "files": "Files",
+      "filesDescription": "Read and search text attachments in this chat",
+      "image_analysis": "Image analysis",
+      "image_analysisDescription": "Inspect attached images and their details",
+      "visualize": "Visualization",
+      "visualizeDescription": "Interactive diagrams, simulations and mini apps",
+      "github": "GitHub",
+      "githubDescription": "Read code in connected repositories",
+      "python": "Python",
+      "pythonDescription": "Run calculations, analyze data and create files",
+      "canvas": "Canvas",
+      "canvasDescription": "Create and edit documents and code",
+      "charts": "Charts",
+      "chartsDescription": "Plot data and build charts",
+      "diagrams": "Diagrams",
+      "diagramsDescription": "Show processes and relationships",
+      "beatbox": "BeatBox",
+      "beatboxDescription": "Create and edit rhythms",
+      "quiz": "Quiz",
+      "quizDescription": "Create interactive quizzes",
+      "githubConnect": "Connect GitHub in settings",
+      "signIn": "Sign in to use this tool",
+      "unavailable": "This tool is currently unavailable",
+      "web": "Web search",
+      "webDescription": "Find up-to-date information",
+      "image": "Image",
+      "imageDescription": "Create an image",
+      "imageDemoDescription": "Internal demo image generator",
+      "choose": "Choose a tool",
+      "empty": "No tools found",
+      "remove": "Remove {{tool}}"
+    },
     "attachFiles": "Attach files",
     "attachUnavailable": "Attachment unavailable",
     "attachRequiresAccount": "Sign up to attach files",
@@ -349,6 +495,15 @@
     "readOnly": "Read-only"
   },
   "models": {
+    "think": "Think",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Internal test model"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Internal streaming test model"
+    },
     "choose": "Choose a model",
     "thinkingLevel": "Thinking level",
     "thinkingLevelDescription": "Controls response speed and reasoning depth",

@@ -60,6 +60,10 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         stage=ModelStage.DEV,
         module="ai_engine.echo",
         handler="echo",
+        title_key="models.echo.title",
+        subtitle_key="models.echo.subtitle",
+        thinking_levels=("minimal", "high"),
+        default_thinking_level="minimal",
     ),
     ModelDefinition(
         id="echo_stream",
@@ -68,6 +72,10 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         stage=ModelStage.DEV,
         module="ai_engine.echo",
         handler="echo_stream",
+        title_key="models.echo_stream.title",
+        subtitle_key="models.echo_stream.subtitle",
+        thinking_levels=("minimal", "high"),
+        default_thinking_level="minimal",
     ),
     ModelDefinition(
         id="mindart",

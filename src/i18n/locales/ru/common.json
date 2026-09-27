@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "Контекст текущей сессии",
+    "used": "{{percent}} контекста",
+    "system": "Системный промпт",
+    "tools": "Определения инструментов",
+    "messages": "Сообщения",
+    "estimate": "Оценка всей активной истории сессии и вложений. Системный промпт и инструменты учитываются один раз.",
+    "unavailable": "Для выбранной модели ещё нет данных этой сессии. Они появятся после ответа."
+  },
+  "artifactDownload": {
+    "action": "Скачать {{name}}",
+    "label": "Скачать",
+    "loading": "Скачивание…",
+    "unavailable": "Файл недоступен или у вас нет доступа к нему.",
+    "failed": "Не удалось скачать файл. Попробуйте ещё раз."
+  },
+  "toolPanels": {
+    "plan": "План",
+    "questions": "Уточнения",
+    "status": {
+      "pending": "Ожидает",
+      "in_progress": "В работе",
+      "completed": "Готово"
+    },
+    "customAnswer": "Свой ответ",
+    "send": "Отправить ответы",
+    "sent": "Ответы отправлены",
+    "answerMessage": "Ответы на: {{title}}",
+    "readOnly": "Ответить можно в редактируемом чате.",
+    "sendFailed": "Не удалось отправить. Попробуйте ещё раз."
+  },
   "reliability": {"offline":"Нет сети · сообщения встанут в очередь","reconnecting":"Восстанавливаю соединение…","queued":"В очереди сообщений: {{count}}","draftSyncing":"Синхронизирую черновик…","draftSynced":"Черновик синхронизирован","draftLocal":"Черновик сохранён локально","queueFull":"Офлайн-очередь заполнена. Подключитесь к сети перед отправкой новых файлов.","temporaryOffline":"Для временного чата нужна сеть: такие сообщения не сохраняются в офлайн-очереди.","interrupted":"Генерация прервана. Эту версию можно перегенерировать."},
   "language": {
     "ru": "RU",
@@ -104,6 +135,88 @@
     "close": "Закрыть"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} вызов инструмента",
+      "toolCount_few": "{{count}} вызова инструментов",
+      "toolCount_many": "{{count}} вызовов инструментов",
+      "toolCount_other": "{{count}} вызова инструментов",
+      "messageCount_one": "{{count}} сообщение",
+      "messageCount_few": "{{count}} сообщения",
+      "messageCount_many": "{{count}} сообщений",
+      "messageCount_other": "{{count}} сообщения",
+
+      "think": "Размышления",
+      "working": "Работаю",
+      "search": "Поиск",
+      "model": "Модель",
+      "input": "Ввод",
+      "output": "Вывод",
+      "details": "Детали",
+      "status": "Статус",
+      "toolCount": "Вызовы инструментов: {{count}}",
+      "messageCount": "Сообщения: {{count}}",
+      "states": {
+        "running": "Выполняется",
+        "complete": "Выполнено",
+        "failed": "Ошибка",
+        "interrupted": "Прервано"
+      }
+    },
+    "tools": {
+      "previewTruncated": "Показан сокращённый фрагмент.",
+      "names": {
+        "web_links": "Ссылки на странице",
+        "web_search_batch": "Пакетный веб-поиск",
+        "web_find": "Поиск на странице",
+        "file_glob": "Поиск файлов",
+        "file_search_all": "Поиск по файлам",
+        "file_diff": "Сравнение файлов",
+        "file_write": "Создание файла",
+        "file_edit": "Сохранение новой версии",
+        "canvas_export": "Экспорт Canvas",
+        "table_inspect": "Проверка данных",
+        "table_query": "Обработка данных",
+        "plan_update": "Обновление плана",
+        "ask_user": "Уточнение деталей",
+        "github_read_files": "Чтение файлов репозитория",
+        "github_search_code": "Поиск в коде репозитория",
+        "read_skill": "Инструкции инструмента",
+        "web_fetch": "Чтение веб-страницы",
+        "file_list": "Список файлов",
+        "file_read": "Чтение файла",
+        "file_search": "Поиск в файле",
+        "canvas_read": "Чтение Canvas",
+        "canvas_edit": "Правка Canvas",
+        "canvas_write": "Сохранение Canvas",
+        "render_visualization": "Публикация визуализации",
+        "render_widget": "Публикация виджета",
+        "generate_demo_image": "Создание тестового изображения",
+        "github_list_repositories": "Список репозиториев",
+        "github_get_repository_map": "Структура репозитория",
+        "github_read_file": "Чтение файла репозитория",
+        "model_progress": "Ход работы"
+      },
+      "generic": "Инструмент",
+      "running": "{{name}} · выполняется",
+      "completed": "{{name}} · готово",
+      "failed": "{{name}} · ошибка",
+      "interrupted": "{{name}} · прервано",
+      "error": "Операция не завершена.",
+      "errors": {
+        "file_revision_changed": "Файл изменился. Нужно прочитать его заново.",
+        "persistent_account_required": "Для экспорта нужен вход в аккаунт и сохраняемый чат.",
+        "web_rate_limit": "Слишком много веб-запросов. Попробуйте позже.",
+        "search_provider_unavailable": "Поисковый сервис не ответил.",
+        "tool_time_limit_reached": "Время выполнения инструментов для этого ответа истекло.",
+        "repeated_tool_failure": "Повторный вызов снова не удался. Нужно изменить аргументы.",
+        "invalid_tool_arguments": "Нужно исправить аргументы инструмента.",
+        "tool_call_limit_reached": "Достигнут лимит вызовов для этого ответа.",
+        "canvas_revision_changed": "Документ изменился. Нужно прочитать текущую версию.",
+        "ambiguous_edit": "Найдено несколько совпадений. Нужен более точный фрагмент.",
+        "file_not_available": "Этот файл недоступен в текущем запросе.",
+        "skill_required": "Сначала нужно загрузить инструкции инструмента."
+      }
+    },
     "label": "Размышления",
     "loading": "Думаю...",
     "expand": "Развернуть размышления",
@@ -130,7 +243,7 @@
     "model": {
       "waiting": "Жду продолжение анализа модели...",
       "responded": "Модель продолжила анализ",
-      "failed": "Модель не ответила вовремя"
+      "failed": "Модель не ответила"
     }
   },
   "landing": {
@@ -296,6 +409,43 @@
     }
   },
   "composer": {
+    "tools": {
+      "data": "Данные",
+      "dataDescription": "Анализ, фильтрация и экспорт CSV/JSON",
+      "workflow": "План и уточнения",
+      "workflowDescription": "План шагов и уточняющие вопросы",
+      "files": "Файлы",
+      "filesDescription": "Чтение и поиск по текстовым вложениям чата",
+      "image_analysis": "Анализ изображений",
+      "image_analysisDescription": "Изучать прикреплённые изображения и их фрагменты",
+      "visualize": "Визуализация",
+      "visualizeDescription": "Интерактивные схемы, симуляции и мини-приложения",
+      "github": "GitHub",
+      "githubDescription": "Читать код подключённых репозиториев",
+      "python": "Python",
+      "pythonDescription": "Выполнять расчёты, анализировать данные и создавать файлы",
+      "canvas": "Холст",
+      "canvasDescription": "Создавать и редактировать документы и код",
+      "charts": "Графики",
+      "chartsDescription": "Строить графики и диаграммы данных",
+      "diagrams": "Схемы",
+      "diagramsDescription": "Показывать процессы и связи на диаграммах",
+      "beatbox": "Битбокс",
+      "beatboxDescription": "Создавать и редактировать ритмы",
+      "quiz": "Викторина",
+      "quizDescription": "Создавать интерактивные тесты",
+      "githubConnect": "Подключите GitHub в настройках",
+      "signIn": "Войдите, чтобы использовать инструмент",
+      "unavailable": "Инструмент сейчас недоступен",
+      "web": "Поиск в сети",
+      "webDescription": "Искать актуальную информацию",
+      "image": "Изображение",
+      "imageDescription": "Создать изображение",
+      "imageDemoDescription": "Внутренний демонстрационный генератор изображений",
+      "choose": "Выберите инструмент",
+      "empty": "Инструменты не найдены",
+      "remove": "Убрать: {{tool}}"
+    },
     "attachFiles": "Прикрепить файлы",
     "attachUnavailable": "Прикрепление недоступно",
     "attachRequiresAccount": "Зарегистрируйтесь для прикрепления файлов",
@@ -349,6 +499,15 @@
     "readOnly": "Только чтение"
   },
   "models": {
+    "think": "Думать",
+    "echo": {
+      "title": "Echo",
+      "subtitle": "Внутренняя тестовая модель"
+    },
+    "echo_stream": {
+      "title": "Echo Stream",
+      "subtitle": "Внутренняя потоковая тестовая модель"
+    },
     "choose": "Выберите модель",
     "thinkingLevel": "Уровень размышлений",
     "thinkingLevelDescription": "Баланс скорости ответа и глубины рассуждений",
