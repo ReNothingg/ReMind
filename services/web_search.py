@@ -16,7 +16,7 @@ import requests
 from bs4 import BeautifulSoup
 from defusedxml import ElementTree as ET
 
-from ai_engine.prompt_templates import render_prompt
+from ai_engine.prompt_templates import render_prompt_section
 from config import (
     USER_AGENT,
     WEB_SEARCH_ENABLED,
@@ -139,8 +139,8 @@ QUERY_MONTH_TERMS = {
 }
 
 
-def _render_web_tool_prompt(**replacements: str) -> str:
-    return render_prompt("tools/web.md", replacements)
+def _render_web_tool_prompt(section: str, **replacements: str) -> str:
+    return render_prompt_section("tools/web.md", section, replacements)
 
 
 @dataclass(frozen=True)
@@ -339,6 +339,7 @@ def decide_auto_web_search(query: str) -> dict[str, Any]:
 
     try:
         prompt = _render_web_tool_prompt(
+            "Search Router Prompt",
             USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
         if not prompt:
@@ -373,6 +374,7 @@ def rewrite_web_search_query(query: str) -> dict[str, Any]:
 
     try:
         prompt = _render_web_tool_prompt(
+            "Search Query Writer Prompt",
             CURRENT_UTC_DATE=datetime.now(timezone.utc).date().isoformat(),
             USER_MESSAGE_JSON=json.dumps(cleaned, ensure_ascii=False),
         )
@@ -1228,8 +1230,14 @@ def collect_web_search_candidates(
     if not search_batches:
         raise RuntimeError("search_provider_unavailable")
 
-    for variant_index, variant, raw_results in search_batches:
-        for result_index, raw in enumerate(raw_results):
+    interleaved_batches = [
+        (variant_index, variant, [(result_index, raw_results[result_index])])
+        for result_index in range(max(len(raw_results) for _, _, raw_results in search_batches))
+        for variant_index, variant, raw_results in search_batches
+        if result_index < len(raw_results)
+    ]
+    for variant_index, variant, ranked_results in interleaved_batches:
+        for result_index, raw in ranked_results:
             url = normalize_search_url(raw.get("url") or raw.get("href") or "")
             if not url:
                 continue
