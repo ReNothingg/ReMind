@@ -779,7 +779,7 @@ def get_favicon_url(page_url: str, html: str) -> str | None:
     for link in soup.find_all("link"):
         rel = link.get("rel")
         href = link.get("href")
-        if not href:
+        if not isinstance(href, str) or not href:
             continue
 
         rel_text = " ".join(rel).lower() if isinstance(rel, list) else str(rel or "").lower()

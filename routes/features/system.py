@@ -121,7 +121,15 @@ def register_system_routes(api_bp):
             db_user_id = int(user_id) if user_id is not None else None
         except (TypeError, ValueError):
             db_user_id = None
-        return jsonify({"models": list_accessible_models(db_user_id), "tools": composer_tool_catalog(db_user_id)}), 200
+        return (
+            jsonify(
+                {
+                    "models": list_accessible_models(db_user_id),
+                    "tools": composer_tool_catalog(db_user_id),
+                }
+            ),
+            200,
+        )
 
     @api_bp.route("/voice/")
     @api_bp.route("/voice/index.html")
@@ -326,9 +334,7 @@ def register_system_routes(api_bp):
                     "details": [
                         {
                             "appIDs": ["A7AA4W5KXR.synvexai.remind"],
-                            "components": [
-                                {"/": "/c/*"}
-                            ],
+                            "components": [{"/": "/c/*"}],
                         }
                     ]
                 }

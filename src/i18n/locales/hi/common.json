@@ -1155,6 +1155,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "पहुँच अस्वीकृत",
+    "accessDeniedMessage": "आपके पास व्यवस्थापक पैनल की पहुँच नहीं है।",
     "aiFeedback": {
       "likeRatio": "AI जवाबों पर पसंद",
       "dislikeRatio": "AI जवाबों पर नापसंद",

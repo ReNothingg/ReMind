@@ -35,6 +35,7 @@ return value
 class GitHubOAuthFlowError(RuntimeError):
     pass
 
+
 @dataclass(frozen=True, slots=True)
 class GitHubOAuthStart:
     state: str
@@ -70,7 +71,6 @@ def _identifier(value: str | None) -> str:
 
 
 class GitHubOAuthFlowStore:
-
 
     def __init__(
         self,

@@ -1160,6 +1160,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "Accès refusé",
+    "accessDeniedMessage": "Vous n’avez pas accès au panneau d’administration.",
     "aiFeedback": {
       "likeRatio": "Réponses de l’IA aimées",
       "dislikeRatio": "Réponses de l’IA non aimées",

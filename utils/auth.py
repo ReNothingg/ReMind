@@ -314,7 +314,6 @@ class AuthIdentity(db.Model):
 
 class AppleAuthChallenge(db.Model):
 
-
     __tablename__ = "apple_auth_challenge"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -332,7 +331,6 @@ class AppleAuthChallenge(db.Model):
 
 
 class AppleTokenReplay(db.Model):
-
 
     __tablename__ = "apple_token_replay"
 
@@ -1487,7 +1485,8 @@ def _apple_display_name(raw_value: Any) -> str | None:
             return _clean_apple_profile_name(value, "") or None
     if not isinstance(raw_value, dict):
         return None
-    name = raw_value.get("name") if isinstance(raw_value.get("name"), dict) else raw_value
+    raw_name = raw_value.get("name")
+    name = raw_name if isinstance(raw_name, dict) else raw_value
     parts = [
         name.get("firstName") or name.get("first_name"),
         name.get("middleName") or name.get("middle_name"),

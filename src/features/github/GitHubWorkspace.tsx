@@ -5,7 +5,6 @@ import {
     CheckCircle2,
     ExternalLink,
     GitBranch,
-    Github,
     GitPullRequest,
     Loader2,
     PlugZap,
@@ -13,6 +12,7 @@ import {
     Search,
     ShieldCheck,
 } from 'lucide-react';
+import { Github } from '../../components/UI/BrandIcons';
 import {
     apiService,
     type GitHubAgentActivity,

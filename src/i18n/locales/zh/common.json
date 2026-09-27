@@ -1155,6 +1155,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "访问被拒绝",
+    "accessDeniedMessage": "你没有管理员面板的访问权限。",
     "aiFeedback": {
       "likeRatio": "AI 回答点赞数",
       "dislikeRatio": "AI 回答点踩数",
