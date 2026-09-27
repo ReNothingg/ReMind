@@ -9,8 +9,8 @@ sqlalchemy==2.0.37
 alembic==1.14.1
 authlib==1.6.9
 pyjwt==2.10.1
-flask-limiter==3.10.1
-email-validator==2.3.0
+flask-limiter==4.1.1
+email-validator==2.2.0
 argon2-cffi==23.1.0
 google-genai==2.10.0
 langdetect==1.0.9
