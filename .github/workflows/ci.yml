@@ -175,6 +175,13 @@ jobs:
             exit "$status"
           fi
           test -s semgrep.json
+          python - <<'PYCODE'
+          import json
+          with open("semgrep.json", encoding="utf-8") as handle:
+              report = json.load(handle)
+          for error in report.get("errors", []):
+              print("Semgrep report issue:", error.get("level"), error.get("type"), error.get("path"), error.get("rule_id"))
+          PYCODE
 
       - name: Enforce high-severity security gate
         run: python scripts/security_gate.py --pip pip-audit.json --npm npm-audit.json --bandit bandit.json --semgrep semgrep.json
