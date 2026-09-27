@@ -1215,9 +1215,16 @@ def collect_web_search_candidates(
     search_batches: list[tuple[int, str, list[dict[str, Any]]]] = []
     if query_looks_time_sensitive(query) and timelimit is None:
         try:
-            search_batches.append((0, query, google_news_rss_search(query)))
+            news_results = google_news_rss_search(query)
         except Exception:
-            pass
+            news_results = []
+        if not news_results:
+            try:
+                news_results = web_search_news_free(query, max_results=per_query_limit)
+            except Exception:
+                news_results = []
+        if news_results:
+            search_batches.append((0, query, news_results))
 
     variant_offset = len(search_batches)
     for variant_index, variant in enumerate(query_variants, start=variant_offset):
