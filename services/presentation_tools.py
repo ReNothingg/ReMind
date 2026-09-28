@@ -115,6 +115,8 @@ def write_canvas(
         if not update:
             raise ValueError("invalid_canvas_document")
         if action == "replace":
+            if current is None:
+                raise ValueError("canvas_not_open")
             update["textdoc"]["id"] = current["id"]
             update["action"] = "update_textdoc"
     except (OSError, UnicodeError, ValueError) as exc:

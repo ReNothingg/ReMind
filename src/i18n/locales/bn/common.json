@@ -1155,6 +1155,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "প্রবেশাধিকার নেই",
+    "accessDeniedMessage": "আপনার প্রশাসক প্যানেলে প্রবেশাধিকার নেই।",
     "aiFeedback": {
       "likeRatio": "AI উত্তরে লাইক",
       "dislikeRatio": "AI উত্তরে ডিসলাইক",

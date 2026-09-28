@@ -38,11 +38,7 @@ def _favorite_ids(state: dict) -> list[str]:
     favorites: list[str] = []
     seen: set[str] = set()
     for item in raw_favorites:
-        if (
-            isinstance(item, str)
-            and FAVORITE_SESSION_ID_RE.fullmatch(item)
-            and item not in seen
-        ):
+        if isinstance(item, str) and FAVORITE_SESSION_ID_RE.fullmatch(item) and item not in seen:
             favorites.append(item)
             seen.add(item)
             if len(favorites) >= FAVORITE_MAX_COUNT:

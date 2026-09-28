@@ -1155,6 +1155,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "تم رفض الوصول",
+    "accessDeniedMessage": "ليس لديك صلاحية الوصول إلى لوحة الإدارة.",
     "aiFeedback": {
       "likeRatio": "إعجابات إجابات الذكاء الاصطناعي",
       "dislikeRatio": "عدم إعجاب بإجابات الذكاء الاصطناعي",

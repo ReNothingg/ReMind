@@ -514,7 +514,7 @@ def _hostname_is_allowed(hostname: str, *, resolve: bool = False) -> bool:
 
 def is_public_http_url(url: str, *, resolve_hostname: bool = False) -> bool:
     parsed = urlparse(url or "")
-    if parsed.scheme not in {"http", "https"}:
+    if parsed.scheme != "https":
         return False
     if parsed.username or parsed.password:
         return False
@@ -626,7 +626,7 @@ def _parse_robots_txt(robots_text: str, user_agent: str = ROBOTS_USER_AGENT) -> 
 
 def _origin_from_url(url: str) -> str:
     parsed = urlparse(url or "")
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    if parsed.scheme != "https" or not parsed.netloc:
         return ""
     return f"{parsed.scheme}://{parsed.netloc}"
 
@@ -779,7 +779,7 @@ def get_favicon_url(page_url: str, html: str) -> str | None:
     for link in soup.find_all("link"):
         rel = link.get("rel")
         href = link.get("href")
-        if not href:
+        if not isinstance(href, str) or not href:
             continue
 
         rel_text = " ".join(rel).lower() if isinstance(rel, list) else str(rel or "").lower()

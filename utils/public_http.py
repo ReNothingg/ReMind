@@ -18,36 +18,32 @@ def public_http_get(url: str, *, headers: dict, timeout: float, **_kwargs):
         raise UnsafeUrlError("invalid_public_url")
     parsed = urlsplit(url)
     if (
-        parsed.scheme not in {"http", "https"}
+        parsed.scheme != "https"
         or not parsed.hostname
         or parsed.username is not None
         or parsed.password is not None
     ):
         raise UnsafeUrlError("invalid_public_url")
     host = parsed.hostname.encode("idna").decode("ascii")
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
-    if port not in {80, 443}:
+    port = parsed.port or 443
+    if port != 443:
         raise UnsafeUrlError("public_port_required")
     addresses = _resolve_host_ips(host, port)
     if any(not _is_public_global_ip(address) for address in addresses):
         raise UnsafeUrlError("non_public_address")
     address = str(sorted(addresses, key=str)[0])
     request_timeout = urllib3.Timeout(connect=timeout, read=timeout)
-    pool = (
-        urllib3.HTTPSConnectionPool(
-            address,
-            port,
-            server_hostname=host,
-            assert_hostname=host,
-            cert_reqs=ssl.CERT_REQUIRED,
-            timeout=request_timeout,
-            maxsize=1,
-        )
-        if parsed.scheme == "https"
-        else urllib3.HTTPConnectionPool(address, port, timeout=request_timeout, maxsize=1)
+    pool = urllib3.HTTPSConnectionPool(
+        address,
+        port,
+        server_hostname=host,
+        assert_hostname=host,
+        cert_reqs=ssl.CERT_REQUIRED,
+        timeout=request_timeout,
+        maxsize=1,
     )
     host_header = f"[{host}]" if ":" in host else host
-    if port != (443 if parsed.scheme == "https" else 80):
+    if port != 443:
         host_header += f":{port}"
     target = parsed.path or "/"
     if parsed.query:

@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, ChevronRight, Code2, FileText, Github, Globe, Image, ListChecks, MessageCircle, Search, Wrench } from 'lucide-react';
+import { Brain, ChevronRight, Code2, FileText, Globe, Image, ListChecks, MessageCircle, Search, Wrench } from 'lucide-react';
+import { Github } from '../UI/BrandIcons';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-python';
 import { cn } from '../../utils/cn';

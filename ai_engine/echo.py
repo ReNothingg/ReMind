@@ -12,7 +12,8 @@ def _thinking_block(payload):
 
 def echo(_, payload):
     return {
-        "reply": _thinking_block(payload) + (
+        "reply": _thinking_block(payload)
+        + (
             payload
             if isinstance(payload, str)
             else (

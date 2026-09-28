@@ -140,8 +140,7 @@ def get_permissions_policy():
 
 def apply_security_headers(response):
     is_apple_app_site_association = bool(
-        has_request_context()
-        and request.path == "/.well-known/apple-app-site-association"
+        has_request_context() and request.path == "/.well-known/apple-app-site-association"
     )
     is_html_preview = bool(has_request_context() and request.path == HTML_PREVIEW_PATH)
     if is_html_preview:
@@ -154,9 +153,7 @@ def apply_security_headers(response):
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         return response
 
-    is_mobile_turnstile = bool(
-        has_request_context() and request.path == MOBILE_TURNSTILE_PATH
-    )
+    is_mobile_turnstile = bool(has_request_context() and request.path == MOBILE_TURNSTILE_PATH)
     if is_mobile_turnstile:
         response.headers["Content-Security-Policy"] = get_mobile_turnstile_csp_header()
         response.headers["X-Content-Type-Options"] = "nosniff"

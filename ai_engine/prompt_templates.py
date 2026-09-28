@@ -52,9 +52,7 @@ def load_prompt_section(relative_path: str, heading: str) -> str:
     return markdown_section(prompt, heading)
 
 
-def render_prompt(
-    relative_path: str, replacements: Mapping[str, object] | None = None
-) -> str:
+def render_prompt(relative_path: str, replacements: Mapping[str, object] | None = None) -> str:
     return _render(load_prompt(relative_path), replacements or {})
 
 

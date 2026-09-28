@@ -1225,6 +1225,8 @@
     "title": "Предпросмотр HTML"
   },
   "admin": {
+    "accessDeniedTitle": "Доступ закрыт",
+    "accessDeniedMessage": "У вас нет доступа к панели администратора.",
     "aiFeedback": {
       "likeRatio": "Лайки ответов ИИ",
       "dislikeRatio": "Дизлайки ответов ИИ",

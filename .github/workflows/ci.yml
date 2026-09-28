@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Scan tracked files for obvious secrets
         run: |
@@ -53,10 +53,10 @@ jobs:
     needs: secret-scan
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -79,15 +79,15 @@ jobs:
     needs: secret-scan
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -112,15 +112,15 @@ jobs:
     needs: secret-scan
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -165,16 +165,26 @@ jobs:
         run: |
           status=0
           docker run --rm \
-            --volume "$PWD:/src" \
+            --volume "$PWD:/src:ro" \
             --workdir /src \
             semgrep/semgrep:1.170.0 \
-            semgrep scan --error --config p/security-audit --config p/secrets \
-              --exclude node_modules --exclude dist --json . > semgrep.json || status=$?
+            semgrep scan --error --timeout 120 --jobs 1 --config p/security-audit --config p/secrets \
+              --exclude node_modules --exclude dist --json . > "$RUNNER_TEMP/semgrep.json" || status=$?
           if [ "$status" -gt 1 ]; then
             echo "Semgrep failed operationally with exit code $status"
             exit "$status"
           fi
-          test -s semgrep.json
+          test -s "$RUNNER_TEMP/semgrep.json"
+          python - <<'PYCODE'
+          import json
+          import os
+          from pathlib import Path
+          with (Path(os.environ["RUNNER_TEMP"]) / "semgrep.json").open(encoding="utf-8") as handle:
+              report = json.load(handle)
+          for error in report.get("errors", []):
+              details = {key: error.get(key) for key in ("level", "type", "path", "rule_id")}
+              print("::error title=Semgrep report issue::" + json.dumps(details, ensure_ascii=True))
+          PYCODE
 
       - name: Enforce high-severity security gate
-        run: python scripts/security_gate.py --pip pip-audit.json --npm npm-audit.json --bandit bandit.json --semgrep semgrep.json
+        run: python scripts/security_gate.py --pip pip-audit.json --npm npm-audit.json --bandit bandit.json --semgrep "$RUNNER_TEMP/semgrep.json"

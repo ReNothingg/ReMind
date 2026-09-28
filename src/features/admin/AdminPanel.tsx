@@ -575,8 +575,9 @@ export default function AdminPanel({ isAuthenticated, onOpenAuth }: {
             <section className="admin-page">
                 <div className="admin-access-panel">
                     <Lock size={34} />
-                    <h1>Доступ закрыт</h1>
-                    <p>{["Ваш вайб не соответствует требованиям безопасности.", "Доступ закрыт. Причина: подозрительно уверенно зашёл.", "Система обнаружила бедность в заголовках запроса.", "Я вообще фронтенд на GitHub Pages деплоил."][Math.floor(Math.random() * 4)]}</p>                </div>
+                    <h1>{t('admin.accessDeniedTitle')}</h1>
+                    <p>{t('admin.accessDeniedMessage')}</p>
+                </div>
             </section>
         );
     }

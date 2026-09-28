@@ -345,7 +345,7 @@ def process_request_data() -> tuple[str, dict[str, Any], str]:
         if raw_expected_user_id in (None, ""):
             return
         try:
-            expected_user_id = int(raw_expected_user_id)
+            expected_user_id = int(str(raw_expected_user_id))
             current_user_id = int(auth_user_id) if auth_user_id is not None else None
         except (TypeError, ValueError) as exc:
             raise ApiError(
@@ -531,7 +531,7 @@ def _build_model_message_parts(
         for artifact in python_artifacts:
             if not isinstance(artifact, dict) or not artifact.get("url_path"):
                 continue
-            attachment = {
+            attachment: dict[str, Any] = {
                 "url_path": str(artifact.get("url_path")),
                 "mime_type": str(artifact.get("mime_type") or "application/octet-stream"),
                 "original_name": str(artifact.get("original_name") or "artifact"),

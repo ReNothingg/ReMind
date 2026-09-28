@@ -16,8 +16,8 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree
 
+from defusedxml import ElementTree
 from PIL import Image, ImageOps
 from werkzeug.utils import secure_filename
 

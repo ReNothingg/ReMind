@@ -1160,6 +1160,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "Acceso denegado",
+    "accessDeniedMessage": "No tienes acceso al panel de administración.",
     "aiFeedback": {
       "likeRatio": "Me gusta en respuestas de IA",
       "dislikeRatio": "No me gusta en respuestas de IA",

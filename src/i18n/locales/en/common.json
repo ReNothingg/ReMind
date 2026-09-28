@@ -1221,6 +1221,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "Access denied",
+    "accessDeniedMessage": "You do not have access to the admin panel.",
     "aiFeedback": {
       "likeRatio": "AI answer likes",
       "dislikeRatio": "AI answer dislikes",

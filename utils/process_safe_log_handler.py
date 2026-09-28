@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import importlib
 import logging
 import logging.handlers
 import os
 import time
 from pathlib import Path
+from types import ModuleType
 
 try:
-    import fcntl
+    fcntl: ModuleType | None = importlib.import_module("fcntl")
 except ImportError:
     fcntl = None
 
@@ -51,7 +53,7 @@ class ProcessSafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
             try:
                 if self.stream is not None:
                     self.stream.close()
-                    self.stream = None
+                    self.stream = self._open()
                 super().emit(record)
             finally:
                 if fcntl is not None:
