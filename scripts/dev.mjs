@@ -1,5 +1,15 @@
 import { spawn, spawnSync } from 'node:child_process'
 
+const redisSetup = spawnSync('python3', ['scripts/ensure_dev_redis.py'], {
+  cwd: process.cwd(),
+  env: process.env,
+  stdio: 'inherit',
+})
+if (redisSetup.error || redisSetup.status !== 0) {
+  console.error('[redis] Local Redis preparation failed')
+  process.exit(1)
+}
+
 function npmScriptCommand(scriptName) {
   const npmExecPath = process.env.npm_execpath
 

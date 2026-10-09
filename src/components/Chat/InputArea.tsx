@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
 import FileModal from '../Modals/FileModal';
+import ScrollToLatestButton from './ScrollToLatestButton';
 import { Utils } from '../../utils/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -544,6 +545,8 @@ const InputArea = ({
                         </div>
                     </div>
                 )}
+
+                {variant !== 'landing' && <ScrollToLatestButton />}
 
                 <FileModal
                     isOpen={fileModal.isOpen}

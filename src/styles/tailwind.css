@@ -42,6 +42,7 @@
 @import "./features/reliability.css" layer(components);
 @import "./features/canvas.css" layer(components);
 @import "./design-language.css";
+@import "./motion.css";
 
 @source "../../index.html";
 @source "../**/*.{js,jsx,ts,tsx}";

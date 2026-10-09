@@ -178,10 +178,18 @@
       }
     },
     "ariaLog": "Messages de la conversation",
+    "scrollToLatest": "Aller au dernier message",
     "userMessageAria": "Votre message",
     "assistantMessageAria": "Message de l’assistant",
     "regenerate": "Régénérer",
     "generationFailed": "La réponse n’a pas pu être générée.",
+    "providerErrors": {
+      "accessDenied": "Google a refusé l’accès au modèle. Réessayez plus tard.",
+      "notConfigured": "Le service d’IA n’est pas configuré. Réessayez plus tard.",
+      "modelUnavailable": "Le modèle sélectionné est indisponible. Réessayez plus tard.",
+      "rateLimited": "La limite de requêtes du service d’IA a été atteinte. Réessayez plus tard.",
+      "unavailable": "Le service d’IA est temporairement indisponible. Réessayez plus tard."
+    },
     "generationStopped": "Génération arrêtée",
     "variantLimitReached": "Ce tour a atteint sa limite de versions.",
     "versionConflict": "La conversation a changé sur un autre appareil. Réessayez.",

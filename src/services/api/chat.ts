@@ -9,6 +9,41 @@ import { AIResponseFeedbackPayload } from './types/common';
 
 export const CHAT_STREAM_IDLE_TIMEOUT_MS = 135_000;
 
+const CHAT_ERROR_KEYS: Record<string, string> = {
+    provider_access_denied: 'chat.providerErrors.accessDenied',
+    provider_not_configured: 'chat.providerErrors.notConfigured',
+    provider_model_unavailable: 'chat.providerErrors.modelUnavailable',
+    provider_rate_limited: 'chat.providerErrors.rateLimited',
+    provider_unavailable: 'chat.providerErrors.unavailable',
+    chat_variant_limit_reached: 'chat.variantLimitReached',
+    message_id_conflict: 'chat.versionConflict',
+};
+
+export function getChatErrorCode(error: Error): string {
+    const data = (error as ApiServiceError).data as { error?: string | { code?: string } } | undefined;
+    return typeof data?.error === 'string' ? data.error : data?.error?.code || '';
+}
+
+export function getChatErrorMessage(error: Error): string {
+    return i18n.t(CHAT_ERROR_KEYS[getChatErrorCode(error)] || 'chat.generationFailed');
+}
+
+class ChatStreamError extends Error {
+    data: { error: { code: string } };
+    status?: number;
+
+    constructor(error: unknown) {
+        super('stream_failed');
+        const details = error && typeof error === 'object'
+            ? error as { code?: unknown; status?: unknown } : undefined;
+        const code = typeof error === 'string' ? error
+            : typeof details?.code === 'string' ? details.code : 'stream_failed';
+        this.data = { error: { code } };
+        if (typeof details?.status === 'number') this.status = details.status;
+        this.message = getChatErrorMessage(this);
+    }
+}
+
 export type ChatStreamReader = {
     cancel?: (reason?: unknown) => Promise<void>;
     read: () => Promise<ReadableStreamReadResult<Uint8Array>>;
@@ -111,6 +146,11 @@ async chat(
                         try {
                             const data = JSON.parse(part.substring(6)) as ChatStreamResult;
 
+                            if (data.error) {
+                                await reader.cancel().catch(() => undefined);
+                                throw new ChatStreamError(data.error);
+                            }
+
                             if (data.widget_update && onWidgetUpdate) {
                                 try {
                                     onWidgetUpdate(data.widget_update);
@@ -206,6 +246,7 @@ async chat(
                                 }
                             });
                         } catch (chunkError) {
+                            if (chunkError instanceof ChatStreamError) throw chunkError;
                             console.error(
                                 'Error parsing stream data chunk:',
                                 chunkError,

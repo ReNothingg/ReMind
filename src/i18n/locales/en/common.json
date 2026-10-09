@@ -178,10 +178,18 @@
       }
     },
     "ariaLog": "Conversation messages",
+    "scrollToLatest": "Scroll to latest message",
     "userMessageAria": "Your message",
     "assistantMessageAria": "Assistant message",
     "regenerate": "Regenerate",
     "generationFailed": "The response could not be generated.",
+    "providerErrors": {
+      "accessDenied": "Google denied access to the model. Please try again later.",
+      "notConfigured": "The AI service is not configured. Please try again later.",
+      "modelUnavailable": "The selected model is unavailable. Please try again later.",
+      "rateLimited": "The AI service has reached its request limit. Please try again later.",
+      "unavailable": "The AI service is temporarily unavailable. Please try again later."
+    },
     "generationStopped": "Generation stopped",
     "variantLimitReached": "This turn has reached its version limit.",
     "versionConflict": "The conversation changed on another device. Try again.",

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { KeyboardEvent, MouseEventHandler, PropsWithChildren, Ref } from 'react';
 import { cn } from '../../utils/cn';
@@ -27,6 +27,55 @@ const FOCUSABLE_SELECTOR = [
 
 let openModalCount = 0;
 
+const GHOST_MIN_OPEN_MS = 120;
+const GHOST_MAX_LIFETIME_MS = 420;
+const GHOST_STRIPPED_SELECTOR = 'iframe, video, audio, object, embed, script';
+
+function prefersReducedMotion() {
+    return typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Parents unmount modals instantly, so the exit is played on an inert, non-interactive
+// snapshot of the last frame. Embedded documents, media, scripts, ids and inline
+// handlers are stripped so the snapshot can never load, run or be targeted.
+function playExitGhost(overlay: HTMLElement) {
+    if (!overlay.isConnected || prefersReducedMotion()) return;
+
+    const ghost = overlay.cloneNode(true) as HTMLElement;
+    const sourceNodes = [overlay, ...Array.from(overlay.querySelectorAll<HTMLElement>('*'))];
+    const ghostNodes = [ghost, ...Array.from(ghost.querySelectorAll<HTMLElement>('*'))];
+    const scrollOffsets = sourceNodes
+        .map((node, index) => ({ index, top: node.scrollTop, left: node.scrollLeft }))
+        .filter(({ top, left }) => top > 0 || left > 0);
+
+    ghost.querySelectorAll(GHOST_STRIPPED_SELECTOR).forEach((node) => node.remove());
+    ghostNodes.forEach((node) => {
+        node.removeAttribute('id');
+        Array.from(node.attributes).forEach(({ name }) => {
+            if (name.toLowerCase().startsWith('on')) node.removeAttribute(name);
+        });
+    });
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.inert = true;
+    ghost.classList.add('ui-modal-ghost');
+
+    document.body.appendChild(ghost);
+    scrollOffsets.forEach(({ index, top, left }) => {
+        const node = ghostNodes[index];
+        if (node?.isConnected) {
+            node.scrollTop = top;
+            node.scrollLeft = left;
+        }
+    });
+
+    const removeGhost = () => ghost.remove();
+    ghost.addEventListener('animationend', (event) => {
+        if (event.target === ghost) removeGhost();
+    });
+    window.setTimeout(removeGhost, GHOST_MAX_LIFETIME_MS);
+}
+
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
     if (!ref) return;
     if (typeof ref === 'function') {
@@ -50,7 +99,18 @@ const ModalShell = ({
     contentRef,
 }: ModalShellProps) => {
     const internalContentRef = useRef<HTMLDivElement | null>(null);
+    const internalOverlayRef = useRef<HTMLDivElement | null>(null);
     const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+    useLayoutEffect(() => {
+        const openedAt = performance.now();
+        const overlay = internalOverlayRef.current;
+        return () => {
+            // Skip the StrictMode remount probe and modals that close as they open.
+            if (!overlay || performance.now() - openedAt < GHOST_MIN_OPEN_MS) return;
+            playExitGhost(overlay);
+        };
+    }, []);
 
     useEffect(() => {
         openModalCount += 1;
@@ -120,6 +180,7 @@ const ModalShell = ({
     return createPortal(
         <div
             ref={(node) => {
+                internalOverlayRef.current = node;
                 assignRef(overlayRef, node);
             }}
             className={cn(

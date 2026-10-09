@@ -1,6 +1,6 @@
 .toast-container {
   position: fixed;
-  top: 20px;
+  top: calc(20px + env(safe-area-inset-top, 0px));
   right: 20px;
   z-index: var(--z-toast);
   display: flex;
@@ -10,20 +10,28 @@
 }
 
 .toast-message {
-  background-color: var(--color-bg-surface-alt);
+  background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
   padding: 12px 16px;
+  border: 1px solid var(--color-border-medium);
   border-radius: var(--radius-md);
   border-left: 4px solid var(--color-text-info);
   font-size: 0.9rem;
   max-width: 350px;
+  overflow-wrap: anywhere;
   pointer-events: auto;
-  animation: toast-in 0.3s ease-out forwards;
-  opacity: 0;
 }
 
-.toast-message.exiting {
-  animation: toast-out 0.3s ease-in forwards;
+@media screen and (max-width: 640px) {
+  .toast-container {
+    right: 16px;
+    left: 16px;
+    align-items: center;
+  }
+
+  .toast-message {
+    max-width: 100%;
+  }
 }
 
 .toast-message.success {

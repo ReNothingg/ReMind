@@ -178,10 +178,18 @@
       }
     },
     "ariaLog": "对话消息",
+    "scrollToLatest": "滚动到最新消息",
     "userMessageAria": "你的消息",
     "assistantMessageAria": "助手消息",
     "regenerate": "重新生成",
     "generationFailed": "无法生成回复。",
+    "providerErrors": {
+      "accessDenied": "Google 拒绝了对模型的访问。请稍后重试。",
+      "notConfigured": "AI 服务尚未配置。请稍后重试。",
+      "modelUnavailable": "所选模型不可用。请稍后重试。",
+      "rateLimited": "已达到 AI 服务请求限制。请稍后重试。",
+      "unavailable": "AI 服务暂时不可用。请稍后重试。"
+    },
     "generationStopped": "已停止生成",
     "variantLimitReached": "此轮对话已达到版本上限。",
     "versionConflict": "对话已在其他设备上更改，请重试。",

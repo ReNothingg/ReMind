@@ -178,10 +178,18 @@
       }
     },
     "ariaLog": "Mensajes de la conversación",
+    "scrollToLatest": "Ir al último mensaje",
     "userMessageAria": "Tu mensaje",
     "assistantMessageAria": "Mensaje del asistente",
     "regenerate": "Volver a generar",
     "generationFailed": "No se pudo generar la respuesta.",
+    "providerErrors": {
+      "accessDenied": "Google denegó el acceso al modelo. Inténtalo de nuevo más tarde.",
+      "notConfigured": "El servicio de IA no está configurado. Inténtalo de nuevo más tarde.",
+      "modelUnavailable": "El modelo seleccionado no está disponible. Inténtalo de nuevo más tarde.",
+      "rateLimited": "Se ha alcanzado el límite de solicitudes del servicio de IA. Inténtalo de nuevo más tarde.",
+      "unavailable": "El servicio de IA no está disponible temporalmente. Inténtalo de nuevo más tarde."
+    },
     "generationStopped": "Generación detenida",
     "variantLimitReached": "Este turno alcanzó el límite de versiones.",
     "versionConflict": "La conversación cambió en otro dispositivo. Inténtalo de nuevo.",

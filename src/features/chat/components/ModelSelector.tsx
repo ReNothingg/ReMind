@@ -185,7 +185,7 @@ export function ModelSelector({
                     )}
                 </span>
                 <svg
-                    className={cn('model-btn-chevron', isDropdownOpen && 'rotate-180')}
+                    className="model-btn-chevron"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"

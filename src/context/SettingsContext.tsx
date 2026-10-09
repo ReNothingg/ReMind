@@ -198,7 +198,18 @@ export const SettingsProvider = ({ children }) => {
                 const actualTheme = value === 'system'
                     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
                     : value;
-                document.documentElement.setAttribute('data-theme', actualTheme);
+                const root = document.documentElement;
+                const previousTheme = root.getAttribute('data-theme');
+                const applyTheme = () => root.setAttribute('data-theme', actualTheme);
+                const canCrossfade = Boolean(previousTheme)
+                    && previousTheme !== actualTheme
+                    && typeof document.startViewTransition === 'function'
+                    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                if (canCrossfade) {
+                    document.startViewTransition(applyTheme);
+                } else {
+                    applyTheme();
+                }
                 break;
             }
             case 'accentColor': {

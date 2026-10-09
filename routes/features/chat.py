@@ -23,6 +23,7 @@ from sqlalchemy import and_
 from werkzeug.utils import secure_filename
 
 from ai_engine import get_model_function
+from ai_engine.errors import ProviderRequestError
 from ai_engine.registry import DEFAULT_MODEL_ID
 from config import ALLOW_GUEST_CHATS_SAVE, CHAT_MAX_VARIANTS_PER_TURN, UPLOAD_FOLDER
 from routes.api_errors import ApiError, api_error_boundary
@@ -1039,6 +1040,9 @@ def _stream_chat_response(
                     )
                 yield _stream_event(final_data)
 
+            except ProviderRequestError as exc:
+                logger.warning("Model request failed: model=%s code=%s", model_name, exc.code)
+                yield _stream_event({"error": {"code": exc.code, "status": exc.status}})
             except Exception as exc:
                 logger.error("Stream error for '%s': %s", model_name, exc, exc_info=True)
                 yield _stream_event({"error": "stream_failed"})

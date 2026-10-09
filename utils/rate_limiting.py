@@ -12,6 +12,31 @@ from flask import make_response, request, session
 
 rate_limit_store: DefaultDict[str, list[int]] = defaultdict(list)
 rate_limit_lock = Lock()
+redis_connection_lock = Lock()
+redis_clients: dict[str, object] = {}
+redis_retry_at: dict[str, float] = {}
+
+
+def _redis_client(redis_url):
+    with redis_connection_lock:
+        if redis_url in redis_clients:
+            return redis_clients[redis_url]
+        if time.monotonic() < redis_retry_at.get(redis_url, 0):
+            return None
+        try:
+            import redis
+
+            client = redis.from_url(redis_url, socket_connect_timeout=1, socket_timeout=1)
+            client.ping()
+        except Exception:
+            redis_retry_at[redis_url] = time.monotonic() + 30
+            logging.getLogger("remind").warning(
+                "Redis unavailable; rate limits use process memory. Retrying in 30 seconds."
+            )
+            return None
+        redis_clients[redis_url] = client
+        redis_retry_at.pop(redis_url, None)
+        return client
 
 
 @dataclass(frozen=True)
@@ -79,18 +104,11 @@ return {1, limit, remaining, math.floor(reset_at)}
         self._redis_script = None
 
         if use_redis:
-            try:
-                import redis
-
-                redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-                self.redis_client = redis.from_url(redis_url)
-                self.redis_client.ping()
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            self.redis_client = _redis_client(redis_url)
+            self.use_redis = self.redis_client is not None
+            if self.redis_client is not None:
                 self._redis_script = self.redis_client.register_script(self.REDIS_LUA)
-            except Exception:
-                self.use_redis = False
-                logging.getLogger("remind").warning(
-                    "Redis not available, falling back to in-memory rate limiting"
-                )
 
     def get_identifier(self, request_obj):
         try:
@@ -154,13 +172,12 @@ return {1, limit, remaining, math.floor(reset_at)}
             )
         except Exception:
             logging.getLogger("remind").warning(
-                "Redis rate limit script failed, request allowed",
-                exc_info=True,
+                "Redis rate limit script failed; request denied",
             )
             return RateLimitState(
-                allowed=True,
+                allowed=False,
                 limit=self.max_requests,
-                remaining=self.max_requests,
+                remaining=0,
                 reset_at=now + self.time_window,
             )
 

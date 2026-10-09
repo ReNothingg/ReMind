@@ -12,6 +12,7 @@ from typing import Any, Generator
 from google import genai
 from google.genai import errors, types
 
+from ai_engine.errors import ProviderRequestError
 from ai_engine.output_contract import output_contract_errors
 from ai_engine.prompt_templates import render_prompt
 from config import GEMINI_API_KEY, GEMINI_STREAM_TIMEOUT_MS
@@ -502,7 +503,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
         logger.error(
             "Gemini 3.1 Flash-Lite is unavailable because GEMINI_API_KEY is not configured"
         )
-        raise RuntimeError("gemini_api_key_not_configured")
+        raise ProviderRequestError("provider_not_configured")
 
     db_user_id = _db_user_id(user_id)
     client: genai.Client | None = None
@@ -899,8 +900,17 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
         if not any_answer_generated:
             yield EMPTY_RESPONSE
     except errors.APIError as exc:
-        logger.error("Gemini 3.1 Flash-Lite API request failed: %s", exc, exc_info=True)
-        raise RuntimeError("gemini_api_request_failed") from exc
+        status = int(exc.code or 503)
+        code = {
+            401: "provider_access_denied",
+            403: "provider_access_denied",
+            404: "provider_model_unavailable",
+            429: "provider_rate_limited",
+        }.get(status, "provider_unavailable")
+        logger.error("Gemini API request failed: status=%s code=%s", status, code)
+        raise ProviderRequestError(
+            code, status if status in {401, 403, 404, 429} else 503
+        ) from None
     except Exception as exc:
         logger.exception("Gemini 3.1 Flash-Lite request failed: %s", exc)
         raise RuntimeError("gemini_request_failed") from exc

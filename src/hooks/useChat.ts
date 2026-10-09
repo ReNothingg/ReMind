@@ -2,6 +2,8 @@ import { isKnownComposerTool } from '../features/chat/composerTools';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/api';
+import { getChatErrorCode, getChatErrorMessage } from '../services/api/chat';
+import { showToast } from '../utils/toast';
 import { fileService } from '../services/fileService';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
 import { useSettings } from '../context/SettingsContext';
@@ -1754,10 +1756,12 @@ export const useChat = () => {
                         return;
                     }
                     console.error('Chat error', err);
+                    const errorMessage = getChatErrorMessage(err);
+                    const isProviderFailure = getChatErrorCode(err).startsWith('provider_');
                     const errorStatus = Number((err as Error & { status?: number })?.status || 0);
-                    const isNetworkFailure = !navigator.onLine
+                    const isNetworkFailure = !isProviderFailure && (!navigator.onLine
                         || errorStatus >= 500
-                        || /fetch|network|connection|offline|stream_interrupted/i.test(err?.message || '');
+                        || /fetch|network|connection|offline|stream_interrupted/i.test(err?.message || ''));
                     if (isNetworkFailure) setConnectionState(navigator.onLine ? 'reconnecting' : 'offline');
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
@@ -1768,12 +1772,12 @@ export const useChat = () => {
                                 webSearchStatus: null,
                                 isError: !isNetworkFailure,
                                 deliveryState: isNetworkFailure ? 'interrupted' : 'error',
-                                content: fullReply || msg.content
+                                content: fullReply || (isNetworkFailure ? msg.content : errorMessage)
                             };
                         }
                         return msg;
                     }));
-                    completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                    completeSessionRequest(sessionId, chatRequestId, 'error', errorMessage);
                     if (isNetworkFailure) {
                         const recover = async () => {
                             const enqueueForRetry = async () => {
@@ -2186,23 +2190,16 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    const errorMessage = getChatErrorMessage(err);
                     if (!temporaryChat) {
                         updateSessionHistory(sessionId, history);
-                        completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                        showToast(errorMessage, { type: 'error' });
+                        completeSessionRequest(sessionId, chatRequestId, 'error', errorMessage);
                         return;
                     }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMessageId) {
-                            const errorCode = (err as Error & {
-                                data?: { error?: { code?: string } };
-                            })?.data?.error?.code;
-                            const errorContent = fullReply || (
-                                errorCode === 'chat_variant_limit_reached'
-                                    ? t('chat.variantLimitReached')
-                                    : errorCode === 'message_id_conflict'
-                                        ? t('chat.versionConflict')
-                                        : t('chat.generationFailed')
-                            );
+                            const errorContent = fullReply || errorMessage;
                             return patchMessageVariant({
                                 ...msg,
                                 isLoading: false,
@@ -2212,7 +2209,7 @@ export const useChat = () => {
                         }
                         return msg;
                     }));
-                    completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                    completeSessionRequest(sessionId, chatRequestId, 'error', errorMessage);
                 }
             });
         } catch (e) {
@@ -2547,32 +2544,25 @@ export const useChat = () => {
                     if (!isSessionRequestCurrent(sessionId, chatRequestId)) {
                         return;
                     }
+                    const errorMessage = getChatErrorMessage(err);
                     if (!temporaryChat) {
                         updateSessionHistory(sessionId, history);
-                        completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                        showToast(errorMessage, { type: 'error' });
+                        completeSessionRequest(sessionId, chatRequestId, 'error', errorMessage);
                         return;
                     }
                     updateSessionHistory(sessionId, prev => prev.map(msg => {
                         if (msg.id === aiMsgId) {
-                            const errorCode = (err as Error & {
-                                data?: { error?: { code?: string } };
-                            })?.data?.error?.code;
                             return {
                                 ...msg,
                                 isLoading: false,
                                 isError: true,
-                                content: fullReply || (
-                                    errorCode === 'chat_variant_limit_reached'
-                                        ? t('chat.variantLimitReached')
-                                        : errorCode === 'message_id_conflict'
-                                            ? t('chat.versionConflict')
-                                            : t('chat.generationFailed')
-                                )
+                                content: fullReply || errorMessage
                             };
                         }
                         return msg;
                     }));
-                    completeSessionRequest(sessionId, chatRequestId, 'error', t('chat.generationFailed'));
+                    completeSessionRequest(sessionId, chatRequestId, 'error', errorMessage);
                 }
             });
         } catch (e) {
