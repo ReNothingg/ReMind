@@ -25,7 +25,9 @@ export function getChatErrorCode(error: Error): string {
 }
 
 export function getChatErrorMessage(error: Error): string {
-    return i18n.t(CHAT_ERROR_KEYS[getChatErrorCode(error)] || 'chat.generationFailed');
+    const code = getChatErrorCode(error);
+    const key = Object.hasOwn(CHAT_ERROR_KEYS, code) ? CHAT_ERROR_KEYS[code] : undefined;
+    return i18n.t(key || 'chat.generationFailed');
 }
 
 class ChatStreamError extends Error {
