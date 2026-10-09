@@ -67,9 +67,7 @@ _UNSUPPORTED_TOOL_BLOCK_RE = re.compile(
     re.IGNORECASE,
 )
 _TG_THINKING_TAG_RE = re.compile(r"</?tg-thinking\b[^>]*>", re.IGNORECASE)
-_RICH_MARKDOWN_MEDIA_RE = re.compile(
-    r"!\[([^\]\n]{0,500})\]\(([^)\n]{1,2000})\)", re.IGNORECASE
-)
+_RICH_MARKDOWN_MEDIA_RE = re.compile(r"!\[([^\]\n]{0,500})\]\(([^)\n]{1,2000})\)", re.IGNORECASE)
 _MENTION_RE_TEMPLATE = r"(?<![\w@])@{username}(?!\w)"
 _MAX_INPUT_CHARS = 8_000
 _MAX_INLINE_INPUT_CHARS = 2_000
@@ -665,11 +663,7 @@ def _sanitize_rich_markdown(value: str) -> str:
         lambda match: f"[{match.group(1)}]({match.group(2)})",
         str(value or ""),
     )
-    return (
-        without_embedded_media.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return without_embedded_media.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _trim_rich_answer(value: str, max_chars: int) -> str:
@@ -718,9 +712,7 @@ def _generate_answer(
             graph, operation, target_message_id
         )
     else:
-        history = (
-            load_chat_history(session_chat.session_id, linked.user.id) if session_chat else []
-        )
+        history = load_chat_history(session_chat.session_id, linked.user.id) if session_chat else []
 
     user_data: dict[str, Any] = {
         "message": question,
@@ -963,9 +955,7 @@ def _guest_answer_payload(text: str, *, force_plain: bool = False) -> dict[str, 
     if force_plain:
         visible = _trim_rich_answer(normalized, _INLINE_RESULT_TEXT_CHARS)
         return {"message_text": visible}
-    rich_markdown = _trim_rich_answer(
-        _sanitize_rich_markdown(normalized), _MAX_RICH_MESSAGE_CHARS
-    )
+    rich_markdown = _trim_rich_answer(_sanitize_rich_markdown(normalized), _MAX_RICH_MESSAGE_CHARS)
     return {"rich_message": {"markdown": rich_markdown}}
 
 
@@ -1407,7 +1397,7 @@ def handle_callback_query(api: TelegramBotAPI, callback: dict[str, Any]) -> None
     graph = load_chat_graph(session_chat.session_id, linked.user.id)
     model_message = _message_for_request(graph, request_id, "model")
     answer = _message_text(model_message)
-    if not answer:
+    if not model_message or not answer:
         api.answer_callback(
             query_id,
             telegram_text(language, "action_unavailable"),

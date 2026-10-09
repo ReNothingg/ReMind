@@ -9,17 +9,13 @@ sqlalchemy==2.0.37
 alembic==1.14.1
 authlib==1.6.12
 pyjwt==2.13.0
-cryptography==48.0.1
-click==8.4.2
-flask-limiter==3.10.1
-email-validator==2.2.0
+flask-limiter==4.1.1
+email-validator==2.3.0
 argon2-cffi==23.1.0
-google-generativeai==0.8.4
 google-genai==2.10.0
 langdetect==1.0.9
 requests==2.33.0
-beautifulsoup4==4.12.3
-ddgs==9.14.4
+beautifulsoup4==4.14.3
 defusedxml==0.7.1
 python-dotenv==1.2.2
 Pillow==12.3.0
@@ -30,9 +26,13 @@ gevent==24.11.1
 python-magic==0.4.27
 prometheus-client==0.22.1
 
-black==26.3.1
-ruff==0.9.9
+# Dev/test/tooling pins
+black==26.3.0
+ruff==0.15.5
 mypy==1.15.0
-pip-audit==2.10.1
+pytest==8.3.4
+pytest-cov==7.0.0
+pip-audit==2.8.0
 bandit==1.9.4
+semgrep==1.108.0
 types-requests==2.32.0.20241016

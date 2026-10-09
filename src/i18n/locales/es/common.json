@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "Contexto de la sesión actual",
+    "used": "{{percent}} del contexto utilizado",
+    "system": "Instrucciones del sistema",
+    "tools": "Definiciones de herramientas",
+    "messages": "Mensajes",
+    "estimate": "Estimación de todo el historial activo y los archivos. Las instrucciones y herramientas se cuentan una sola vez.",
+    "unavailable": "Aún no hay datos de contexto para esta sesión y modelo. Aparecerán después de una respuesta."
+  },
+  "artifactDownload": {
+    "action": "Descargar {{name}}",
+    "label": "Descargar",
+    "loading": "Descargando…",
+    "unavailable": "El archivo no está disponible o no tienes acceso.",
+    "failed": "No se pudo descargar el archivo. Inténtalo de nuevo."
+  },
+  "toolPanels": {
+    "plan": "Plan",
+    "questions": "Preguntas",
+    "status": {
+      "pending": "Pendiente",
+      "in_progress": "En curso",
+      "completed": "Completado"
+    },
+    "customAnswer": "Tu propia respuesta",
+    "send": "Enviar respuestas",
+    "sent": "Respuestas enviadas",
+    "answerMessage": "Respuestas a: {{title}}",
+    "readOnly": "Abre un chat editable para responder.",
+    "sendFailed": "No se pudo enviar. Inténtalo de nuevo."
+  },
   "reliability": {"offline":"Sin conexión · los mensajes se pondrán en cola","reconnecting":"Restableciendo la conexión…","queued":"Mensajes en cola: {{count}}","draftSyncing":"Sincronizando borrador…","draftSynced":"Borrador sincronizado","draftLocal":"Borrador guardado localmente","queueFull":"La cola sin conexión está llena. Conéctate antes de enviar más archivos.","temporaryOffline":"Los chats temporales requieren conexión y nunca se guardan en la cola sin conexión.","interrupted":"La generación se interrumpió. Puedes regenerar esta versión."},
   "language": {
     "ru": "RU",
@@ -104,6 +135,29 @@
     "close": "Cerrar"
   },
   "think": {
+    "presentation": {
+      "toolCount_one": "{{count}} llamada a herramienta",
+      "toolCount_other": "{{count}} llamadas a herramientas",
+      "messageCount_one": "{{count}} mensaje",
+      "messageCount_other": "{{count}} mensajes",
+
+      "think": "Pensar",
+      "working": "Trabajando",
+      "search": "Buscar",
+      "model": "Modelo",
+      "input": "Entrada",
+      "output": "Salida",
+      "details": "Detalles",
+      "status": "Estado",
+      "toolCount": "{{count}} llamadas a herramientas",
+      "messageCount": "{{count}} mensajes",
+      "states": {
+        "running": "En curso",
+        "complete": "Completado",
+        "failed": "Error",
+        "interrupted": "Interrumpido"
+      }
+    },
     "label": "Pensamientos",
     "loading": "Pensando...",
     "expand": "Expandir pensamientos",
@@ -130,7 +184,7 @@
     "model": {
       "waiting": "Esperando a que el modelo continúe el análisis...",
       "responded": "El modelo continuó el análisis",
-      "failed": "El modelo no respondió a tiempo"
+      "failed": "El modelo no respondió"
     }
   },
   "landing": {
@@ -1114,6 +1168,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "Acceso denegado",
+    "accessDeniedMessage": "No tienes acceso al panel de administración.",
     "aiFeedback": {
       "likeRatio": "Me gusta en respuestas de IA",
       "dislikeRatio": "No me gusta en respuestas de IA",

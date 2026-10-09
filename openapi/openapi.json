@@ -1033,10 +1033,53 @@
         },
         "additionalProperties": true
       },
+      "ContextUsage": {
+        "type": "object",
+        "required": [
+          "input_tokens",
+          "context_limit",
+          "system_tokens",
+          "tool_tokens",
+          "message_tokens",
+          "estimated_breakdown"
+        ],
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16000000
+          },
+          "context_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16000000
+          },
+          "system_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16000000
+          },
+          "tool_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16000000
+          },
+          "message_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16000000
+          },
+          "estimated_breakdown": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "ChatOperationResponse": {
         "type": "object",
         "required": ["ok", "sessionId", "request_id", "history"],
         "properties": {
+          "context_usage": { "$ref": "#/components/schemas/ContextUsage" },
           "ok": { "type": "boolean" },
           "sessionId": { "type": "string" },
           "request_id": { "type": "string" },
@@ -1059,6 +1102,7 @@
           "parts"
         ],
         "properties": {
+          "context_usage": { "$ref": "#/components/schemas/ContextUsage" },
           "id": {
             "type": [
               "string",

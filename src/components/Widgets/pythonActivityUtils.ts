@@ -11,6 +11,8 @@ export type DecodedPythonActivity = {
     output: string;
     durationMs: number;
     artifactCount: number;
+    codeTruncated: boolean;
+    outputTruncated: boolean;
 };
 
 const VALID_PYTHON_STATUSES = new Set<PythonActivityStatus>([
@@ -51,6 +53,8 @@ export function decodePythonActivity(encoded: string): DecodedPythonActivity | n
             code: String(payload.code || '').slice(0, MAX_CODE_LENGTH),
             purpose: String(payload.purpose || '').replace(/\s+/g, ' ').trim().slice(0, MAX_PURPOSE_LENGTH),
             output: String(payload.output || '').slice(0, MAX_OUTPUT_LENGTH),
+            codeTruncated: payload.code_truncated === true,
+            outputTruncated: payload.output_truncated === true,
             durationMs: Number.isFinite(durationMs)
                 ? Math.max(0, Math.min(60_000, durationMs))
                 : 0,

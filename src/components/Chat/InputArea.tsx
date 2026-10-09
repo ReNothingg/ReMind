@@ -34,6 +34,7 @@ const InputArea = ({
     showDynamicWarning = false,
     currentSessionId = null,
     currentModel = '',
+    contextUsage = null as unknown,
     models = [] as ChatModel[],
     availableTools = [] as ComposerToolOption[],
     onModelChange = undefined,
@@ -658,6 +659,8 @@ const InputArea = ({
                         {models.length > 0 && onModelChange && onThinkingLevelChange && (
                             <ModelSelector
                                 currentModel={currentModel}
+                                contextUsage={contextUsage}
+                                contextKey={`${currentSessionId || 'new'}:${currentModel}`}
                                 models={models}
                                 onModelChange={onModelChange}
                                 thinkingLevel={thinkingLevel}

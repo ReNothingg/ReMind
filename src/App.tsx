@@ -1,3 +1,4 @@
+import { sessionContextUsage } from './features/chat/contextUsage';
 import type { ComposerToolOption } from './services/api';
 import {
   Suspense,
@@ -207,6 +208,7 @@ const MainLayout = () => {
     isAuthLoading || isModelAvailable(currentModel, availableModels.filter((model) => !isImageToolModel(model)))
       ? currentModel
       : getFallbackModelId(availableModels.filter((model) => !isImageToolModel(model)));
+  const currentContextUsage = useMemo(() => sessionContextUsage(history, selectedModel), [history, selectedModel]);
   const selectedModelDefinition = availableModels.find((model) => model.id === selectedModel);
   const selectedThinkingLevel = selectedModelDefinition?.thinkingLevels.includes(thinkingLevel)
     ? thinkingLevel
@@ -1266,6 +1268,7 @@ const MainLayout = () => {
                       onOpenAuth={() => setAuthOpen('login')}
                       currentSessionId={currentSessionId}
                       currentModel={selectedModel}
+                      contextUsage={currentContextUsage}
                       models={availableModels}
                       availableTools={availableTools}
                       onModelChange={setCurrentModel}
@@ -1358,6 +1361,7 @@ const MainLayout = () => {
                       onOpenAuth={() => setAuthOpen('login')}
                       currentSessionId={currentSessionId}
                       currentModel={selectedModel}
+                      contextUsage={currentContextUsage}
                       models={availableModels}
                       availableTools={availableTools}
                       onModelChange={setCurrentModel}

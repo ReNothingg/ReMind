@@ -1,4 +1,35 @@
 {
+  "contextUsage": {
+    "label": "当前会话上下文",
+    "used": "已使用 {{percent}} 上下文",
+    "system": "系统提示词",
+    "tools": "工具定义",
+    "messages": "消息",
+    "estimate": "估算整个当前会话的有效历史和附件。系统提示词与工具只计算一次。",
+    "unavailable": "此会话和模型暂无上下文数据，收到回答后将显示。"
+  },
+  "artifactDownload": {
+    "action": "下载 {{name}}",
+    "label": "下载",
+    "loading": "正在下载…",
+    "unavailable": "文件不可用或你没有访问权限。",
+    "failed": "无法下载文件，请重试。"
+  },
+  "toolPanels": {
+    "plan": "计划",
+    "questions": "问题",
+    "status": {
+      "pending": "待处理",
+      "in_progress": "进行中",
+      "completed": "已完成"
+    },
+    "customAnswer": "自定义回答",
+    "send": "发送回答",
+    "sent": "回答已发送",
+    "answerMessage": "回答：{{title}}",
+    "readOnly": "请打开可编辑的聊天以回答。",
+    "sendFailed": "发送失败，请重试。"
+  },
   "reliability": {"offline":"离线 · 消息将进入队列","reconnecting":"正在恢复连接…","queued":"队列中有 {{count}} 条消息","draftSyncing":"正在同步草稿…","draftSynced":"草稿已同步","draftLocal":"草稿已保存在本地","queueFull":"离线队列已满。请联网后再发送更多文件。","temporaryOffline":"临时聊天需要网络连接，且不会保存到离线队列。","interrupted":"生成已中断。你可以重新生成此版本。"},
   "language": {
     "ru": "RU",
@@ -104,6 +135,24 @@
     "close": "关闭"
   },
   "think": {
+    "presentation": {
+      "think": "思考",
+      "working": "处理中",
+      "search": "搜索",
+      "model": "模型",
+      "input": "输入",
+      "output": "输出",
+      "details": "详情",
+      "status": "状态",
+      "toolCount": "{{count}} 次工具调用",
+      "messageCount": "{{count}} 条消息",
+      "states": {
+        "running": "进行中",
+        "complete": "已完成",
+        "failed": "失败",
+        "interrupted": "已中断"
+      }
+    },
     "label": "思考",
     "loading": "正在思考...",
     "expand": "展开思考",
@@ -130,7 +179,7 @@
     "model": {
       "waiting": "正在等待模型继续分析...",
       "responded": "模型已继续分析",
-      "failed": "模型未能及时响应"
+      "failed": "模型未响应"
     }
   },
   "landing": {
@@ -1114,6 +1163,8 @@
     "title": "HTML preview"
   },
   "admin": {
+    "accessDeniedTitle": "访问被拒绝",
+    "accessDeniedMessage": "你没有管理员面板的访问权限。",
     "aiFeedback": {
       "likeRatio": "AI 回答点赞数",
       "dislikeRatio": "AI 回答点踩数",

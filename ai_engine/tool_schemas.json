@@ -1,18 +1,40 @@
 [
   {
     "name": "web_search",
-    "description": "Search the live web when current or source-backed information is needed. Use the user's language and send a concise search-engine query. Only use facts directly supported by returned extracts; search again when evidence is insufficient.",
+    "description": "Search one precise query. Returns search snippets with stable source IDs, not full verified articles. Use web_fetch on promising sources before making specific claims. Read the web skill first.",
     "parameters": {
       "type": "object",
       "properties": {
         "query": {
           "type": "string",
-          "description": "A concise web search query, maximum 500 characters."
+          "description": "A concise web search query, maximum 500 characters.",
+          "maxLength": 500,
+          "minLength": 1
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253
+          },
+          "minItems": 0,
+          "maxItems": 5
+        },
+        "freshness": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week",
+            "month",
+            "year"
+          ]
         }
       },
       "required": [
         "query"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -20,7 +42,8 @@
     "description": "List repositories available through the user's connected ReMind GitHub App installations. Call this before assuming repository access.",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -31,16 +54,21 @@
       "properties": {
         "repo_full_name": {
           "type": "string",
-          "description": "Repository in owner/name format."
+          "description": "Repository in owner/name format.",
+          "maxLength": 240,
+          "minLength": 1
         },
         "branch": {
           "type": "string",
-          "description": "Optional branch; defaults to the repository default branch."
+          "description": "Optional branch; defaults to the repository default branch.",
+          "maxLength": 255,
+          "minLength": 1
         }
       },
       "required": [
         "repo_full_name"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -51,21 +79,28 @@
       "properties": {
         "repo_full_name": {
           "type": "string",
-          "description": "Repository in owner/name format."
+          "description": "Repository in owner/name format.",
+          "maxLength": 240,
+          "minLength": 1
         },
         "path": {
           "type": "string",
-          "description": "Repository-relative file path."
+          "description": "Repository-relative file path.",
+          "maxLength": 1024,
+          "minLength": 1
         },
         "ref": {
           "type": "string",
-          "description": "Optional branch, tag, or commit; defaults to the default branch."
+          "description": "Optional branch, tag, or commit; defaults to the default branch.",
+          "maxLength": 255,
+          "minLength": 1
         }
       },
       "required": [
         "repo_full_name",
         "path"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -76,17 +111,22 @@
       "properties": {
         "code": {
           "type": "string",
-          "description": "Complete Python script, maximum 24000 characters. The runtime is fresh on every call and has no network access."
+          "description": "Complete Python script, maximum 24000 characters. The runtime is fresh on every call and has no network access.",
+          "maxLength": 24000,
+          "minLength": 1
         },
         "purpose": {
           "type": "string",
-          "description": "A concise user-language progress summary, maximum 1000 characters: what this execution will verify or produce and, for later calls, which prior result led to it. State conclusions, not hidden chain-of-thought."
+          "description": "A concise user-language progress summary, maximum 1000 characters: what this execution will verify or produce and, for later calls, which prior result led to it. State conclusions, not hidden chain-of-thought.",
+          "maxLength": 1000,
+          "minLength": 1
         }
       },
       "required": [
         "code",
         "purpose"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -96,7 +136,9 @@
       "type": "object",
       "properties": {
         "filename": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 180,
+          "minLength": 1
         },
         "x": {
           "type": "integer",
@@ -125,7 +167,9 @@
         },
         "purpose": {
           "type": "string",
-          "description": "Concise user-language progress summary explaining which region is being inspected and why. Do not reveal hidden chain-of-thought."
+          "description": "Concise user-language progress summary explaining which region is being inspected and why. Do not reveal hidden chain-of-thought.",
+          "maxLength": 1000,
+          "minLength": 1
         }
       },
       "required": [
@@ -136,7 +180,8 @@
         "height",
         "deliver_to_user",
         "purpose"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -146,7 +191,9 @@
       "type": "object",
       "properties": {
         "filename": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 180,
+          "minLength": 1
         },
         "rows": {
           "type": "integer",
@@ -172,7 +219,9 @@
         },
         "purpose": {
           "type": "string",
-          "description": "Concise user-language progress summary explaining why the image is being split. Do not reveal hidden chain-of-thought."
+          "description": "Concise user-language progress summary explaining why the image is being split. Do not reveal hidden chain-of-thought.",
+          "maxLength": 1000,
+          "minLength": 1
         }
       },
       "required": [
@@ -180,7 +229,8 @@
         "rows",
         "columns",
         "purpose"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -190,12 +240,15 @@
       "type": "object",
       "properties": {
         "skill_id": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
         }
       },
       "required": [
         "skill_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -205,14 +258,18 @@
       "type": "object",
       "properties": {
         "title": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 120,
+          "minLength": 1
         },
         "html": {
           "type": "string"
         },
         "filename": {
           "type": "string",
-          "description": "Exact name of an already available input or tool artifact; not a filesystem path or URL."
+          "description": "Exact name of an already available input or tool artifact; not a filesystem path or URL.",
+          "maxLength": 180,
+          "minLength": 1
         },
         "mode": {
           "type": "string",
@@ -224,7 +281,8 @@
       },
       "required": [
         "title"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -241,7 +299,9 @@
           ]
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 140,
+          "minLength": 1
         },
         "type": {
           "type": "string",
@@ -252,14 +312,17 @@
         },
         "filename": {
           "type": "string",
-          "description": "Exact name of an already available text file instead of content."
+          "description": "Exact name of an already available text file instead of content.",
+          "maxLength": 180,
+          "minLength": 1
         }
       },
       "required": [
         "action",
         "name",
         "type"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -287,7 +350,8 @@
       "required": [
         "format",
         "content"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -297,12 +361,721 @@
       "type": "object",
       "properties": {
         "prompt": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 16000,
+          "minLength": 1
         }
       },
       "required": [
         "prompt"
-      ]
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_list",
+    "description": "List exact filenames of attachments and returned artifacts accessible in this request. Read the files skill first.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_read",
+    "description": "Read numbered lines from one available UTF-8 text file. No arbitrary filesystem paths. Read the files skill first.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "start_line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "line_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2097152
+        },
+        "max_characters": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 24000
+        }
+      },
+      "required": [
+        "filename"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_search",
+    "description": "Search literal text in one available UTF-8 text file. Returns bounded matching lines, not regex execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "case_sensitive": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "filename",
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "canvas_read",
+    "description": "Read numbered lines and current revision of the open Canvas before editing.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "start_line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "line_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "canvas_edit",
+    "description": "Replace exactly one literal occurrence in the open Canvas. Requires revision from canvas_read. Missing, stale or ambiguous matches leave the document unchanged.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "old_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24000
+        },
+        "new_text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 24000
+        }
+      },
+      "required": [
+        "expected_revision",
+        "old_text",
+        "new_text"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "web_fetch",
+    "description": "Read a public page by URL OR returned source_id. Follow next_offset for more text. Results include source_id for citations. No login, internal networks or arbitrary downloads.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "source_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 96
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "max_characters": {
+          "type": "integer",
+          "minimum": 500,
+          "maximum": 16000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "web_search_batch",
+    "description": "Search up to three independent queries concurrently. Results keep their query and stable source IDs; failed queries do not erase successful ones.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253
+          },
+          "minItems": 0,
+          "maxItems": 5
+        },
+        "freshness": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week",
+            "month",
+            "year"
+          ]
+        }
+      },
+      "required": [
+        "queries"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "web_find",
+    "description": "Find literal text within a fetched public page by URL OR source_id. Returns bounded matching lines. Read the surrounding page with web_fetch.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "source_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 96
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_glob",
+    "description": "Find available attachment/artifact filenames using a glob such as *.csv. Does not traverse the host filesystem.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        }
+      },
+      "required": [
+        "pattern"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_search_all",
+    "description": "Search literal text across available UTF-8 attachments and artifacts, optionally narrowed by a filename glob.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_diff",
+    "description": "Compare two available text files and return a bounded unified diff without modifying either file.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "after": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_write",
+    "description": "Create a downloadable text or source-code artifact. Returns its exact filename and revision. Never overwrites originals or executes code. Persistent signed-in chats only.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 524288
+        }
+      },
+      "required": [
+        "filename",
+        "content"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_edit",
+    "description": "Replace one exact occurrence in an available UTF-8 file and publish a new version. Requires expected_revision from file_read. Does not overwrite the original.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "old_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24000
+        },
+        "new_text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 24000
+        },
+        "output_filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "filename",
+        "expected_revision",
+        "old_text",
+        "new_text"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "canvas_export",
+    "description": "Export the current Canvas as a downloadable text/source file. Persistent signed-in chats only.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "filename"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "table_inspect",
+    "description": "Inspect a CSV or flat JSON array: column names, row count, numeric ranges, missing values and a sample. Reads at most 20000 rows without executing uploaded code.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        }
+      },
+      "required": [
+        "filename"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "table_query",
+    "description": "Filter, select, sort, group and aggregate CSV/JSON rows. No SQL, eval or arbitrary expressions. Optional CSV export includes all matching rows and guards spreadsheet formulas.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "column": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "equals",
+                  "contains",
+                  "greater_than",
+                  "less_than"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "column",
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 5
+        },
+        "group_by": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "value_column": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "aggregate": {
+          "type": "string",
+          "enum": [
+            "count",
+            "sum",
+            "average",
+            "min",
+            "max"
+          ]
+        },
+        "sort_by": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "descending": {
+          "type": "boolean"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "export_filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "filename"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "plan_update",
+    "description": "Show or update a concise plan for this response. At most one step may be in progress. Completed steps must be backed by actual work. Does not schedule autonomous tasks.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "completed"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 12
+        }
+      },
+      "required": [
+        "title",
+        "steps"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ask_user",
+    "description": "Ask up to three clarifying questions with short choices and a free-text answer field. Ends this response and waits for the user to send their next message; never assumes an answer or grants tool permissions.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "minItems": 2,
+                "maxItems": 4
+              }
+            },
+            "required": [
+              "id",
+              "question",
+              "options"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "title",
+        "questions"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "github_read_files",
+    "description": "Read up to five explicit UTF-8 paths from one connected GitHub repository. Restricted and secret-like paths remain blocked.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "repo_full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      },
+      "required": [
+        "repo_full_name",
+        "paths"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "github_search_code",
+    "description": "Search literal text in up to five explicit files from one connected repository. Read-only and permission checked.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "repo_full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "repo_full_name",
+        "paths",
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "web_links",
+    "description": "List links actually found on a fetched page, ten at a time. Use those exact URLs for navigation. URL must come from the user, search results or previously returned page links.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "source_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 96
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40
+        }
+      },
+      "additionalProperties": false
     }
   }
 ]

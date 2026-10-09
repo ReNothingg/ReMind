@@ -820,6 +820,11 @@ const processInteractiveHTMLTags = (text: string, labels?: FormatTextOptions['la
 
     const toBase64 = encodeBase64Utf8;
 
+    text = text.replace(/<tool_panel data-kind="(plan|questions)" data-b64="([A-Za-z0-9+/=]{1,32000})"><\/tool_panel>/g,
+        (_match, kind, encoded) => `<div class="tool-panel-instance-host" data-panel-kind="${kind}" data-panel-state="${encoded}"></div>`);
+    const pendingPanel = text.lastIndexOf('<tool_panel');
+    if (pendingPanel >= 0) text = text.slice(0, pendingPanel);
+
     text = text.replace(
         /<visualize(?:\s+title="([^"]{0,120})")?(?:\s+mode="(normal|wide)")?>([\s\S]*?)<\/visualize>/gi,
         (_match, title, mode, content) => {
@@ -885,6 +890,7 @@ export const formatText = (text: string, options: FormatTextOptions = {}) => {
             'data-visualize-source-b64', 'data-visualize-title', 'data-visualize-mode',
             'data-livebeatbox', 'data-livequiz', 'data-livespinwheel',
             'data-think-open', 'data-think-close', 'data-think-content', 'data-think-content-b64',
+            'data-panel-kind', 'data-panel-state',
             'data-tool', 'data-source-ids', 's', 'tabindex', 'aria-live', 'aria-label', 'aria-hidden',
             'aria-expanded', 'aria-selected', 'aria-controls', 'role', 'stroke-width',
             'data-expand-label', 'data-collapse-label', 'hidden'

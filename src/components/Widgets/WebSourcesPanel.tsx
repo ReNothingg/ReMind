@@ -97,6 +97,17 @@ export default function WebSourcesPanel({
         };
     }, [open, mode]);
 
+    useEffect(() => {
+        if (!preview || mode !== 'inline') return;
+        const hide = () => setPreview(null);
+        window.addEventListener('resize', hide);
+        window.addEventListener('scroll', hide, true);
+        return () => {
+            window.removeEventListener('resize', hide);
+            window.removeEventListener('scroll', hide, true);
+        };
+    }, [preview, mode]);
+
     if (normalizedSources.length === 0) return null;
 
     const renderPillContent = (source: NormalizedWebSource) => (
@@ -117,11 +128,7 @@ export default function WebSourcesPanel({
                 />
             </span>
             <span className="source-pill-name">{source.siteName}</span>
-            {mode === 'inline' && <span className="source-tooltip" role="tooltip">
-                <strong>{source.title}</strong>
-                {source.snippet && <span>{source.snippet}</span>}
-                {source.displayUrl && <small>{source.displayUrl}</small>}
-            </span>}
+
         </>
     );
 
@@ -129,9 +136,9 @@ export default function WebSourcesPanel({
         source.url ? (
             <a key={`${source.url}-${index}`} className="source-pill" href={source.url}
                 target="_blank" rel="noopener noreferrer" aria-label={source.title}
-                onPointerEnter={(event) => { if (mode === 'popover' && event.pointerType !== 'touch') setPreview({ source, rect: event.currentTarget.getBoundingClientRect() }); }}
+                onPointerEnter={(event) => { if (event.pointerType !== 'touch') setPreview({ source, rect: event.currentTarget.getBoundingClientRect() }); }}
                 onPointerLeave={() => setPreview(null)}
-                onFocus={(event) => { if (mode === 'popover') setPreview({ source, rect: event.currentTarget.getBoundingClientRect() }); }}
+                onFocus={(event) => { setPreview({ source, rect: event.currentTarget.getBoundingClientRect() }); }}
                 onBlur={() => setPreview(null)}>
                 {renderPillContent(source)}
             </a>
@@ -171,7 +178,7 @@ export default function WebSourcesPanel({
                     {pills}
                 </div>, document.body,
             )}
-            {mode === 'popover' && open && preview && createPortal(
+            {preview && (mode === 'inline' || open) && createPortal(
                 <div className="source-tooltip source-viewport-tooltip" role="tooltip"
                     style={{ left: Math.max(12, Math.min(preview.rect.left, window.innerWidth - Math.min(320, window.innerWidth - 24) - 12)),
                         width: Math.min(320, window.innerWidth - 24),

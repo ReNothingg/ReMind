@@ -325,7 +325,7 @@ export const useAudio = (_messageId) => {
         isVisible,
         currentTime,
         totalDuration,
-        isReady: totalDuration > 0 && audioSegmentsRef.current.length > 0,
+        isReady: totalDuration > 0,
         formatTime,
         seekAudio,
         waveformPoints,

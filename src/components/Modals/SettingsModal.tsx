@@ -13,7 +13,6 @@ import {
     ArrowUpRight,
     Download,
     FileText,
-    Github,
     Globe2,
     Info,
     LayoutPanelLeft,
@@ -28,10 +27,10 @@ import {
     ShieldAlert,
     ShieldCheck,
     SlidersHorizontal,
-    Youtube,
     UserRound,
     X,
 } from 'lucide-react';
+import { Github, Youtube } from '../UI/BrandIcons';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/auth';

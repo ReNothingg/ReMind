@@ -43,6 +43,13 @@ export function parseMessagePresentation(html: string, parts: unknown, messageId
         parts.forEach((part: unknown, partIndex) => {
             if (!part || typeof part !== 'object' || !('text' in part) || typeof part.text !== 'string') return;
             let index = 0;
+            for (const match of part.text.matchAll(/<tool_panel data-kind="(plan|questions)" data-b64="([A-Za-z0-9+/=]{1,32000})"><\/tool_panel>/g)) {
+                if (match[1] && match[2]) {
+                    const previous = widgets.findIndex(widget => widget.type === match[1]);
+                    if (previous >= 0) widgets.splice(previous, 1);
+                    addJson(match[1], decode(match[2]), `${match[1]}-${messageId}`);
+                }
+            }
             for (const match of part.text.matchAll(/<(beatbox|quiz|spinwheel)>([\s\S]*?)<\/\1>/gi)) {
                 if (match[1] && match[2]) addJson(match[1].toLowerCase(), match[2], `${match[1]}-${messageId}-${partIndex}-${index++}`);
             }
@@ -70,13 +77,23 @@ export function parseMessagePresentation(html: string, parts: unknown, messageId
         addThought(content, Number(host.getAttribute('data-think-open')), Number(host.getAttribute('data-think-close')), `think-${messageId}-${index}`);
         host.remove();
     });
+    root.querySelectorAll('.tool-panel-instance-host').forEach((host) => {
+        const kind = host.getAttribute('data-panel-kind');
+        const encoded = host.getAttribute('data-panel-state') || '';
+        if ((kind === 'plan' || kind === 'questions') && encoded.length <= 32000) {
+            const index = widgets.findIndex(widget => widget.type === kind);
+            if (index >= 0) widgets.splice(index, 1);
+            addJson(kind, decode(encoded), `${kind}-${messageId}`);
+        }
+        host.remove();
+    });
     return { html: root.innerHTML, widgets: mergeThinkWidgets(widgets, `think-${messageId}-merged`) };
 }
 
 export function applyMessageWidgetUpdate(widgets: Widget[], update: unknown, messageId: string): Widget[] {
     if (!update || typeof update !== 'object' || !('tag' in update) || !('state' in update)) return widgets;
     const tag = update.tag;
-    if (typeof tag !== 'string' || !['beatbox', 'quiz', 'spinwheel', 'visualize'].includes(tag)) return widgets;
+    if (typeof tag !== 'string' || !['beatbox', 'quiz', 'spinwheel', 'visualize', 'plan', 'questions'].includes(tag)) return widgets;
     let state: unknown = update.state;
     if (typeof state === 'string') {
         try { state = JSON.parse(state); } catch { return widgets; }
