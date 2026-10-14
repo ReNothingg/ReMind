@@ -238,11 +238,12 @@
     "regenerate": "Volver a generar",
     "generationFailed": "No se pudo generar la respuesta.",
     "providerErrors": {
-      "accessDenied": "Google denegó el acceso al modelo. Inténtalo de nuevo más tarde.",
+      "accessDenied": "El proveedor de IA denegó el acceso al modelo. Inténtalo de nuevo más tarde.",
       "notConfigured": "El servicio de IA no está configurado. Inténtalo de nuevo más tarde.",
       "modelUnavailable": "El modelo seleccionado no está disponible. Inténtalo de nuevo más tarde.",
       "rateLimited": "Se ha alcanzado el límite de solicitudes del servicio de IA. Inténtalo de nuevo más tarde.",
-      "unavailable": "El servicio de IA no está disponible temporalmente. Inténtalo de nuevo más tarde."
+      "unavailable": "El servicio de IA no está disponible temporalmente. Inténtalo de nuevo más tarde.",
+      "refused": "El modelo rechazó esta solicitud. Reformúlala o elige otro modelo."
     },
     "generationStopped": "Generación detenida",
     "variantLimitReached": "Este turno alcanzó el límite de versiones.",
@@ -458,12 +459,19 @@
       "minimal": "Mínimo",
       "low": "Bajo",
       "medium": "Medio",
-      "high": "Alto"
+      "high": "Alto",
+      "xhigh": "Muy alto",
+      "max": "Máximo"
     },
     "gemini31FlashLite": {
       "title": "Gemini 3.1 Flash Lite",
       "subtitle": "Modelo rápido de Google con herramientas de ReMind"
-    }
+    },
+    "claudeSonnet55": {
+      "title": "Claude Sonnet 5.5",
+      "subtitle": "Modelo de Anthropic con herramientas de ReMind"
+    },
+    "availableUntil": "Disponible hasta el {{date}}"
   },
   "rail": {
     "newChat": "Nuevo chat",

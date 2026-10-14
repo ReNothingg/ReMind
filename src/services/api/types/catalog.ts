@@ -2,7 +2,7 @@ import type { components } from "../../../generated/openapi";
 
 export type ModelStage = 'release' | 'beta' | 'dev' | 'alpha';
 
-export type ThinkingLevel = 'minimal' | 'low' | 'medium' | 'high';
+export type ThinkingLevel = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export type ModelOption = {
     id: string;
@@ -13,6 +13,7 @@ export type ModelOption = {
     subtitleKey?: string | null;
     thinkingLevels?: ThinkingLevel[] | string[] | null;
     defaultThinkingLevel?: ThinkingLevel | string | null;
+    availableUntil?: string | null;
 };
 
 export type ComposerToolOption = components['schemas']['ComposerToolEntry'];

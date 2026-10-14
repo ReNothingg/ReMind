@@ -1,6 +1,6 @@
 import type { ModelOption, ModelStage, ThinkingLevel } from '../../services/api';
 
-export const THINKING_LEVELS: ThinkingLevel[] = ['minimal', 'low', 'medium', 'high'];
+export const THINKING_LEVELS: ThinkingLevel[] = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 const VALID_THINKING_LEVELS = new Set<ThinkingLevel>(THINKING_LEVELS);
 
 export type ChatModel = {
@@ -12,6 +12,7 @@ export type ChatModel = {
     subtitleKey?: string;
     thinkingLevels: ThinkingLevel[];
     defaultThinkingLevel?: ThinkingLevel;
+    availableUntil?: string;
 };
 
 export const FALLBACK_MODELS: ChatModel[] = [];
@@ -37,6 +38,7 @@ function normalizeModel(model: ModelOption): ChatModel | null {
 
     const titleKey = String(model.titleKey || '').trim();
     const subtitleKey = String(model.subtitleKey || '').trim();
+    const availableUntil = String(model.availableUntil || '').trim();
     const thinkingLevels = Array.isArray(model.thinkingLevels)
         ? model.thinkingLevels
             .map((level) => String(level || '').trim().toLowerCase())
@@ -58,6 +60,7 @@ function normalizeModel(model: ModelOption): ChatModel | null {
         ...(titleKey ? { titleKey } : {}),
         ...(subtitleKey ? { subtitleKey } : {}),
         ...(defaultThinkingLevel ? { defaultThinkingLevel } : {}),
+        ...(/^\d{4}-\d{2}-\d{2}$/.test(availableUntil) ? { availableUntil } : {}),
     };
 }
 

@@ -15,6 +15,8 @@ const CHAT_ERROR_KEYS: Record<string, string> = {
     provider_model_unavailable: 'chat.providerErrors.modelUnavailable',
     provider_rate_limited: 'chat.providerErrors.rateLimited',
     provider_unavailable: 'chat.providerErrors.unavailable',
+    provider_refused: 'chat.providerErrors.refused',
+    model_access_denied: 'chat.providerErrors.modelUnavailable',
     chat_variant_limit_reached: 'chat.variantLimitReached',
     message_id_conflict: 'chat.versionConflict',
 };
