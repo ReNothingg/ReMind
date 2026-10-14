@@ -4,6 +4,7 @@ from ai_engine.registry import (
     ModelStage,
     get_model_definition,
     iter_model_definitions,
+    model_expired,
     model_runtime_available,
     normalize_model_name,
 )
@@ -32,14 +33,17 @@ def _stable_bucket(model_name: str, user_id: int) -> int:
 
 def can_user_access_model(model_name: str | None, user_id: int | None) -> bool:
     definition = get_model_definition(model_name)
-    if definition is None:
+    if definition is None or model_expired(definition):
+        return False
+
+    user = db.session.get(User, user_id) if user_id is not None else None
+    if definition.requires_auth and user is None:
         return False
 
     stage = get_model_stage(model_name)
     if stage == ModelStage.RELEASE:
         return True
 
-    user = db.session.get(User, user_id) if user_id is not None else None
     if stage in {ModelStage.DEV, ModelStage.ALPHA}:
         return is_admin_user(user)
 
@@ -66,6 +70,8 @@ def _serialize_model(model) -> dict[str, object]:
         serialized["thinkingLevels"] = list(model.thinking_levels)
     if model.default_thinking_level:
         serialized["defaultThinkingLevel"] = model.default_thinking_level
+    if model.available_until:
+        serialized["availableUntil"] = model.available_until.isoformat()
     return serialized
 
 
@@ -84,5 +90,8 @@ def list_released_models() -> list[dict[str, object]]:
     return [
         _serialize_model(model)
         for model in iter_model_definitions()
-        if model.stage == ModelStage.RELEASE and model_runtime_available(model)
+        if model.stage == ModelStage.RELEASE
+        and not model.requires_auth
+        and not model_expired(model)
+        and model_runtime_available(model)
     ]

@@ -134,7 +134,7 @@ export interface components {
       session_id: string;
       target_message_id?: string | null;
       temporary_chat?: boolean;
-      thinkingLevel?: "minimal" | "low" | "medium" | "high";
+      thinkingLevel?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
       user_message_id?: string | null;
       [key: string]: unknown;
     };
@@ -225,12 +225,13 @@ export interface components {
       [key: string]: unknown;
     };
     ModelCatalogEntry: {
-      defaultThinkingLevel?: "minimal" | "low" | "medium" | "high";
+      availableUntil?: string;
+      defaultThinkingLevel?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
       id: string;
       stage: "release" | "beta" | "dev" | "alpha";
       subtitle: string;
       subtitleKey?: string;
-      thinkingLevels?: ("minimal" | "low" | "medium" | "high")[];
+      thinkingLevels?: ("minimal" | "low" | "medium" | "high" | "xhigh" | "max")[];
       title: string;
       titleKey?: string;
     };

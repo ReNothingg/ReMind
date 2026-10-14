@@ -40,7 +40,7 @@ class PromptBundle:
             self.instructions[skill_id] = SKILL_BY_ID[skill_id].instructions()
         return self.instructions[skill_id]
 
-    def render(self, canvas: Any = None) -> str:
+    def parts(self, canvas: Any = None) -> list[str]:
         skills = [self.instructions[skill.id] for skill in SKILLS if skill.id in self.instructions]
         context = (
             render_current_canvas_textdoc(
@@ -49,7 +49,10 @@ class PromptBundle:
             if "canvas" in self.access.available
             else ""
         )
-        return "\n\n".join(part for part in (*self.sections, *skills, context) if part)
+        return [part for part in (*self.sections, *skills, context) if part]
+
+    def render(self, canvas: Any = None) -> str:
+        return "\n\n".join(self.parts(canvas))
 
 
 def build_prompt_bundle(

@@ -233,11 +233,12 @@
     "regenerate": "重新生成",
     "generationFailed": "无法生成回复。",
     "providerErrors": {
-      "accessDenied": "Google 拒绝了对模型的访问。请稍后重试。",
+      "accessDenied": "AI 提供商拒绝了对模型的访问。请稍后重试。",
       "notConfigured": "AI 服务尚未配置。请稍后重试。",
       "modelUnavailable": "所选模型不可用。请稍后重试。",
       "rateLimited": "已达到 AI 服务请求限制。请稍后重试。",
-      "unavailable": "AI 服务暂时不可用。请稍后重试。"
+      "unavailable": "AI 服务暂时不可用。请稍后重试。",
+      "refused": "模型拒绝了此请求。请换一种说法或选择其他模型。"
     },
     "generationStopped": "已停止生成",
     "variantLimitReached": "此轮对话已达到版本上限。",
@@ -453,12 +454,19 @@
       "minimal": "最低",
       "low": "低",
       "medium": "中",
-      "high": "高"
+      "high": "高",
+      "xhigh": "很高",
+      "max": "最高"
     },
     "gemini31FlashLite": {
       "title": "Gemini 3.1 Flash Lite",
       "subtitle": "配备 ReMind 工具的快速 Google 模型"
-    }
+    },
+    "claudeSonnet55": {
+      "title": "Claude Sonnet 5.5",
+      "subtitle": "配备 ReMind 工具的 Anthropic 模型"
+    },
+    "availableUntil": "可用至 {{date}}"
   },
   "rail": {
     "newChat": "新聊天",

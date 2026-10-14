@@ -233,11 +233,12 @@
     "regenerate": "إعادة الإنشاء",
     "generationFailed": "تعذّر إنشاء الرد.",
     "providerErrors": {
-      "accessDenied": "رفض Google الوصول إلى النموذج. حاول مرة أخرى لاحقًا.",
+      "accessDenied": "رفض مزود الذكاء الاصطناعي الوصول إلى النموذج. حاول مرة أخرى لاحقًا.",
       "notConfigured": "لم يتم إعداد خدمة الذكاء الاصطناعي. حاول مرة أخرى لاحقًا.",
       "modelUnavailable": "النموذج المحدد غير متاح. حاول مرة أخرى لاحقًا.",
       "rateLimited": "تم الوصول إلى حد طلبات خدمة الذكاء الاصطناعي. حاول مرة أخرى لاحقًا.",
-      "unavailable": "خدمة الذكاء الاصطناعي غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا."
+      "unavailable": "خدمة الذكاء الاصطناعي غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا.",
+      "refused": "رفض النموذج هذا الطلب. أعد صياغته أو اختر نموذجًا آخر."
     },
     "generationStopped": "تم إيقاف الإنشاء",
     "variantLimitReached": "بلغت هذه الرسالة الحد الأقصى للإصدارات.",
@@ -453,12 +454,19 @@
       "minimal": "الحد الأدنى",
       "low": "منخفض",
       "medium": "متوسط",
-      "high": "مرتفع"
+      "high": "مرتفع",
+      "xhigh": "مرتفع جدًا",
+      "max": "أقصى"
     },
     "gemini31FlashLite": {
       "title": "Gemini 3.1 Flash Lite",
       "subtitle": "نموذج Google سريع مزود بأدوات ReMind"
-    }
+    },
+    "claudeSonnet55": {
+      "title": "Claude Sonnet 5.5",
+      "subtitle": "نموذج Anthropic مزود بأدوات ReMind"
+    },
+    "availableUntil": "متاح حتى {{date}}"
   },
   "rail": {
     "newChat": "دردشة جديدة",

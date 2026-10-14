@@ -293,11 +293,12 @@
     "regenerate": "Regenerate",
     "generationFailed": "The response could not be generated.",
     "providerErrors": {
-      "accessDenied": "Google denied access to the model. Please try again later.",
+      "accessDenied": "The AI provider denied access to the model. Please try again later.",
       "notConfigured": "The AI service is not configured. Please try again later.",
       "modelUnavailable": "The selected model is unavailable. Please try again later.",
       "rateLimited": "The AI service has reached its request limit. Please try again later.",
-      "unavailable": "The AI service is temporarily unavailable. Please try again later."
+      "unavailable": "The AI service is temporarily unavailable. Please try again later.",
+      "refused": "The model declined this request. Try rephrasing it or choose another model."
     },
     "generationStopped": "Generation stopped",
     "variantLimitReached": "This turn has reached its version limit.",
@@ -519,12 +520,19 @@
       "minimal": "Minimal",
       "low": "Low",
       "medium": "Medium",
-      "high": "High"
+      "high": "High",
+      "xhigh": "Extra high",
+      "max": "Maximum"
     },
     "gemini31FlashLite": {
       "title": "Gemini 3.1 Flash Lite",
       "subtitle": "Fast Google model with ReMind tools"
-    }
+    },
+    "claudeSonnet55": {
+      "title": "Claude Sonnet 5.5",
+      "subtitle": "Anthropic model with ReMind tools"
+    },
+    "availableUntil": "Available until {{date}}"
   },
   "rail": {
     "newChat": "New chat",

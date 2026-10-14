@@ -13,6 +13,7 @@ interface ModelOption {
     desc: string;
     thinkingLevels: ThinkingLevel[];
     defaultThinkingLevel?: ThinkingLevel;
+    availableUntil?: string;
 }
 
 interface ModelSelectorProps {
@@ -57,7 +58,7 @@ export function ModelSelector({
     const dropdownRef = useRef<HTMLDivElement | null>(null);
     const panelHeightRef = useRef<number | null>(null);
     const selectorRef = useRef<HTMLDivElement | null>(null);
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -109,8 +110,18 @@ export function ModelSelector({
             ...(model.defaultThinkingLevel
                 ? { defaultThinkingLevel: model.defaultThinkingLevel }
                 : {}),
+            ...(model.availableUntil
+                ? {
+                    availableUntil: t('models.availableUntil', {
+                        date: new Intl.DateTimeFormat(i18n.language, {
+                            dateStyle: 'long',
+                            timeZone: 'UTC',
+                        }).format(new Date(`${model.availableUntil}T00:00:00Z`)),
+                    }),
+                }
+                : {}),
         };
-    }), [availableModels, t]);
+    }), [availableModels, i18n.language, t]);
 
     const activeModel = models.find((model) => model.id === currentModel) ?? models[0] ?? {
         id: currentModel,
@@ -286,6 +297,9 @@ export function ModelSelector({
                                     )}
                                 </span>
                                 {model.desc && <span className="model-option-desc">{model.desc}</span>}
+                                {model.availableUntil && (
+                                    <span className="model-option-desc">{model.availableUntil}</span>
+                                )}
                             </button>
                         ))}
                     </div>

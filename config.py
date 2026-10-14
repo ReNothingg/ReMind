@@ -279,6 +279,14 @@ try:
     )
 except ValueError:
     GEMINI_STREAM_TIMEOUT_MS = 120_000
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+try:
+    ANTHROPIC_STREAM_TIMEOUT_MS = max(
+        30_000,
+        min(600_000, int(os.getenv("ANTHROPIC_STREAM_TIMEOUT_MS", "300000"))),
+    )
+except ValueError:
+    ANTHROPIC_STREAM_TIMEOUT_MS = 300_000
 AI_PROVIDER_API_KEY = os.getenv("AI_PROVIDER_API_KEY") or GEMINI_API_KEY
 AI_PROVIDER_MODEL_NAME = os.getenv("AI_PROVIDER_MODEL_NAME") or GEMINI_MODEL_NAME
 GITHUB_APP_ID = os.getenv("GITHUB_APP_ID", "").strip()

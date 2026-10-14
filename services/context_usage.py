@@ -32,7 +32,9 @@ def context_weights(
     return _weight(system_prompt), _weight(declarations), max(1, _weight(messages))
 
 
-def build_context_usage(usage: Any, weights: tuple[int, int, int]) -> dict | None:
+def build_context_usage(
+    usage: Any, weights: tuple[int, int, int], context_limit: int = GEMINI_CONTEXT_LIMIT
+) -> dict | None:
     total = getattr(usage, "prompt_token_count", None)
     if type(total) is not int or not 0 <= total <= 16_000_000:
         return None
@@ -41,7 +43,7 @@ def build_context_usage(usage: Any, weights: tuple[int, int, int]) -> dict | Non
     tool_tokens = int(total * weights[1] / denominator)
     return {
         "input_tokens": total,
-        "context_limit": GEMINI_CONTEXT_LIMIT,
+        "context_limit": context_limit,
         "system_tokens": system_tokens,
         "tool_tokens": tool_tokens,
         "message_tokens": total - system_tokens - tool_tokens,

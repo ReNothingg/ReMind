@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from enum import StrEnum
 from importlib.util import find_spec
 
@@ -25,6 +26,8 @@ class ModelDefinition:
     subtitle_key: str | None = None
     thinking_levels: tuple[str, ...] = ()
     default_thinking_level: str | None = None
+    available_until: date | None = None
+    requires_auth: bool = False
 
 
 DEFAULT_MODEL_ID = "base"
@@ -44,6 +47,20 @@ MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
         handler="base_stream",
         thinking_levels=("minimal", "low", "medium", "high"),
         default_thinking_level="medium",
+    ),
+    ModelDefinition(
+        id="claude_sonnet_5_5",
+        title="Claude Sonnet 5.5",
+        subtitle="Модель Anthropic, использующая инструменты ReMind",
+        title_key="models.claudeSonnet55.title",
+        subtitle_key="models.claudeSonnet55.subtitle",
+        stage=ModelStage.RELEASE,
+        module="ai_engine.claude",
+        handler="claude_stream",
+        thinking_levels=("low", "medium", "high", "xhigh", "max"),
+        default_thinking_level="medium",
+        available_until=date(2026, 11, 7),
+        requires_auth=True,
     ),
     ModelDefinition(
         id="demo_image",
@@ -111,6 +128,13 @@ def model_exists(model_name: str | None) -> bool:
 
 def iter_model_definitions() -> tuple[ModelDefinition, ...]:
     return MODEL_DEFINITIONS
+
+
+def model_expired(definition: ModelDefinition, now: datetime | None = None) -> bool:
+    if definition.available_until is None:
+        return False
+    current = now or datetime.now(timezone.utc)
+    return current.astimezone(timezone.utc).date() > definition.available_until
 
 
 def model_runtime_available(definition: ModelDefinition) -> bool:
