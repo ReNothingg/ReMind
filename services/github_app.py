@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import re
 import secrets
 import time
@@ -36,6 +37,8 @@ GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 REQUEST_TIMEOUT_SECONDS = 30
 REQUEST_RETRY_TOTAL = 3
 INSTALLATION_TOKEN_REFRESH_SECONDS = 60
+
+logger = logging.getLogger(__name__)
 
 IGNORED_PATH_PARTS = {
     ".git",
@@ -245,9 +248,11 @@ def github_app_private_key() -> str | None:
     key_path = Path(GITHUB_APP_PRIVATE_KEY_PATH)
     if not key_path.is_absolute():
         key_path = BASE_PATH / key_path
-    if not key_path.exists():
+    try:
+        return key_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        logger.warning("GitHub App private key is unavailable: %s", type(exc).__name__)
         return None
-    return key_path.read_text(encoding="utf-8")
 
 
 def github_app_missing_fields() -> list[str]:

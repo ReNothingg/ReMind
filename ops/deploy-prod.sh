@@ -20,6 +20,10 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
   --profile telegram \
+  exec -T app python -c 'from services.github_app import github_app_private_key; assert github_app_private_key(), "GitHub App private key is unavailable to the application user"'
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile telegram \
   ps
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
