@@ -16,7 +16,7 @@ fi
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
   --profile telegram \
-  up -d --build --force-recreate --remove-orphans app worker telegram-bot nginx
+  up -d --build --force-recreate --remove-orphans app worker telegram-bot python-runner nginx
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
   --profile telegram \
