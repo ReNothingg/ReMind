@@ -6,7 +6,7 @@ COPY vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY src ./src
 COPY public ./public
 COPY index.html ./
-RUN npm run build
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm run build
 FROM python:3.14-slim AS builder
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
