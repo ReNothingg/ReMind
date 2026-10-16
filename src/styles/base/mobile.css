@@ -209,20 +209,16 @@
     min-height: calc(
       var(--app-viewport-height) - var(--app-mobile-header-height) - env(safe-area-inset-top)
     ) !important;
-    padding:
-      10px
-      calc(12px + env(safe-area-inset-right))
+    padding: 10px calc(12px + env(safe-area-inset-right))
       calc(
-        var(--app-composer-reserved-height) +
-        var(--app-visual-viewport-bottom-inset) +
-        env(safe-area-inset-bottom)
+        var(--app-composer-reserved-height) + var(--app-visual-viewport-bottom-inset) +
+          env(safe-area-inset-bottom)
       )
       calc(12px + env(safe-area-inset-left));
     margin: 0 !important;
     scroll-padding-bottom: calc(
-      var(--app-composer-reserved-height) +
-      var(--app-visual-viewport-bottom-inset) +
-      env(safe-area-inset-bottom)
+      var(--app-composer-reserved-height) + var(--app-visual-viewport-bottom-inset) +
+        env(safe-area-inset-bottom)
     );
   }
 
@@ -349,9 +345,8 @@
     width: auto !important;
     transform: none !important;
     bottom: calc(
-      var(--app-composer-bottom-gap) +
-      env(safe-area-inset-bottom) +
-      var(--app-visual-viewport-bottom-inset)
+      var(--app-composer-bottom-gap) + env(safe-area-inset-bottom) +
+        var(--app-visual-viewport-bottom-inset)
     );
     padding: 0;
     border-radius: 0;

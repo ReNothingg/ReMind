@@ -26,7 +26,7 @@ const CustomSelect = ({
   label,
   disabled = false,
   className = '',
-  placeholder
+  placeholder,
 }: CustomSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -37,14 +37,14 @@ const CustomSelect = ({
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selectedOption = options.find(opt => opt.value === value);
+  const selectedOption = options.find((opt) => opt.value === value);
   const displayText = selectedOption?.label || placeholder || t('common.selectOption');
   const labelId = `${selectId}-label`;
   const valueId = `${selectId}-value`;
   const listboxId = `${selectId}-listbox`;
 
-  const selectedIndex = options.findIndex(opt => opt.value === value);
-  const firstEnabledIndex = options.findIndex(opt => !opt.disabled);
+  const selectedIndex = options.findIndex((opt) => opt.value === value);
+  const firstEnabledIndex = options.findIndex((opt) => !opt.disabled);
   const activeIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex;
 
   useEffect(() => {
@@ -205,9 +205,8 @@ const CustomSelect = ({
       const enabledIndexes = options
         .map((option, optionIndex) => (option.disabled ? -1 : optionIndex))
         .filter((optionIndex) => optionIndex >= 0);
-      const targetIndex = event.key === 'Home'
-        ? enabledIndexes[0]
-        : enabledIndexes[enabledIndexes.length - 1];
+      const targetIndex =
+        event.key === 'Home' ? enabledIndexes[0] : enabledIndexes[enabledIndexes.length - 1];
       if (targetIndex !== undefined) {
         optionRefs.current[targetIndex]?.focus();
       }
@@ -225,7 +224,10 @@ const CustomSelect = ({
       )}
     >
       {label && (
-        <span id={labelId} className="custom-select-label text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
+        <span
+          id={labelId}
+          className="custom-select-label text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted"
+        >
           {label}
         </span>
       )}
@@ -293,7 +295,13 @@ const CustomSelect = ({
           role="listbox"
           id={listboxId}
           aria-labelledby={label ? labelId : undefined}
-          style={dropdownMaxHeight ? ({ '--custom-select-dropdown-max-height': `${dropdownMaxHeight}px` } as CSSProperties) : undefined}
+          style={
+            dropdownMaxHeight
+              ? ({
+                  '--custom-select-dropdown-max-height': `${dropdownMaxHeight}px`,
+                } as CSSProperties)
+              : undefined
+          }
         >
           <div className="custom-select-list ui-scrollbar-thin overflow-x-hidden overflow-y-auto py-1">
             {options.map((option, index) => (

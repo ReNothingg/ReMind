@@ -431,5 +431,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .artifact-download-spinner { animation: none; }
+  .artifact-download-spinner {
+    animation: none;
+  }
 }

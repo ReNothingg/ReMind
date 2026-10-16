@@ -71,7 +71,6 @@ def _identifier(value: str | None) -> str:
 
 
 class GitHubOAuthFlowStore:
-
     def __init__(
         self,
         redis_client: Any,

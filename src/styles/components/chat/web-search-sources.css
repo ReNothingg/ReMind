@@ -166,8 +166,7 @@ html[data-theme='light'] .web-sources-container:not(.is-inline) .web-sources-pil
   box-shadow: none;
   color: var(--color-text-primary);
   text-decoration: none;
-  transition:
-    background-color var(--transition-fast);
+  transition: background-color var(--transition-fast);
 }
 
 .source-pill:hover,

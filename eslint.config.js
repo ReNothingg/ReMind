@@ -43,7 +43,10 @@ export default tseslint.config(
       'prefer-const': 'warn',
       'no-empty': ['warn', { allowEmptyCatch: true }],
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/ban-ts-comment': 'off',
       'react/react-in-jsx-scope': 'off',
@@ -74,5 +77,5 @@ export default tseslint.config(
     rules: {
       'no-control-regex': 'off',
     },
-  },
+  }
 );

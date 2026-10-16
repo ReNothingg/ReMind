@@ -57,11 +57,15 @@
           },
           "401": {
             "description": "Authentication required for linking",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           },
           "429": {
             "description": "Rate-limited",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           }
         }
       }
@@ -80,23 +84,33 @@
         "responses": {
           "200": {
             "description": "Successful Apple authentication",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthLoginResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthLoginResponse" } }
+            }
           },
           "400": {
             "description": "Invalid request or a verified email is required",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           },
           "401": {
             "description": "Invalid, expired, or replayed Apple credential",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           },
           "409": {
             "description": "Apple identity or email is already linked",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           },
           "429": {
             "description": "Rate-limited",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           }
         }
       }
@@ -161,11 +175,27 @@
         "summary": "Send a one-time password reset code without revealing account existence",
         "requestBody": {
           "required": true,
-          "content": {"application/json":{"schema":{"$ref":"#/components/schemas/PasswordResetRequest"}}}
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasswordResetRequest" }
+            }
+          }
         },
         "responses": {
-          "200": {"description":"Generic accepted response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/PasswordResetRequestResponse"}}}},
-          "429": {"description":"Rate-limited","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}}
+          "200": {
+            "description": "Generic accepted response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PasswordResetRequestResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate-limited",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
+          }
         }
       }
     },
@@ -174,12 +204,33 @@
         "summary": "Set a new password using a one-time email code",
         "requestBody": {
           "required": true,
-          "content": {"application/json":{"schema":{"$ref":"#/components/schemas/PasswordResetCompleteRequest"}}}
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasswordResetCompleteRequest" }
+            }
+          }
         },
         "responses": {
-          "200": {"description":"Password changed","content":{"application/json":{"schema":{"$ref":"#/components/schemas/PasswordResetCompleteResponse"}}}},
-          "400": {"description":"Invalid code or password","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}},
-          "429": {"description":"Rate-limited","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}}
+          "200": {
+            "description": "Password changed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PasswordResetCompleteResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid code or password",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Rate-limited",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
+          }
         }
       }
     },
@@ -244,15 +295,23 @@
         "responses": {
           "201": {
             "description": "One-time link created",
-            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/TelegramLinkResponse"}}}
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TelegramLinkResponse" }
+              }
+            }
           },
           "401": {
             "description": "Authentication required",
-            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           },
           "503": {
             "description": "Telegram bot linking unavailable",
-            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           }
         }
       }
@@ -262,20 +321,32 @@
         "summary": "Check a Telegram bot linking request",
         "requestBody": {
           "required": true,
-          "content": {"application/json":{"schema":{"$ref":"#/components/schemas/TelegramLinkStatusRequest"}}}
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TelegramLinkStatusRequest" }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "Current linking status",
-            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/TelegramLinkStatusResponse"}}}
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TelegramLinkStatusResponse" }
+              }
+            }
           },
           "400": {
             "description": "Invalid request identifier",
-            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           },
           "401": {
             "description": "Authentication required",
-            "content": {"application/json":{"schema":{"$ref":"#/components/schemas/AuthErrorResponse"}}}
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthErrorResponse" } }
+            }
           }
         }
       }
@@ -283,19 +354,55 @@
     "/api/user/draft": {
       "get": {
         "summary": "Load the authenticated user's synchronized chat draft",
-        "responses": {"200":{"description":"Draft state","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftResponse"}}}}}
+        "responses": {
+          "200": {
+            "description": "Draft state",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ChatDraftResponse" } }
+            }
+          }
+        }
       },
       "put": {
         "summary": "Save a synchronized chat draft with optimistic concurrency",
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftRequest"}}}},
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ChatDraftRequest" } }
+          }
+        },
         "responses": {
-          "200":{"description":"Saved draft","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftResponse"}}}},
-          "409":{"description":"Draft revision conflict","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatDraftResponse"}}}}
+          "200": {
+            "description": "Saved draft",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ChatDraftResponse" } }
+            }
+          },
+          "409": {
+            "description": "Draft revision conflict",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ChatDraftResponse" } }
+            }
+          }
         }
       },
       "delete": {
         "summary": "Delete the synchronized chat draft",
-        "responses":{"200":{"description":"Draft deleted","content":{"application/json":{"schema":{"type":"object","required":["deleted"],"properties":{"deleted":{"type":"boolean"}},"additionalProperties":false}}}}}
+        "responses": {
+          "200": {
+            "description": "Draft deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["deleted"],
+                  "properties": { "deleted": { "type": "boolean" } },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/chat": {
@@ -324,19 +431,27 @@
           },
           "400": {
             "description": "Invalid operation or message identifier",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "403": {
             "description": "Model or chat access denied",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "404": {
             "description": "Target message not found",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "409": {
             "description": "Message identifier conflict or version limit reached",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           }
         }
       }
@@ -398,19 +513,27 @@
           },
           "400": {
             "description": "Invalid guest chat snapshot",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "401": {
             "description": "Authentication required",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "413": {
             "description": "Guest chat snapshot is too large",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "429": {
             "description": "Too many import attempts",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           }
         }
       }
@@ -539,15 +662,21 @@
           },
           "400": {
             "description": "Invalid Python code",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "401": {
             "description": "Authentication required",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "503": {
             "description": "Python runner unavailable",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           }
         }
       }
@@ -555,9 +684,32 @@
     "/sessions/{session_id}/branch": {
       "put": {
         "summary": "Select an active conversation branch",
-        "parameters": [{"name":"session_id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["message_id"],"properties":{"message_id":{"type":"string","maxLength":120}},"additionalProperties":false}}}},
-        "responses":{"200":{"description":"Selected branch history","content":{"application/json":{"schema":{"$ref":"#/components/schemas/SessionHistoryResponse"}}}}}
+        "parameters": [
+          { "name": "session_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message_id"],
+                "properties": { "message_id": { "type": "string", "maxLength": 120 } },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selected branch history",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionHistoryResponse" }
+              }
+            }
+          }
+        }
       }
     },
     "/translate": {
@@ -751,10 +903,7 @@
         "properties": {
           "authenticated": { "type": "boolean" },
           "user": {
-            "oneOf": [
-              { "$ref": "#/components/schemas/User" },
-              { "type": "null" }
-            ]
+            "oneOf": [{ "$ref": "#/components/schemas/User" }, { "type": "null" }]
           }
         },
         "additionalProperties": false
@@ -815,8 +964,8 @@
         "type": "object",
         "required": ["email"],
         "properties": {
-          "email": {"type":"string","maxLength":100},
-          "language": {"type":"string","maxLength":12}
+          "email": { "type": "string", "maxLength": 100 },
+          "language": { "type": "string", "maxLength": 12 }
         },
         "additionalProperties": false
       },
@@ -824,9 +973,9 @@
         "type": "object",
         "required": ["message", "reset_request_id", "expires_in"],
         "properties": {
-          "message": {"type":"string","enum":["password_reset_code_sent"]},
-          "reset_request_id": {"type":"string","minLength":24,"maxLength":24},
-          "expires_in": {"type":"integer","minimum":1,"maximum":600}
+          "message": { "type": "string", "enum": ["password_reset_code_sent"] },
+          "reset_request_id": { "type": "string", "minLength": 24, "maxLength": 24 },
+          "expires_in": { "type": "integer", "minimum": 1, "maximum": 600 }
         },
         "additionalProperties": false
       },
@@ -834,9 +983,9 @@
         "type": "object",
         "required": ["reset_request_id", "code", "password"],
         "properties": {
-          "reset_request_id": {"type":"string","minLength":24,"maxLength":24},
-          "code": {"type":"string","pattern":"^[0-9]{6}$"},
-          "password": {"type":"string","minLength":8,"maxLength":256}
+          "reset_request_id": { "type": "string", "minLength": 24, "maxLength": 24 },
+          "code": { "type": "string", "pattern": "^[0-9]{6}$" },
+          "password": { "type": "string", "minLength": 8, "maxLength": 256 }
         },
         "additionalProperties": false
       },
@@ -844,7 +993,7 @@
         "type": "object",
         "required": ["message"],
         "properties": {
-          "message": {"type":"string","enum":["password_reset_complete"]}
+          "message": { "type": "string", "enum": ["password_reset_complete"] }
         },
         "additionalProperties": false
       },
@@ -861,9 +1010,9 @@
         "type": "object",
         "required": ["url", "request_id", "expires_in"],
         "properties": {
-          "url": {"type": "string", "format": "uri"},
-          "request_id": {"type": "string", "minLength": 24, "maxLength": 24},
-          "expires_in": {"type": "integer", "minimum": 1}
+          "url": { "type": "string", "format": "uri" },
+          "request_id": { "type": "string", "minLength": 24, "maxLength": 24 },
+          "expires_in": { "type": "integer", "minimum": 1 }
         },
         "additionalProperties": false
       },
@@ -871,7 +1020,7 @@
         "type": "object",
         "required": ["request_id"],
         "properties": {
-          "request_id": {"type": "string", "minLength": 24, "maxLength": 24}
+          "request_id": { "type": "string", "minLength": 24, "maxLength": 24 }
         },
         "additionalProperties": false
       },
@@ -879,9 +1028,9 @@
         "type": "object",
         "required": ["status"],
         "properties": {
-          "status": {"type": "string", "enum": ["pending", "linked", "expired", "failed"]},
-          "code": {"type": "string"},
-          "user": {"$ref": "#/components/schemas/User"}
+          "status": { "type": "string", "enum": ["pending", "linked", "expired", "failed"] },
+          "code": { "type": "string" },
+          "user": { "$ref": "#/components/schemas/User" }
         },
         "additionalProperties": false
       },
@@ -943,11 +1092,7 @@
       },
       "ChatOperationRequest": {
         "type": "object",
-        "required": [
-          "session_id",
-          "assistant_message_id",
-          "request_id"
-        ],
+        "required": ["session_id", "assistant_message_id", "request_id"],
         "properties": {
           "session_id": {
             "type": "string",
@@ -962,25 +1107,15 @@
           },
           "operation": {
             "type": "string",
-            "enum": [
-              "send",
-              "regenerate",
-              "edit"
-            ],
+            "enum": ["send", "regenerate", "edit"],
             "default": "send"
           },
           "target_message_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "pattern": "^[A-Za-z0-9_-]{1,120}$"
           },
           "user_message_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "pattern": "^[A-Za-z0-9_-]{1,120}$"
           },
           "assistant_message_id": {
@@ -1023,14 +1158,7 @@
           },
           "thinkingLevel": {
             "type": "string",
-            "enum": [
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh",
-              "max"
-            ]
+            "enum": ["minimal", "low", "medium", "high", "xhigh", "max"]
           }
         },
         "additionalProperties": true
@@ -1099,17 +1227,11 @@
       },
       "ChatMessage": {
         "type": "object",
-        "required": [
-          "role",
-          "parts"
-        ],
+        "required": ["role", "parts"],
         "properties": {
           "context_usage": { "$ref": "#/components/schemas/ContextUsage" },
           "id": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "role": {
             "type": "string"
@@ -1121,33 +1243,17 @@
             }
           },
           "timestamp": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "type": ["integer", "null"]
           },
           "request_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "delivery_status": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "complete",
-              "interrupted",
-              null
-            ]
+            "type": ["string", "null"],
+            "enum": ["complete", "interrupted", null]
           },
           "parent_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "is_active": {
             "type": "boolean"
@@ -1179,11 +1285,7 @@
       },
       "ChatMessageVariant": {
         "type": "object",
-        "required": [
-          "id",
-          "role",
-          "parts"
-        ],
+        "required": ["id", "role", "parts"],
         "properties": {
           "id": {
             "type": "string"
@@ -1201,27 +1303,14 @@
             }
           },
           "timestamp": {
-            "type": [
-              "integer",
-              "null"
-            ]
+            "type": ["integer", "null"]
           },
           "request_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "delivery_status": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "complete",
-              "interrupted",
-              null
-            ]
+            "type": ["string", "null"],
+            "enum": ["complete", "interrupted", null]
           },
           "selected_tools": {
             "type": "array",
@@ -1240,19 +1329,20 @@
       },
       "SessionSummary": {
         "type": "object",
-        "required": [
-          "session_id",
-          "last_updated",
-          "title",
-          "last_message"
-        ],
+        "required": ["session_id", "last_updated", "title", "last_message"],
         "properties": {
           "session_id": { "type": "string" },
           "last_updated": { "type": "number" },
           "title": { "type": "string" },
           "source": {
             "type": "string",
-            "enum": ["web", "telegram_private", "telegram_group", "telegram_guest", "telegram_inline"]
+            "enum": [
+              "web",
+              "telegram_private",
+              "telegram_group",
+              "telegram_guest",
+              "telegram_inline"
+            ]
           },
           "last_message": { "type": "string" },
           "is_public": { "type": "boolean" },
@@ -1367,7 +1457,10 @@
           "name": { "type": "string", "maxLength": 140 },
           "type": { "type": "string", "maxLength": 64 },
           "content": { "type": "string", "maxLength": 240000 },
-          "comments": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "comments": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          },
           "updated_at": { "type": "integer" }
         },
         "additionalProperties": false
@@ -1544,35 +1637,43 @@
         "additionalProperties": false
       },
       "ChatDraft": {
-        "type":"object",
-        "required":["content","device_id","revision","updated_at"],
-        "properties":{
-          "content":{"type":"string","maxLength":20000},
-          "session_id":{"type":["string","null"],"maxLength":100,"pattern":"^[A-Za-z0-9_-]{1,100}$"},
-          "device_id":{"type":"string","maxLength":100},
-          "revision":{"type":"integer","minimum":1},
-          "updated_at":{"type":"integer"}
+        "type": "object",
+        "required": ["content", "device_id", "revision", "updated_at"],
+        "properties": {
+          "content": { "type": "string", "maxLength": 20000 },
+          "session_id": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9_-]{1,100}$"
+          },
+          "device_id": { "type": "string", "maxLength": 100 },
+          "revision": { "type": "integer", "minimum": 1 },
+          "updated_at": { "type": "integer" }
         },
-        "additionalProperties":false
+        "additionalProperties": false
       },
       "ChatDraftRequest": {
-        "type":"object",
-        "required":["content","device_id"],
-        "properties":{
-          "content":{"type":"string","maxLength":20000},
-          "session_id":{"type":["string","null"],"maxLength":100,"pattern":"^[A-Za-z0-9_-]{1,100}$"},
-          "device_id":{"type":"string","maxLength":100},
-          "base_revision":{"type":["integer","null"],"minimum":0}
+        "type": "object",
+        "required": ["content", "device_id"],
+        "properties": {
+          "content": { "type": "string", "maxLength": 20000 },
+          "session_id": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9_-]{1,100}$"
+          },
+          "device_id": { "type": "string", "maxLength": 100 },
+          "base_revision": { "type": ["integer", "null"], "minimum": 0 }
         },
-        "additionalProperties":false
+        "additionalProperties": false
       },
       "ChatDraftResponse": {
-        "type":"object",
-        "properties":{
-          "draft":{"oneOf":[{"$ref":"#/components/schemas/ChatDraft"},{"type":"null"}]},
-          "error":{"type":"string"}
+        "type": "object",
+        "properties": {
+          "draft": { "oneOf": [{ "$ref": "#/components/schemas/ChatDraft" }, { "type": "null" }] },
+          "error": { "type": "string" }
         },
-        "additionalProperties":true
+        "additionalProperties": true
       },
       "ErrorResponse": {
         "type": "object",
@@ -1594,12 +1695,7 @@
       },
       "ModelCatalogEntry": {
         "type": "object",
-        "required": [
-          "id",
-          "title",
-          "subtitle",
-          "stage"
-        ],
+        "required": ["id", "title", "subtitle", "stage"],
         "properties": {
           "id": {
             "type": "string"
@@ -1612,12 +1708,7 @@
           },
           "stage": {
             "type": "string",
-            "enum": [
-              "release",
-              "beta",
-              "dev",
-              "alpha"
-            ]
+            "enum": ["release", "beta", "dev", "alpha"]
           },
           "titleKey": {
             "type": "string"
@@ -1629,26 +1720,12 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": [
-                "minimal",
-                "low",
-                "medium",
-                "high",
-                "xhigh",
-                "max"
-              ]
+              "enum": ["minimal", "low", "medium", "high", "xhigh", "max"]
             }
           },
           "defaultThinkingLevel": {
             "type": "string",
-            "enum": [
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh",
-              "max"
-            ]
+            "enum": ["minimal", "low", "medium", "high", "xhigh", "max"]
           },
           "availableUntil": {
             "type": "string",
@@ -1659,12 +1736,7 @@
       },
       "ComposerToolEntry": {
         "type": "object",
-        "required": [
-          "id",
-          "available",
-          "titleKey",
-          "descriptionKey"
-        ],
+        "required": ["id", "available", "titleKey", "descriptionKey"],
         "properties": {
           "id": {
             "type": "string"
@@ -1686,10 +1758,7 @@
       },
       "ModelCatalogResponse": {
         "type": "object",
-        "required": [
-          "models",
-          "tools"
-        ],
+        "required": ["models", "tools"],
         "properties": {
           "models": {
             "type": "array",

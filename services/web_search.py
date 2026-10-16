@@ -1626,7 +1626,6 @@ def build_web_search_context(search_payload: dict[str, Any]) -> str:
     )
 
     for source in valid_sources:
-
         rank = source.get("rank") or len(blocks)
         title = _compact_search_context_value(
             source.get("title") or source.get("site_name") or "Untitled", 240
@@ -1666,7 +1665,7 @@ def build_web_search_augmented_message(user_message: str, search_payload: dict[s
     if not context:
         return str(user_message or "")
 
-    return f"{user_message}\n\n" "<web_search_context>\n" f"{context}\n" "</web_search_context>"
+    return f"{user_message}\n\n<web_search_context>\n{context}\n</web_search_context>"
 
 
 def public_sources(search_payload: dict[str, Any] | None) -> list[dict[str, Any]]:

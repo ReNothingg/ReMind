@@ -1,23 +1,23 @@
-import { useState, useRef, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CHAT_UPLOAD_EXTENSIONS,
   CHAT_UPLOAD_MAX_FILES,
   CHAT_UPLOAD_MAX_TOTAL_BYTES,
   TEXT_FILE_EXTENSIONS,
   VALID_IMAGE_MIME_TYPES,
-} from "../utils/constants";
-import { showToast } from "../utils/toast";
+} from '../utils/constants';
+import { showToast } from '../utils/toast';
 
 const ALLOWED_UPLOAD_EXTENSIONS = new Set(CHAT_UPLOAD_EXTENSIONS);
 
 const formatFileSize = (bytes, decimals = 2) => {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return '0 Bytes';
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
 export const useFileHandler = ({ enabled = true } = {}) => {
@@ -30,22 +30,20 @@ export const useFileHandler = ({ enabled = true } = {}) => {
 
   const isTextFile = (file) => {
     if (!file?.name) return false;
-    const extension = file.name.split(".").pop()?.toLowerCase() || "";
-    return (
-      file.type.startsWith("text/") || TEXT_FILE_EXTENSIONS.includes(extension)
-    );
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    return file.type.startsWith('text/') || TEXT_FILE_EXTENSIONS.includes(extension);
   };
 
   const hasFileData = useCallback((event) => {
     const types = Array.from(event.dataTransfer?.types || []);
-    if (types.includes("Files")) return true;
+    if (types.includes('Files')) return true;
     const items = Array.from(event.dataTransfer?.items || []) as DataTransferItem[];
-    return items.some((item) => item.kind === "file");
+    return items.some((item) => item.kind === 'file');
   }, []);
 
   const setOverlayState = useCallback((active) => {
     setIsDragActive(active);
-    document.body.classList.toggle("drag-over", active);
+    document.body.classList.toggle('drag-over', active);
   }, []);
 
   const addFiles = useCallback(
@@ -56,7 +54,7 @@ export const useFileHandler = ({ enabled = true } = {}) => {
 
       const totalFiles = files.length + fileList.length;
       if (totalFiles > CHAT_UPLOAD_MAX_FILES) {
-        showToast(t("files.tooMany", { count: CHAT_UPLOAD_MAX_FILES }), { type: "warning" });
+        showToast(t('files.tooMany', { count: CHAT_UPLOAD_MAX_FILES }), { type: 'warning' });
         const remainingSlots = CHAT_UPLOAD_MAX_FILES - files.length;
         if (remainingSlots <= 0) return;
         fileList = fileList.slice(0, remainingSlots);
@@ -69,17 +67,17 @@ export const useFileHandler = ({ enabled = true } = {}) => {
       let showedEmptyWarning = false;
 
       for (const file of fileList) {
-        const extension = file.name.split(".").pop()?.toLowerCase() || "";
+        const extension = file.name.split('.').pop()?.toLowerCase() || '';
         if (!ALLOWED_UPLOAD_EXTENSIONS.has(extension)) {
           if (!showedTypeWarning) {
-            showToast(t("files.unsupportedType", { name: file.name }), { type: "warning" });
+            showToast(t('files.unsupportedType', { name: file.name }), { type: 'warning' });
             showedTypeWarning = true;
           }
           continue;
         }
         if (file.size <= 0) {
           if (!showedEmptyWarning) {
-            showToast(t("files.emptyFile", { name: file.name }), { type: "warning" });
+            showToast(t('files.emptyFile', { name: file.name }), { type: 'warning' });
             showedEmptyWarning = true;
           }
           continue;
@@ -87,10 +85,10 @@ export const useFileHandler = ({ enabled = true } = {}) => {
         if (totalBytes + file.size > CHAT_UPLOAD_MAX_TOTAL_BYTES) {
           if (!showedSizeWarning) {
             showToast(
-              t("files.sizeLimit", {
+              t('files.sizeLimit', {
                 size: formatFileSize(CHAT_UPLOAD_MAX_TOTAL_BYTES, 0),
               }),
-              { type: "warning" },
+              { type: 'warning' }
             );
             showedSizeWarning = true;
           }
@@ -114,7 +112,7 @@ export const useFileHandler = ({ enabled = true } = {}) => {
   const clearFiles = useCallback(() => {
     setFiles([]);
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   }, []);
 

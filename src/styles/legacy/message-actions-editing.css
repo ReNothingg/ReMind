@@ -286,7 +286,9 @@ html[data-theme='light'] .user-message.is-editing-user-message .ui-message-bubbl
   line-height: 1.6;
   resize: vertical;
   min-height: 154px;
-  transition: background var(--transition-fast), outline-color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    outline-color var(--transition-fast);
   box-shadow: none;
 }
 
@@ -325,7 +327,10 @@ html[data-theme='light'] .user-message.is-editing-user-message .ui-message-bubbl
   font-size: 0.9rem;
   font-weight: 650;
   line-height: 1;
-  transition: background var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .edit-save-btn {

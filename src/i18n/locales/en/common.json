@@ -30,7 +30,17 @@
     "readOnly": "Open an editable chat to answer.",
     "sendFailed": "Could not send. Try again."
   },
-  "reliability": {"offline":"Offline · messages will be queued","reconnecting":"Restoring connection…","queued":"{{count}} message(s) queued","draftSyncing":"Syncing draft…","draftSynced":"Draft synced","draftLocal":"Draft saved locally","queueFull":"The offline queue is full. Reconnect before sending more files.","temporaryOffline":"Temporary chats require a network connection and are never stored in the offline queue.","interrupted":"Generation was interrupted. You can regenerate this version."},
+  "reliability": {
+    "offline": "Offline · messages will be queued",
+    "reconnecting": "Restoring connection…",
+    "queued": "{{count}} message(s) queued",
+    "draftSyncing": "Syncing draft…",
+    "draftSynced": "Draft synced",
+    "draftLocal": "Draft saved locally",
+    "queueFull": "The offline queue is full. Reconnect before sending more files.",
+    "temporaryOffline": "Temporary chats require a network connection and are never stored in the offline queue.",
+    "interrupted": "Generation was interrupted. You can regenerate this version."
+  },
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -122,9 +132,36 @@
       }
     },
     "passwordReset": {
-      "requestTitle": "Reset password", "confirmTitle": "Enter the email code", "requestDescription": "Enter your account email. We will send a one-time verification code if the account exists.", "confirmDescription": "Enter the 6-digit code from the email and choose a new password. The code expires in 10 minutes.",
-      "forgotPassword": "Forgot password?", "sendCode": "Send code", "sendingCode": "Sending...", "codeLabel": "Email code", "newPasswordLabel": "New password", "resetPassword": "Save new password", "resetting": "Saving...", "sendAgain": "Send a new code", "backToLogin": "Back to sign in", "codeSent": "If this email is registered, a verification code has been sent.", "complete": "Password updated. You can now sign in.", "invalidCode": "The code is invalid, expired, or has already been used.", "requestError": "Could not reset the password. Please try again.", "rateLimited": "Too many attempts. Wait a while and try again.",
-      "email": {"subject": "Your ReMind password reset code", "heading": "Password reset", "greeting": "Hello, {{username}}!", "intro": "Enter this verification code in ReMind to choose a new password:", "expiry": "The code expires in 10 minutes and can only be used once.", "ignore": "If you did not request a password reset, ignore this email. Do not share the code with anyone.", "changedSubject": "Your ReMind password was changed", "changedHeading": "Password changed", "changedIntro": "Your ReMind password was successfully changed.", "changedWarning": "If this was not you, request another reset immediately and contact support."}
+      "requestTitle": "Reset password",
+      "confirmTitle": "Enter the email code",
+      "requestDescription": "Enter your account email. We will send a one-time verification code if the account exists.",
+      "confirmDescription": "Enter the 6-digit code from the email and choose a new password. The code expires in 10 minutes.",
+      "forgotPassword": "Forgot password?",
+      "sendCode": "Send code",
+      "sendingCode": "Sending...",
+      "codeLabel": "Email code",
+      "newPasswordLabel": "New password",
+      "resetPassword": "Save new password",
+      "resetting": "Saving...",
+      "sendAgain": "Send a new code",
+      "backToLogin": "Back to sign in",
+      "codeSent": "If this email is registered, a verification code has been sent.",
+      "complete": "Password updated. You can now sign in.",
+      "invalidCode": "The code is invalid, expired, or has already been used.",
+      "requestError": "Could not reset the password. Please try again.",
+      "rateLimited": "Too many attempts. Wait a while and try again.",
+      "email": {
+        "subject": "Your ReMind password reset code",
+        "heading": "Password reset",
+        "greeting": "Hello, {{username}}!",
+        "intro": "Enter this verification code in ReMind to choose a new password:",
+        "expiry": "The code expires in 10 minutes and can only be used once.",
+        "ignore": "If you did not request a password reset, ignore this email. Do not share the code with anyone.",
+        "changedSubject": "Your ReMind password was changed",
+        "changedHeading": "Password changed",
+        "changedIntro": "Your ReMind password was successfully changed.",
+        "changedWarning": "If this was not you, request another reset immediately and contact support."
+      }
     }
   },
   "common": {
@@ -223,16 +260,24 @@
     "python": {
       "running": "Running Python code...",
       "completed": "Python execution completed",
-        "failed": "Python execution failed",
-        "output": "Execution result",
-        "showOutput": "Show result",
-        "hideOutput": "Hide result",
+      "failed": "Python execution failed",
+      "output": "Execution result",
+      "showOutput": "Show result",
+      "hideOutput": "Hide result",
       "showCode": "Show code",
       "hideCode": "Hide code"
     },
     "image": {
-      "crop": {"running": "Cropping image...", "completed": "Image crop ready", "failed": "Image crop failed"},
-      "tile": {"running": "Splitting image into sections...", "completed": "Image sections ready", "failed": "Image splitting failed"},
+      "crop": {
+        "running": "Cropping image...",
+        "completed": "Image crop ready",
+        "failed": "Image crop failed"
+      },
+      "tile": {
+        "running": "Splitting image into sections...",
+        "completed": "Image sections ready",
+        "failed": "Image splitting failed"
+      },
       "source": "Source: {{filename}}",
       "fragments": "Sections: {{count}}"
     },
@@ -253,9 +298,7 @@
     ]
   },
   "warnings": {
-    "dynamicPhrases": [
-      "ReMind may make mistakes."
-    ]
+    "dynamicPhrases": ["ReMind may make mistakes."]
   },
   "chat": {
     "readOnly": "Chat is read-only",
@@ -540,7 +583,16 @@
     "searchHint": "Hint: title, topic, last message",
     "searchPlaceholder": "Type to search chats",
     "searchInput": "Chat search",
-    "channelFilter": { "label": "Filter chats by source", "all": "All", "web": "Web", "telegram": "Telegram", "private": "Personal", "group": "Group", "guest": "Guest", "inline": "Inline" },
+    "channelFilter": {
+      "label": "Filter chats by source",
+      "all": "All",
+      "web": "Web",
+      "telegram": "Telegram",
+      "private": "Personal",
+      "group": "Group",
+      "guest": "Guest",
+      "inline": "Inline"
+    },
     "yourChats": "Your chats",
     "untitled": "Untitled",
     "expand": "Expand",

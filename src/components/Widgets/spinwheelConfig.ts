@@ -10,9 +10,7 @@ export type SpinwheelConfig = {
 };
 
 const asRecord = (value: unknown): Record<string, unknown> =>
-  value !== null && typeof value === 'object'
-    ? value as Record<string, unknown>
-    : {};
+  value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 
 const finiteNumber = (value: unknown, fallback: number): number => {
   const parsed = Number(value);
@@ -54,9 +52,7 @@ export const buildSpinwheelSegments = (
   const fullCount = lastIndex + 1;
 
   if (fullCount <= MAX_SPINWHEEL_SEGMENTS) {
-    return Array.from({ length: fullCount }, (_, index) =>
-      Math.min(max, min + index * step)
-    );
+    return Array.from({ length: fullCount }, (_, index) => Math.min(max, min + index * step));
   }
 
   const sampledIndexes = Array.from({ length: MAX_SPINWHEEL_SEGMENTS }, (_, index) =>
@@ -73,8 +69,8 @@ export const buildSpinwheelSegments = (
     let replacementIndex = 1;
     for (let index = 2; index < sampledIndexes.length - 1; index += 1) {
       if (
-        Math.abs(sampledIndexes[index] - targetIndex)
-        < Math.abs(sampledIndexes[replacementIndex] - targetIndex)
+        Math.abs(sampledIndexes[index] - targetIndex) <
+        Math.abs(sampledIndexes[replacementIndex] - targetIndex)
       ) {
         replacementIndex = index;
       }

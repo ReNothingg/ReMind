@@ -341,7 +341,9 @@
 }
 
 @keyframes think-activity-pulse {
-  50% { opacity: 0.45; }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @media (pointer: coarse), (max-width: 600px) {

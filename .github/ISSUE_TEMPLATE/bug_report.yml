@@ -1,7 +1,7 @@
 name: Bug Report
 description: Сообщить о проблеме в работе приложения
-title: "[Bug]: "
-labels: ["bug", "triage"]
+title: '[Bug]: '
+labels: ['bug', 'triage']
 assignees: []
 body:
   - type: markdown
@@ -13,7 +13,7 @@ body:
     attributes:
       label: Environment
       description: OS, Python, Node, Docker (если используется)
-      placeholder: "Windows 11, Python 3.11, Node 20, Docker Desktop 4.x"
+      placeholder: 'Windows 11, Python 3.11, Node 20, Docker Desktop 4.x'
     validations:
       required: true
   - type: input
@@ -21,7 +21,7 @@ body:
     attributes:
       label: Component
       description: Где проблема наблюдается
-      placeholder: "frontend / backend / docker / auth / api / ci"
+      placeholder: 'frontend / backend / docker / auth / api / ci'
     validations:
       required: true
   - type: textarea
@@ -39,14 +39,14 @@ body:
     id: expected
     attributes:
       label: Expected Behavior
-      placeholder: "Что вы ожидали увидеть"
+      placeholder: 'Что вы ожидали увидеть'
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
       label: Actual Behavior
-      placeholder: "Что произошло фактически"
+      placeholder: 'Что произошло фактически'
     validations:
       required: true
   - type: textarea

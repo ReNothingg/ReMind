@@ -150,4 +150,3 @@ body.reading-mode .app-rail #railReadingMode {
 .rail-btn#railReadingMode.active:hover {
   background: var(--color-success-hover);
 }
-

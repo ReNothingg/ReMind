@@ -110,7 +110,9 @@ def apply_canmore_call(
     arguments = _normalize_arguments(
         call.get("arguments")
         if "arguments" in call
-        else call.get("args") if "args" in call else call.get("payload")
+        else call.get("args")
+        if "args" in call
+        else call.get("payload")
     )
     if function_name not in ALLOWED_CANMORE_FUNCTIONS or not isinstance(arguments, dict):
         return None
@@ -371,7 +373,9 @@ def _normalize_call_object(value: Any) -> dict[str, Any] | None:
             else (
                 value.get("args")
                 if "args" in value
-                else value.get("payload") if "payload" in value else value
+                else value.get("payload")
+                if "payload" in value
+                else value
             )
         )
     )

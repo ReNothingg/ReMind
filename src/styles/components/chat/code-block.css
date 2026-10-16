@@ -70,10 +70,10 @@
 }
 
 @media (pointer: coarse), (max-width: 640px) {
-.code-block-header-actions .copy-code-btn,
-.code-block-header-actions .toggle-code-btn,
-.code-block-header-actions .download-code-btn,
-.code-block-header-actions .run-code-btn {
+  .code-block-header-actions .copy-code-btn,
+  .code-block-header-actions .toggle-code-btn,
+  .code-block-header-actions .download-code-btn,
+  .code-block-header-actions .run-code-btn {
     width: 44px;
     height: 44px;
   }

@@ -1,94 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0"
+    />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <base href="/" />
 
-<head>
-   <meta charset="UTF-8" />
-   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0" />
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <base href="/">
+    <title>ReMind</title>
+    <meta name="description" content="ReMind — для всех. Даже для тех, кто ещё не понял зачем." />
+    <meta name="author" content="SynvexAI" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
 
-   <title>ReMind</title>
-   <meta name="description" content="ReMind — для всех. Даже для тех, кто ещё не понял зачем.">
-   <meta name="author" content="SynvexAI">
-   <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="https://chat.synvexai.com/" />
 
-   <link rel="canonical" href="https://chat.synvexai.com/">
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ReMind" />
+    <meta
+      property="og:title"
+      content="ReMind for everyone. Even for those who haven't figured out..."
+    />
+    <meta
+      property="og:description"
+      content="ReMind — для всех. Даже для тех, кто ещё не понял зачем."
+    />
+    <meta property="og:url" content="https://chat.synvexai.com/" />
+    <meta property="og:image" content="https://chat.synvexai.com/images/banners/main-banner.png" />
+    <meta
+      property="og:image:secure_url"
+      content="https://chat.synvexai.com/images/banners/main-banner.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ReMind" />
 
-   <meta property="og:type" content="website">
-   <meta property="og:site_name" content="ReMind">
-   <meta property="og:title" content="ReMind for everyone. Even for those who haven't figured out...">
-   <meta property="og:description" content="ReMind — для всех. Даже для тех, кто ещё не понял зачем.">
-   <meta property="og:url" content="https://chat.synvexai.com/">
-   <meta property="og:image" content="https://chat.synvexai.com/images/banners/main-banner.png">
-   <meta property="og:image:secure_url" content="https://chat.synvexai.com/images/banners/main-banner.png">
-   <meta property="og:image:type" content="image/png">
-   <meta property="og:image:width" content="1200">
-   <meta property="og:image:height" content="630">
-   <meta property="og:image:alt" content="ReMind">
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="ReMind for everyone. Even for those who haven't figured out..."
+    />
+    <meta
+      name="twitter:description"
+      content="ReMind — для всех. Даже для тех, кто ещё не понял зачем."
+    />
+    <meta name="twitter:image" content="https://chat.synvexai.com/images/banners/main-banner.png" />
+    <meta name="twitter:image:alt" content="ReMind" />
 
-   <meta name="twitter:card" content="summary_large_image">
-   <meta name="twitter:title" content="ReMind for everyone. Even for those who haven't figured out...">
-   <meta name="twitter:description" content="ReMind — для всех. Даже для тех, кто ещё не понял зачем.">
-   <meta name="twitter:image" content="https://chat.synvexai.com/images/banners/main-banner.png">
-   <meta name="twitter:image:alt" content="ReMind">
+    <meta name="theme-color" content="#f9fafb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
 
-   <meta name="theme-color" content="#f9fafb" media="(prefers-color-scheme: light)">
-   <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)">
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ReMind" />
+    <meta name="msapplication-TileColor" content="#111111" />
 
-   <meta name="mobile-web-app-capable" content="yes">
-   <meta name="apple-mobile-web-app-capable" content="yes">
-   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-   <meta name="apple-mobile-web-app-title" content="ReMind">
-   <meta name="msapplication-TileColor" content="#111111">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net data:; script-src 'self' 'sha256-529wnUTyEzuvHzh9W52mngjs3kPjTj0o1Y74Rgsw7Eg=' https://challenges.cloudflare.com https://oauth.telegram.org; script-src-elem 'self' 'sha256-529wnUTyEzuvHzh9W52mngjs3kPjTj0o1Y74Rgsw7Eg=' https://challenges.cloudflare.com https://oauth.telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' https://chat.synvexai.com https://challenges.cloudflare.com https://oauth.telegram.org http://localhost:5000 http://127.0.0.1:5000 http://localhost:5173 http://127.0.0.1:5173 ws://localhost:5173 ws://127.0.0.1:5173; frame-src 'self' https://challenges.cloudflare.com https://oauth.telegram.org; worker-src 'self' blob:; manifest-src 'self';"
+    />
 
-   <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net data:; script-src 'self' 'sha256-529wnUTyEzuvHzh9W52mngjs3kPjTj0o1Y74Rgsw7Eg=' https://challenges.cloudflare.com https://oauth.telegram.org; script-src-elem 'self' 'sha256-529wnUTyEzuvHzh9W52mngjs3kPjTj0o1Y74Rgsw7Eg=' https://challenges.cloudflare.com https://oauth.telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' https://chat.synvexai.com https://challenges.cloudflare.com https://oauth.telegram.org http://localhost:5000 http://127.0.0.1:5000 http://localhost:5173 http://127.0.0.1:5173 ws://localhost:5173 ws://127.0.0.1:5173; frame-src 'self' https://challenges.cloudflare.com https://oauth.telegram.org; worker-src 'self' blob:; manifest-src 'self';">
+    <link rel="icon" type="image/svg+xml" href="/icons/branding/logo.svg" />
+    <link rel="icon" href="/icons/branding/logo-dark.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/icons/branding/logo-light.svg" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/branding/logo-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/branding/logo-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/branding/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="shortcut icon" href="/icons/branding/logo.png" />
 
-   <link rel="icon" type="image/svg+xml" href="/icons/branding/logo.svg">
-   <link rel="icon" href="/icons/branding/logo-dark.svg" media="(prefers-color-scheme: light)">
-   <link rel="icon" href="/icons/branding/logo-light.svg" media="(prefers-color-scheme: dark)">
-   <link rel="icon" type="image/png" sizes="32x32" href="/icons/branding/logo-32.png">
-   <link rel="icon" type="image/png" sizes="16x16" href="/icons/branding/logo-16.png">
-   <link rel="apple-touch-icon" sizes="180x180" href="/icons/branding/apple-touch-icon.png">
-   <link rel="manifest" href="/manifest.json">
-   <link rel="shortcut icon" href="/icons/branding/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://challenges.cloudflare.com" />
+    <link rel="preconnect" href="https://oauth.telegram.org" crossorigin />
 
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-   <link rel="preconnect" href="https://challenges.cloudflare.com">
-   <link rel="preconnect" href="https://oauth.telegram.org" crossorigin>
-
-   <script type="application/ld+json">
+    <script type="application/ld+json">
       {
-         "@context": "https://schema.org",
-         "@type": "SoftwareApplication",
-         "name": "ReMind",
-         "applicationCategory": "ProductivityApplication",
-         "operatingSystem": "Web",
-         "url": "https://chat.synvexai.com/",
-         "image": "https://chat.synvexai.com/images/banners/main-banner.png",
-         "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "RUB"
-         },
-         "description": "ReMind — для всех. Даже для тех, кто ещё не понял зачем.",
-         "author": {
-            "@type": "Organization",
-            "name": "SynvexAI"
-         }
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "ReMind",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Web",
+        "url": "https://chat.synvexai.com/",
+        "image": "https://chat.synvexai.com/images/banners/main-banner.png",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "RUB"
+        },
+        "description": "ReMind — для всех. Даже для тех, кто ещё не понял зачем.",
+        "author": {
+          "@type": "Organization",
+          "name": "SynvexAI"
+        }
       }
-   </script>
+    </script>
 
-   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
-</head>
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+      defer
+    ></script>
+  </head>
 
-<body>
-   <noscript>JavaScript is required to use ReMind.</noscript>
-   <div id="root"></div>
+  <body>
+    <noscript>JavaScript is required to use ReMind.</noscript>
+    <div id="root"></div>
 
-   <script type="module" src="/src/main.tsx"></script>
-</body>
-
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

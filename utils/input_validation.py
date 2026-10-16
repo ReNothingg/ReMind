@@ -7,12 +7,10 @@ from email_validator import EmailNotValidError, validate_email
 
 
 class ValidationError(Exception):
-
     pass
 
 
 class InputValidator:
-
     @staticmethod
     def validate_name(name, min_length=1, max_length=100):
 
@@ -84,7 +82,7 @@ class InputValidator:
         try:
             parsed = urlparse(url)
             if parsed.scheme not in allowed_schemes:
-                raise ValidationError(f'URL scheme must be one of: {", ".join(allowed_schemes)}')
+                raise ValidationError(f"URL scheme must be one of: {', '.join(allowed_schemes)}")
             if not parsed.netloc:
                 raise ValidationError("Invalid URL: missing host")
             return url

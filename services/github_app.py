@@ -1350,9 +1350,7 @@ def build_single_file_text_edit_prompt(
                 f"Write any newly added prose in {response_language}."
             ),
             "output_format": (
-                f"BEGIN_REMIND_FILE:{path}\n"
-                "complete replacement file content here\n"
-                "END_REMIND_FILE"
+                f"BEGIN_REMIND_FILE:{path}\ncomplete replacement file content here\nEND_REMIND_FILE"
             ),
             "repository": {"full_name": repo_full_name, "base_branch": base_branch},
             "task": task,

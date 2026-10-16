@@ -1,12 +1,6 @@
 import { cn } from '../../utils/cn';
 
-const ToggleSwitch = ({
-  checked,
-  onClick,
-  disabled = false,
-  className = '',
-  ariaLabel
-}) => {
+const ToggleSwitch = ({ checked, onClick, disabled = false, className = '', ariaLabel }) => {
   return (
     <button
       type="button"
@@ -26,9 +20,7 @@ const ToggleSwitch = ({
         aria-hidden="true"
         className={cn(
           'relative inline-flex h-6 w-11 items-center rounded-full border transition duration-200 ease-out',
-          checked
-            ? 'border-accent-brand bg-accent-brand'
-            : 'border-border-strong bg-interactive'
+          checked ? 'border-accent-brand bg-accent-brand' : 'border-border-strong bg-interactive'
         )}
       >
         <span

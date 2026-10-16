@@ -30,7 +30,17 @@
     "readOnly": "Ouvrez une conversation modifiable pour répondre.",
     "sendFailed": "Envoi impossible. Réessayez."
   },
-  "reliability": {"offline":"Hors ligne · les messages seront mis en attente","reconnecting":"Rétablissement de la connexion…","queued":"Messages en attente : {{count}}","draftSyncing":"Synchronisation du brouillon…","draftSynced":"Brouillon synchronisé","draftLocal":"Brouillon enregistré localement","queueFull":"La file hors ligne est pleine. Reconnectez-vous avant d’envoyer d’autres fichiers.","temporaryOffline":"Les chats temporaires nécessitent une connexion et ne sont jamais enregistrés dans la file hors ligne.","interrupted":"La génération a été interrompue. Vous pouvez régénérer cette version."},
+  "reliability": {
+    "offline": "Hors ligne · les messages seront mis en attente",
+    "reconnecting": "Rétablissement de la connexion…",
+    "queued": "Messages en attente : {{count}}",
+    "draftSyncing": "Synchronisation du brouillon…",
+    "draftSynced": "Brouillon synchronisé",
+    "draftLocal": "Brouillon enregistré localement",
+    "queueFull": "La file hors ligne est pleine. Reconnectez-vous avant d’envoyer d’autres fichiers.",
+    "temporaryOffline": "Les chats temporaires nécessitent une connexion et ne sont jamais enregistrés dans la file hors ligne.",
+    "interrupted": "La génération a été interrompue. Vous pouvez régénérer cette version."
+  },
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -122,9 +132,36 @@
       }
     },
     "passwordReset": {
-      "requestTitle": "Réinitialiser le mot de passe", "confirmTitle": "Saisissez le code reçu par email", "requestDescription": "Saisissez l’email de votre compte. S’il existe, nous enverrons un code de vérification à usage unique.", "confirmDescription": "Saisissez le code à 6 chiffres reçu par email et choisissez un nouveau mot de passe. Le code expire dans 10 minutes.",
-      "forgotPassword": "Mot de passe oublié ?", "sendCode": "Envoyer le code", "sendingCode": "Envoi...", "codeLabel": "Code reçu par email", "newPasswordLabel": "Nouveau mot de passe", "resetPassword": "Enregistrer le nouveau mot de passe", "resetting": "Enregistrement...", "sendAgain": "Envoyer un nouveau code", "backToLogin": "Retour à la connexion", "codeSent": "Si cet email est enregistré, un code de vérification a été envoyé.", "complete": "Mot de passe mis à jour. Vous pouvez maintenant vous connecter.", "invalidCode": "Le code est incorrect, expiré ou déjà utilisé.", "requestError": "Impossible de réinitialiser le mot de passe. Réessayez.", "rateLimited": "Trop de tentatives. Patientez puis réessayez.",
-      "email": {"subject": "Votre code de réinitialisation ReMind", "heading": "Réinitialisation du mot de passe", "greeting": "Bonjour, {{username}} !", "intro": "Saisissez ce code de vérification dans ReMind pour choisir un nouveau mot de passe :", "expiry": "Le code expire dans 10 minutes et ne peut être utilisé qu’une fois.", "ignore": "Si vous n’avez pas demandé cette réinitialisation, ignorez cet email. Ne partagez ce code avec personne.", "changedSubject": "Votre mot de passe ReMind a été modifié", "changedHeading": "Mot de passe modifié", "changedIntro": "Le mot de passe de votre compte ReMind a bien été modifié.", "changedWarning": "Si vous n’êtes pas à l’origine de cette action, demandez immédiatement une nouvelle réinitialisation et contactez l’assistance."}
+      "requestTitle": "Réinitialiser le mot de passe",
+      "confirmTitle": "Saisissez le code reçu par email",
+      "requestDescription": "Saisissez l’email de votre compte. S’il existe, nous enverrons un code de vérification à usage unique.",
+      "confirmDescription": "Saisissez le code à 6 chiffres reçu par email et choisissez un nouveau mot de passe. Le code expire dans 10 minutes.",
+      "forgotPassword": "Mot de passe oublié ?",
+      "sendCode": "Envoyer le code",
+      "sendingCode": "Envoi...",
+      "codeLabel": "Code reçu par email",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "resetPassword": "Enregistrer le nouveau mot de passe",
+      "resetting": "Enregistrement...",
+      "sendAgain": "Envoyer un nouveau code",
+      "backToLogin": "Retour à la connexion",
+      "codeSent": "Si cet email est enregistré, un code de vérification a été envoyé.",
+      "complete": "Mot de passe mis à jour. Vous pouvez maintenant vous connecter.",
+      "invalidCode": "Le code est incorrect, expiré ou déjà utilisé.",
+      "requestError": "Impossible de réinitialiser le mot de passe. Réessayez.",
+      "rateLimited": "Trop de tentatives. Patientez puis réessayez.",
+      "email": {
+        "subject": "Votre code de réinitialisation ReMind",
+        "heading": "Réinitialisation du mot de passe",
+        "greeting": "Bonjour, {{username}} !",
+        "intro": "Saisissez ce code de vérification dans ReMind pour choisir un nouveau mot de passe :",
+        "expiry": "Le code expire dans 10 minutes et ne peut être utilisé qu’une fois.",
+        "ignore": "Si vous n’avez pas demandé cette réinitialisation, ignorez cet email. Ne partagez ce code avec personne.",
+        "changedSubject": "Votre mot de passe ReMind a été modifié",
+        "changedHeading": "Mot de passe modifié",
+        "changedIntro": "Le mot de passe de votre compte ReMind a bien été modifié.",
+        "changedWarning": "Si vous n’êtes pas à l’origine de cette action, demandez immédiatement une nouvelle réinitialisation et contactez l’assistance."
+      }
     }
   },
   "common": {
@@ -168,16 +205,24 @@
     "python": {
       "running": "Exécution du code Python...",
       "completed": "Exécution de Python terminée",
-        "failed": "Échec de l’exécution de Python",
-        "output": "Résultat de l’exécution",
-        "showOutput": "Afficher le résultat",
-        "hideOutput": "Masquer le résultat",
+      "failed": "Échec de l’exécution de Python",
+      "output": "Résultat de l’exécution",
+      "showOutput": "Afficher le résultat",
+      "hideOutput": "Masquer le résultat",
       "showCode": "Afficher le code",
       "hideCode": "Masquer le code"
     },
     "image": {
-      "crop": {"running": "Recadrage de l’image...", "completed": "Recadrage prêt", "failed": "Échec du recadrage"},
-      "tile": {"running": "Découpage de l’image en sections...", "completed": "Sections de l’image prêtes", "failed": "Échec du découpage de l’image"},
+      "crop": {
+        "running": "Recadrage de l’image...",
+        "completed": "Recadrage prêt",
+        "failed": "Échec du recadrage"
+      },
+      "tile": {
+        "running": "Découpage de l’image en sections...",
+        "completed": "Sections de l’image prêtes",
+        "failed": "Échec du découpage de l’image"
+      },
       "source": "Source : {{filename}}",
       "fragments": "Sections : {{count}}"
     },
@@ -198,9 +243,7 @@
     ]
   },
   "warnings": {
-    "dynamicPhrases": [
-      "ReMind peut faire des erreurs."
-    ]
+    "dynamicPhrases": ["ReMind peut faire des erreurs."]
   },
   "chat": {
     "readOnly": "Le chat est en lecture seule",
@@ -479,7 +522,16 @@
     "searchHint": "Astuce : titre, sujet, dernier message",
     "searchPlaceholder": "Tapez pour rechercher des chats",
     "searchInput": "Recherche de chat",
-    "channelFilter": { "label": "Filtrer les chats par source", "all": "Tous", "web": "Web", "telegram": "Telegram", "private": "Personnel", "group": "Groupe", "guest": "Invité", "inline": "Inline" },
+    "channelFilter": {
+      "label": "Filtrer les chats par source",
+      "all": "Tous",
+      "web": "Web",
+      "telegram": "Telegram",
+      "private": "Personnel",
+      "group": "Groupe",
+      "guest": "Invité",
+      "inline": "Inline"
+    },
     "yourChats": "Vos chats",
     "untitled": "Sans titre",
     "expand": "Développer",

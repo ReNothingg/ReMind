@@ -27,13 +27,13 @@ npm run docker:dev
 
 Сервисы:
 
-| Сервис | URL / роль |
-|---|---|
-| `frontend` | `http://127.0.0.1:5173` |
-| `backend` | `http://127.0.0.1:5000` |
-| `worker` | Celery worker с Python file watcher |
-| `db` | PostgreSQL 15 |
-| `redis` | Redis 7 с append-only persistence |
+| Сервис     | URL / роль                          |
+| ---------- | ----------------------------------- |
+| `frontend` | `http://127.0.0.1:5173`             |
+| `backend`  | `http://127.0.0.1:5000`             |
+| `worker`   | Celery worker с Python file watcher |
+| `db`       | PostgreSQL 15                       |
+| `redis`    | Redis 7 с append-only persistence   |
 
 Dev stack по умолчанию не читает основной `.env`. Он выставляет `LOAD_DOTENV=false` и использует Compose environment values, чтобы production cookie/domain/password настройки не ломали локальную разработку.
 
@@ -67,14 +67,14 @@ docker compose up --build
 
 Сервисы:
 
-| Сервис | Роль |
-|---|---|
-| `nginx` | Public HTTP edge и static/API proxy |
-| `app` | Flask application из production image |
-| `worker` | Celery background worker |
+| Сервис         | Роль                                                      |
+| -------------- | --------------------------------------------------------- |
+| `nginx`        | Public HTTP edge и static/API proxy                       |
+| `app`          | Flask application из production image                     |
+| `worker`       | Celery background worker                                  |
 | `telegram-bot` | Опциональный Telegram Bot API worker (profile `telegram`) |
-| `db` | PostgreSQL database |
-| `redis` | Sessions, queue broker и runtime cache |
+| `db`           | PostgreSQL database                                       |
+| `redis`        | Sessions, queue broker и runtime cache                    |
 
 Обязательные environment values:
 

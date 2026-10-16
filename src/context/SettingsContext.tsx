@@ -6,355 +6,367 @@ import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from '../i1
 const SettingsContext = createContext(null);
 
 const REMOVED_SETTING_KEYS = new Set([
-    'autocomplete',
-    'autoscroll',
-    'renderUserMarkdown',
-    'autoSave'
+  'autocomplete',
+  'autoscroll',
+  'renderUserMarkdown',
+  'autoSave',
 ]);
 
 const detectInterfaceLanguage = () => {
-    const hasStorage = typeof localStorage !== 'undefined';
-    let storedInterfaceLanguage;
-    if (hasStorage) {
-        try {
-            storedInterfaceLanguage = JSON.parse(localStorage.getItem('settings_interface_language'));
-        } catch {
-            storedInterfaceLanguage = null;
-        }
+  const hasStorage = typeof localStorage !== 'undefined';
+  let storedInterfaceLanguage;
+  if (hasStorage) {
+    try {
+      storedInterfaceLanguage = JSON.parse(localStorage.getItem('settings_interface_language'));
+    } catch {
+      storedInterfaceLanguage = null;
     }
+  }
 
-    if (storedInterfaceLanguage) {
-        return normalizeLanguage(storedInterfaceLanguage);
-    }
+  if (storedInterfaceLanguage) {
+    return normalizeLanguage(storedInterfaceLanguage);
+  }
 
-    if (hasStorage) {
-        try {
-            const savedI18n = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-            if (savedI18n) return normalizeLanguage(savedI18n);
-        } catch {
-        }
-    }
+  if (hasStorage) {
+    try {
+      const savedI18n = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+      if (savedI18n) return normalizeLanguage(savedI18n);
+    } catch {}
+  }
 
-    if (typeof navigator !== 'undefined' && navigator.language) {
-        return normalizeLanguage(navigator.language);
-    }
+  if (typeof navigator !== 'undefined' && navigator.language) {
+    return normalizeLanguage(navigator.language);
+  }
 
-    return normalizeLanguage(DEFAULT_LANGUAGE);
+  return normalizeLanguage(DEFAULT_LANGUAGE);
 };
 
 const DEFAULT_SETTINGS = {
-    theme: 'light',
-    accentColor: 'white',
-    renderMarkdown: true,
-    codeWrap: true,
-    compactMode: false,
-    showChatPreview: true,
-    notifyOnThinkingDone: false,
-    requireCtrlEnterToSend: false,
-    snowBackground: false,
-    fontFamily: "'Manrope', 'Inter', 'Segoe UI', sans-serif",
-    fontSize: '16px',
-    keyboardSupport: true,
-    highContrast: false,
-    interface_language: detectInterfaceLanguage(),
-    chatPanelPosition: 'bottomCenter',
-    chatPanelResetPolicy: 'after10Minutes',
-    chatPanelKeyboardShortcut: 'optionCommandSpace',
-    chatPanelNewChatDestination: 'companion',
-    macLaunchAtLogin: null,
-    automaticWebSearch: true,
-    service_improvement_opt_in: false,
-    personalization_instructions: '',
-    personalization_profession: '',
-    personalization_more: ''
+  theme: 'light',
+  accentColor: 'white',
+  renderMarkdown: true,
+  codeWrap: true,
+  compactMode: false,
+  showChatPreview: true,
+  notifyOnThinkingDone: false,
+  requireCtrlEnterToSend: false,
+  snowBackground: false,
+  fontFamily: "'Manrope', 'Inter', 'Segoe UI', sans-serif",
+  fontSize: '16px',
+  keyboardSupport: true,
+  highContrast: false,
+  interface_language: detectInterfaceLanguage(),
+  chatPanelPosition: 'bottomCenter',
+  chatPanelResetPolicy: 'after10Minutes',
+  chatPanelKeyboardShortcut: 'optionCommandSpace',
+  chatPanelNewChatDestination: 'companion',
+  macLaunchAtLogin: null,
+  automaticWebSearch: true,
+  service_improvement_opt_in: false,
+  personalization_instructions: '',
+  personalization_profession: '',
+  personalization_more: '',
 };
 const DB_FIELD_MAP = {
-    theme: 'theme',
-    interface_language: 'language',
-    automaticWebSearch: 'automatic_web_search'
+  theme: 'theme',
+  interface_language: 'language',
+  automaticWebSearch: 'automatic_web_search',
 };
 const BASE_KEYS = new Set(Object.keys(DB_FIELD_MAP));
 
 export const SettingsProvider = ({ children }) => {
-    const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-    const [settings, setSettings] = useState(() => {
-        const saved = {};
-        Object.keys(DEFAULT_SETTINGS).forEach(key => {
-            const item = localStorage.getItem(`settings_${key}`);
-            if (item !== null) {
-                try {
-                    saved[key] = JSON.parse(item);
-                } catch (e) {
-                    console.warn(`Failed to load setting ${key}:`, e);
-                }
+  const [settings, setSettings] = useState(() => {
+    const saved = {};
+    Object.keys(DEFAULT_SETTINGS).forEach((key) => {
+      const item = localStorage.getItem(`settings_${key}`);
+      if (item !== null) {
+        try {
+          saved[key] = JSON.parse(item);
+        } catch (e) {
+          console.warn(`Failed to load setting ${key}:`, e);
+        }
+      }
+    });
+    const merged = { ...DEFAULT_SETTINGS, ...saved };
+
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('settings_personalization_nickname');
+      REMOVED_SETTING_KEYS.forEach((key) => {
+        localStorage.removeItem(`settings_${key}`);
+      });
+    }
+
+    const normalizedInterfaceLanguage = normalizeLanguage(merged.interface_language);
+    merged.interface_language = normalizedInterfaceLanguage;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const storedInterfaceLanguage = localStorage.getItem('settings_interface_language');
+        const storedValue = storedInterfaceLanguage ? JSON.parse(storedInterfaceLanguage) : null;
+        if (storedValue !== normalizedInterfaceLanguage) {
+          localStorage.setItem(
+            'settings_interface_language',
+            JSON.stringify(normalizedInterfaceLanguage)
+          );
+        }
+      } catch {}
+    }
+    if (typeof merged.fontSize === 'string' && merged.fontSize.trim().endsWith('rem')) {
+      const remMap = {
+        '0.875rem': '14px',
+        '1rem': '16px',
+        '1.125rem': '18px',
+        '1.25rem': '20px',
+      };
+      merged.fontSize = remMap[merged.fontSize.trim()] || DEFAULT_SETTINGS.fontSize;
+    }
+
+    return merged;
+  });
+
+  const saveDebounceTimerRef = useRef(null);
+  const pendingSavesRef = useRef({});
+  const lastAuthStateRef = useRef(isAuthenticated);
+  const loadSettingsFromDB = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const dbSettings = await authService.getSettings();
+      if (dbSettings && !dbSettings.error) {
+        const newSettings = { ...DEFAULT_SETTINGS };
+        if (dbSettings.theme) newSettings.theme = dbSettings.theme;
+        if (dbSettings.language) newSettings.interface_language = dbSettings.language;
+        if (dbSettings.automatic_web_search !== undefined) {
+          newSettings.automaticWebSearch = !!dbSettings.automatic_web_search;
+        }
+        if (dbSettings.settings_data) {
+          Object.keys(DEFAULT_SETTINGS).forEach((key) => {
+            if (!BASE_KEYS.has(key) && dbSettings.settings_data[key] !== undefined) {
+              newSettings[key] = dbSettings.settings_data[key];
             }
-        });
-        const merged = { ...DEFAULT_SETTINGS, ...saved };
-
-        if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem('settings_personalization_nickname');
-            REMOVED_SETTING_KEYS.forEach(key => {
-                localStorage.removeItem(`settings_${key}`);
-            });
+          });
         }
 
-        const normalizedInterfaceLanguage = normalizeLanguage(merged.interface_language);
-        merged.interface_language = normalizedInterfaceLanguage;
-        if (typeof localStorage !== 'undefined') {
-            try {
-                const storedInterfaceLanguage = localStorage.getItem('settings_interface_language');
-                const storedValue = storedInterfaceLanguage ? JSON.parse(storedInterfaceLanguage) : null;
-                if (storedValue !== normalizedInterfaceLanguage) {
-                    localStorage.setItem('settings_interface_language', JSON.stringify(normalizedInterfaceLanguage));
-                }
-            } catch {
-            }
-        }
-        if (typeof merged.fontSize === 'string' && merged.fontSize.trim().endsWith('rem')) {
-            const remMap = {
-                '0.875rem': '14px',
-                '1rem': '16px',
-                '1.125rem': '18px',
-                '1.25rem': '20px'
-            };
-            merged.fontSize = remMap[merged.fontSize.trim()] || DEFAULT_SETTINGS.fontSize;
-        }
+        setSettings(newSettings);
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to load settings from DB, falling back to localStorage:', error);
+    }
+  }, [isAuthenticated]);
+  const saveToDB = useCallback(async () => {
+    if (!isAuthenticated || Object.keys(pendingSavesRef.current).length === 0) {
+      return;
+    }
 
-        return merged;
+    try {
+      const currentSettings = await authService.getSettings();
+      const existingData =
+        currentSettings && !currentSettings.error && currentSettings.settings_data
+          ? currentSettings.settings_data
+          : {};
+      const mergedSettings = { ...existingData };
+
+      Object.entries(pendingSavesRef.current).forEach(([key, value]) => {
+        if (!BASE_KEYS.has(key)) {
+          mergedSettings[key] = value;
+        }
+      });
+
+      const payload = { settings_data: mergedSettings };
+      Object.entries(DB_FIELD_MAP).forEach(([localKey, dbKey]) => {
+        if (pendingSavesRef.current[localKey] !== undefined) {
+          payload[dbKey] = pendingSavesRef.current[localKey];
+        }
+      });
+
+      await authService.updateSettings(payload);
+      pendingSavesRef.current = {};
+    } catch (error) {
+      console.error('Failed to save settings to DB:', error);
+      Object.entries(pendingSavesRef.current).forEach(([key, value]) => {
+        try {
+          localStorage.setItem(`settings_${key}`, JSON.stringify(value));
+        } catch (e) {
+          console.warn(`Could not save setting ${key} to localStorage:`, e);
+        }
+      });
+    }
+  }, [isAuthenticated]);
+  const applySetting = useCallback((key, value) => {
+    switch (key) {
+      case 'theme': {
+        const actualTheme =
+          value === 'system'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+            : value;
+        const root = document.documentElement;
+        const previousTheme = root.getAttribute('data-theme');
+        const applyTheme = () => root.setAttribute('data-theme', actualTheme);
+        const canCrossfade =
+          Boolean(previousTheme) &&
+          previousTheme !== actualTheme &&
+          typeof document.startViewTransition === 'function' &&
+          !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (canCrossfade) {
+          document.startViewTransition(applyTheme);
+        } else {
+          applyTheme();
+        }
+        break;
+      }
+      case 'accentColor': {
+        if (!value) return;
+        document.documentElement.setAttribute('data-accent-color', value);
+        break;
+      }
+      case 'codeWrap':
+        document.body.classList.toggle('code-wrap-enabled', value);
+        break;
+      case 'compactMode':
+        document.body.classList.toggle('compact-mode', value);
+        break;
+      case 'snowBackground':
+        document.body.classList.toggle('snow-background-enabled', value);
+        break;
+      case 'fontFamily':
+        document.documentElement.style.setProperty('--font-family-main', value);
+        break;
+      case 'fontSize':
+        document.documentElement.style.fontSize = value;
+        break;
+      case 'highContrast':
+        document.body.classList.toggle('high-contrast', value);
+        break;
+    }
+  }, []);
+  useEffect(() => {
+    Object.entries(settings).forEach(([key, value]) => {
+      applySetting(key, value);
+    });
+  }, [settings, applySetting]);
+
+  useEffect(() => {
+    const handler = window.webkit?.messageHandlers?.remindMacBridge;
+    if (!handler) return;
+
+    handler.postMessage({
+      type: 'chatPanelSettings',
+      payload: {
+        chatPanelPosition: settings.chatPanelPosition,
+        chatPanelResetPolicy: settings.chatPanelResetPolicy,
+        chatPanelKeyboardShortcut: settings.chatPanelKeyboardShortcut,
+        chatPanelNewChatDestination: settings.chatPanelNewChatDestination,
+        ...(typeof settings.macLaunchAtLogin === 'boolean'
+          ? { macLaunchAtLogin: settings.macLaunchAtLogin }
+          : {}),
+      },
+    });
+  }, [
+    settings.chatPanelPosition,
+    settings.chatPanelResetPolicy,
+    settings.chatPanelKeyboardShortcut,
+    settings.chatPanelNewChatDestination,
+    settings.macLaunchAtLogin,
+  ]);
+  useEffect(() => {
+    if (settings.theme !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      applySetting('theme', 'system');
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [settings.theme, applySetting]);
+  useEffect(() => {
+    const prevAuthState = lastAuthStateRef.current;
+    lastAuthStateRef.current = isAuthenticated;
+
+    if (!isAuthenticated && prevAuthState) {
+      pendingSavesRef.current = {};
+    }
+    return undefined;
+  }, [isAuthenticated]);
+
+  const updateSetting = useCallback(
+    (key, value) => {
+      if (REMOVED_SETTING_KEYS.has(key)) return;
+      setSettings((prev) => ({ ...prev, [key]: value }));
+      try {
+        localStorage.setItem(`settings_${key}`, JSON.stringify(value));
+      } catch (e) {
+        console.warn(`Could not save setting ${key}:`, e);
+      }
+      if (isAuthenticated) {
+        pendingSavesRef.current[key] = value;
+        clearTimeout(saveDebounceTimerRef.current);
+        saveDebounceTimerRef.current = setTimeout(() => {
+          void saveToDB();
+        }, 500);
+      }
+    },
+    [isAuthenticated, saveToDB]
+  );
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const timer = window.setTimeout(() => {
+        void loadSettingsFromDB();
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    return undefined;
+  }, [isAuthenticated, loadSettingsFromDB]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const updates = [];
+    const theme = params.get('theme');
+    if (theme) {
+      const decodedTheme = decodeURIComponent(theme);
+      if (['light', 'dark', 'system'].includes(decodedTheme)) {
+        updates.push(['theme', decodedTheme]);
+      }
+    }
+
+    const accent = params.get('accent');
+    if (accent) {
+      updates.push(['accentColor', decodeURIComponent(accent)]);
+    }
+
+    if (updates.length === 0) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      updates.forEach(([key, value]) => {
+        updateSetting(key, value);
+      });
     });
 
-    const saveDebounceTimerRef = useRef(null);
-    const pendingSavesRef = useRef({});
-    const lastAuthStateRef = useRef(isAuthenticated);
-    const loadSettingsFromDB = useCallback(async () => {
-        if (!isAuthenticated) return;
+    return () => window.cancelAnimationFrame(frame);
+  }, [updateSetting]);
 
-        try {
-            const dbSettings = await authService.getSettings();
-            if (dbSettings && !dbSettings.error) {
-                const newSettings = { ...DEFAULT_SETTINGS };
-                if (dbSettings.theme) newSettings.theme = dbSettings.theme;
-                if (dbSettings.language) newSettings.interface_language = dbSettings.language;
-                if (dbSettings.automatic_web_search !== undefined) {
-                    newSettings.automaticWebSearch = !!dbSettings.automatic_web_search;
-                }
-                if (dbSettings.settings_data) {
-                    Object.keys(DEFAULT_SETTINGS).forEach(key => {
-                        if (!BASE_KEYS.has(key) && dbSettings.settings_data[key] !== undefined) {
-                            newSettings[key] = dbSettings.settings_data[key];
-                        }
-                    });
-                }
+  useEffect(
+    () => () => {
+      if (saveDebounceTimerRef.current) {
+        clearTimeout(saveDebounceTimerRef.current);
+      }
+    },
+    []
+  );
 
-                setSettings(newSettings);
-                return;
-            }
-        } catch (error) {
-            console.warn('Failed to load settings from DB, falling back to localStorage:', error);
-        }
-    }, [isAuthenticated]);
-    const saveToDB = useCallback(async () => {
-        if (!isAuthenticated || Object.keys(pendingSavesRef.current).length === 0) {
-            return;
-        }
-
-        try {
-            const currentSettings = await authService.getSettings();
-            const existingData = (currentSettings && !currentSettings.error && currentSettings.settings_data)
-                ? currentSettings.settings_data
-                : {};
-            const mergedSettings = { ...existingData };
-
-            Object.entries(pendingSavesRef.current).forEach(([key, value]) => {
-                if (!BASE_KEYS.has(key)) {
-                    mergedSettings[key] = value;
-                }
-            });
-
-            const payload = { settings_data: mergedSettings };
-            Object.entries(DB_FIELD_MAP).forEach(([localKey, dbKey]) => {
-                if (pendingSavesRef.current[localKey] !== undefined) {
-                    payload[dbKey] = pendingSavesRef.current[localKey];
-                }
-            });
-
-            await authService.updateSettings(payload);
-            pendingSavesRef.current = {};
-        } catch (error) {
-            console.error('Failed to save settings to DB:', error);
-            Object.entries(pendingSavesRef.current).forEach(([key, value]) => {
-                try {
-                    localStorage.setItem(`settings_${key}`, JSON.stringify(value));
-                } catch (e) {
-                    console.warn(`Could not save setting ${key} to localStorage:`, e);
-                }
-            });
-        }
-    }, [isAuthenticated]);
-    const applySetting = useCallback((key, value) => {
-        switch (key) {
-            case 'theme': {
-                const actualTheme = value === 'system'
-                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-                    : value;
-                const root = document.documentElement;
-                const previousTheme = root.getAttribute('data-theme');
-                const applyTheme = () => root.setAttribute('data-theme', actualTheme);
-                const canCrossfade = Boolean(previousTheme)
-                    && previousTheme !== actualTheme
-                    && typeof document.startViewTransition === 'function'
-                    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                if (canCrossfade) {
-                    document.startViewTransition(applyTheme);
-                } else {
-                    applyTheme();
-                }
-                break;
-            }
-            case 'accentColor': {
-                if (!value) return;
-                document.documentElement.setAttribute('data-accent-color', value);
-                break;
-            }
-            case 'codeWrap':
-                document.body.classList.toggle('code-wrap-enabled', value);
-                break;
-            case 'compactMode':
-                document.body.classList.toggle('compact-mode', value);
-                break;
-            case 'snowBackground':
-                document.body.classList.toggle('snow-background-enabled', value);
-                break;
-            case 'fontFamily':
-                document.documentElement.style.setProperty('--font-family-main', value);
-                break;
-            case 'fontSize':
-                document.documentElement.style.fontSize = value;
-                break;
-            case 'highContrast':
-                document.body.classList.toggle('high-contrast', value);
-                break;
-        }
-    }, []);
-    useEffect(() => {
-        Object.entries(settings).forEach(([key, value]) => {
-            applySetting(key, value);
-        });
-    }, [settings, applySetting]);
-
-    useEffect(() => {
-        const handler = window.webkit?.messageHandlers?.remindMacBridge;
-        if (!handler) return;
-
-        handler.postMessage({
-            type: 'chatPanelSettings',
-            payload: {
-                chatPanelPosition: settings.chatPanelPosition,
-                chatPanelResetPolicy: settings.chatPanelResetPolicy,
-                chatPanelKeyboardShortcut: settings.chatPanelKeyboardShortcut,
-                chatPanelNewChatDestination: settings.chatPanelNewChatDestination,
-                ...(typeof settings.macLaunchAtLogin === 'boolean'
-                    ? { macLaunchAtLogin: settings.macLaunchAtLogin }
-                    : {})
-            }
-        });
-    }, [
-        settings.chatPanelPosition,
-        settings.chatPanelResetPolicy,
-        settings.chatPanelKeyboardShortcut,
-        settings.chatPanelNewChatDestination,
-        settings.macLaunchAtLogin
-    ]);
-    useEffect(() => {
-        if (settings.theme !== 'system') return;
-
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const handleChange = () => {
-            applySetting('theme', 'system');
-        };
-
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, [settings.theme, applySetting]);
-    useEffect(() => {
-        const prevAuthState = lastAuthStateRef.current;
-        lastAuthStateRef.current = isAuthenticated;
-
-        if (!isAuthenticated && prevAuthState) {
-            pendingSavesRef.current = {};
-        }
-        return undefined;
-    }, [isAuthenticated]);
-
-    const updateSetting = useCallback((key, value) => {
-        if (REMOVED_SETTING_KEYS.has(key)) return;
-        setSettings(prev => ({ ...prev, [key]: value }));
-        try {
-            localStorage.setItem(`settings_${key}`, JSON.stringify(value));
-        } catch (e) {
-            console.warn(`Could not save setting ${key}:`, e);
-        }
-        if (isAuthenticated) {
-            pendingSavesRef.current[key] = value;
-            clearTimeout(saveDebounceTimerRef.current);
-            saveDebounceTimerRef.current = setTimeout(() => {
-                void saveToDB();
-            }, 500);
-        }
-    }, [isAuthenticated, saveToDB]);
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            const timer = window.setTimeout(() => {
-                void loadSettingsFromDB();
-            }, 0);
-            return () => window.clearTimeout(timer);
-        }
-
-        return undefined;
-    }, [isAuthenticated, loadSettingsFromDB]);
-
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const updates = [];
-        const theme = params.get('theme');
-        if (theme) {
-            const decodedTheme = decodeURIComponent(theme);
-            if (['light', 'dark', 'system'].includes(decodedTheme)) {
-                updates.push(['theme', decodedTheme]);
-            }
-        }
-
-        const accent = params.get('accent');
-        if (accent) {
-            updates.push(['accentColor', decodeURIComponent(accent)]);
-        }
-
-        if (updates.length === 0) {
-            return undefined;
-        }
-
-        const frame = window.requestAnimationFrame(() => {
-            updates.forEach(([key, value]) => {
-                updateSetting(key, value);
-            });
-        });
-
-        return () => window.cancelAnimationFrame(frame);
-    }, [updateSetting]);
-
-    useEffect(() => () => {
-        if (saveDebounceTimerRef.current) {
-            clearTimeout(saveDebounceTimerRef.current);
-        }
-    }, []);
-
-    return (
-        <SettingsContext.Provider value={{ settings, updateSetting }}>
-            {children}
-        </SettingsContext.Provider>
-    );
+  return (
+    <SettingsContext.Provider value={{ settings, updateSetting }}>
+      {children}
+    </SettingsContext.Provider>
+  );
 };
 
 export const useSettings = () => useContext(SettingsContext);

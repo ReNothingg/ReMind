@@ -23,17 +23,10 @@
         },
         "freshness": {
           "type": "string",
-          "enum": [
-            "day",
-            "week",
-            "month",
-            "year"
-          ]
+          "enum": ["day", "week", "month", "year"]
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -65,9 +58,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "repo_full_name"
-      ],
+      "required": ["repo_full_name"],
       "additionalProperties": false
     }
   },
@@ -96,10 +87,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "repo_full_name",
-        "path"
-      ],
+      "required": ["repo_full_name", "path"],
       "additionalProperties": false
     }
   },
@@ -122,10 +110,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "code",
-        "purpose"
-      ],
+      "required": ["code", "purpose"],
       "additionalProperties": false
     }
   },
@@ -172,15 +157,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "filename",
-        "x",
-        "y",
-        "width",
-        "height",
-        "deliver_to_user",
-        "purpose"
-      ],
+      "required": ["filename", "x", "y", "width", "height", "deliver_to_user", "purpose"],
       "additionalProperties": false
     }
   },
@@ -224,12 +201,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "filename",
-        "rows",
-        "columns",
-        "purpose"
-      ],
+      "required": ["filename", "rows", "columns", "purpose"],
       "additionalProperties": false
     }
   },
@@ -245,9 +217,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "skill_id"
-      ],
+      "required": ["skill_id"],
       "additionalProperties": false
     }
   },
@@ -273,15 +243,10 @@
         },
         "mode": {
           "type": "string",
-          "enum": [
-            "normal",
-            "wide"
-          ]
+          "enum": ["normal", "wide"]
         }
       },
-      "required": [
-        "title"
-      ],
+      "required": ["title"],
       "additionalProperties": false
     }
   },
@@ -293,10 +258,7 @@
       "properties": {
         "action": {
           "type": "string",
-          "enum": [
-            "create",
-            "replace"
-          ]
+          "enum": ["create", "replace"]
         },
         "name": {
           "type": "string",
@@ -317,11 +279,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "action",
-        "name",
-        "type"
-      ],
+      "required": ["action", "name", "type"],
       "additionalProperties": false
     }
   },
@@ -333,24 +291,14 @@
       "properties": {
         "format": {
           "type": "string",
-          "enum": [
-            "chartjs",
-            "d3js",
-            "mermaid",
-            "nomnoml",
-            "beatbox",
-            "quiz"
-          ]
+          "enum": ["chartjs", "d3js", "mermaid", "nomnoml", "beatbox", "quiz"]
         },
         "content": {
           "type": "string",
           "description": "JSON object serialized as text for charts, BeatBox or quiz; diagram source text for Mermaid or nomnoml."
         }
       },
-      "required": [
-        "format",
-        "content"
-      ],
+      "required": ["format", "content"],
       "additionalProperties": false
     }
   },
@@ -366,9 +314,7 @@
           "minLength": 1
         }
       },
-      "required": [
-        "prompt"
-      ],
+      "required": ["prompt"],
       "additionalProperties": false
     }
   },
@@ -414,9 +360,7 @@
           "maximum": 24000
         }
       },
-      "required": [
-        "filename"
-      ],
+      "required": ["filename"],
       "additionalProperties": false
     }
   },
@@ -440,10 +384,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "filename",
-        "query"
-      ],
+      "required": ["filename", "query"],
       "additionalProperties": false
     }
   },
@@ -490,11 +431,7 @@
           "maxLength": 24000
         }
       },
-      "required": [
-        "expected_revision",
-        "old_text",
-        "new_text"
-      ],
+      "required": ["expected_revision", "old_text", "new_text"],
       "additionalProperties": false
     }
   },
@@ -557,17 +494,10 @@
         },
         "freshness": {
           "type": "string",
-          "enum": [
-            "day",
-            "week",
-            "month",
-            "year"
-          ]
+          "enum": ["day", "week", "month", "year"]
         }
       },
-      "required": [
-        "queries"
-      ],
+      "required": ["queries"],
       "additionalProperties": false
     }
   },
@@ -593,9 +523,7 @@
           "maxLength": 300
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -611,9 +539,7 @@
           "maxLength": 180
         }
       },
-      "required": [
-        "pattern"
-      ],
+      "required": ["pattern"],
       "additionalProperties": false
     }
   },
@@ -634,9 +560,7 @@
           "maxLength": 180
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -657,10 +581,7 @@
           "maxLength": 180
         }
       },
-      "required": [
-        "before",
-        "after"
-      ],
+      "required": ["before", "after"],
       "additionalProperties": false
     }
   },
@@ -681,10 +602,7 @@
           "maxLength": 524288
         }
       },
-      "required": [
-        "filename",
-        "content"
-      ],
+      "required": ["filename", "content"],
       "additionalProperties": false
     }
   },
@@ -720,12 +638,7 @@
           "maxLength": 120
         }
       },
-      "required": [
-        "filename",
-        "expected_revision",
-        "old_text",
-        "new_text"
-      ],
+      "required": ["filename", "expected_revision", "old_text", "new_text"],
       "additionalProperties": false
     }
   },
@@ -741,9 +654,7 @@
           "maxLength": 120
         }
       },
-      "required": [
-        "filename"
-      ],
+      "required": ["filename"],
       "additionalProperties": false
     }
   },
@@ -759,9 +670,7 @@
           "maxLength": 180
         }
       },
-      "required": [
-        "filename"
-      ],
+      "required": ["filename"],
       "additionalProperties": false
     }
   },
@@ -798,12 +707,7 @@
               },
               "operator": {
                 "type": "string",
-                "enum": [
-                  "equals",
-                  "contains",
-                  "greater_than",
-                  "less_than"
-                ]
+                "enum": ["equals", "contains", "greater_than", "less_than"]
               },
               "value": {
                 "type": "string",
@@ -811,11 +715,7 @@
                 "maxLength": 500
               }
             },
-            "required": [
-              "column",
-              "operator",
-              "value"
-            ],
+            "required": ["column", "operator", "value"],
             "additionalProperties": false
           },
           "minItems": 0,
@@ -833,13 +733,7 @@
         },
         "aggregate": {
           "type": "string",
-          "enum": [
-            "count",
-            "sum",
-            "average",
-            "min",
-            "max"
-          ]
+          "enum": ["count", "sum", "average", "min", "max"]
         },
         "sort_by": {
           "type": "string",
@@ -865,9 +759,7 @@
           "maxLength": 120
         }
       },
-      "required": [
-        "filename"
-      ],
+      "required": ["filename"],
       "additionalProperties": false
     }
   },
@@ -899,28 +791,17 @@
               },
               "status": {
                 "type": "string",
-                "enum": [
-                  "pending",
-                  "in_progress",
-                  "completed"
-                ]
+                "enum": ["pending", "in_progress", "completed"]
               }
             },
-            "required": [
-              "id",
-              "title",
-              "status"
-            ],
+            "required": ["id", "title", "status"],
             "additionalProperties": false
           },
           "minItems": 1,
           "maxItems": 12
         }
       },
-      "required": [
-        "title",
-        "steps"
-      ],
+      "required": ["title", "steps"],
       "additionalProperties": false
     }
   },
@@ -961,21 +842,14 @@
                 "maxItems": 4
               }
             },
-            "required": [
-              "id",
-              "question",
-              "options"
-            ],
+            "required": ["id", "question", "options"],
             "additionalProperties": false
           },
           "minItems": 1,
           "maxItems": 3
         }
       },
-      "required": [
-        "title",
-        "questions"
-      ],
+      "required": ["title", "questions"],
       "additionalProperties": false
     }
   },
@@ -1006,10 +880,7 @@
           "maxLength": 255
         }
       },
-      "required": [
-        "repo_full_name",
-        "paths"
-      ],
+      "required": ["repo_full_name", "paths"],
       "additionalProperties": false
     }
   },
@@ -1045,11 +916,7 @@
           "maxLength": 300
         }
       },
-      "required": [
-        "repo_full_name",
-        "paths",
-        "query"
-      ],
+      "required": ["repo_full_name", "paths", "query"],
       "additionalProperties": false
     }
   },

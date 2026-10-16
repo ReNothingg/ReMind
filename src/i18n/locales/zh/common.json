@@ -30,7 +30,17 @@
     "readOnly": "请打开可编辑的聊天以回答。",
     "sendFailed": "发送失败，请重试。"
   },
-  "reliability": {"offline":"离线 · 消息将进入队列","reconnecting":"正在恢复连接…","queued":"队列中有 {{count}} 条消息","draftSyncing":"正在同步草稿…","draftSynced":"草稿已同步","draftLocal":"草稿已保存在本地","queueFull":"离线队列已满。请联网后再发送更多文件。","temporaryOffline":"临时聊天需要网络连接，且不会保存到离线队列。","interrupted":"生成已中断。你可以重新生成此版本。"},
+  "reliability": {
+    "offline": "离线 · 消息将进入队列",
+    "reconnecting": "正在恢复连接…",
+    "queued": "队列中有 {{count}} 条消息",
+    "draftSyncing": "正在同步草稿…",
+    "draftSynced": "草稿已同步",
+    "draftLocal": "草稿已保存在本地",
+    "queueFull": "离线队列已满。请联网后再发送更多文件。",
+    "temporaryOffline": "临时聊天需要网络连接，且不会保存到离线队列。",
+    "interrupted": "生成已中断。你可以重新生成此版本。"
+  },
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -122,9 +132,36 @@
       }
     },
     "passwordReset": {
-      "requestTitle": "重置密码", "confirmTitle": "输入邮件验证码", "requestDescription": "输入账户邮箱。如果账户存在，我们会发送一次性验证码。", "confirmDescription": "输入邮件中的 6 位验证码并设置新密码。验证码将在 10 分钟后过期。",
-      "forgotPassword": "忘记密码？", "sendCode": "发送验证码", "sendingCode": "正在发送...", "codeLabel": "邮件验证码", "newPasswordLabel": "新密码", "resetPassword": "保存新密码", "resetting": "正在保存...", "sendAgain": "发送新验证码", "backToLogin": "返回登录", "codeSent": "如果该邮箱已注册，验证码已发送。", "complete": "密码已更新，现在可以登录。", "invalidCode": "验证码错误、已过期或已使用。", "requestError": "无法重置密码，请重试。", "rateLimited": "尝试次数过多，请稍后再试。",
-      "email": {"subject": "ReMind 密码重置验证码", "heading": "重置密码", "greeting": "你好，{{username}}！", "intro": "请在 ReMind 中输入此验证码以设置新密码：", "expiry": "验证码将在 10 分钟后过期，且只能使用一次。", "ignore": "如果你没有请求重置密码，请忽略此邮件。不要向任何人透露验证码。", "changedSubject": "你的 ReMind 密码已更改", "changedHeading": "密码已更改", "changedIntro": "你的 ReMind 账户密码已成功更改。", "changedWarning": "如果不是你本人操作，请立即再次请求重置并联系支持。"}
+      "requestTitle": "重置密码",
+      "confirmTitle": "输入邮件验证码",
+      "requestDescription": "输入账户邮箱。如果账户存在，我们会发送一次性验证码。",
+      "confirmDescription": "输入邮件中的 6 位验证码并设置新密码。验证码将在 10 分钟后过期。",
+      "forgotPassword": "忘记密码？",
+      "sendCode": "发送验证码",
+      "sendingCode": "正在发送...",
+      "codeLabel": "邮件验证码",
+      "newPasswordLabel": "新密码",
+      "resetPassword": "保存新密码",
+      "resetting": "正在保存...",
+      "sendAgain": "发送新验证码",
+      "backToLogin": "返回登录",
+      "codeSent": "如果该邮箱已注册，验证码已发送。",
+      "complete": "密码已更新，现在可以登录。",
+      "invalidCode": "验证码错误、已过期或已使用。",
+      "requestError": "无法重置密码，请重试。",
+      "rateLimited": "尝试次数过多，请稍后再试。",
+      "email": {
+        "subject": "ReMind 密码重置验证码",
+        "heading": "重置密码",
+        "greeting": "你好，{{username}}！",
+        "intro": "请在 ReMind 中输入此验证码以设置新密码：",
+        "expiry": "验证码将在 10 分钟后过期，且只能使用一次。",
+        "ignore": "如果你没有请求重置密码，请忽略此邮件。不要向任何人透露验证码。",
+        "changedSubject": "你的 ReMind 密码已更改",
+        "changedHeading": "密码已更改",
+        "changedIntro": "你的 ReMind 账户密码已成功更改。",
+        "changedWarning": "如果不是你本人操作，请立即再次请求重置并联系支持。"
+      }
     }
   },
   "common": {
@@ -163,16 +200,24 @@
     "python": {
       "running": "正在运行 Python 代码...",
       "completed": "Python 执行完成",
-        "failed": "Python 执行失败",
-        "output": "执行结果",
-        "showOutput": "显示结果",
-        "hideOutput": "隐藏结果",
+      "failed": "Python 执行失败",
+      "output": "执行结果",
+      "showOutput": "显示结果",
+      "hideOutput": "隐藏结果",
       "showCode": "显示代码",
       "hideCode": "隐藏代码"
     },
     "image": {
-      "crop": {"running": "正在裁剪图片...", "completed": "图片裁剪已完成", "failed": "图片裁剪失败"},
-      "tile": {"running": "正在将图片拆分为多个区域...", "completed": "图片区域已准备完成", "failed": "图片拆分失败"},
+      "crop": {
+        "running": "正在裁剪图片...",
+        "completed": "图片裁剪已完成",
+        "failed": "图片裁剪失败"
+      },
+      "tile": {
+        "running": "正在将图片拆分为多个区域...",
+        "completed": "图片区域已准备完成",
+        "failed": "图片拆分失败"
+      },
       "source": "来源：{{filename}}",
       "fragments": "区域：{{count}}"
     },
@@ -186,16 +231,10 @@
     "ariaLabel": "开始屏幕",
     "readonlyBanner": "公共聊天：只读",
     "greeting": "你在做什么？",
-    "welcomeMessages": [
-      "欢迎！",
-      "你好！今天我能帮什么？",
-      "通过提问开始对话。"
-    ]
+    "welcomeMessages": ["欢迎！", "你好！今天我能帮什么？", "通过提问开始对话。"]
   },
   "warnings": {
-    "dynamicPhrases": [
-      "ReMind 可能会出错。"
-    ]
+    "dynamicPhrases": ["ReMind 可能会出错。"]
   },
   "chat": {
     "readOnly": "聊天只读",
@@ -474,7 +513,16 @@
     "searchHint": "提示：标题、主题、最后一条消息",
     "searchPlaceholder": "输入以搜索聊天",
     "searchInput": "聊天搜索",
-    "channelFilter": { "label": "按来源筛选聊天", "all": "全部", "web": "网页", "telegram": "Telegram", "private": "私聊", "group": "群组", "guest": "访客", "inline": "内联" },
+    "channelFilter": {
+      "label": "按来源筛选聊天",
+      "all": "全部",
+      "web": "网页",
+      "telegram": "Telegram",
+      "private": "私聊",
+      "group": "群组",
+      "guest": "访客",
+      "inline": "内联"
+    },
     "yourChats": "你的聊天",
     "untitled": "未命名",
     "expand": "展开",

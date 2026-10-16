@@ -117,8 +117,10 @@
   padding: 0;
 
   cursor: pointer;
-  transition: color var(--transition-fast),
-    background-color var(--transition-fast), border-color var(--transition-fast),
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
     transform var(--transition-fast);
 }
 
@@ -183,9 +185,13 @@
   opacity: 0;
 
   visibility: hidden;
-  transition: opacity var(--transition-fast), visibility var(--transition-fast),
-    color var(--transition-fast), background-color var(--transition-fast),
-    border-color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    opacity var(--transition-fast),
+    visibility var(--transition-fast),
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .rail-chat-list .chat-history-item:hover .delete-chat-btn,

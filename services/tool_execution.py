@@ -25,7 +25,6 @@ class ToolCall:
 
 @dataclass
 class ToolExecution:
-
     runtime: ModelRuntime
     attempted: int = 0
     completed: dict[str, ModelToolResult] = field(default_factory=dict)

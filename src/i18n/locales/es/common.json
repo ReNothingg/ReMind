@@ -30,7 +30,17 @@
     "readOnly": "Abre un chat editable para responder.",
     "sendFailed": "No se pudo enviar. Inténtalo de nuevo."
   },
-  "reliability": {"offline":"Sin conexión · los mensajes se pondrán en cola","reconnecting":"Restableciendo la conexión…","queued":"Mensajes en cola: {{count}}","draftSyncing":"Sincronizando borrador…","draftSynced":"Borrador sincronizado","draftLocal":"Borrador guardado localmente","queueFull":"La cola sin conexión está llena. Conéctate antes de enviar más archivos.","temporaryOffline":"Los chats temporales requieren conexión y nunca se guardan en la cola sin conexión.","interrupted":"La generación se interrumpió. Puedes regenerar esta versión."},
+  "reliability": {
+    "offline": "Sin conexión · los mensajes se pondrán en cola",
+    "reconnecting": "Restableciendo la conexión…",
+    "queued": "Mensajes en cola: {{count}}",
+    "draftSyncing": "Sincronizando borrador…",
+    "draftSynced": "Borrador sincronizado",
+    "draftLocal": "Borrador guardado localmente",
+    "queueFull": "La cola sin conexión está llena. Conéctate antes de enviar más archivos.",
+    "temporaryOffline": "Los chats temporales requieren conexión y nunca se guardan en la cola sin conexión.",
+    "interrupted": "La generación se interrumpió. Puedes regenerar esta versión."
+  },
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -122,9 +132,36 @@
       }
     },
     "passwordReset": {
-      "requestTitle": "Restablecer contraseña", "confirmTitle": "Introduce el código del correo", "requestDescription": "Introduce el email de tu cuenta. Si existe, enviaremos un código de verificación de un solo uso.", "confirmDescription": "Introduce el código de 6 dígitos del correo y elige una nueva contraseña. El código caduca en 10 minutos.",
-      "forgotPassword": "¿Olvidaste la contraseña?", "sendCode": "Enviar código", "sendingCode": "Enviando...", "codeLabel": "Código del correo", "newPasswordLabel": "Nueva contraseña", "resetPassword": "Guardar nueva contraseña", "resetting": "Guardando...", "sendAgain": "Enviar un código nuevo", "backToLogin": "Volver al inicio de sesión", "codeSent": "Si este email está registrado, se ha enviado un código de verificación.", "complete": "Contraseña actualizada. Ya puedes iniciar sesión.", "invalidCode": "El código no es válido, ha caducado o ya se utilizó.", "requestError": "No se pudo restablecer la contraseña. Inténtalo de nuevo.", "rateLimited": "Demasiados intentos. Espera un poco e inténtalo de nuevo.",
-      "email": {"subject": "Tu código para restablecer la contraseña de ReMind", "heading": "Restablecer contraseña", "greeting": "¡Hola, {{username}}!", "intro": "Introduce este código de verificación en ReMind para elegir una nueva contraseña:", "expiry": "El código caduca en 10 minutos y solo puede utilizarse una vez.", "ignore": "Si no solicitaste restablecer la contraseña, ignora este correo. No compartas el código.", "changedSubject": "Tu contraseña de ReMind ha cambiado", "changedHeading": "Contraseña cambiada", "changedIntro": "La contraseña de tu cuenta ReMind se cambió correctamente.", "changedWarning": "Si no fuiste tú, solicita otro restablecimiento de inmediato y contacta con soporte."}
+      "requestTitle": "Restablecer contraseña",
+      "confirmTitle": "Introduce el código del correo",
+      "requestDescription": "Introduce el email de tu cuenta. Si existe, enviaremos un código de verificación de un solo uso.",
+      "confirmDescription": "Introduce el código de 6 dígitos del correo y elige una nueva contraseña. El código caduca en 10 minutos.",
+      "forgotPassword": "¿Olvidaste la contraseña?",
+      "sendCode": "Enviar código",
+      "sendingCode": "Enviando...",
+      "codeLabel": "Código del correo",
+      "newPasswordLabel": "Nueva contraseña",
+      "resetPassword": "Guardar nueva contraseña",
+      "resetting": "Guardando...",
+      "sendAgain": "Enviar un código nuevo",
+      "backToLogin": "Volver al inicio de sesión",
+      "codeSent": "Si este email está registrado, se ha enviado un código de verificación.",
+      "complete": "Contraseña actualizada. Ya puedes iniciar sesión.",
+      "invalidCode": "El código no es válido, ha caducado o ya se utilizó.",
+      "requestError": "No se pudo restablecer la contraseña. Inténtalo de nuevo.",
+      "rateLimited": "Demasiados intentos. Espera un poco e inténtalo de nuevo.",
+      "email": {
+        "subject": "Tu código para restablecer la contraseña de ReMind",
+        "heading": "Restablecer contraseña",
+        "greeting": "¡Hola, {{username}}!",
+        "intro": "Introduce este código de verificación en ReMind para elegir una nueva contraseña:",
+        "expiry": "El código caduca en 10 minutos y solo puede utilizarse una vez.",
+        "ignore": "Si no solicitaste restablecer la contraseña, ignora este correo. No compartas el código.",
+        "changedSubject": "Tu contraseña de ReMind ha cambiado",
+        "changedHeading": "Contraseña cambiada",
+        "changedIntro": "La contraseña de tu cuenta ReMind se cambió correctamente.",
+        "changedWarning": "Si no fuiste tú, solicita otro restablecimiento de inmediato y contacta con soporte."
+      }
     }
   },
   "common": {
@@ -168,16 +205,24 @@
     "python": {
       "running": "Ejecutando código Python...",
       "completed": "Ejecución de Python completada",
-        "failed": "Error al ejecutar Python",
-        "output": "Resultado de la ejecución",
-        "showOutput": "Mostrar resultado",
-        "hideOutput": "Ocultar resultado",
+      "failed": "Error al ejecutar Python",
+      "output": "Resultado de la ejecución",
+      "showOutput": "Mostrar resultado",
+      "hideOutput": "Ocultar resultado",
       "showCode": "Mostrar código",
       "hideCode": "Ocultar código"
     },
     "image": {
-      "crop": {"running": "Recortando la imagen...", "completed": "Recorte de imagen listo", "failed": "No se pudo recortar la imagen"},
-      "tile": {"running": "Dividiendo la imagen en secciones...", "completed": "Secciones de imagen listas", "failed": "No se pudo dividir la imagen"},
+      "crop": {
+        "running": "Recortando la imagen...",
+        "completed": "Recorte de imagen listo",
+        "failed": "No se pudo recortar la imagen"
+      },
+      "tile": {
+        "running": "Dividiendo la imagen en secciones...",
+        "completed": "Secciones de imagen listas",
+        "failed": "No se pudo dividir la imagen"
+      },
       "source": "Fuente: {{filename}}",
       "fragments": "Secciones: {{count}}"
     },
@@ -198,9 +243,7 @@
     ]
   },
   "warnings": {
-    "dynamicPhrases": [
-      "ReMind puede cometer errores."
-    ]
+    "dynamicPhrases": ["ReMind puede cometer errores."]
   },
   "chat": {
     "readOnly": "El chat es de solo lectura",
@@ -479,7 +522,16 @@
     "searchHint": "Pista: título, tema, último mensaje",
     "searchPlaceholder": "Escribe para buscar chats",
     "searchInput": "Búsqueda de chats",
-    "channelFilter": { "label": "Filtrar chats por origen", "all": "Todos", "web": "Web", "telegram": "Telegram", "private": "Personal", "group": "Grupo", "guest": "Invitado", "inline": "Inline" },
+    "channelFilter": {
+      "label": "Filtrar chats por origen",
+      "all": "Todos",
+      "web": "Web",
+      "telegram": "Telegram",
+      "private": "Personal",
+      "group": "Grupo",
+      "guest": "Invitado",
+      "inline": "Inline"
+    },
     "yourChats": "Tus chats",
     "untitled": "Sin título",
     "expand": "Expandir",

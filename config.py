@@ -152,7 +152,7 @@ CORS_SEND_WILDCARD = False
 CORS_ALWAYS_SEND = True
 
 _DEFAULT_OPERATIONAL_ALLOWED_NETWORKS = (
-    "127.0.0.1/32," "::1/128," "10.0.0.0/8," "172.16.0.0/12," "192.168.0.0/16," "fc00::/7"
+    "127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
 )
 _raw_operational_networks = os.getenv(
     "OPERATIONAL_ENDPOINT_ALLOWED_NETWORKS",
@@ -328,7 +328,6 @@ if not SECRET_KEY:
     SECRET_KEY = secrets.token_hex(32)
 
 try:
-
     PIL_AVAILABLE = True
 except Exception:
     PIL_AVAILABLE = False

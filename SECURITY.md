@@ -2,10 +2,10 @@
 
 ## Supported Versions
 
-| Version | Supported |
-|---|---|
-| `main` | Yes |
-| Older snapshots / forks | No |
+| Version                 | Supported |
+| ----------------------- | --------- |
+| `main`                  | Yes       |
+| Older snapshots / forks | No        |
 
 ## Reporting a Vulnerability
 

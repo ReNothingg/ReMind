@@ -42,7 +42,9 @@
   font-size: 80px;
   font-weight: 500;
   color: var(--color-text-secondary);
-  transition: color 0.3s ease, filter 0.3s ease;
+  transition:
+    color 0.3s ease,
+    filter 0.3s ease;
 }
 
 .wheel-reel li.active {

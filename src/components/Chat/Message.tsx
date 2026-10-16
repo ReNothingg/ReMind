@@ -1,10 +1,20 @@
-import { applyMessageWidgetUpdate, parseMessagePresentation } from '../../features/chat/messagePresentation';
+import {
+  applyMessageWidgetUpdate,
+  parseMessagePresentation,
+} from '../../features/chat/messagePresentation';
 import { toolMarker, isKnownComposerTool } from '../../features/chat/composerTools';
 import { renderComposerMentions } from '../../features/chat/renderComposerMentions';
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
-import { formatText, formatPlainText, formatUserMessageText, highlightCode, refreshCodeLineNumbers, stripThinkingBlocks } from '../../utils/formatting';
+import {
+  formatText,
+  formatPlainText,
+  formatUserMessageText,
+  highlightCode,
+  refreshCodeLineNumbers,
+  stripThinkingBlocks,
+} from '../../utils/formatting';
 import { apiService } from '../../services/api';
 import { stripCanmoreToolMarkup } from '../../utils/canmore';
 import { fileService } from '../../services/fileService';
@@ -16,10 +26,7 @@ import ThinkBlock from '../Widgets/ThinkBlock';
 import ArtifactDownloadCard from './ArtifactDownloadCard';
 import ToolPanel from '../Widgets/ToolPanel';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
-import {
-    normalizeAndMergeWebSources,
-    sourceFallbackIcon,
-} from '../Widgets/webSources';
+import { normalizeAndMergeWebSources, sourceFallbackIcon } from '../Widgets/webSources';
 import { extractCompletedSearchSources } from '../Widgets/searchActivityUtils';
 import { useAudio } from '../../hooks/useAudio';
 import { Utils } from '../../utils/utils';
@@ -30,2016 +37,2256 @@ import { cn } from '../../utils/cn';
 import { isActiveWebSearchStatus } from './webSearchStatus';
 import { getFeedbackActionVisibility } from './feedbackState';
 import {
-    filterRedundantAutoCapturedImages,
-    stripAttachedArtifactMarkdownImages,
+  filterRedundantAutoCapturedImages,
+  stripAttachedArtifactMarkdownImages,
 } from './imageArtifacts';
 
 const LIKE_CONFETTI_PARTICLES = Array.from({ length: 8 }, (_, index) => index);
 
 const MessageActionButton = ({ className, title, onClick, children, disabled = false }) => (
-    <button
-        type="button"
-        className={cn('action-btn ui-action-button', className)}
-        title={title}
-        aria-label={title}
-        onClick={onClick}
-        disabled={disabled}
-    >
-        {children}
-    </button>
+  <button
+    type="button"
+    className={cn('action-btn ui-action-button', className)}
+    title={title}
+    aria-label={title}
+    onClick={onClick}
+    disabled={disabled}
+  >
+    {children}
+  </button>
 );
 
 const MessageImageAttachmentContent = ({
-    src,
-    alt,
-    messageId,
-    isInteractive,
-    canRegenerate = true,
-    downloadName,
-    width,
-    height,
+  src,
+  alt,
+  messageId,
+  isInteractive,
+  canRegenerate = true,
+  downloadName,
+  width,
+  height,
 }) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [hasError, setHasError] = useState(false);
-    const [naturalDimensions, setNaturalDimensions] = useState(null);
-    const { t } = useTranslation();
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [naturalDimensions, setNaturalDimensions] = useState(null);
+  const { t } = useTranslation();
 
-    const isLocalPreview = typeof src === 'string' && (src.startsWith('blob:') || src.startsWith('data:'));
-    const numericWidth = Number(width);
-    const numericHeight = Number(height);
-    const hasDimensions = Number.isFinite(numericWidth)
-        && Number.isFinite(numericHeight)
-        && numericWidth > 0
-        && numericHeight > 0
-        && numericWidth <= 20_000
-        && numericHeight <= 20_000;
-    const displayWidth = hasDimensions ? numericWidth : naturalDimensions?.width;
-    const displayHeight = hasDimensions ? numericHeight : naturalDimensions?.height;
-    const hasDisplayDimensions = Number.isFinite(displayWidth) && Number.isFinite(displayHeight);
-    const displayName = downloadName || alt;
+  const isLocalPreview =
+    typeof src === 'string' && (src.startsWith('blob:') || src.startsWith('data:'));
+  const numericWidth = Number(width);
+  const numericHeight = Number(height);
+  const hasDimensions =
+    Number.isFinite(numericWidth) &&
+    Number.isFinite(numericHeight) &&
+    numericWidth > 0 &&
+    numericHeight > 0 &&
+    numericWidth <= 20_000 &&
+    numericHeight <= 20_000;
+  const displayWidth = hasDimensions ? numericWidth : naturalDimensions?.width;
+  const displayHeight = hasDimensions ? numericHeight : naturalDimensions?.height;
+  const hasDisplayDimensions = Number.isFinite(displayWidth) && Number.isFinite(displayHeight);
+  const displayName = downloadName || alt;
 
-    const imageContent = (
+  const imageContent = (
+    <>
+      {!hasError && (
         <>
-            {!hasError && (
-                <>
-                    {!isLoaded && (
-                        <span className="message-image-loader" aria-hidden="true">
-                            <span className="message-image-loader-shimmer" />
-                        </span>
-                    )}
-                    <img
-                        className="attached-img message-image-element"
-                        src={src}
-                        alt={alt}
-                        loading={isLocalPreview ? 'eager' : 'lazy'}
-                        decoding="async"
-                        onLoad={(event) => {
-                            const naturalWidth = event.currentTarget.naturalWidth;
-                            const naturalHeight = event.currentTarget.naturalHeight;
-                            if (
-                                !hasDimensions
-                                && Number.isFinite(naturalWidth)
-                                && Number.isFinite(naturalHeight)
-                                && naturalWidth > 0
-                                && naturalHeight > 0
-                                && naturalWidth <= 20_000
-                                && naturalHeight <= 20_000
-                            ) {
-                                setNaturalDimensions({ width: naturalWidth, height: naturalHeight });
-                            }
-                            setIsLoaded(true);
-                        }}
-                        onError={() => {
-                            setHasError(true);
-                            setIsLoaded(false);
-                        }}
-                    />
-                </>
-            )}
-            {hasError && (
-                <span className="message-image-fallback">
-                    <span className="message-image-fallback-title">
-                        {t('chatImage.unavailableTitle', { defaultValue: 'Превью недоступно' })}
-                    </span>
-                    <span className="message-image-fallback-subtitle">
-                        {t('chatImage.unavailableDescription', {
-                            defaultValue: 'Изображение не удалось загрузить.',
-                        })}
-                    </span>
-                </span>
-            )}
-        </>
-    );
-
-    const cardContent = (
-        <>
-            <span
-                className="message-image-visual"
-                style={hasDisplayDimensions ? { aspectRatio: `${displayWidth} / ${displayHeight}` } : undefined}
-            >
-                {imageContent}
-                {isInteractive && !hasError && (
-                    <span className="message-image-visual-action" aria-hidden="true">
-                        <ExternalLink size={14} strokeWidth={2} />
-                    </span>
-                )}
+          {!isLoaded && (
+            <span className="message-image-loader" aria-hidden="true">
+              <span className="message-image-loader-shimmer" />
             </span>
-            <span className="message-image-caption">
-                <span className="message-image-caption-name" title={displayName}>{displayName}</span>
-                {hasDisplayDimensions && (
-                    <span className="message-image-caption-dimensions" aria-hidden="true">
-                        {Math.round(displayWidth)} × {Math.round(displayHeight)}
-                    </span>
-                )}
-            </span>
-        </>
-    );
-
-    const cardClassName = cn(
-        'message-image-card message-image-button',
-        isInteractive ? 'is-interactive' : 'is-static',
-        isLoaded && 'is-loaded',
-        hasError && 'is-error',
-    );
-
-    if (!isInteractive) {
-        return <div className={cardClassName} role="img" aria-label={alt}>{cardContent}</div>;
-    }
-
-    return (
-        <button
-            type="button"
-            className={cardClassName}
-            onClick={() => {
-                window.openImageLightbox?.(src, messageId, {
-                    canRegenerate,
-                    downloadName,
-                });
+          )}
+          <img
+            className="attached-img message-image-element"
+            src={src}
+            alt={alt}
+            loading={isLocalPreview ? 'eager' : 'lazy'}
+            decoding="async"
+            onLoad={(event) => {
+              const naturalWidth = event.currentTarget.naturalWidth;
+              const naturalHeight = event.currentTarget.naturalHeight;
+              if (
+                !hasDimensions &&
+                Number.isFinite(naturalWidth) &&
+                Number.isFinite(naturalHeight) &&
+                naturalWidth > 0 &&
+                naturalHeight > 0 &&
+                naturalWidth <= 20_000 &&
+                naturalHeight <= 20_000
+              ) {
+                setNaturalDimensions({ width: naturalWidth, height: naturalHeight });
+              }
+              setIsLoaded(true);
             }}
-            aria-label={`${t('chatImage.open')}: ${alt}`}
-        >
-            {cardContent}
-        </button>
+            onError={() => {
+              setHasError(true);
+              setIsLoaded(false);
+            }}
+          />
+        </>
+      )}
+      {hasError && (
+        <span className="message-image-fallback">
+          <span className="message-image-fallback-title">
+            {t('chatImage.unavailableTitle', { defaultValue: 'Превью недоступно' })}
+          </span>
+          <span className="message-image-fallback-subtitle">
+            {t('chatImage.unavailableDescription', {
+              defaultValue: 'Изображение не удалось загрузить.',
+            })}
+          </span>
+        </span>
+      )}
+    </>
+  );
+
+  const cardContent = (
+    <>
+      <span
+        className="message-image-visual"
+        style={
+          hasDisplayDimensions ? { aspectRatio: `${displayWidth} / ${displayHeight}` } : undefined
+        }
+      >
+        {imageContent}
+        {isInteractive && !hasError && (
+          <span className="message-image-visual-action" aria-hidden="true">
+            <ExternalLink size={14} strokeWidth={2} />
+          </span>
+        )}
+      </span>
+      <span className="message-image-caption">
+        <span className="message-image-caption-name" title={displayName}>
+          {displayName}
+        </span>
+        {hasDisplayDimensions && (
+          <span className="message-image-caption-dimensions" aria-hidden="true">
+            {Math.round(displayWidth)} × {Math.round(displayHeight)}
+          </span>
+        )}
+      </span>
+    </>
+  );
+
+  const cardClassName = cn(
+    'message-image-card message-image-button',
+    isInteractive ? 'is-interactive' : 'is-static',
+    isLoaded && 'is-loaded',
+    hasError && 'is-error'
+  );
+
+  if (!isInteractive) {
+    return (
+      <div className={cardClassName} role="img" aria-label={alt}>
+        {cardContent}
+      </div>
     );
+  }
+
+  return (
+    <button
+      type="button"
+      className={cardClassName}
+      onClick={() => {
+        window.openImageLightbox?.(src, messageId, {
+          canRegenerate,
+          downloadName,
+        });
+      }}
+      aria-label={`${t('chatImage.open')}: ${alt}`}
+    >
+      {cardContent}
+    </button>
+  );
 };
 
 const MessageImageAttachment = (props) => (
-    <MessageImageAttachmentContent key={props.src} {...props} />
+  <MessageImageAttachmentContent key={props.src} {...props} />
 );
 
 const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
-    if (!files?.length) return null;
+  if (!files?.length) return null;
 
-    return (
-        <div
-            className={cn(
-                'message-attachments mt-2.5 flex flex-wrap gap-2',
-                isUser ? 'user-attachments' : 'ai-attachments'
-            )}
-        >
-            {files.map((entry, index) => {
-                const file = entry.file || entry;
-                if (
-                    !file
-                    || typeof file === 'string'
-                    || (!file.url_path && !file.original_name && !file.name)
-                    || (!isUser && (file.preview || file.metadata?.inline_result))
-                ) {
-                    return null;
-                }
+  return (
+    <div
+      className={cn(
+        'message-attachments mt-2.5 flex flex-wrap gap-2',
+        isUser ? 'user-attachments' : 'ai-attachments'
+      )}
+    >
+      {files.map((entry, index) => {
+        const file = entry.file || entry;
+        if (
+          !file ||
+          typeof file === 'string' ||
+          (!file.url_path && !file.original_name && !file.name) ||
+          (!isUser && (file.preview || file.metadata?.inline_result))
+        ) {
+          return null;
+        }
 
-                const fileName = file.original_name || file.name || t('files.fileFallback');
-                const fileUrl = file.local_preview_url || file.url_path || '';
-                const fullUrl = resolveMediaUrl(fileUrl);
-                const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
-                const extension = fileName.split('.').pop()?.toLowerCase() || '';
-                const iconPath = fileService.getFileIconPath(extension);
-                const isImage = fileService.isImageFile({
-                    name: fileName,
-                    type: file.mime_type,
-                    mime_type: file.mime_type,
-                });
-                const openPreview = () => {
-                    window.openImageLightbox?.(fullUrl, messageId, {
-                        canRegenerate: false,
-                        downloadName: fileName,
-                    });
-                };
+        const fileName = file.original_name || file.name || t('files.fileFallback');
+        const fileUrl = file.local_preview_url || file.url_path || '';
+        const fullUrl = resolveMediaUrl(fileUrl);
+        const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
+        const extension = fileName.split('.').pop()?.toLowerCase() || '';
+        const iconPath = fileService.getFileIconPath(extension);
+        const isImage = fileService.isImageFile({
+          name: fileName,
+          type: file.mime_type,
+          mime_type: file.mime_type,
+        });
+        const openPreview = () => {
+          window.openImageLightbox?.(fullUrl, messageId, {
+            canRegenerate: false,
+            downloadName: fileName,
+          });
+        };
 
-                if (!isImage) return <ArtifactDownloadCard key={`${file.url_path || fileName}-${index}`} path={fullUrl} filename={fileName} size={Number(file.size) || undefined} />;
+        if (!isImage)
+          return (
+            <ArtifactDownloadCard
+              key={`${file.url_path || fileName}-${index}`}
+              path={fullUrl}
+              filename={fileName}
+              size={Number(file.size) || undefined}
+            />
+          );
 
-                return (
-                    <div
-                        key={`${file.url_path || fileName}-${index}`}
-                        className="attachment-file-card ui-attachment-card"
-                        title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}
-                    >
-                        <div className="attachment-card-preview ui-attachment-preview">
-                            {isImage && fullUrl ? (
-                                <button
-                                    type="button"
-                                    className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
-                                    onClick={openPreview}
-                                    aria-label={`${t('chatImage.open')}: ${fileName}`}
-                                >
-                                    <img
-                                        src={fullUrl}
-                                        alt=""
-                                        aria-hidden="true"
-                                        className="image-thumbnail h-full w-full object-cover"
-                                        onError={(event) => {
-                                            event.currentTarget.src = iconPath;
-                                            event.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
-                                        }}
-                                    />
-                                </button>
-                            ) : (
-                                <img
-                                    src={iconPath}
-                                    alt={fileName}
-                                    className="generic-icon size-12 object-contain opacity-60"
-                                    onError={(event) => {
-                                        event.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
-                                    }}
-                                />
-                            )}
-                        </div>
-                        <div className="attachment-card-footer ui-attachment-footer">
-                            <img
-                                src={iconPath}
-                                alt=""
-                                aria-hidden="true"
-                                className="attachment-card-footer-icon"
-                                onError={(event) => {
-                                    event.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
-                                }}
-                            />
-                            <div className="attachment-card-footer-info">
-                                {fullUrl && isImage ? (
-                                    <button
-                                        type="button"
-                                        className="file-card-name border-0 bg-transparent p-0 text-left"
-                                        onClick={openPreview}
-                                    >
-                                        {fileName}
-                                    </button>
-                                ) : fullUrl ? (
-                                    <a
-                                        href={fullUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="file-card-name"
-                                        onClick={(event) => event.stopPropagation()}
-                                    >
-                                        {fileName}
-                                    </a>
-                                ) : (
-                                    <span className="file-card-name">{fileName}</span>
-                                )}
-                                {fileSize && <span className="file-card-size">{fileSize}</span>}
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
+        return (
+          <div
+            key={`${file.url_path || fileName}-${index}`}
+            className="attachment-file-card ui-attachment-card"
+            title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}
+          >
+            <div className="attachment-card-preview ui-attachment-preview">
+              {isImage && fullUrl ? (
+                <button
+                  type="button"
+                  className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
+                  onClick={openPreview}
+                  aria-label={`${t('chatImage.open')}: ${fileName}`}
+                >
+                  <img
+                    src={fullUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="image-thumbnail h-full w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = iconPath;
+                      event.currentTarget.className =
+                        'generic-icon size-12 object-contain opacity-60';
+                    }}
+                  />
+                </button>
+              ) : (
+                <img
+                  src={iconPath}
+                  alt={fileName}
+                  className="generic-icon size-12 object-contain opacity-60"
+                  onError={(event) => {
+                    event.currentTarget.src =
+                      'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                  }}
+                />
+              )}
+            </div>
+            <div className="attachment-card-footer ui-attachment-footer">
+              <img
+                src={iconPath}
+                alt=""
+                aria-hidden="true"
+                className="attachment-card-footer-icon"
+                onError={(event) => {
+                  event.currentTarget.src =
+                    'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                }}
+              />
+              <div className="attachment-card-footer-info">
+                {fullUrl && isImage ? (
+                  <button
+                    type="button"
+                    className="file-card-name border-0 bg-transparent p-0 text-left"
+                    onClick={openPreview}
+                  >
+                    {fileName}
+                  </button>
+                ) : fullUrl ? (
+                  <a
+                    href={fullUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="file-card-name"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {fileName}
+                  </a>
+                ) : (
+                  <span className="file-card-name">{fileName}</span>
+                )}
+                {fileSize && <span className="file-card-size">{fileSize}</span>}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 const resolveMediaUrl = (path) => {
-    if (typeof path !== 'string' || !path) {
-        return '';
-    }
-    if (
-        path.startsWith('http://') ||
-        path.startsWith('https://') ||
-        path.startsWith('blob:') ||
-        path.startsWith('data:')
-    ) {
-        return path;
-    }
-    return `${apiService.baseURL}${path}`;
+  if (typeof path !== 'string' || !path) {
+    return '';
+  }
+  if (
+    path.startsWith('http://') ||
+    path.startsWith('https://') ||
+    path.startsWith('blob:') ||
+    path.startsWith('data:')
+  ) {
+    return path;
+  }
+  return `${apiService.baseURL}${path}`;
 };
 
 const linkifySourceCitations = (text, sources) => {
-    if (!text || !Array.isArray(sources) || sources.length === 0) {
-        return text || '';
-    }
+  if (!text || !Array.isArray(sources) || sources.length === 0) {
+    return text || '';
+  }
 
-    const sourceByRank = new Map();
-    sources.forEach((source, index) => {
-        sourceByRank.set(Number(source.rank || index + 1), source);
-    });
+  const sourceByRank = new Map();
+  sources.forEach((source, index) => {
+    sourceByRank.set(Number(source.rank || index + 1), source);
+  });
 
-    const replaceCitation = (segment) => segment.replace(/(^|[\n.!?])([^.!?\n]*?\S)\s*\[(\d+(?:\s*,\s*\d+)*)\](?!\s*[:(])/g, (match, prefix, claimText, ranksText) => {
+  const replaceCitation = (segment) =>
+    segment.replace(
+      /(^|[\n.!?])([^.!?\n]*?\S)\s*\[(\d+(?:\s*,\s*\d+)*)\](?!\s*[:(])/g,
+      (match, prefix, claimText, ranksText) => {
         const ranks = ranksText
-            .split(',')
-            .map((rank) => Number(rank.trim()))
-            .filter((rank) => Number.isFinite(rank) && sourceByRank.has(rank));
+          .split(',')
+          .map((rank) => Number(rank.trim()))
+          .filter((rank) => Number.isFinite(rank) && sourceByRank.has(rank));
 
         if (ranks.length === 0) {
-            return match;
+          return match;
         }
 
         return `${prefix}<c s="${ranks.join(',')}">${claimText}</c>`;
-    });
+      }
+    );
 
-    return String(text)
-        .split(/(```[\s\S]*?```|`[^`\n]+`)/g)
-        .map((segment, index) => (index % 2 === 0 ? replaceCitation(segment) : segment))
-        .join('');
+  return String(text)
+    .split(/(```[\s\S]*?```|`[^`\n]+`)/g)
+    .map((segment, index) => (index % 2 === 0 ? replaceCitation(segment) : segment))
+    .join('');
 };
 
 const normalizeComparableSourceUrl = (url) => {
-    const rawUrl = String(url || '').trim();
-    if (!rawUrl) {
-        return '';
-    }
+  const rawUrl = String(url || '').trim();
+  if (!rawUrl) {
+    return '';
+  }
 
-    try {
-        const parsed = new URL(rawUrl, window.location.origin);
-        parsed.hash = '';
-        return parsed.toString().replace(/\/$/, '');
-    } catch {
-        return rawUrl.replace(/#.*$/, '').replace(/\/$/, '');
-    }
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    parsed.hash = '';
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return rawUrl.replace(/#.*$/, '').replace(/\/$/, '');
+  }
 };
 
 const appendTextNode = (documentRef, parent, tagName, className, text) => {
-    const value = String(text || '').trim();
-    if (!value) {
-        return null;
-    }
+  const value = String(text || '').trim();
+  if (!value) {
+    return null;
+  }
 
-    const element = documentRef.createElement(tagName);
-    if (className) {
-        element.className = className;
-    }
-    element.textContent = value;
-    parent.appendChild(element);
-    return element;
+  const element = documentRef.createElement(tagName);
+  if (className) {
+    element.className = className;
+  }
+  element.textContent = value;
+  parent.appendChild(element);
+  return element;
 };
 
-const parseSourceIds = (value) => String(value || '')
+const parseSourceIds = (value) =>
+  String(value || '')
     .split(',')
     .map((rank) => Number(rank.trim()))
     .filter(Number.isFinite);
 
-const buildSourceCitationPopover = (documentRef, sources, fragmentSourcesLabel = 'Fragment sources') => {
-    const popover = documentRef.createElement('span');
-    popover.className = 'source-citation-popover';
-    popover.setAttribute('aria-hidden', 'true');
+const buildSourceCitationPopover = (
+  documentRef,
+  sources,
+  fragmentSourcesLabel = 'Fragment sources'
+) => {
+  const popover = documentRef.createElement('span');
+  popover.className = 'source-citation-popover';
+  popover.setAttribute('aria-hidden', 'true');
 
-    const sourceList = Array.isArray(sources) ? sources.filter(Boolean) : [];
-    if (sourceList.length === 0) {
-        return popover;
-    }
-
-    if (sourceList.length === 1) {
-        const [source] = sourceList;
-        const header = documentRef.createElement('span');
-        header.className = 'source-citation-popover-header';
-        const icon = documentRef.createElement('img');
-        icon.className = 'source-citation-popover-icon';
-        icon.src = source.faviconUrl || sourceFallbackIcon;
-        icon.alt = '';
-        icon.loading = 'lazy';
-        header.appendChild(icon);
-        appendTextNode(documentRef, header, 'strong', '', source.title || source.siteName);
-        popover.appendChild(header);
-        appendTextNode(documentRef, popover, 'span', 'source-citation-popover-snippet', source.snippet);
-        appendTextNode(documentRef, popover, 'small', '', source.displayUrl || source.url);
-        return popover;
-    }
-
-    appendTextNode(documentRef, popover, 'strong', 'source-citation-popover-title', fragmentSourcesLabel);
-    sourceList.forEach((source) => {
-        const row = documentRef.createElement('span');
-        row.className = 'source-citation-popover-row';
-        const icon = documentRef.createElement('img');
-        icon.className = 'source-citation-popover-icon';
-        icon.src = source.faviconUrl || sourceFallbackIcon;
-        icon.alt = '';
-        icon.loading = 'lazy';
-        row.appendChild(icon);
-        appendTextNode(documentRef, row, 'span', '', source.siteName || source.title || source.displayUrl);
-        popover.appendChild(row);
-    });
+  const sourceList = Array.isArray(sources) ? sources.filter(Boolean) : [];
+  if (sourceList.length === 0) {
     return popover;
+  }
+
+  if (sourceList.length === 1) {
+    const [source] = sourceList;
+    const header = documentRef.createElement('span');
+    header.className = 'source-citation-popover-header';
+    const icon = documentRef.createElement('img');
+    icon.className = 'source-citation-popover-icon';
+    icon.src = source.faviconUrl || sourceFallbackIcon;
+    icon.alt = '';
+    icon.loading = 'lazy';
+    header.appendChild(icon);
+    appendTextNode(documentRef, header, 'strong', '', source.title || source.siteName);
+    popover.appendChild(header);
+    appendTextNode(documentRef, popover, 'span', 'source-citation-popover-snippet', source.snippet);
+    appendTextNode(documentRef, popover, 'small', '', source.displayUrl || source.url);
+    return popover;
+  }
+
+  appendTextNode(
+    documentRef,
+    popover,
+    'strong',
+    'source-citation-popover-title',
+    fragmentSourcesLabel
+  );
+  sourceList.forEach((source) => {
+    const row = documentRef.createElement('span');
+    row.className = 'source-citation-popover-row';
+    const icon = documentRef.createElement('img');
+    icon.className = 'source-citation-popover-icon';
+    icon.src = source.faviconUrl || sourceFallbackIcon;
+    icon.alt = '';
+    icon.loading = 'lazy';
+    row.appendChild(icon);
+    appendTextNode(
+      documentRef,
+      row,
+      'span',
+      '',
+      source.siteName || source.title || source.displayUrl
+    );
+    popover.appendChild(row);
+  });
+  return popover;
 };
 
 const normalizeCitationPunctuation = (documentRef, mark) => {
-    const originalText = String(mark.textContent || '');
-    if (!/[\p{L}\p{N}]/u.test(originalText)) {
-        mark.replaceWith(documentRef.createTextNode(originalText));
-        return false;
-    }
+  const originalText = String(mark.textContent || '');
+  if (!/[\p{L}\p{N}]/u.test(originalText)) {
+    mark.replaceWith(documentRef.createTextNode(originalText));
+    return false;
+  }
 
-    const walker = documentRef.createTreeWalker(mark, NodeFilter.SHOW_TEXT);
-    let lastTextNode = null;
-    let currentNode = walker.nextNode();
-    while (currentNode) {
-        lastTextNode = currentNode;
-        currentNode = walker.nextNode();
-    }
+  const walker = documentRef.createTreeWalker(mark, NodeFilter.SHOW_TEXT);
+  let lastTextNode = null;
+  let currentNode = walker.nextNode();
+  while (currentNode) {
+    lastTextNode = currentNode;
+    currentNode = walker.nextNode();
+  }
 
-    const trailingMatch = String(lastTextNode?.nodeValue || '').match(/([.,!?;:…]+\s*)$/u);
-    if (lastTextNode && trailingMatch) {
-        lastTextNode.nodeValue = String(lastTextNode.nodeValue || '').slice(
-            0,
-            -trailingMatch[1].length
-        );
-        mark.after(documentRef.createTextNode(trailingMatch[1]));
-    }
+  const trailingMatch = String(lastTextNode?.nodeValue || '').match(/([.,!?;:…]+\s*)$/u);
+  if (lastTextNode && trailingMatch) {
+    lastTextNode.nodeValue = String(lastTextNode.nodeValue || '').slice(
+      0,
+      -trailingMatch[1].length
+    );
+    mark.after(documentRef.createTextNode(trailingMatch[1]));
+  }
 
-    return true;
+  return true;
 };
 
 const decorateSourceCitations = (html, sources, labels: { fragmentSources?: string } = {}) => {
-    if (!html || typeof document === 'undefined' || !Array.isArray(sources) || sources.length === 0) {
-        return html || '';
+  if (!html || typeof document === 'undefined' || !Array.isArray(sources) || sources.length === 0) {
+    return html || '';
+  }
+
+  const sourcesByUrl = new Map();
+  const sourcesByRank = new Map();
+  sources.forEach((source) => {
+    const normalizedUrl = normalizeComparableSourceUrl(source.url);
+    if (normalizedUrl) {
+      sourcesByUrl.set(normalizedUrl, source);
+    }
+    sourcesByRank.set(Number(source.rank), source);
+  });
+
+  if (sourcesByUrl.size === 0 && sourcesByRank.size === 0) {
+    return html;
+  }
+
+  const template = document.createElement('template');
+  template.innerHTML = html;
+
+  template.content.querySelectorAll('c[s], mark[data-source-ids]').forEach((mark) => {
+    if (!normalizeCitationPunctuation(document, mark)) {
+      return;
+    }
+    const markSources = parseSourceIds(
+      mark.getAttribute('s') || mark.getAttribute('data-source-ids')
+    )
+      .map((rank) => sourcesByRank.get(rank))
+      .filter(Boolean);
+    if (markSources.length === 0) {
+      return;
     }
 
-    const sourcesByUrl = new Map();
-    const sourcesByRank = new Map();
-    sources.forEach((source) => {
-        const normalizedUrl = normalizeComparableSourceUrl(source.url);
-        if (normalizedUrl) {
-            sourcesByUrl.set(normalizedUrl, source);
-        }
-        sourcesByRank.set(Number(source.rank), source);
-    });
+    mark.classList.add('source-citation-mark');
+    mark.setAttribute('tabindex', '0');
+    mark.appendChild(
+      buildSourceCitationPopover(
+        document,
+        markSources,
+        labels.fragmentSources || 'Fragment sources'
+      )
+    );
+  });
 
-    if (sourcesByUrl.size === 0 && sourcesByRank.size === 0) {
-        return html;
+  template.content.querySelectorAll('a[href]').forEach((link) => {
+    if (link.closest('.source-citation-mark')) {
+      return;
     }
 
-    const template = document.createElement('template');
-    template.innerHTML = html;
+    const source = sourcesByUrl.get(normalizeComparableSourceUrl(link.getAttribute('href')));
+    if (!source) {
+      return;
+    }
 
-    template.content.querySelectorAll('c[s], mark[data-source-ids]').forEach((mark) => {
-        if (!normalizeCitationPunctuation(document, mark)) {
-            return;
-        }
-        const markSources = parseSourceIds(mark.getAttribute('s') || mark.getAttribute('data-source-ids'))
-            .map((rank) => sourcesByRank.get(rank))
-            .filter(Boolean);
-        if (markSources.length === 0) {
-            return;
-        }
+    link.classList.add('source-citation-link');
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+    link.appendChild(
+      buildSourceCitationPopover(document, [source], labels.fragmentSources || 'Fragment sources')
+    );
+  });
 
-        mark.classList.add('source-citation-mark');
-        mark.setAttribute('tabindex', '0');
-        mark.appendChild(buildSourceCitationPopover(
-            document,
-            markSources,
-            labels.fragmentSources || 'Fragment sources'
-        ));
-    });
-
-    template.content.querySelectorAll('a[href]').forEach((link) => {
-        if (link.closest('.source-citation-mark')) {
-            return;
-        }
-
-        const source = sourcesByUrl.get(normalizeComparableSourceUrl(link.getAttribute('href')));
-        if (!source) {
-            return;
-        }
-
-        link.classList.add('source-citation-link');
-        link.setAttribute('target', '_blank');
-        link.setAttribute('rel', 'noopener noreferrer');
-        link.appendChild(buildSourceCitationPopover(
-            document,
-            [source],
-            labels.fragmentSources || 'Fragment sources'
-        ));
-    });
-
-    return template.innerHTML;
+  return template.innerHTML;
 };
 
 const ThinkingStatus = ({
-    label,
-    query = '',
-    queryLabel = '',
-    className = 'live-thinking-animation'
+  label,
+  query = '',
+  queryLabel = '',
+  className = 'live-thinking-animation',
 }) => (
-    <div className={cn('thinking-status', className)} role="status" aria-live="polite">
-        <span className="thinking-status-dot" aria-hidden="true" />
-        <span className="thinking-status-body">
-            <span className="thinking-status-label">{label}</span>
-            {query && (
-                <span className="thinking-status-query" title={query}>
-                    <span>{queryLabel}</span>
-                    <b>{query}</b>
-                </span>
-            )}
+  <div className={cn('thinking-status', className)} role="status" aria-live="polite">
+    <span className="thinking-status-dot" aria-hidden="true" />
+    <span className="thinking-status-body">
+      <span className="thinking-status-label">{label}</span>
+      {query && (
+        <span className="thinking-status-query" title={query}>
+          <span>{queryLabel}</span>
+          <b>{query}</b>
         </span>
-    </div>
+      )}
+    </span>
+  </div>
 );
 
 const WebSearchProgress = ({ status, t }) => {
-    if (!status) {
-        return null;
-    }
+  if (!status) {
+    return null;
+  }
 
-    if (!isActiveWebSearchStatus(status.status)) {
-        return null;
-    }
+  if (!isActiveWebSearchStatus(status.status)) {
+    return null;
+  }
 
-    const label = String(status.message || t('webSearch.status.started')).trim();
-    const query = typeof status.query === 'string' ? status.query.trim() : '';
+  const label = String(status.message || t('webSearch.status.started')).trim();
+  const query = typeof status.query === 'string' ? status.query.trim() : '';
 
-    return (
-        <ThinkingStatus
-            className="web-search-progress"
-            label={label}
-            query={query}
-            queryLabel={t('webSearch.queryLabel')}
-        />
-    );
+  return (
+    <ThinkingStatus
+      className="web-search-progress"
+      label={label}
+      query={query}
+      queryLabel={t('webSearch.queryLabel')}
+    />
+  );
 };
 
 const MAX_RENDERED_DIFF_LINES = 420;
 
-const getGitHubToolPayload = (message, currentVariant) => (
-    currentVariant?.githubTool ||
-    currentVariant?.github_tool ||
-    message.githubTool ||
-    message.github_tool ||
-    null
-);
+const getGitHubToolPayload = (message, currentVariant) =>
+  currentVariant?.githubTool ||
+  currentVariant?.github_tool ||
+  message.githubTool ||
+  message.github_tool ||
+  null;
 
 const AI_FEEDBACK_REASONS = [
-    'incorrect',
-    'unsafe',
-    'not_helpful',
-    'too_long',
-    'missing_context',
-    'other',
+  'incorrect',
+  'unsafe',
+  'not_helpful',
+  'too_long',
+  'missing_context',
+  'other',
 ];
 
 const getGitHubDiffPayload = (githubTool) => {
-    const task = githubTool?.task;
-    const diff = typeof task?.diff === 'string' ? task.diff.trim() : '';
-    if (!task || !diff || !task.pull_request_url) {
-        return null;
-    }
-    return { task, diff };
+  const task = githubTool?.task;
+  const diff = typeof task?.diff === 'string' ? task.diff.trim() : '';
+  if (!task || !diff || !task.pull_request_url) {
+    return null;
+  }
+  return { task, diff };
 };
 
-const stripGitHubDiffFence = (text) => String(text || '')
+const stripGitHubDiffFence = (text) =>
+  String(text || '')
     .replace(/\n*(?:Изменения|Changes):\s*```diff[\s\S]*?```\s*$/i, '')
     .trim();
 
 const normalizeDiffStatus = (value) => {
-    const status = String(value || 'modified').toLowerCase();
-    if (['added', 'deleted', 'renamed', 'modified'].includes(status)) {
-        return status;
-    }
-    return 'modified';
+  const status = String(value || 'modified').toLowerCase();
+  if (['added', 'deleted', 'renamed', 'modified'].includes(status)) {
+    return status;
+  }
+  return 'modified';
 };
 
 const parseGitHubDiff = (diff) => {
-    const blocks = String(diff || '')
-        .split(/(?=^diff --git )/m)
-        .map((block) => block.trimEnd())
-        .filter(Boolean);
+  const blocks = String(diff || '')
+    .split(/(?=^diff --git )/m)
+    .map((block) => block.trimEnd())
+    .filter(Boolean);
 
-    return blocks.map((block, fileIndex) => {
-        const lines = block.split('\n');
-        let path = `file-${fileIndex + 1}`;
-        let status = 'modified';
-        let additions = 0;
-        let deletions = 0;
-        const rows = [];
+  return blocks.map((block, fileIndex) => {
+    const lines = block.split('\n');
+    let path = `file-${fileIndex + 1}`;
+    let status = 'modified';
+    let additions = 0;
+    let deletions = 0;
+    const rows = [];
 
-        lines.forEach((line) => {
-            const diffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
-            if (diffMatch) {
-                path = diffMatch[2];
-                return;
-            }
+    lines.forEach((line) => {
+      const diffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
+      if (diffMatch) {
+        path = diffMatch[2];
+        return;
+      }
 
-            const statusMatch = line.match(/^#\s+([a-z]+):\s+(.+)$/i);
-            if (statusMatch) {
-                status = normalizeDiffStatus(statusMatch[1]);
-                path = statusMatch[2].trim() || path;
-                return;
-            }
+      const statusMatch = line.match(/^#\s+([a-z]+):\s+(.+)$/i);
+      if (statusMatch) {
+        status = normalizeDiffStatus(statusMatch[1]);
+        path = statusMatch[2].trim() || path;
+        return;
+      }
 
-            if (
-                line.startsWith('index ') ||
-                line.startsWith('--- ') ||
-                line.startsWith('+++ ')
-            ) {
-                return;
-            }
+      if (line.startsWith('index ') || line.startsWith('--- ') || line.startsWith('+++ ')) {
+        return;
+      }
 
-            if (line.startsWith('@@')) {
-                rows.push({ kind: 'hunk', marker: '@@', text: line });
-                return;
-            }
+      if (line.startsWith('@@')) {
+        rows.push({ kind: 'hunk', marker: '@@', text: line });
+        return;
+      }
 
-            if (line.startsWith('+')) {
-                additions += 1;
-                rows.push({ kind: 'add', marker: '+', text: line.slice(1) });
-                return;
-            }
+      if (line.startsWith('+')) {
+        additions += 1;
+        rows.push({ kind: 'add', marker: '+', text: line.slice(1) });
+        return;
+      }
 
-            if (line.startsWith('-')) {
-                deletions += 1;
-                rows.push({ kind: 'delete', marker: '-', text: line.slice(1) });
-                return;
-            }
+      if (line.startsWith('-')) {
+        deletions += 1;
+        rows.push({ kind: 'delete', marker: '-', text: line.slice(1) });
+        return;
+      }
 
-            rows.push({
-                kind: 'context',
-                marker: '',
-                text: line.startsWith(' ') ? line.slice(1) : line
-            });
-        });
-
-        return {
-            additions,
-            deletions,
-            id: `${path}-${fileIndex}`,
-            path,
-            rows,
-            status: normalizeDiffStatus(status)
-        };
+      rows.push({
+        kind: 'context',
+        marker: '',
+        text: line.startsWith(' ') ? line.slice(1) : line,
+      });
     });
+
+    return {
+      additions,
+      deletions,
+      id: `${path}-${fileIndex}`,
+      path,
+      rows,
+      status: normalizeDiffStatus(status),
+    };
+  });
 };
 
 const buildDiffDownloadName = (task) => {
-    const repo = String(task?.repo_full_name || 'github-diff')
-        .replace(/[^a-z0-9_.-]+/gi, '-')
-        .replace(/^-+|-+$/g, '');
-    const prNumber = task?.pull_request_number ? `pr-${task.pull_request_number}` : 'changes';
-    return `${repo || 'github-diff'}-${prNumber}.diff`;
+  const repo = String(task?.repo_full_name || 'github-diff')
+    .replace(/[^a-z0-9_.-]+/gi, '-')
+    .replace(/^-+|-+$/g, '');
+  const prNumber = task?.pull_request_number ? `pr-${task.pull_request_number}` : 'changes';
+  return `${repo || 'github-diff'}-${prNumber}.diff`;
 };
 
 const GitHubDiffCard = ({ payload, t }) => {
-    const [copyState, setCopyState] = useState('idle');
-    const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
-    const files = useMemo(() => parseGitHubDiff(payload.diff), [payload.diff]);
-    const totals = useMemo(() => files.reduce((acc, file) => ({
-        additions: acc.additions + file.additions,
-        deletions: acc.deletions + file.deletions,
-        lines: acc.lines + file.rows.filter((row) => row.kind !== 'hunk').length
-    }), { additions: 0, deletions: 0, lines: 0 }), [files]);
-    const renderedFiles = useMemo(() => files.reduce((acc, file) => {
-        const isCollapsed = collapsedFiles.has(file.id);
-        const displayRows = file.rows.filter((row) => row.kind !== 'hunk');
-        const visibleRows = !isCollapsed && acc.remainingRows > 0
-            ? displayRows.slice(0, acc.remainingRows)
-            : [];
+  const [copyState, setCopyState] = useState('idle');
+  const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
+  const files = useMemo(() => parseGitHubDiff(payload.diff), [payload.diff]);
+  const totals = useMemo(
+    () =>
+      files.reduce(
+        (acc, file) => ({
+          additions: acc.additions + file.additions,
+          deletions: acc.deletions + file.deletions,
+          lines: acc.lines + file.rows.filter((row) => row.kind !== 'hunk').length,
+        }),
+        { additions: 0, deletions: 0, lines: 0 }
+      ),
+    [files]
+  );
+  const renderedFiles = useMemo(
+    () =>
+      files.reduce(
+        (acc, file) => {
+          const isCollapsed = collapsedFiles.has(file.id);
+          const displayRows = file.rows.filter((row) => row.kind !== 'hunk');
+          const visibleRows =
+            !isCollapsed && acc.remainingRows > 0 ? displayRows.slice(0, acc.remainingRows) : [];
 
-        return {
+          return {
             remainingRows: isCollapsed
-                ? acc.remainingRows
-                : Math.max(0, acc.remainingRows - visibleRows.length),
+              ? acc.remainingRows
+              : Math.max(0, acc.remainingRows - visibleRows.length),
             items: acc.items.concat({
-                file,
-                isCollapsed,
-                visibleRows,
-                fileBodyId: `github-diff-file-${String(file.id).replace(/[^a-z0-9_-]+/gi, '-')}`,
+              file,
+              isCollapsed,
+              visibleRows,
+              fileBodyId: `github-diff-file-${String(file.id).replace(/[^a-z0-9_-]+/gi, '-')}`,
             }),
-        };
-    }, { remainingRows: MAX_RENDERED_DIFF_LINES, items: [] }).items, [collapsedFiles, files]);
+          };
+        },
+        { remainingRows: MAX_RENDERED_DIFF_LINES, items: [] }
+      ).items,
+    [collapsedFiles, files]
+  );
 
-    if (!payload || files.length === 0) {
-        return null;
+  if (!payload || files.length === 0) {
+    return null;
+  }
+
+  const task = payload.task;
+  const copyLabel = copyState === 'done' ? t('chat.githubDiff.copied') : t('chat.githubDiff.copy');
+
+  const handleCopyDiff = async () => {
+    try {
+      await navigator.clipboard.writeText(payload.diff);
+      setCopyState('done');
+      window.setTimeout(() => setCopyState('idle'), 1600);
+    } catch {
+      setCopyState('idle');
     }
+  };
 
-    const task = payload.task;
-    const copyLabel = copyState === 'done'
-        ? t('chat.githubDiff.copied')
-        : t('chat.githubDiff.copy');
+  const handleDownloadDiff = () => {
+    const blob = new Blob([payload.diff], { type: 'text/x-diff;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = buildDiffDownloadName(task);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
-    const handleCopyDiff = async () => {
-        try {
-            await navigator.clipboard.writeText(payload.diff);
-            setCopyState('done');
-            window.setTimeout(() => setCopyState('idle'), 1600);
-        } catch {
-            setCopyState('idle');
-        }
-    };
+  const handleToggleFile = (fileId) => {
+    setCollapsedFiles((current) => {
+      const next = new Set(current);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  };
 
-    const handleDownloadDiff = () => {
-        const blob = new Blob([payload.diff], { type: 'text/x-diff;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = buildDiffDownloadName(task);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-    };
+  return (
+    <section className="github-diff-card" aria-label={t('chat.githubDiff.title')}>
+      <div className="github-diff-header">
+        <div className="github-diff-title-block">
+          <div className="github-diff-title-copy">
+            <strong>{t('chat.githubDiff.title')}</strong>
+            <span>{task.repo_full_name}</span>
+          </div>
+        </div>
+        <div className="github-diff-actions">
+          <a
+            className="github-diff-pr-link"
+            href={task.pull_request_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={t('chat.githubDiff.openPullRequest')}
+          >
+            <span>
+              {task.pull_request_number
+                ? `PR #${task.pull_request_number}`
+                : t('chat.githubDiff.openPullRequest')}
+            </span>
+            <ExternalLink size={14} strokeWidth={2} />
+          </a>
+          <button
+            type="button"
+            className="github-diff-icon-button"
+            onClick={handleCopyDiff}
+            title={copyLabel}
+            aria-label={copyLabel}
+          >
+            <Copy size={15} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className="github-diff-icon-button"
+            onClick={handleDownloadDiff}
+            title={t('chat.githubDiff.download')}
+            aria-label={t('chat.githubDiff.download')}
+          >
+            <Download size={15} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
 
-    const handleToggleFile = (fileId) => {
-        setCollapsedFiles((current) => {
-            const next = new Set(current);
-            if (next.has(fileId)) {
-                next.delete(fileId);
-            } else {
-                next.add(fileId);
-            }
-            return next;
-        });
-    };
+      <div className="github-diff-meta">
+        <span>
+          {t('chat.githubDiff.branch')}: <b>{task.branch_name}</b>
+        </span>
+        <span>{t('chat.githubDiff.filesChanged', { count: files.length })}</span>
+      </div>
 
-    return (
-        <section className="github-diff-card" aria-label={t('chat.githubDiff.title')}>
-            <div className="github-diff-header">
-                <div className="github-diff-title-block">
-                    <div className="github-diff-title-copy">
-                        <strong>{t('chat.githubDiff.title')}</strong>
-                        <span>{task.repo_full_name}</span>
+      <div className="github-diff-files">
+        {renderedFiles.map(({ file, isCollapsed, visibleRows, fileBodyId }) => {
+          const toggleLabel = isCollapsed
+            ? t('chat.githubDiff.expandFile')
+            : t('chat.githubDiff.collapseFile');
+
+          return (
+            <article
+              className={cn('github-diff-file', isCollapsed && 'is-collapsed')}
+              key={file.id}
+            >
+              <header className="github-diff-file-header">
+                <button
+                  type="button"
+                  className="github-diff-file-toggle"
+                  onClick={() => handleToggleFile(file.id)}
+                  aria-expanded={!isCollapsed}
+                  aria-controls={fileBodyId}
+                  aria-label={toggleLabel}
+                  title={toggleLabel}
+                >
+                  <ChevronDown
+                    className={cn('github-diff-file-chevron', isCollapsed && 'is-collapsed')}
+                    size={15}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  <span className="github-diff-file-name">
+                    <span>{file.path}</span>
+                  </span>
+                </button>
+                <span className={`github-diff-status is-${file.status}`}>
+                  {t(`chat.githubDiff.status.${file.status}`)}
+                </span>
+              </header>
+              {!isCollapsed && (
+                <div className="github-diff-file-body ui-scrollbar-thin" id={fileBodyId}>
+                  {visibleRows.map((row, index) => (
+                    <div className={`github-diff-row is-${row.kind}`} key={`${file.id}-${index}`}>
+                      <span className="github-diff-marker" aria-hidden="true" />
+                      <code className="github-diff-code">{row.text || ' '}</code>
                     </div>
+                  ))}
                 </div>
-                <div className="github-diff-actions">
-                    <a
-                        className="github-diff-pr-link"
-                        href={task.pull_request_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={t('chat.githubDiff.openPullRequest')}
-                    >
-                        <span>
-                            {task.pull_request_number
-                                ? `PR #${task.pull_request_number}`
-                                : t('chat.githubDiff.openPullRequest')}
-                        </span>
-                        <ExternalLink size={14} strokeWidth={2} />
-                    </a>
-                    <button
-                        type="button"
-                        className="github-diff-icon-button"
-                        onClick={handleCopyDiff}
-                        title={copyLabel}
-                        aria-label={copyLabel}
-                    >
-                        <Copy size={15} strokeWidth={2} />
-                    </button>
-                    <button
-                        type="button"
-                        className="github-diff-icon-button"
-                        onClick={handleDownloadDiff}
-                        title={t('chat.githubDiff.download')}
-                        aria-label={t('chat.githubDiff.download')}
-                    >
-                        <Download size={15} strokeWidth={2} />
-                    </button>
-                </div>
-            </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
 
-            <div className="github-diff-meta">
-                <span>{t('chat.githubDiff.branch')}: <b>{task.branch_name}</b></span>
-                <span>{t('chat.githubDiff.filesChanged', { count: files.length })}</span>
-            </div>
-
-            <div className="github-diff-files">
-                {renderedFiles.map(({ file, isCollapsed, visibleRows, fileBodyId }) => {
-                    const toggleLabel = isCollapsed
-                        ? t('chat.githubDiff.expandFile')
-                        : t('chat.githubDiff.collapseFile');
-
-                    return (
-                        <article className={cn('github-diff-file', isCollapsed && 'is-collapsed')} key={file.id}>
-                            <header className="github-diff-file-header">
-                                <button
-                                    type="button"
-                                    className="github-diff-file-toggle"
-                                    onClick={() => handleToggleFile(file.id)}
-                                    aria-expanded={!isCollapsed}
-                                    aria-controls={fileBodyId}
-                                    aria-label={toggleLabel}
-                                    title={toggleLabel}
-                                >
-                                    <ChevronDown
-                                        className={cn('github-diff-file-chevron', isCollapsed && 'is-collapsed')}
-                                        size={15}
-                                        strokeWidth={2}
-                                        aria-hidden="true"
-                                    />
-                                    <span className="github-diff-file-name">
-                                        <span>{file.path}</span>
-                                    </span>
-                                </button>
-                                <span className={`github-diff-status is-${file.status}`}>
-                                    {t(`chat.githubDiff.status.${file.status}`)}
-                                </span>
-                            </header>
-                            {!isCollapsed && (
-                                <div className="github-diff-file-body ui-scrollbar-thin" id={fileBodyId}>
-                                    {visibleRows.map((row, index) => (
-                                        <div className={`github-diff-row is-${row.kind}`} key={`${file.id}-${index}`}>
-                                            <span className="github-diff-marker" aria-hidden="true" />
-                                            <code className="github-diff-code">{row.text || ' '}</code>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </article>
-                    );
-                })}
-            </div>
-
-            {totals.lines > MAX_RENDERED_DIFF_LINES && (
-                <div className="github-diff-truncated">
-                    {t('chat.githubDiff.truncated', {
-                        shown: MAX_RENDERED_DIFF_LINES,
-                        total: totals.lines
-                    })}
-                </div>
-            )}
-        </section>
-    );
+      {totals.lines > MAX_RENDERED_DIFF_LINES && (
+        <div className="github-diff-truncated">
+          {t('chat.githubDiff.truncated', {
+            shown: MAX_RENDERED_DIFF_LINES,
+            total: totals.lines,
+          })}
+        </div>
+      )}
+    </section>
+  );
 };
 
-const Message = ({ message, sessionId, onRegenerate, onEdit, onSwitchVariant, onBeatboxStateChange, onSendMessage = null }) => {
-    const { role, content, images, files, sources, isLoading, isError, isGeneratingImage, imagePrompt, widgetUpdate, variants, currentVariantIndex, parts, webSearchStatus, deliveryState } = message;
-    const isUser = role === 'user';
-    const { settings } = useSettings();
-    const { t } = useTranslation();
-    const [isEditingUserMessage, setIsEditingUserMessage] = useState(false);
-    const [editedContent, setEditedContent] = useState(content);
-    useEffect(() => {
-        if (!isEditingUserMessage) setEditedContent(content || '');
-    }, [content, isEditingUserMessage]);
-    const currentVariant = variants && variants.length > 0 && currentVariantIndex !== undefined
-        ? variants[currentVariantIndex]
-        : null;
-    const composerContent = currentVariant ? currentVariant.composerContent : message.composerContent;
-    const liveThinking = currentVariant?.thinking || message.thinking;
-    const streamedThinking = !isUser && isLoading && liveThinking?.id ? liveThinking : null;
-    const displayDeliveryState = currentVariant?.deliveryState || deliveryState;
-    const githubTool = getGitHubToolPayload(message, currentVariant);
-    const githubDiffPayload = useMemo(() => getGitHubDiffPayload(githubTool), [githubTool]);
-    const filesFromParts = useMemo(() => {
-        if (files && files.length > 0) return files;
-        if (!parts || !Array.isArray(parts)) return [];
-        return parts.filter(p => p.file).map(p => ({
-            file: {
-                url_path: p.file.url_path || p.file,
-                original_name: p.file.original_name || p.file.name || 'file',
-                mime_type: p.file.mime_type || 'application/octet-stream',
-                size: p.file.size || 0
-            }
-        }));
-    }, [files, parts]);
-    const imagesFromParts = useMemo(() => {
-        if (images && images.length > 0) return images;
-        if (!parts || !Array.isArray(parts)) return [];
-        return parts.filter(p => p.image).map(p => p.image.url_path || p.image);
-    }, [images, parts]);
+const Message = ({
+  message,
+  sessionId,
+  onRegenerate,
+  onEdit,
+  onSwitchVariant,
+  onBeatboxStateChange,
+  onSendMessage = null,
+}) => {
+  const {
+    role,
+    content,
+    images,
+    files,
+    sources,
+    isLoading,
+    isError,
+    isGeneratingImage,
+    imagePrompt,
+    widgetUpdate,
+    variants,
+    currentVariantIndex,
+    parts,
+    webSearchStatus,
+    deliveryState,
+  } = message;
+  const isUser = role === 'user';
+  const { settings } = useSettings();
+  const { t } = useTranslation();
+  const [isEditingUserMessage, setIsEditingUserMessage] = useState(false);
+  const [editedContent, setEditedContent] = useState(content);
+  useEffect(() => {
+    if (!isEditingUserMessage) setEditedContent(content || '');
+  }, [content, isEditingUserMessage]);
+  const currentVariant =
+    variants && variants.length > 0 && currentVariantIndex !== undefined
+      ? variants[currentVariantIndex]
+      : null;
+  const composerContent = currentVariant ? currentVariant.composerContent : message.composerContent;
+  const liveThinking = currentVariant?.thinking || message.thinking;
+  const streamedThinking = !isUser && isLoading && liveThinking?.id ? liveThinking : null;
+  const displayDeliveryState = currentVariant?.deliveryState || deliveryState;
+  const githubTool = getGitHubToolPayload(message, currentVariant);
+  const githubDiffPayload = useMemo(() => getGitHubDiffPayload(githubTool), [githubTool]);
+  const filesFromParts = useMemo(() => {
+    if (files && files.length > 0) return files;
+    if (!parts || !Array.isArray(parts)) return [];
+    return parts
+      .filter((p) => p.file)
+      .map((p) => ({
+        file: {
+          url_path: p.file.url_path || p.file,
+          original_name: p.file.original_name || p.file.name || 'file',
+          mime_type: p.file.mime_type || 'application/octet-stream',
+          size: p.file.size || 0,
+        },
+      }));
+  }, [files, parts]);
+  const imagesFromParts = useMemo(() => {
+    if (images && images.length > 0) return images;
+    if (!parts || !Array.isArray(parts)) return [];
+    return parts.filter((p) => p.image).map((p) => p.image.url_path || p.image);
+  }, [images, parts]);
 
-    const rawDisplayImages = currentVariant ? (currentVariant.images || []) : imagesFromParts;
-    const displayImages = filterRedundantAutoCapturedImages(rawDisplayImages);
-    let displayContent = currentVariant ? currentVariant.content : content;
-    if (displayContent) {
-        displayContent = displayContent.replace(/\{[^{}]*"url_path"[^{}]*\}/g, '');
-        displayContent = displayContent.replace(/\{[^{}]*"original_name"[^{}]*\}/g, '');
-        displayContent = displayContent.replace(/---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi, '');
-        displayContent = displayContent.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
-        if (githubDiffPayload) {
-            displayContent = stripGitHubDiffFence(displayContent);
-        }
-        displayContent = stripAttachedArtifactMarkdownImages(displayContent, rawDisplayImages);
-        displayContent = stripCanmoreToolMarkup(displayContent).trim();
+  const rawDisplayImages = currentVariant ? currentVariant.images || [] : imagesFromParts;
+  const displayImages = filterRedundantAutoCapturedImages(rawDisplayImages);
+  let displayContent = currentVariant ? currentVariant.content : content;
+  if (displayContent) {
+    displayContent = displayContent.replace(/\{[^{}]*"url_path"[^{}]*\}/g, '');
+    displayContent = displayContent.replace(/\{[^{}]*"original_name"[^{}]*\}/g, '');
+    displayContent = displayContent.replace(
+      /---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi,
+      ''
+    );
+    displayContent = displayContent.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
+    if (githubDiffPayload) {
+      displayContent = stripGitHubDiffFence(displayContent);
+    }
+    displayContent = stripAttachedArtifactMarkdownImages(displayContent, rawDisplayImages);
+    displayContent = stripCanmoreToolMarkup(displayContent).trim();
+  }
+
+  const displayFiles = currentVariant ? currentVariant.files || [] : filesFromParts;
+  const displaySources = useMemo(
+    () => (currentVariant ? currentVariant.sources || [] : sources || []),
+    [currentVariant, sources]
+  );
+  const completedThoughtSources = useMemo(() => {
+    const thoughtContent = [
+      displayContent || '',
+      ...(Array.isArray(parts)
+        ? parts.filter((part) => typeof part?.text === 'string').map((part) => part.text)
+        : []),
+    ].join('\n');
+    return extractCompletedSearchSources(thoughtContent);
+  }, [displayContent, parts]);
+  const sourceFallbackLabel = t('webSearch.sourceFallback', { defaultValue: 'Source' });
+  const displaySourceItems = useMemo(
+    () =>
+      normalizeAndMergeWebSources([completedThoughtSources, displaySources], sourceFallbackLabel),
+    [completedThoughtSources, displaySources, sourceFallbackLabel]
+  );
+  const displayContentWithSourceLinks = useMemo(
+    () => linkifySourceCitations(displayContent || '', displaySourceItems),
+    [displayContent, displaySourceItems]
+  );
+  const hasMultipleVariants = variants && variants.length > 1;
+  const contentRef = useRef(null);
+  const waveformCanvasRef = useRef(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(null);
+  const [feedbackReasons, setFeedbackReasons] = useState([]);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackMessageType, setFeedbackMessageType] = useState('success');
+  const [likeConfettiBurst, setLikeConfettiBurst] = useState(0);
+  const audio = useAudio(message.id);
+  const { isAuthenticated } = useAuth();
+  const formatLabels = useMemo(
+    () => ({
+      codeBlock: {
+        codeSnippet: t('codeBlock.codeSnippet'),
+        diagram: t('codeBlock.diagram'),
+        preview: t('codeBlock.preview'),
+        code: t('codeBlock.code'),
+        download: t('codeBlock.download'),
+        copy: t('codeBlock.copy'),
+        expand: t('codeBlock.expand'),
+        collapse: t('codeBlock.collapse'),
+        tableCopy: t('codeBlock.tableCopy'),
+        run: t('canvas.pythonTerminal.run'),
+        terminal: t('canvas.pythonTerminal.title'),
+      },
+      diagrams: {
+        chartjsLoading: t('codeBlock.loading.chartjs'),
+        d3Loading: t('codeBlock.loading.d3'),
+        nomnomlLoading: t('codeBlock.loading.nomnoml'),
+        mermaidLoading: t('codeBlock.loading.mermaid'),
+        svgLoading: t('codeBlock.loading.svg'),
+      },
+      widgets: {
+        creating: t('widgets.creating'),
+      },
+    }),
+    [t]
+  );
+  const markdownEnabledForMessage = isUser || !!settings.renderMarkdown;
+  const formattedContent = useMemo(() => {
+    if (isUser) {
+      const html = formatUserMessageText(composerContent || content || '', {
+        labels: formatLabels,
+        renderMarkdown: markdownEnabledForMessage,
+      });
+      const legacyMarkers =
+        !composerContent && Array.isArray(message.toolBadges)
+          ? message.toolBadges
+              .filter((id) => typeof id === 'string' && isKnownComposerTool(id))
+              .map(toolMarker)
+              .join(' ')
+          : '';
+      return composerContent || legacyMarkers
+        ? renderComposerMentions(legacyMarkers ? `${legacyMarkers} ${html}` : html, (id) =>
+            t(`composer.tools.${id === 'demo_image' || id === 'mindart' ? 'image' : id}`)
+          )
+        : html;
+    }
+    if (!markdownEnabledForMessage) {
+      return formatPlainText(
+        (displayContent || '')
+          .replace(
+            /<tool_panel data-kind="(?:plan|questions)" data-b64="[A-Za-z0-9+/=]{1,32000}"><\/tool_panel>/g,
+            ''
+          )
+          .replace(/<tool_panel[\s\S]*$/, '')
+      );
     }
 
-    const displayFiles = currentVariant ? (currentVariant.files || []) : filesFromParts;
-    const displaySources = useMemo(
-        () => (currentVariant ? (currentVariant.sources || []) : (sources || [])),
-        [currentVariant, sources]
+    return decorateSourceCitations(
+      formatText(displayContentWithSourceLinks, { labels: formatLabels }),
+      displaySourceItems,
+      {
+        fragmentSources: t('webSearch.fragmentSources'),
+      }
     );
-    const completedThoughtSources = useMemo(() => {
-        const thoughtContent = [
-            displayContent || '',
-            ...(Array.isArray(parts)
-                ? parts
-                    .filter((part) => typeof part?.text === 'string')
-                    .map((part) => part.text)
-                : []),
-        ].join('\n');
-        return extractCompletedSearchSources(thoughtContent);
-    }, [displayContent, parts]);
-    const sourceFallbackLabel = t('webSearch.sourceFallback', { defaultValue: 'Source' });
-    const displaySourceItems = useMemo(
-        () => normalizeAndMergeWebSources(
-            [completedThoughtSources, displaySources],
-            sourceFallbackLabel,
-        ),
-        [completedThoughtSources, displaySources, sourceFallbackLabel]
-    );
-    const displayContentWithSourceLinks = useMemo(
-        () => linkifySourceCitations(displayContent || '', displaySourceItems),
-        [displayContent, displaySourceItems]
-    );
-    const hasMultipleVariants = variants && variants.length > 1;
-    const contentRef = useRef(null);
-    const waveformCanvasRef = useRef(null);
-    const [showTranslation, setShowTranslation] = useState(false);
-    const [feedbackRating, setFeedbackRating] = useState(null);
-    const [feedbackReasons, setFeedbackReasons] = useState([]);
-    const [feedbackComment, setFeedbackComment] = useState('');
-    const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
-    const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
-    const [feedbackMessage, setFeedbackMessage] = useState('');
-    const [feedbackMessageType, setFeedbackMessageType] = useState('success');
-    const [likeConfettiBurst, setLikeConfettiBurst] = useState(0);
-    const audio = useAudio(message.id);
-    const { isAuthenticated } = useAuth();
-    const formatLabels = useMemo(() => ({
-        codeBlock: {
-            codeSnippet: t('codeBlock.codeSnippet'),
-            diagram: t('codeBlock.diagram'),
-            preview: t('codeBlock.preview'),
-            code: t('codeBlock.code'),
-            download: t('codeBlock.download'),
-            copy: t('codeBlock.copy'),
-            expand: t('codeBlock.expand'),
-            collapse: t('codeBlock.collapse'),
-            tableCopy: t('codeBlock.tableCopy'),
-            run: t('canvas.pythonTerminal.run'),
-            terminal: t('canvas.pythonTerminal.title'),
-        },
-        diagrams: {
-            chartjsLoading: t('codeBlock.loading.chartjs'),
-            d3Loading: t('codeBlock.loading.d3'),
-            nomnomlLoading: t('codeBlock.loading.nomnoml'),
-            mermaidLoading: t('codeBlock.loading.mermaid'),
-            svgLoading: t('codeBlock.loading.svg'),
-        },
-        widgets: {
-            creating: t('widgets.creating'),
-        },
-    }), [t]);
-    const markdownEnabledForMessage = isUser || !!settings.renderMarkdown;
-    const formattedContent = useMemo(() => {
-        if (isUser) {
-            const html = formatUserMessageText(composerContent || content || '', {
-                labels: formatLabels,
-                renderMarkdown: markdownEnabledForMessage,
-            });
-            const legacyMarkers = !composerContent && Array.isArray(message.toolBadges)
-                ? message.toolBadges.filter((id) => typeof id === 'string' && isKnownComposerTool(id)).map(toolMarker).join(' ') : '';
-            return composerContent || legacyMarkers ? renderComposerMentions(
-                legacyMarkers ? `${legacyMarkers} ${html}` : html,
-                (id) => t(`composer.tools.${id === 'demo_image' || id === 'mindart' ? 'image' : id}`),
-            ) : html;
-        }
-        if (!markdownEnabledForMessage) {
-            return formatPlainText((displayContent || '').replace(/<tool_panel data-kind="(?:plan|questions)" data-b64="[A-Za-z0-9+/=]{1,32000}"><\/tool_panel>/g, '').replace(/<tool_panel[\s\S]*$/, ''));
-        }
+  }, [
+    displayContent,
+    displayContentWithSourceLinks,
+    displaySourceItems,
+    isUser,
+    content,
+    composerContent,
+    message.toolBadges,
+    markdownEnabledForMessage,
+    t,
+    formatLabels,
+  ]);
 
-        return decorateSourceCitations(
-            formatText(displayContentWithSourceLinks, { labels: formatLabels }),
-            displaySourceItems,
-            {
-                fragmentSources: t('webSearch.fragmentSources')
-            }
-        );
-    }, [displayContent, displayContentWithSourceLinks, displaySourceItems, isUser, content, composerContent, message.toolBadges, markdownEnabledForMessage, t, formatLabels]);
-
-    const presentation = useMemo(() => isUser
+  const presentation = useMemo(
+    () =>
+      isUser
         ? { html: formattedContent, widgets: [] }
-        : parseMessagePresentation(formattedContent, [...(Array.isArray(parts) ? parts : []), { text: displayContent }], message.id),
-    [formattedContent, isUser, message.id, parts, displayContent]);
-    const htmlContent = presentation.html;
-    const widgets = useMemo(() => applyMessageWidgetUpdate(presentation.widgets, isUser ? null : widgetUpdate, message.id),
-        [presentation.widgets, widgetUpdate, isUser, message.id]);
+        : parseMessagePresentation(
+            formattedContent,
+            [...(Array.isArray(parts) ? parts : []), { text: displayContent }],
+            message.id
+          ),
+    [formattedContent, isUser, message.id, parts, displayContent]
+  );
+  const htmlContent = presentation.html;
+  const widgets = useMemo(
+    () => applyMessageWidgetUpdate(presentation.widgets, isUser ? null : widgetUpdate, message.id),
+    [presentation.widgets, widgetUpdate, isUser, message.id]
+  );
 
-    useLayoutEffect(() => {
-        if (!markdownEnabledForMessage || !contentRef.current) return;
+  useLayoutEffect(() => {
+    if (!markdownEnabledForMessage || !contentRef.current) return;
 
-        const currentRef = contentRef.current;
+    const currentRef = contentRef.current;
 
-        const applySyntaxHighlighting = () => {
-            highlightCode(currentRef);
+    const applySyntaxHighlighting = () => {
+      highlightCode(currentRef);
 
-            const codeBlockContents = currentRef.querySelectorAll('.code-block-content');
-            codeBlockContents.forEach(content => {
-                if (!content.dataset.initialMaxHeight) {
-                    const computedStyle = window.getComputedStyle(content);
-                    const maxHeight = computedStyle.maxHeight || '200px';
-                    content.dataset.initialMaxHeight = maxHeight;
-                    content.style.maxHeight = maxHeight;
-                }
-
-                if (!content.classList.contains('expanded')) {
-                    const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200', 10);
-                    if (content.scrollHeight > initialMaxHeight) {
-                        content.classList.add('has-overflow');
-                    } else {
-                        content.classList.remove('has-overflow');
-                    }
-                }
-            });
-        };
-
-        applySyntaxHighlighting();
-        const frame = window.requestAnimationFrame(applySyntaxHighlighting);
-
-        return () => {
-            window.cancelAnimationFrame(frame);
-        };
-    }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
-
-    useLayoutEffect(() => {
-        if (!markdownEnabledForMessage || !contentRef.current) return;
-
-        const currentRef = contentRef.current;
-        let frame = 0;
-
-        const scheduleLineNumberRefresh = () => {
-            window.cancelAnimationFrame(frame);
-            frame = window.requestAnimationFrame(() => {
-                refreshCodeLineNumbers(currentRef);
-            });
-        };
-
-        scheduleLineNumberRefresh();
-        window.addEventListener('resize', scheduleLineNumberRefresh);
-
-        const resizeObserver = typeof ResizeObserver !== 'undefined'
-            ? new ResizeObserver(scheduleLineNumberRefresh)
-            : null;
-
-        if (resizeObserver) {
-            resizeObserver.observe(currentRef);
-            currentRef.querySelectorAll('.code-block-content, pre.code-line-numbered').forEach((element) => {
-                resizeObserver.observe(element);
-            });
+      const codeBlockContents = currentRef.querySelectorAll('.code-block-content');
+      codeBlockContents.forEach((content) => {
+        if (!content.dataset.initialMaxHeight) {
+          const computedStyle = window.getComputedStyle(content);
+          const maxHeight = computedStyle.maxHeight || '200px';
+          content.dataset.initialMaxHeight = maxHeight;
+          content.style.maxHeight = maxHeight;
         }
 
-        return () => {
-            window.cancelAnimationFrame(frame);
-            window.removeEventListener('resize', scheduleLineNumberRefresh);
-            resizeObserver?.disconnect();
+        if (!content.classList.contains('expanded')) {
+          const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200', 10);
+          if (content.scrollHeight > initialMaxHeight) {
+            content.classList.add('has-overflow');
+          } else {
+            content.classList.remove('has-overflow');
+          }
+        }
+      });
+    };
+
+    applySyntaxHighlighting();
+    const frame = window.requestAnimationFrame(applySyntaxHighlighting);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [
+    htmlContent,
+    isLoading,
+    markdownEnabledForMessage,
+    settings.theme,
+    widgets,
+    currentVariantIndex,
+    variants?.length,
+  ]);
+
+  useLayoutEffect(() => {
+    if (!markdownEnabledForMessage || !contentRef.current) return;
+
+    const currentRef = contentRef.current;
+    let frame = 0;
+
+    const scheduleLineNumberRefresh = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        refreshCodeLineNumbers(currentRef);
+      });
+    };
+
+    scheduleLineNumberRefresh();
+    window.addEventListener('resize', scheduleLineNumberRefresh);
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleLineNumberRefresh) : null;
+
+    if (resizeObserver) {
+      resizeObserver.observe(currentRef);
+      currentRef
+        .querySelectorAll('.code-block-content, pre.code-line-numbered')
+        .forEach((element) => {
+          resizeObserver.observe(element);
+        });
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', scheduleLineNumberRefresh);
+      resizeObserver?.disconnect();
+    };
+  }, [
+    htmlContent,
+    markdownEnabledForMessage,
+    settings.codeWrap,
+    widgets,
+    currentVariantIndex,
+    variants?.length,
+  ]);
+
+  useEffect(() => {
+    if (!markdownEnabledForMessage || !contentRef.current) return;
+
+    const renderVisuals = async () => {
+      if (Utils.renderSvgPreviews) {
+        Utils.renderSvgPreviews();
+        requestAnimationFrame(() => {
+          Utils.renderSvgPreviews();
+        });
+      }
+
+      if (Utils.renderCharts) {
+        await Utils.renderCharts();
+      }
+
+      if (Utils.renderD3) {
+        await Utils.renderD3();
+      }
+
+      if (Utils.renderNomnoml) {
+        await Utils.renderNomnoml();
+      }
+
+      if (Utils.renderMermaid) {
+        await Utils.renderMermaid();
+      }
+
+      if (Utils.attachDiagramPan) {
+        Utils.attachDiagramPan();
+      }
+    };
+
+    renderVisuals();
+  }, [
+    htmlContent,
+    isLoading,
+    markdownEnabledForMessage,
+    settings.theme,
+    widgets,
+    currentVariantIndex,
+    variants?.length,
+  ]);
+  useEffect(() => {
+    if (!audio.isVisible || !waveformCanvasRef.current || !audio.waveformPoints) return;
+    const canvas = waveformCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const drawWaveform = () => {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (width <= 0 || height <= 0) return;
+
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      const horizontalPadding = 10;
+      const drawableWidth = Math.max(width - horizontalPadding * 2, 1);
+      const barCount = Math.max(18, Math.min(72, Math.floor(drawableWidth / 6)));
+      const barSpacing = barCount > 1 ? drawableWidth / (barCount - 1) : drawableWidth;
+      const progressRatio =
+        audio.totalDuration > 0
+          ? Math.min(Math.max(audio.currentTime / audio.totalDuration, 0), 1)
+          : 0;
+      const progressPx = horizontalPadding + progressRatio * drawableWidth;
+      const rootStyles = getComputedStyle(document.documentElement);
+      const playedColor = rootStyles.getPropertyValue('--color-accent').trim() || '#789cff';
+      const remainingColor =
+        rootStyles.getPropertyValue('--color-border-strong').trim() || 'rgba(128, 128, 128, 0.28)';
+      const maxBarHeight = Math.min(height * 0.55, 24);
+      const minBarHeight = 4;
+
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 2.5;
+      for (let index = 0; index < barCount; index += 1) {
+        const pointIndex = Math.round(
+          (index * (audio.waveformPoints.length - 1)) / Math.max(barCount - 1, 1)
+        );
+        const point = audio.waveformPoints[pointIndex] || 0;
+        const barHeight = minBarHeight + point * (maxBarHeight - minBarHeight);
+        const x = horizontalPadding + index * barSpacing;
+
+        ctx.strokeStyle = x <= progressPx ? playedColor : remainingColor;
+        ctx.beginPath();
+        ctx.moveTo(x, (height - barHeight) / 2);
+        ctx.lineTo(x, (height + barHeight) / 2);
+        ctx.stroke();
+      }
+    };
+
+    drawWaveform();
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const resizeObserver = new ResizeObserver(drawWaveform);
+    resizeObserver.observe(canvas);
+    return () => resizeObserver.disconnect();
+  }, [
+    audio.isVisible,
+    audio.currentTime,
+    audio.totalDuration,
+    audio.waveformPoints,
+    settings.theme,
+  ]);
+  useEffect(() => {
+    if (!markdownEnabledForMessage || !contentRef.current) return;
+
+    const handleClick = (e) => {
+      const eventTarget = e.target instanceof Element ? e.target : null;
+      const markdownImage = eventTarget?.closest('img.markdown-image');
+      if (markdownImage instanceof HTMLImageElement) {
+        const imageSrc = markdownImage.currentSrc || markdownImage.src;
+        if (imageSrc && window.openImageLightbox) {
+          e.preventDefault();
+          window.openImageLightbox(imageSrc, message.id);
+          return;
+        }
+      }
+
+      const target = eventTarget?.closest('button');
+      if (!(target instanceof HTMLButtonElement)) return;
+
+      if (target.classList.contains('table-copy-btn')) {
+        e.preventDefault();
+        const wrapper = target.closest('.table-wrapper');
+        const table = wrapper?.querySelector?.('table');
+        if (!table) return;
+
+        const tableHtml = table.outerHTML;
+        const blob = new Blob([tableHtml], { type: 'text/html' });
+
+        const originalHtml = target.innerHTML;
+        const applySuccessUI = () => {
+          target.textContent = t('codeBlock.tableCopied');
+          target.setAttribute('aria-label', t('codeBlock.tableCopied'));
+          target.style.background = 'rgba(110, 231, 183, 0.15)';
+          setTimeout(() => {
+            target.innerHTML = originalHtml;
+            target.setAttribute('aria-label', t('codeBlock.tableCopy'));
+            target.style.background = '';
+          }, 2000);
         };
-    }, [htmlContent, markdownEnabledForMessage, settings.codeWrap, widgets, currentVariantIndex, variants?.length]);
 
-    useEffect(() => {
-        if (!markdownEnabledForMessage || !contentRef.current) return;
-
-        const renderVisuals = async () => {
-            if (Utils.renderSvgPreviews) {
-                Utils.renderSvgPreviews();
-                requestAnimationFrame(() => {
-                    Utils.renderSvgPreviews();
-                });
-            }
-
-            if (Utils.renderCharts) {
-                await Utils.renderCharts();
-            }
-
-            if (Utils.renderD3) {
-                await Utils.renderD3();
-            }
-
-            if (Utils.renderNomnoml) {
-                await Utils.renderNomnoml();
-            }
-
-            if (Utils.renderMermaid) {
-                await Utils.renderMermaid();
-            }
-
-            if (Utils.attachDiagramPan) {
-                Utils.attachDiagramPan();
-            }
+        const applyErrorUI = () => {
+          target.textContent = t('codeBlock.copyFailed');
+          target.setAttribute('aria-label', t('codeBlock.copyFailed'));
+          target.style.background = 'rgba(239, 68, 68, 0.15)';
+          setTimeout(() => {
+            target.innerHTML = originalHtml;
+            target.setAttribute('aria-label', t('codeBlock.tableCopy'));
+            target.style.background = '';
+          }, 2000);
         };
+        try {
+          if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+            const data = [new ClipboardItem({ 'text/html': blob })];
+            navigator.clipboard
+              .write(data)
+              .then(applySuccessUI)
+              .catch(() => {
+                navigator.clipboard
+                  ?.writeText?.(table.innerText || table.textContent || '')
+                  .then(applySuccessUI)
+                  .catch(applyErrorUI);
+              });
+          } else if (navigator.clipboard?.writeText) {
+            navigator.clipboard
+              .writeText(table.innerText || table.textContent || '')
+              .then(applySuccessUI)
+              .catch(applyErrorUI);
+          } else {
+            applyErrorUI();
+          }
+        } catch {
+          applyErrorUI();
+        }
+        return;
+      }
 
-        renderVisuals();
-    }, [htmlContent, isLoading, markdownEnabledForMessage, settings.theme, widgets, currentVariantIndex, variants?.length]);
-    useEffect(() => {
-        if (!audio.isVisible || !waveformCanvasRef.current || !audio.waveformPoints) return;
-        const canvas = waveformCanvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+      const codeBlock = target.closest<HTMLElement>('.code-block');
+      if (!codeBlock) return;
 
-        const drawWaveform = () => {
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-            if (width <= 0 || height <= 0) return;
+      const codeElement = codeBlock.querySelector('code');
+      if (!codeElement) return;
 
-            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-            canvas.width = Math.round(width * pixelRatio);
-            canvas.height = Math.round(height * pixelRatio);
-            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-            ctx.clearRect(0, 0, width, height);
+      const codeText = codeElement.textContent || '';
 
-            const horizontalPadding = 10;
-            const drawableWidth = Math.max(width - horizontalPadding * 2, 1);
-            const barCount = Math.max(18, Math.min(72, Math.floor(drawableWidth / 6)));
-            const barSpacing = barCount > 1 ? drawableWidth / (barCount - 1) : drawableWidth;
-            const progressRatio = audio.totalDuration > 0
-                ? Math.min(Math.max(audio.currentTime / audio.totalDuration, 0), 1)
-                : 0;
-            const progressPx = horizontalPadding + progressRatio * drawableWidth;
-            const rootStyles = getComputedStyle(document.documentElement);
-            const playedColor = rootStyles.getPropertyValue('--color-accent').trim() || '#789cff';
-            const remainingColor = rootStyles.getPropertyValue('--color-border-strong').trim() || 'rgba(128, 128, 128, 0.28)';
-            const maxBarHeight = Math.min(height * 0.55, 24);
-            const minBarHeight = 4;
+      if (target.classList.contains('run-code-btn')) {
+        e.preventDefault();
+        if (target.disabled) return;
 
-            ctx.lineCap = 'round';
-            ctx.lineWidth = 2.5;
-            for (let index = 0; index < barCount; index += 1) {
-                const pointIndex = Math.round(
-                    index * (audio.waveformPoints.length - 1) / Math.max(barCount - 1, 1)
-                );
-                const point = audio.waveformPoints[pointIndex] || 0;
-                const barHeight = minBarHeight + point * (maxBarHeight - minBarHeight);
-                const x = horizontalPadding + index * barSpacing;
+        const consolePanel = codeBlock.querySelector<HTMLElement>('.code-execution-console');
+        const status = consolePanel?.querySelector<HTMLElement>('.code-execution-console-status');
+        const meta = consolePanel?.querySelector<HTMLElement>('.code-execution-console-meta');
+        const output = consolePanel?.querySelector<HTMLPreElement>(
+          '.code-execution-console-output'
+        );
+        if (!consolePanel || !status || !meta || !output) return;
 
-                ctx.strokeStyle = x <= progressPx ? playedColor : remainingColor;
-                ctx.beginPath();
-                ctx.moveTo(x, (height - barHeight) / 2);
-                ctx.lineTo(x, (height + barHeight) / 2);
-                ctx.stroke();
-            }
-        };
+        consolePanel.hidden = false;
+        consolePanel.classList.remove('is-error');
+        consolePanel.classList.add('is-running');
+        status.textContent = t('canvas.pythonTerminal.running');
+        meta.textContent = '';
+        output.textContent = '';
+        target.disabled = true;
 
-        drawWaveform();
-        if (typeof ResizeObserver === 'undefined') return;
+        if (!isAuthenticated) {
+          consolePanel.classList.remove('is-running');
+          consolePanel.classList.add('is-error');
+          status.textContent = t('canvas.pythonTerminal.failed');
+          output.textContent = t('settings.account.signInOrRegister');
+          target.disabled = false;
+          return;
+        }
 
-        const resizeObserver = new ResizeObserver(drawWaveform);
-        resizeObserver.observe(canvas);
-        return () => resizeObserver.disconnect();
-    }, [audio.isVisible, audio.currentTime, audio.totalDuration, audio.waveformPoints, settings.theme]);
-    useEffect(() => {
-        if (!markdownEnabledForMessage || !contentRef.current) return;
+        void apiService
+          .executeCanvasPython(codeText)
+          .then((result) => {
+            const isSuccess = result.ok;
+            consolePanel.classList.remove('is-running');
+            consolePanel.classList.toggle('is-error', !isSuccess);
+            status.textContent = isSuccess
+              ? t('canvas.pythonTerminal.success')
+              : t('canvas.pythonTerminal.failed');
+            meta.textContent =
+              result.duration_ms === undefined
+                ? ''
+                : t('canvas.pythonTerminal.duration', { duration: result.duration_ms });
+            output.textContent =
+              [result.stdout, result.stderr || result.error]
+                .filter((value): value is string => Boolean(value))
+                .join('\n\n') || t('canvas.pythonTerminal.noOutput');
+          })
+          .catch(() => {
+            consolePanel.classList.remove('is-running');
+            consolePanel.classList.add('is-error');
+            status.textContent = t('canvas.pythonTerminal.failed');
+            meta.textContent = '';
+            output.textContent = t('canvas.pythonTerminal.requestFailed');
+          })
+          .finally(() => {
+            target.disabled = false;
+          });
+        return;
+      }
 
-        const handleClick = (e) => {
-            const eventTarget = e.target instanceof Element ? e.target : null;
-            const markdownImage = eventTarget?.closest('img.markdown-image');
-            if (markdownImage instanceof HTMLImageElement) {
-                const imageSrc = markdownImage.currentSrc || markdownImage.src;
-                if (imageSrc && window.openImageLightbox) {
-                    e.preventDefault();
-                    window.openImageLightbox(imageSrc, message.id);
-                    return;
-                }
-            }
+      if (target.classList.contains('code-tab-btn')) {
+        const tab = target.dataset.tab;
+        if (!tab) return;
 
-            const target = eventTarget?.closest('button');
-            if (!(target instanceof HTMLButtonElement)) return;
+        const tabs = codeBlock.querySelectorAll<HTMLButtonElement>('.code-tab-btn');
+        tabs.forEach((btn) => {
+          const isActiveTab = btn === target;
+          btn.classList.toggle('active', isActiveTab);
+          btn.setAttribute('aria-selected', String(isActiveTab));
+          btn.tabIndex = isActiveTab ? 0 : -1;
+        });
 
-            if (target.classList.contains('table-copy-btn')) {
-                e.preventDefault();
-                const wrapper = target.closest('.table-wrapper');
-                const table = wrapper?.querySelector?.('table');
-                if (!table) return;
+        const panes = codeBlock.querySelectorAll<HTMLElement>('.code-block-pane');
+        panes.forEach((pane) => {
+          const isActivePane = pane.dataset.pane === tab;
+          pane.classList.toggle('active', isActivePane);
+          pane.toggleAttribute('hidden', !isActivePane);
+        });
 
-                const tableHtml = table.outerHTML;
-                const blob = new Blob([tableHtml], { type: 'text/html' });
-
-                const originalHtml = target.innerHTML;
-                const applySuccessUI = () => {
-                    target.textContent = t('codeBlock.tableCopied');
-                    target.setAttribute('aria-label', t('codeBlock.tableCopied'));
-                    target.style.background = 'rgba(110, 231, 183, 0.15)';
-                    setTimeout(() => {
-                        target.innerHTML = originalHtml;
-                        target.setAttribute('aria-label', t('codeBlock.tableCopy'));
-                        target.style.background = '';
-                    }, 2000);
-                };
-
-                const applyErrorUI = () => {
-                    target.textContent = t('codeBlock.copyFailed');
-                    target.setAttribute('aria-label', t('codeBlock.copyFailed'));
-                    target.style.background = 'rgba(239, 68, 68, 0.15)';
-                    setTimeout(() => {
-                        target.innerHTML = originalHtml;
-                        target.setAttribute('aria-label', t('codeBlock.tableCopy'));
-                        target.style.background = '';
-                    }, 2000);
-                };
-                try {
-                    if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-                        const data = [new ClipboardItem({ 'text/html': blob })];
-                        navigator.clipboard.write(data).then(applySuccessUI).catch(() => {
-                            navigator.clipboard?.writeText?.(table.innerText || table.textContent || '').then(applySuccessUI).catch(applyErrorUI);
-                        });
-                    } else if (navigator.clipboard?.writeText) {
-                        navigator.clipboard.writeText(table.innerText || table.textContent || '').then(applySuccessUI).catch(applyErrorUI);
-                    } else {
-                        applyErrorUI();
-                    }
-                } catch {
-                    applyErrorUI();
-                }
-                return;
+        if (tab === 'code') {
+          const content = codeBlock.querySelector<HTMLElement>('.code-block-content');
+          if (content) {
+            if (!content.dataset.initialMaxHeight) {
+              const computedStyle = window.getComputedStyle(content);
+              const maxHeight = computedStyle.maxHeight || '200px';
+              content.dataset.initialMaxHeight = maxHeight;
+              content.style.maxHeight = maxHeight;
             }
 
-            const codeBlock = target.closest<HTMLElement>('.code-block');
-            if (!codeBlock) return;
-
-            const codeElement = codeBlock.querySelector('code');
-            if (!codeElement) return;
-
-            const codeText = codeElement.textContent || '';
-
-            if (target.classList.contains('run-code-btn')) {
-                e.preventDefault();
-                if (target.disabled) return;
-
-                const consolePanel = codeBlock.querySelector<HTMLElement>('.code-execution-console');
-                const status = consolePanel?.querySelector<HTMLElement>('.code-execution-console-status');
-                const meta = consolePanel?.querySelector<HTMLElement>('.code-execution-console-meta');
-                const output = consolePanel?.querySelector<HTMLPreElement>('.code-execution-console-output');
-                if (!consolePanel || !status || !meta || !output) return;
-
-                consolePanel.hidden = false;
-                consolePanel.classList.remove('is-error');
-                consolePanel.classList.add('is-running');
-                status.textContent = t('canvas.pythonTerminal.running');
-                meta.textContent = '';
-                output.textContent = '';
-                target.disabled = true;
-
-                if (!isAuthenticated) {
-                    consolePanel.classList.remove('is-running');
-                    consolePanel.classList.add('is-error');
-                    status.textContent = t('canvas.pythonTerminal.failed');
-                    output.textContent = t('settings.account.signInOrRegister');
-                    target.disabled = false;
-                    return;
-                }
-
-                void apiService.executeCanvasPython(codeText)
-                    .then((result) => {
-                        const isSuccess = result.ok;
-                        consolePanel.classList.remove('is-running');
-                        consolePanel.classList.toggle('is-error', !isSuccess);
-                        status.textContent = isSuccess
-                            ? t('canvas.pythonTerminal.success')
-                            : t('canvas.pythonTerminal.failed');
-                        meta.textContent = result.duration_ms === undefined
-                            ? ''
-                            : t('canvas.pythonTerminal.duration', { duration: result.duration_ms });
-                        output.textContent = [result.stdout, result.stderr || result.error]
-                            .filter((value): value is string => Boolean(value))
-                            .join('\n\n') || t('canvas.pythonTerminal.noOutput');
-                    })
-                    .catch(() => {
-                        consolePanel.classList.remove('is-running');
-                        consolePanel.classList.add('is-error');
-                        status.textContent = t('canvas.pythonTerminal.failed');
-                        meta.textContent = '';
-                        output.textContent = t('canvas.pythonTerminal.requestFailed');
-                    })
-                    .finally(() => {
-                        target.disabled = false;
-                    });
-                return;
-            }
-
-            if (target.classList.contains('code-tab-btn')) {
-                const tab = target.dataset.tab;
-                if (!tab) return;
-
-                const tabs = codeBlock.querySelectorAll<HTMLButtonElement>('.code-tab-btn');
-                tabs.forEach(btn => {
-                    const isActiveTab = btn === target;
-                    btn.classList.toggle('active', isActiveTab);
-                    btn.setAttribute('aria-selected', String(isActiveTab));
-                    btn.tabIndex = isActiveTab ? 0 : -1;
-                });
-
-                const panes = codeBlock.querySelectorAll<HTMLElement>('.code-block-pane');
-                panes.forEach(pane => {
-                    const isActivePane = pane.dataset.pane === tab;
-                    pane.classList.toggle('active', isActivePane);
-                    pane.toggleAttribute('hidden', !isActivePane);
-                });
-
-                if (tab === 'code') {
-                    const content = codeBlock.querySelector<HTMLElement>('.code-block-content');
-                    if (content) {
-                        if (!content.dataset.initialMaxHeight) {
-                            const computedStyle = window.getComputedStyle(content);
-                            const maxHeight = computedStyle.maxHeight || '200px';
-                            content.dataset.initialMaxHeight = maxHeight;
-                            content.style.maxHeight = maxHeight;
-                        }
-
-                        requestAnimationFrame(() => {
-                            if (!content.classList.contains('expanded')) {
-                                const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200', 10);
-                                if (content.scrollHeight > initialMaxHeight) {
-                                    content.classList.add('has-overflow');
-                                } else {
-                                    content.classList.remove('has-overflow');
-                                }
-                            }
-
-                        });
-                    }
-                }
-            } else if (target.classList.contains('copy-code-btn')) {
-                Utils.copyToClipboard(codeText, target);
-            } else if (target.classList.contains('download-code-btn')) {
-                const filename = codeBlock.dataset.filename || 'code.txt';
-                const language = codeBlock.dataset.language || 'plaintext';
-                const extension = language === 'plaintext' ? 'txt' : language;
-                const hasExtension = filename.toLowerCase().endsWith(`.${extension}`);
-                const downloadName = hasExtension ? filename : `${filename}.${extension}`;
-                const mimeType = language === 'svg' ? 'image/svg+xml' : `text/${language}`;
-                Utils.downloadFile(codeText, downloadName, mimeType);
-            } else if (target.classList.contains('toggle-code-btn')) {
-                const content = codeBlock.querySelector<HTMLElement>('.code-block-content');
-                if (!content) return;
-
-                const iconExpand = target.querySelector<HTMLElement>('.icon-expand');
-                const iconCollapse = target.querySelector<HTMLElement>('.icon-collapse');
-                const isCurrentlyCollapsed = !content.classList.contains('expanded');
-
-                if (isCurrentlyCollapsed) {
-                    const collapseLabel = target.dataset.collapseLabel || t('codeBlock.collapse');
-                    content.classList.add('expanded');
-                    target.classList.add('expanded');
-                    target.title = collapseLabel;
-                    target.setAttribute('aria-label', collapseLabel);
-                    target.setAttribute('aria-expanded', 'true');
-                    content.style.maxHeight = content.scrollHeight + "px";
-                    if (iconExpand) iconExpand.style.display = 'none';
-                    if (iconCollapse) iconCollapse.style.display = 'block';
-                    content.classList.remove('has-overflow');
-                    requestAnimationFrame(() => {
-                    });
+            requestAnimationFrame(() => {
+              if (!content.classList.contains('expanded')) {
+                const initialMaxHeight = parseInt(content.dataset.initialMaxHeight || '200', 10);
+                if (content.scrollHeight > initialMaxHeight) {
+                  content.classList.add('has-overflow');
                 } else {
-                    const expandLabel = target.dataset.expandLabel || t('codeBlock.expand');
-                    content.classList.remove('expanded');
-                    target.classList.remove('expanded');
-                    target.title = expandLabel;
-                    target.setAttribute('aria-label', expandLabel);
-                    target.setAttribute('aria-expanded', 'false');
-                    const initialMaxHeight = content.dataset.initialMaxHeight || '200px';
-                    content.style.maxHeight = initialMaxHeight;
-                    if (iconExpand) iconExpand.style.display = 'block';
-                    if (iconCollapse) iconCollapse.style.display = 'none';
-                    setTimeout(() => {
-                        if (content.scrollHeight > parseInt(initialMaxHeight)) {
-                            content.classList.add('has-overflow');
-                        } else {
-                            content.classList.remove('has-overflow');
-                        }
-                    }, 100);
+                  content.classList.remove('has-overflow');
                 }
-            }
-        };
-
-        const currentRef = contentRef.current;
-        if (currentRef) {
-            currentRef.addEventListener('click', handleClick);
-            return () => {
-                currentRef.removeEventListener('click', handleClick);
-            };
-        }
-    }, [displayContent, isAuthenticated, markdownEnabledForMessage, message.id, t]);
-    const handleCopy = async () => {
-        const contentToCopy = isUser ? content : stripThinkingBlocks(displayContent);
-        if (!contentToCopy) return;
-        try {
-            await navigator.clipboard.writeText(contentToCopy);
-        } catch (e) {
-            console.error('Failed to copy', e);
-        }
-    };
-    const handleSaveEdit = () => {
-        if (editedContent.trim() !== content && editedContent.trim()) {
-            onEdit(message.id, editedContent.trim());
-        }
-        setIsEditingUserMessage(false);
-    };
-    const handleCancelEdit = () => {
-        setEditedContent(content);
-        setIsEditingUserMessage(false);
-    };
-    const submitFeedback = async (
-        rating: 'like' | 'dislike',
-        options: { reasonCodes?: string[]; comment?: string } = {}
-    ) => {
-        const responseText = String(displayContent || '').trim();
-        if (!responseText || feedbackSubmitting) return;
-        if (!sessionId) {
-            setFeedbackMessage(t('chat.feedback.noSession'));
-            return;
-        }
-
-        setFeedbackSubmitting(true);
-        setFeedbackMessage('');
-        try {
-            await apiService.submitAIResponseFeedback({
-                session_id: sessionId,
-                message_client_id: String(message.id || ''),
-                rating,
-                reason_codes: rating === 'dislike' ? (options.reasonCodes || feedbackReasons) : [],
-                comment: rating === 'dislike' ? (options.comment ?? feedbackComment) : '',
-                response_text: responseText,
+              }
             });
-            setFeedbackRating(rating);
-            setFeedbackPanelOpen(false);
-            setFeedbackMessage(t('chat.feedback.sent'));
-            if (rating === 'like') {
-                setFeedbackReasons([]);
-                setFeedbackComment('');
-                setLikeConfettiBurst((current) => current + 1);
-            }
-            setFeedbackMessageType('success');
-        } catch (error) {
-            setFeedbackMessage(error instanceof Error && error.message ? error.message : t('chat.feedback.error'));
-            setFeedbackMessageType('error');
-        } finally {
-            setFeedbackSubmitting(false);
+          }
         }
+      } else if (target.classList.contains('copy-code-btn')) {
+        Utils.copyToClipboard(codeText, target);
+      } else if (target.classList.contains('download-code-btn')) {
+        const filename = codeBlock.dataset.filename || 'code.txt';
+        const language = codeBlock.dataset.language || 'plaintext';
+        const extension = language === 'plaintext' ? 'txt' : language;
+        const hasExtension = filename.toLowerCase().endsWith(`.${extension}`);
+        const downloadName = hasExtension ? filename : `${filename}.${extension}`;
+        const mimeType = language === 'svg' ? 'image/svg+xml' : `text/${language}`;
+        Utils.downloadFile(codeText, downloadName, mimeType);
+      } else if (target.classList.contains('toggle-code-btn')) {
+        const content = codeBlock.querySelector<HTMLElement>('.code-block-content');
+        if (!content) return;
+
+        const iconExpand = target.querySelector<HTMLElement>('.icon-expand');
+        const iconCollapse = target.querySelector<HTMLElement>('.icon-collapse');
+        const isCurrentlyCollapsed = !content.classList.contains('expanded');
+
+        if (isCurrentlyCollapsed) {
+          const collapseLabel = target.dataset.collapseLabel || t('codeBlock.collapse');
+          content.classList.add('expanded');
+          target.classList.add('expanded');
+          target.title = collapseLabel;
+          target.setAttribute('aria-label', collapseLabel);
+          target.setAttribute('aria-expanded', 'true');
+          content.style.maxHeight = content.scrollHeight + 'px';
+          if (iconExpand) iconExpand.style.display = 'none';
+          if (iconCollapse) iconCollapse.style.display = 'block';
+          content.classList.remove('has-overflow');
+          requestAnimationFrame(() => {});
+        } else {
+          const expandLabel = target.dataset.expandLabel || t('codeBlock.expand');
+          content.classList.remove('expanded');
+          target.classList.remove('expanded');
+          target.title = expandLabel;
+          target.setAttribute('aria-label', expandLabel);
+          target.setAttribute('aria-expanded', 'false');
+          const initialMaxHeight = content.dataset.initialMaxHeight || '200px';
+          content.style.maxHeight = initialMaxHeight;
+          if (iconExpand) iconExpand.style.display = 'block';
+          if (iconCollapse) iconCollapse.style.display = 'none';
+          setTimeout(() => {
+            if (content.scrollHeight > parseInt(initialMaxHeight)) {
+              content.classList.add('has-overflow');
+            } else {
+              content.classList.remove('has-overflow');
+            }
+          }, 100);
+        }
+      }
     };
-    const toggleFeedbackReason = (reason) => {
-        setFeedbackReasons((current) => (
-            current.includes(reason)
-                ? current.filter((item) => item !== reason)
-                : [...current, reason]
-        ));
-    };
-    const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
-    const feedbackActionVisibility = getFeedbackActionVisibility(feedbackRating);
-    const isUserEditMode = isUser && isEditingUserMessage;
-    const messageClassName = cn(
-        'message ui-message-shell',
-        isUser ? 'user-message ui-message-shell-user' : 'ai-message ui-message-shell-ai',
-        isLoading && 'loading',
-        isError && 'error',
-        showUserActions && 'has-user-actions',
-        isUserEditMode && 'is-editing-user-message'
+
+    const currentRef = contentRef.current;
+    if (currentRef) {
+      currentRef.addEventListener('click', handleClick);
+      return () => {
+        currentRef.removeEventListener('click', handleClick);
+      };
+    }
+  }, [displayContent, isAuthenticated, markdownEnabledForMessage, message.id, t]);
+  const handleCopy = async () => {
+    const contentToCopy = isUser ? content : stripThinkingBlocks(displayContent);
+    if (!contentToCopy) return;
+    try {
+      await navigator.clipboard.writeText(contentToCopy);
+    } catch (e) {
+      console.error('Failed to copy', e);
+    }
+  };
+  const handleSaveEdit = () => {
+    if (editedContent.trim() !== content && editedContent.trim()) {
+      onEdit(message.id, editedContent.trim());
+    }
+    setIsEditingUserMessage(false);
+  };
+  const handleCancelEdit = () => {
+    setEditedContent(content);
+    setIsEditingUserMessage(false);
+  };
+  const submitFeedback = async (
+    rating: 'like' | 'dislike',
+    options: { reasonCodes?: string[]; comment?: string } = {}
+  ) => {
+    const responseText = String(displayContent || '').trim();
+    if (!responseText || feedbackSubmitting) return;
+    if (!sessionId) {
+      setFeedbackMessage(t('chat.feedback.noSession'));
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    setFeedbackMessage('');
+    try {
+      await apiService.submitAIResponseFeedback({
+        session_id: sessionId,
+        message_client_id: String(message.id || ''),
+        rating,
+        reason_codes: rating === 'dislike' ? options.reasonCodes || feedbackReasons : [],
+        comment: rating === 'dislike' ? (options.comment ?? feedbackComment) : '',
+        response_text: responseText,
+      });
+      setFeedbackRating(rating);
+      setFeedbackPanelOpen(false);
+      setFeedbackMessage(t('chat.feedback.sent'));
+      if (rating === 'like') {
+        setFeedbackReasons([]);
+        setFeedbackComment('');
+        setLikeConfettiBurst((current) => current + 1);
+      }
+      setFeedbackMessageType('success');
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof Error && error.message ? error.message : t('chat.feedback.error')
+      );
+      setFeedbackMessageType('error');
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+  const toggleFeedbackReason = (reason) => {
+    setFeedbackReasons((current) =>
+      current.includes(reason) ? current.filter((item) => item !== reason) : [...current, reason]
     );
-    const messageContentClassName = cn(
-        'message-content ui-message-bubble',
-        isUser ? 'ui-message-bubble-user' : 'ui-message-bubble-ai',
-        isUserEditMode && 'ui-message-bubble-editing'
-    );
+  };
+  const showUserActions = isUser && onEdit && !isLoading && !isEditingUserMessage;
+  const feedbackActionVisibility = getFeedbackActionVisibility(feedbackRating);
+  const isUserEditMode = isUser && isEditingUserMessage;
+  const messageClassName = cn(
+    'message ui-message-shell',
+    isUser ? 'user-message ui-message-shell-user' : 'ai-message ui-message-shell-ai',
+    isLoading && 'loading',
+    isError && 'error',
+    showUserActions && 'has-user-actions',
+    isUserEditMode && 'is-editing-user-message'
+  );
+  const messageContentClassName = cn(
+    'message-content ui-message-bubble',
+    isUser ? 'ui-message-bubble-user' : 'ui-message-bubble-ai',
+    isUserEditMode && 'ui-message-bubble-editing'
+  );
 
-    return (
-        <div
-            className={messageClassName}
-            data-message-id={message.id}
-            data-raw-content={isUser ? (content || '') : undefined}
-            role={isError ? 'alert' : 'article'}
-            aria-label={isUser ? t('chat.userMessageAria') : t('chat.assistantMessageAria')}
-            aria-busy={isLoading || undefined}
-        >
-            <div className={messageContentClassName}>
-                {isUserEditMode ? (
-                    <div className="user-message-edit-panel ui-edit-panel">
-                        <textarea
-                            className="user-message-edit-textarea ui-edit-textarea"
-                            value={editedContent}
-                            onChange={(e) => setEditedContent(e.target.value)}
-                            placeholder={t('chat.editUserMessage.placeholder')}
-                            aria-label={t('chat.editUserMessage.ariaLabel')}
-                            autoFocus
-                        />
-                        <div className="edit-panel-buttons ui-edit-actions">
-                            <button
-                                type="button"
-                                className="edit-save-btn ui-edit-save"
-                                onClick={handleSaveEdit}
-                                disabled={!editedContent.trim() || editedContent.trim() === content}
-                            >
-                                <Check size={16} strokeWidth={2.4} aria-hidden="true" />
-                                <span>{t('chat.editUserMessage.save')}</span>
-                            </button>
-                            <button
-                                type="button"
-                                className="edit-cancel-btn ui-edit-cancel"
-                                onClick={handleCancelEdit}
-                            >
-                                <X size={16} strokeWidth={2.4} aria-hidden="true" />
-                                <span>{t('chat.editUserMessage.cancel')}</span>
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                {isUser && displayFiles?.length > 0 && (
-                    <div
-                        className={cn(
-                            'message-attachments mt-2.5 flex flex-wrap gap-2',
-                            isUser ? 'user-attachments' : 'ai-attachments'
-                        )}
-                    >
-                        {displayFiles?.map((f, idx) => {
-                            const file = f.file || f;
-                            if (!file || typeof file === 'string' || (!file.url_path && !file.original_name && !file.name)) {
-                                return null;
-                            }
-
-                            const fileName = file.original_name || file.name || t('files.fileFallback');
-                            const fileUrl = file.local_preview_url || file.url_path || '';
-                            const fullUrl = resolveMediaUrl(fileUrl);
-                            const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
-                            const ext = fileName.split('.').pop()?.toLowerCase() || '';
-                            const iconPath = fileService.getFileIconPath(ext);
-                            const isImage = fileService.isImageFile({
-                                name: fileName,
-                                type: file.mime_type,
-                                mime_type: file.mime_type
-                            });
-
-                            return (
-                                <div
-                                    key={idx}
-                                    className="attachment-file-card ui-attachment-card"
-                                    title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}
-                                >
-                                    <div className="attachment-card-preview ui-attachment-preview">
-                                        {isImage && fullUrl ? (
-                                            <button
-                                                type="button"
-                                                className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
-                                                onClick={() => {
-                                                    if (window.openImageLightbox) {
-                                                        window.openImageLightbox(fullUrl, message.id, {
-                                                            canRegenerate: false,
-                                                            downloadName: fileName,
-                                                        });
-                                                    }
-                                                }}
-                                                aria-label={`${t('chatImage.open')}: ${fileName}`}
-                                            >
-                                                <img
-                                                    src={fullUrl}
-                                                    alt=""
-                                                    aria-hidden="true"
-                                                    className="image-thumbnail h-full w-full object-cover"
-                                                    onError={(e) => {
-                                                        e.currentTarget.src = iconPath;
-                                                        e.currentTarget.className = 'generic-icon size-12 object-contain opacity-60';
-                                                    }}
-                                                />
-                                            </button>
-                                        ) : (
-                                            <img
-                                                src={iconPath}
-                                                alt={fileName}
-                                                className="generic-icon size-12 object-contain opacity-60"
-                                                onError={(e) => {
-                                                    e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="attachment-card-footer ui-attachment-footer">
-                                        <img
-                                            src={iconPath}
-                                            alt=""
-                                            aria-hidden="true"
-                                            className="attachment-card-footer-icon"
-                                            onError={(e) => {
-                                                e.currentTarget.src = 'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
-                                            }}
-                                        />
-                                        <div className="attachment-card-footer-info">
-                                            {fullUrl && isImage ? (
-                                                <button
-                                                    type="button"
-                                                    className="file-card-name border-0 bg-transparent p-0 text-left"
-                                                    onClick={() => {
-                                                        if (window.openImageLightbox) {
-                                                            window.openImageLightbox(fullUrl, message.id, {
-                                                                canRegenerate: false,
-                                                                downloadName: fileName,
-                                                            });
-                                                        }
-                                                    }}
-                                                >
-                                                    {fileName}
-                                                </button>
-                                            ) : fullUrl ? (
-                                                <a
-                                                    href={fullUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="file-card-name"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    {fileName}
-                                                </a>
-                                            ) : (
-                                                <span className="file-card-name">{fileName}</span>
-                                            )}
-                                            {fileSize && <span className="file-card-size">{fileSize}</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {!isUser && isLoading && webSearchStatus && !streamedThinking && (
-                    <WebSearchProgress status={webSearchStatus} t={t} />
-                )}
-
-                {(streamedThinking ? [streamedThinking] : widgets.filter(widget => widget.type === 'think')).map((thought, index) => (
-                    <ThinkBlock
-                        key={`${message.id}-thinking-${currentVariantIndex ?? 0}-${index}`}
-                        content={thought.content}
-                        openTime={thought.openTime}
-                        closeTime={thought.closeTime}
-                        isStreaming={Boolean(streamedThinking && streamedThinking.status !== 'complete')}
-                    />
-                ))}
-
-                {!isUser && (
-                    <MessageFileAttachments
-                        files={displayFiles}
-                        isUser={false}
-                        messageId={message.id}
-                        t={t}
-                    />
-                )}
-
-                {isGeneratingImage && (
-                    <div className="image-generation-placeholder ui-message-image-placeholder">
-                        <div className="image-placeholder-visual ui-message-image-visual">
-                            <div className="shimmer-effect"></div>
-                            <svg className="placeholder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" x2="12" y1="3" y2="15"/>
-                            </svg>
-                        </div>
-                        <div className="image-placeholder-caption ui-message-image-caption">
-                            {t('chatImage.generating', { prompt: imagePrompt || '' })}
-                        </div>
-                    </div>
-                )}
-
-                <div
-                    ref={contentRef}
-                    className="message-text ui-message-text"
-                    dangerouslySetInnerHTML={{ __html: htmlContent }}
-                />
-
-                {displayImages?.length > 0 && (
-                    <div
-                        className={cn('message-image-grid ui-scrollbar-thin', isUser ? 'user-image-grid' : 'ai-image-grid')}
-                        data-count={displayImages.length}
-                        tabIndex={displayImages.length > 1 ? 0 : undefined}
-                        aria-label={displayImages.length > 1 ? t('chatImage.gallery') : undefined}
-                    >
-                        {displayImages.map((src, idx) => {
-                            const imagePath = typeof src === 'string' ? src : (src?.url_path || '');
-                            if (!imagePath) {
-                                return null;
-                            }
-
-                            const fullSrc = resolveMediaUrl(imagePath);
-                            const isImageObject = typeof src === 'object';
-                            const isPythonArtifact = isImageObject && src?.source === 'python';
-                            return (
-                                <MessageImageAttachment
-                                    key={`${message.id}-image-${idx}`}
-                                    src={fullSrc}
-                                    alt={t('chatImage.messageAlt', { number: idx + 1 })}
-                                    messageId={message.id}
-                                    isInteractive={!isUser}
-                                    canRegenerate={!isPythonArtifact}
-                                    downloadName={isImageObject ? src?.original_name : undefined}
-                                    width={isImageObject ? (src?.metadata?.width ?? src?.width) : undefined}
-                                    height={isImageObject ? (src?.metadata?.height ?? src?.height) : undefined}
-                                />
-                            );
-                        })}
-                    </div>
-                )}
-
-                {githubDiffPayload && (
-                    <GitHubDiffCard payload={githubDiffPayload} t={t} />
-                )}
-
-                {widgets.map(widget => {
-                    if (widget.type === 'plan' || widget.type === 'questions') {
-                        return <ToolPanel key={`${widget.id}:${JSON.stringify(widget.state)}`} kind={widget.type} state={widget.state} disabled={isLoading} onReply={onSendMessage ? (prompt) => onSendMessage(prompt, [], {}) : undefined} />;
-                    }
-                    if (widget.type === 'quiz') {
-                        return <Quiz key={widget.id} initialState={widget.state} />;
-                    } else if (widget.type === 'spinwheel') {
-                        return <Spinwheel key={widget.id} initialState={widget.state} />;
-                    } else if (widget.type === 'beatbox') {
-                        return <Beatbox key={widget.id} initialState={widget.state} onStateChange={onBeatboxStateChange} />;
-                    } else if (widget.type === 'visualize') {
-                        return (
-                            <Visualization
-                                key={widget.id}
-                                initialState={widget.state}
-                                onFollowUp={onSendMessage
-                                    ? (prompt) => onSendMessage(prompt, [], {})
-                                    : undefined}
-                            />
-                        );
-                    }
-                    return null;
-                })}
-
-                {isLoading && !displayContent && !isGeneratingImage && !webSearchStatus && !streamedThinking && (
-                    <ThinkBlock
-                        content=""
-                        openTime={Number(message.timestamp || 0) < 1_000_000_000_000
-                            ? Number(message.timestamp || 0) * 1000
-                            : Number(message.timestamp || 0)}
-                        isStreaming
-                    />
-                )}
-
-                {!isLoading && displayDeliveryState === 'interrupted' && (
-                    <div className="ui-message-delivery-state" role="status">
-                        {t('reliability.interrupted')}
-                    </div>
-                )}
-
-                {hasMultipleVariants && (
-                    <div className="variants-nav ui-message-variants">
-                        <button
-                            type="button"
-                            className={cn(
-                                'variant-btn ui-message-variant-button prev-btn',
-                                currentVariantIndex > 0 && 'active'
-                            )}
-                            title={t('chat.variants.previous')}
-                            aria-label={t('chat.variants.previous')}
-                            disabled={currentVariantIndex <= 0}
-                            onClick={() => onSwitchVariant && onSwitchVariant(message.id, -1)}
-                        >
-                            <img src="/icons/media/prev.svg" alt="" aria-hidden="true" />
-                        </button>
-                        <span
-                            className="variants-counter ui-message-variant-counter"
-                            aria-label={t('chat.variants.counter', {
-                                current: (currentVariantIndex || 0) + 1,
-                                total: variants.length
-                            })}
-                        >
-                            {(currentVariantIndex || 0) + 1}/{variants.length}
-                        </span>
-                        <button
-                            type="button"
-                            className={cn(
-                                'variant-btn ui-message-variant-button next-btn',
-                                (currentVariantIndex || 0) < variants.length - 1 && 'active'
-                            )}
-                            title={t('chat.variants.next')}
-                            aria-label={t('chat.variants.next')}
-                            disabled={(currentVariantIndex || 0) >= variants.length - 1}
-                            onClick={() => onSwitchVariant && onSwitchVariant(message.id, 1)}
-                        >
-                            <img src="/icons/media/next.svg" alt="" aria-hidden="true" />
-                        </button>
-                    </div>
-                )}
-                {!isUser && isLoading && displaySourceItems.length > 0 && (
-                    <div className="actions-bar ui-message-actions">
-                        <WebSourcesPanel sources={displaySourceItems} />
-                    </div>
-                )}
-                {!isUser && !isLoading && (
-                    <div className="actions-bar ui-message-actions">
-                        <MessageActionButton
-                            className="copy-md-btn"
-                            title={t('common.copy')}
-                            onClick={handleCopy}
-                        >
-                            <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
-                        <MessageActionButton
-                            className={cn(
-                                'speak-btn',
-                                audio.isVisible ? 'active' : '',
-                                audio.isLoading ? 'loading' : '',
-                                audio.isError ? 'error' : ''
-                            )}
-                            title={t('chat.audio.speak')}
-                            onClick={() => {
-                                const speechContent = stripThinkingBlocks(displayContent);
-                                if (speechContent) {
-                                    audio.speak(speechContent);
-                                }
-                            }}
-                        >
-                            <img src="/icons/media/audio.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
-                        {onRegenerate && (
-                            <MessageActionButton
-                                className="regenerate-btn"
-                                title={t('chat.regenerate')}
-                                onClick={() => onRegenerate(message.id)}
-                            >
-                                <img src="/icons/ui/regenerate.svg" alt="" aria-hidden="true" />
-                            </MessageActionButton>
-                        )}
-                        <MessageActionButton
-                            className="translate-btn"
-                            title={t('translationPanel.translateAction')}
-                            onClick={() => {
-                                const textToTranslate = contentRef.current?.textContent?.trim() || displayContent || '';
-                                if (textToTranslate) {
-                                    setShowTranslation(true);
-                                } else {
-                                    Utils.showPopupWarning?.(t('translationPanel.noText'));
-                                }
-                            }}
-                        >
-                            <img src="/icons/ui/translate.svg" alt="" aria-hidden="true" />
-                        </MessageActionButton>
-                        <span className="feedback-actions">
-                            {feedbackActionVisibility.like && (
-                                <MessageActionButton
-                                    className="feedback-btn"
-                                    title={t('chat.feedback.like')}
-                                    onClick={() => void submitFeedback('like')}
-                                    disabled={feedbackSubmitting}
-                                >
-                                    <img src="/icons/ui/like.svg" alt="" aria-hidden="true" />
-                                </MessageActionButton>
-                            )}
-                            {feedbackActionVisibility.dislike && (
-                                <MessageActionButton
-                                    className="feedback-btn"
-                                    title={t('chat.feedback.dislike')}
-                                    onClick={() => {
-                                        setFeedbackPanelOpen((current) => !current);
-                                        setFeedbackMessage('');
-                                    }}
-                                    disabled={feedbackSubmitting}
-                                >
-                                    <img src="/icons/ui/dislike.svg" alt="" aria-hidden="true" />
-                                </MessageActionButton>
-                            )}
-                            {likeConfettiBurst > 0 && (
-                                <span
-                                    key={likeConfettiBurst}
-                                    className="feedback-like-confetti"
-                                    aria-hidden="true"
-                                >
-                                    {LIKE_CONFETTI_PARTICLES.map((particle) => (
-                                        <span key={particle} />
-                                    ))}
-                                </span>
-                            )}
-                        </span>
-                        <WebSourcesPanel sources={displaySourceItems} />
-                    </div>
-                )}
-                {!isUser && !isLoading && feedbackPanelOpen && (
-                    <div className="ai-feedback-panel" role="dialog" aria-label={t('chat.feedback.panelTitle')}>
-                        <div className="ai-feedback-panel-head">
-                            <strong>{t('chat.feedback.panelTitle')}</strong>
-                            <button
-                                type="button"
-                                className="ai-feedback-close"
-                                onClick={() => setFeedbackPanelOpen(false)}
-                                aria-label={t('common.close')}
-                            >
-                                <X size={15} strokeWidth={2} aria-hidden="true" />
-                            </button>
-                        </div>
-                        <div className="ai-feedback-reasons" role="group" aria-label={t('chat.feedback.reasonGroup')}>
-                            {AI_FEEDBACK_REASONS.map((reason) => (
-                                <button
-                                    key={reason}
-                                    type="button"
-                                    className={cn(feedbackReasons.includes(reason) && 'active')}
-                                    onClick={() => toggleFeedbackReason(reason)}
-                                >
-                                    {t(`chat.feedback.reasons.${reason}`)}
-                                </button>
-                            ))}
-                        </div>
-                        <label className="ai-feedback-comment">
-                            <span>{t('chat.feedback.commentLabel')}</span>
-                            <textarea
-                                value={feedbackComment}
-                                maxLength={1200}
-                                onChange={(event) => setFeedbackComment(event.target.value)}
-                                placeholder={t('chat.feedback.commentPlaceholder')}
-                            />
-                        </label>
-                        <button
-                            type="button"
-                            className="ai-feedback-submit"
-                            onClick={() => void submitFeedback('dislike')}
-                            disabled={feedbackSubmitting}
-                        >
-                            {feedbackSubmitting ? t('chat.feedback.sending') : t('chat.feedback.submit')}
-                        </button>
-                    </div>
-                )}
-                {!isUser && feedbackMessage && (
-                    <p className={cn('ai-feedback-status', feedbackMessageType)}>
-                        {feedbackMessage}
-                    </p>
-                )}
-                {!isUser && showTranslation && (
-                    <TranslationPanel
-                        originalText={stripThinkingBlocks(displayContent)}
-                        onClose={() => setShowTranslation(false)}
-                    />
-                )}
-                {!isUser && audio.isVisible && (
-                    <div
-                        className={cn('audio-player-container ui-audio-player visible', audio.isPlaying && 'playing')}
-                        role="region"
-                        aria-label={t('chat.audio.label')}
-                    >
-                        <div className="audio-player-header ui-audio-player-header">
-                            <div className="audio-player-icon ui-audio-player-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 4V20M8 8V16M16 7V17M4 10V14M20 9V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                </svg>
-                                <span>{t('chat.audio.label')}</span>
-                            </div>
-                            {audio.isLoading && (
-                                <div className="audio-player-loader" role="status">{t('chat.audio.loading')}</div>
-                            )}
-                        </div>
-                        {!audio.isLoading && !audio.isError && audio.isReady && (
-                            <div className="audio-player-controls ui-audio-player-controls">
-                                <button
-                                    type="button"
-                                    className="audio-play-pause-btn ui-audio-play-button"
-                                    title={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
-                                    aria-label={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
-                                    onClick={audio.togglePlayback}
-                                    disabled={!audio.isReady}
-                                >
-                                    <svg className="play-pause-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                                        {audio.isPlaying ? (
-                                            <path className="pause-icon" d="M8 5V19M16 5V19" stroke="currentColor" strokeWidth="2"/>
-                                        ) : (
-                                            <path className="play-icon" d="M5 3l14 9-14 9z" stroke="currentColor" strokeWidth="2" fill="currentColor"/>
-                                        )}
-                                    </svg>
-                                </button>
-                                <div className="audio-waveform-container ui-audio-waveform">
-                                    <canvas ref={waveformCanvasRef} className="audio-waveform" height="48" width="200" aria-hidden="true"></canvas>
-                                    <input
-                                        type="range"
-                                        className="audio-progress-bar"
-                                        min="0"
-                                        max={audio.totalDuration}
-                                        value={Math.min(Math.max(Number.isFinite(audio.currentTime) ? audio.currentTime : 0, 0), audio.totalDuration)}
-                                        step="0.1"
-                                        onChange={(e) => audio.seekAudio(parseFloat(e.target.value))}
-                                        aria-label={t('chat.audio.progress')}
-                                        disabled={!audio.isReady}
-                                    />
-                                </div>
-                                <div className="audio-time ui-audio-time">
-                                    {audio.formatTime(audio.currentTime)} / {audio.formatTime(audio.totalDuration)}
-                                </div>
-                            </div>
-                        )}
-                        {audio.isError && (
-                            <div className="audio-error-message" role="alert" style={{ display: 'block' }}>
-                                {t('chat.audio.error')}
-                            </div>
-                        )}
-                    </div>
-                )}
-                    </>
-                )}
+  return (
+    <div
+      className={messageClassName}
+      data-message-id={message.id}
+      data-raw-content={isUser ? content || '' : undefined}
+      role={isError ? 'alert' : 'article'}
+      aria-label={isUser ? t('chat.userMessageAria') : t('chat.assistantMessageAria')}
+      aria-busy={isLoading || undefined}
+    >
+      <div className={messageContentClassName}>
+        {isUserEditMode ? (
+          <div className="user-message-edit-panel ui-edit-panel">
+            <textarea
+              className="user-message-edit-textarea ui-edit-textarea"
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              placeholder={t('chat.editUserMessage.placeholder')}
+              aria-label={t('chat.editUserMessage.ariaLabel')}
+              autoFocus
+            />
+            <div className="edit-panel-buttons ui-edit-actions">
+              <button
+                type="button"
+                className="edit-save-btn ui-edit-save"
+                onClick={handleSaveEdit}
+                disabled={!editedContent.trim() || editedContent.trim() === content}
+              >
+                <Check size={16} strokeWidth={2.4} aria-hidden="true" />
+                <span>{t('chat.editUserMessage.save')}</span>
+              </button>
+              <button
+                type="button"
+                className="edit-cancel-btn ui-edit-cancel"
+                onClick={handleCancelEdit}
+              >
+                <X size={16} strokeWidth={2.4} aria-hidden="true" />
+                <span>{t('chat.editUserMessage.cancel')}</span>
+              </button>
             </div>
-            {showUserActions && (
-                <div className="actions-bar ui-message-actions ui-user-message-actions">
-                    <MessageActionButton
-                        className="copy-btn"
-                        title={t('common.copy')}
-                        onClick={handleCopy}
+          </div>
+        ) : (
+          <>
+            {isUser && displayFiles?.length > 0 && (
+              <div
+                className={cn(
+                  'message-attachments mt-2.5 flex flex-wrap gap-2',
+                  isUser ? 'user-attachments' : 'ai-attachments'
+                )}
+              >
+                {displayFiles?.map((f, idx) => {
+                  const file = f.file || f;
+                  if (
+                    !file ||
+                    typeof file === 'string' ||
+                    (!file.url_path && !file.original_name && !file.name)
+                  ) {
+                    return null;
+                  }
+
+                  const fileName = file.original_name || file.name || t('files.fileFallback');
+                  const fileUrl = file.local_preview_url || file.url_path || '';
+                  const fullUrl = resolveMediaUrl(fileUrl);
+                  const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
+                  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+                  const iconPath = fileService.getFileIconPath(ext);
+                  const isImage = fileService.isImageFile({
+                    name: fileName,
+                    type: file.mime_type,
+                    mime_type: file.mime_type,
+                  });
+
+                  return (
+                    <div
+                      key={idx}
+                      className="attachment-file-card ui-attachment-card"
+                      title={`${fileName}${fileSize ? ` (${fileSize})` : ''}`}
                     >
-                        <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
-                    </MessageActionButton>
-                    <MessageActionButton
-                        className="edit-btn"
-                        title={t('chat.editUserMessage.edit')}
-                        onClick={() => setIsEditingUserMessage(true)}
-                    >
-                        <img src="/icons/ui/edit.svg" alt="" aria-hidden="true" />
-                    </MessageActionButton>
-                </div>
+                      <div className="attachment-card-preview ui-attachment-preview">
+                        {isImage && fullUrl ? (
+                          <button
+                            type="button"
+                            className="attachment-card-preview-button h-full w-full border-0 bg-transparent p-0"
+                            onClick={() => {
+                              if (window.openImageLightbox) {
+                                window.openImageLightbox(fullUrl, message.id, {
+                                  canRegenerate: false,
+                                  downloadName: fileName,
+                                });
+                              }
+                            }}
+                            aria-label={`${t('chatImage.open')}: ${fileName}`}
+                          >
+                            <img
+                              src={fullUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="image-thumbnail h-full w-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = iconPath;
+                                e.currentTarget.className =
+                                  'generic-icon size-12 object-contain opacity-60';
+                              }}
+                            />
+                          </button>
+                        ) : (
+                          <img
+                            src={iconPath}
+                            alt={fileName}
+                            className="generic-icon size-12 object-contain opacity-60"
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="attachment-card-footer ui-attachment-footer">
+                        <img
+                          src={iconPath}
+                          alt=""
+                          aria-hidden="true"
+                          className="attachment-card-footer-icon"
+                          onError={(e) => {
+                            e.currentTarget.src =
+                              'https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons/icons/default_file.svg';
+                          }}
+                        />
+                        <div className="attachment-card-footer-info">
+                          {fullUrl && isImage ? (
+                            <button
+                              type="button"
+                              className="file-card-name border-0 bg-transparent p-0 text-left"
+                              onClick={() => {
+                                if (window.openImageLightbox) {
+                                  window.openImageLightbox(fullUrl, message.id, {
+                                    canRegenerate: false,
+                                    downloadName: fileName,
+                                  });
+                                }
+                              }}
+                            >
+                              {fileName}
+                            </button>
+                          ) : fullUrl ? (
+                            <a
+                              href={fullUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="file-card-name"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {fileName}
+                            </a>
+                          ) : (
+                            <span className="file-card-name">{fileName}</span>
+                          )}
+                          {fileSize && <span className="file-card-size">{fileSize}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
+
+            {!isUser && isLoading && webSearchStatus && !streamedThinking && (
+              <WebSearchProgress status={webSearchStatus} t={t} />
+            )}
+
+            {(streamedThinking
+              ? [streamedThinking]
+              : widgets.filter((widget) => widget.type === 'think')
+            ).map((thought, index) => (
+              <ThinkBlock
+                key={`${message.id}-thinking-${currentVariantIndex ?? 0}-${index}`}
+                content={thought.content}
+                openTime={thought.openTime}
+                closeTime={thought.closeTime}
+                isStreaming={Boolean(streamedThinking && streamedThinking.status !== 'complete')}
+              />
+            ))}
+
+            {!isUser && (
+              <MessageFileAttachments
+                files={displayFiles}
+                isUser={false}
+                messageId={message.id}
+                t={t}
+              />
+            )}
+
+            {isGeneratingImage && (
+              <div className="image-generation-placeholder ui-message-image-placeholder">
+                <div className="image-placeholder-visual ui-message-image-visual">
+                  <div className="shimmer-effect"></div>
+                  <svg
+                    className="placeholder-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" x2="12" y1="3" y2="15" />
+                  </svg>
+                </div>
+                <div className="image-placeholder-caption ui-message-image-caption">
+                  {t('chatImage.generating', { prompt: imagePrompt || '' })}
+                </div>
+              </div>
+            )}
+
+            <div
+              ref={contentRef}
+              className="message-text ui-message-text"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+
+            {displayImages?.length > 0 && (
+              <div
+                className={cn(
+                  'message-image-grid ui-scrollbar-thin',
+                  isUser ? 'user-image-grid' : 'ai-image-grid'
+                )}
+                data-count={displayImages.length}
+                tabIndex={displayImages.length > 1 ? 0 : undefined}
+                aria-label={displayImages.length > 1 ? t('chatImage.gallery') : undefined}
+              >
+                {displayImages.map((src, idx) => {
+                  const imagePath = typeof src === 'string' ? src : src?.url_path || '';
+                  if (!imagePath) {
+                    return null;
+                  }
+
+                  const fullSrc = resolveMediaUrl(imagePath);
+                  const isImageObject = typeof src === 'object';
+                  const isPythonArtifact = isImageObject && src?.source === 'python';
+                  return (
+                    <MessageImageAttachment
+                      key={`${message.id}-image-${idx}`}
+                      src={fullSrc}
+                      alt={t('chatImage.messageAlt', { number: idx + 1 })}
+                      messageId={message.id}
+                      isInteractive={!isUser}
+                      canRegenerate={!isPythonArtifact}
+                      downloadName={isImageObject ? src?.original_name : undefined}
+                      width={isImageObject ? (src?.metadata?.width ?? src?.width) : undefined}
+                      height={isImageObject ? (src?.metadata?.height ?? src?.height) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            {githubDiffPayload && <GitHubDiffCard payload={githubDiffPayload} t={t} />}
+
+            {widgets.map((widget) => {
+              if (widget.type === 'plan' || widget.type === 'questions') {
+                return (
+                  <ToolPanel
+                    key={`${widget.id}:${JSON.stringify(widget.state)}`}
+                    kind={widget.type}
+                    state={widget.state}
+                    disabled={isLoading}
+                    onReply={onSendMessage ? (prompt) => onSendMessage(prompt, [], {}) : undefined}
+                  />
+                );
+              }
+              if (widget.type === 'quiz') {
+                return <Quiz key={widget.id} initialState={widget.state} />;
+              } else if (widget.type === 'spinwheel') {
+                return <Spinwheel key={widget.id} initialState={widget.state} />;
+              } else if (widget.type === 'beatbox') {
+                return (
+                  <Beatbox
+                    key={widget.id}
+                    initialState={widget.state}
+                    onStateChange={onBeatboxStateChange}
+                  />
+                );
+              } else if (widget.type === 'visualize') {
+                return (
+                  <Visualization
+                    key={widget.id}
+                    initialState={widget.state}
+                    onFollowUp={
+                      onSendMessage ? (prompt) => onSendMessage(prompt, [], {}) : undefined
+                    }
+                  />
+                );
+              }
+              return null;
+            })}
+
+            {isLoading &&
+              !displayContent &&
+              !isGeneratingImage &&
+              !webSearchStatus &&
+              !streamedThinking && (
+                <ThinkBlock
+                  content=""
+                  openTime={
+                    Number(message.timestamp || 0) < 1_000_000_000_000
+                      ? Number(message.timestamp || 0) * 1000
+                      : Number(message.timestamp || 0)
+                  }
+                  isStreaming
+                />
+              )}
+
+            {!isLoading && displayDeliveryState === 'interrupted' && (
+              <div className="ui-message-delivery-state" role="status">
+                {t('reliability.interrupted')}
+              </div>
+            )}
+
+            {hasMultipleVariants && (
+              <div className="variants-nav ui-message-variants">
+                <button
+                  type="button"
+                  className={cn(
+                    'variant-btn ui-message-variant-button prev-btn',
+                    currentVariantIndex > 0 && 'active'
+                  )}
+                  title={t('chat.variants.previous')}
+                  aria-label={t('chat.variants.previous')}
+                  disabled={currentVariantIndex <= 0}
+                  onClick={() => onSwitchVariant && onSwitchVariant(message.id, -1)}
+                >
+                  <img src="/icons/media/prev.svg" alt="" aria-hidden="true" />
+                </button>
+                <span
+                  className="variants-counter ui-message-variant-counter"
+                  aria-label={t('chat.variants.counter', {
+                    current: (currentVariantIndex || 0) + 1,
+                    total: variants.length,
+                  })}
+                >
+                  {(currentVariantIndex || 0) + 1}/{variants.length}
+                </span>
+                <button
+                  type="button"
+                  className={cn(
+                    'variant-btn ui-message-variant-button next-btn',
+                    (currentVariantIndex || 0) < variants.length - 1 && 'active'
+                  )}
+                  title={t('chat.variants.next')}
+                  aria-label={t('chat.variants.next')}
+                  disabled={(currentVariantIndex || 0) >= variants.length - 1}
+                  onClick={() => onSwitchVariant && onSwitchVariant(message.id, 1)}
+                >
+                  <img src="/icons/media/next.svg" alt="" aria-hidden="true" />
+                </button>
+              </div>
+            )}
+            {!isUser && isLoading && displaySourceItems.length > 0 && (
+              <div className="actions-bar ui-message-actions">
+                <WebSourcesPanel sources={displaySourceItems} />
+              </div>
+            )}
+            {!isUser && !isLoading && (
+              <div className="actions-bar ui-message-actions">
+                <MessageActionButton
+                  className="copy-md-btn"
+                  title={t('common.copy')}
+                  onClick={handleCopy}
+                >
+                  <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
+                </MessageActionButton>
+                <MessageActionButton
+                  className={cn(
+                    'speak-btn',
+                    audio.isVisible ? 'active' : '',
+                    audio.isLoading ? 'loading' : '',
+                    audio.isError ? 'error' : ''
+                  )}
+                  title={t('chat.audio.speak')}
+                  onClick={() => {
+                    const speechContent = stripThinkingBlocks(displayContent);
+                    if (speechContent) {
+                      audio.speak(speechContent);
+                    }
+                  }}
+                >
+                  <img src="/icons/media/audio.svg" alt="" aria-hidden="true" />
+                </MessageActionButton>
+                {onRegenerate && (
+                  <MessageActionButton
+                    className="regenerate-btn"
+                    title={t('chat.regenerate')}
+                    onClick={() => onRegenerate(message.id)}
+                  >
+                    <img src="/icons/ui/regenerate.svg" alt="" aria-hidden="true" />
+                  </MessageActionButton>
+                )}
+                <MessageActionButton
+                  className="translate-btn"
+                  title={t('translationPanel.translateAction')}
+                  onClick={() => {
+                    const textToTranslate =
+                      contentRef.current?.textContent?.trim() || displayContent || '';
+                    if (textToTranslate) {
+                      setShowTranslation(true);
+                    } else {
+                      Utils.showPopupWarning?.(t('translationPanel.noText'));
+                    }
+                  }}
+                >
+                  <img src="/icons/ui/translate.svg" alt="" aria-hidden="true" />
+                </MessageActionButton>
+                <span className="feedback-actions">
+                  {feedbackActionVisibility.like && (
+                    <MessageActionButton
+                      className="feedback-btn"
+                      title={t('chat.feedback.like')}
+                      onClick={() => void submitFeedback('like')}
+                      disabled={feedbackSubmitting}
+                    >
+                      <img src="/icons/ui/like.svg" alt="" aria-hidden="true" />
+                    </MessageActionButton>
+                  )}
+                  {feedbackActionVisibility.dislike && (
+                    <MessageActionButton
+                      className="feedback-btn"
+                      title={t('chat.feedback.dislike')}
+                      onClick={() => {
+                        setFeedbackPanelOpen((current) => !current);
+                        setFeedbackMessage('');
+                      }}
+                      disabled={feedbackSubmitting}
+                    >
+                      <img src="/icons/ui/dislike.svg" alt="" aria-hidden="true" />
+                    </MessageActionButton>
+                  )}
+                  {likeConfettiBurst > 0 && (
+                    <span
+                      key={likeConfettiBurst}
+                      className="feedback-like-confetti"
+                      aria-hidden="true"
+                    >
+                      {LIKE_CONFETTI_PARTICLES.map((particle) => (
+                        <span key={particle} />
+                      ))}
+                    </span>
+                  )}
+                </span>
+                <WebSourcesPanel sources={displaySourceItems} />
+              </div>
+            )}
+            {!isUser && !isLoading && feedbackPanelOpen && (
+              <div
+                className="ai-feedback-panel"
+                role="dialog"
+                aria-label={t('chat.feedback.panelTitle')}
+              >
+                <div className="ai-feedback-panel-head">
+                  <strong>{t('chat.feedback.panelTitle')}</strong>
+                  <button
+                    type="button"
+                    className="ai-feedback-close"
+                    onClick={() => setFeedbackPanelOpen(false)}
+                    aria-label={t('common.close')}
+                  >
+                    <X size={15} strokeWidth={2} aria-hidden="true" />
+                  </button>
+                </div>
+                <div
+                  className="ai-feedback-reasons"
+                  role="group"
+                  aria-label={t('chat.feedback.reasonGroup')}
+                >
+                  {AI_FEEDBACK_REASONS.map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      className={cn(feedbackReasons.includes(reason) && 'active')}
+                      onClick={() => toggleFeedbackReason(reason)}
+                    >
+                      {t(`chat.feedback.reasons.${reason}`)}
+                    </button>
+                  ))}
+                </div>
+                <label className="ai-feedback-comment">
+                  <span>{t('chat.feedback.commentLabel')}</span>
+                  <textarea
+                    value={feedbackComment}
+                    maxLength={1200}
+                    onChange={(event) => setFeedbackComment(event.target.value)}
+                    placeholder={t('chat.feedback.commentPlaceholder')}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ai-feedback-submit"
+                  onClick={() => void submitFeedback('dislike')}
+                  disabled={feedbackSubmitting}
+                >
+                  {feedbackSubmitting ? t('chat.feedback.sending') : t('chat.feedback.submit')}
+                </button>
+              </div>
+            )}
+            {!isUser && feedbackMessage && (
+              <p className={cn('ai-feedback-status', feedbackMessageType)}>{feedbackMessage}</p>
+            )}
+            {!isUser && showTranslation && (
+              <TranslationPanel
+                originalText={stripThinkingBlocks(displayContent)}
+                onClose={() => setShowTranslation(false)}
+              />
+            )}
+            {!isUser && audio.isVisible && (
+              <div
+                className={cn(
+                  'audio-player-container ui-audio-player visible',
+                  audio.isPlaying && 'playing'
+                )}
+                role="region"
+                aria-label={t('chat.audio.label')}
+              >
+                <div className="audio-player-header ui-audio-player-header">
+                  <div className="audio-player-icon ui-audio-player-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 4V20M8 8V16M16 7V17M4 10V14M20 9V15"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span>{t('chat.audio.label')}</span>
+                  </div>
+                  {audio.isLoading && (
+                    <div className="audio-player-loader" role="status">
+                      {t('chat.audio.loading')}
+                    </div>
+                  )}
+                </div>
+                {!audio.isLoading && !audio.isError && audio.isReady && (
+                  <div className="audio-player-controls ui-audio-player-controls">
+                    <button
+                      type="button"
+                      className="audio-play-pause-btn ui-audio-play-button"
+                      title={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
+                      aria-label={audio.isPlaying ? t('chat.audio.pause') : t('chat.audio.play')}
+                      onClick={audio.togglePlayback}
+                      disabled={!audio.isReady}
+                    >
+                      <svg
+                        className="play-pause-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        {audio.isPlaying ? (
+                          <path
+                            className="pause-icon"
+                            d="M8 5V19M16 5V19"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          />
+                        ) : (
+                          <path
+                            className="play-icon"
+                            d="M5 3l14 9-14 9z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="currentColor"
+                          />
+                        )}
+                      </svg>
+                    </button>
+                    <div className="audio-waveform-container ui-audio-waveform">
+                      <canvas
+                        ref={waveformCanvasRef}
+                        className="audio-waveform"
+                        height="48"
+                        width="200"
+                        aria-hidden="true"
+                      ></canvas>
+                      <input
+                        type="range"
+                        className="audio-progress-bar"
+                        min="0"
+                        max={audio.totalDuration}
+                        value={Math.min(
+                          Math.max(Number.isFinite(audio.currentTime) ? audio.currentTime : 0, 0),
+                          audio.totalDuration
+                        )}
+                        step="0.1"
+                        onChange={(e) => audio.seekAudio(parseFloat(e.target.value))}
+                        aria-label={t('chat.audio.progress')}
+                        disabled={!audio.isReady}
+                      />
+                    </div>
+                    <div className="audio-time ui-audio-time">
+                      {audio.formatTime(audio.currentTime)} /{' '}
+                      {audio.formatTime(audio.totalDuration)}
+                    </div>
+                  </div>
+                )}
+                {audio.isError && (
+                  <div className="audio-error-message" role="alert" style={{ display: 'block' }}>
+                    {t('chat.audio.error')}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {showUserActions && (
+        <div className="actions-bar ui-message-actions ui-user-message-actions">
+          <MessageActionButton className="copy-btn" title={t('common.copy')} onClick={handleCopy}>
+            <img src="/icons/ui/copy.svg" alt="" aria-hidden="true" />
+          </MessageActionButton>
+          <MessageActionButton
+            className="edit-btn"
+            title={t('chat.editUserMessage.edit')}
+            onClick={() => setIsEditingUserMessage(true)}
+          >
+            <img src="/icons/ui/edit.svg" alt="" aria-hidden="true" />
+          </MessageActionButton>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default Message;

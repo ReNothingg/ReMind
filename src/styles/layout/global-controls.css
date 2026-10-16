@@ -13,8 +13,8 @@
 
   pointer-events: none;
 
-  transition: left var(--transition-duration-normal)
-      var(--transition-timing-function),
+  transition:
+    left var(--transition-duration-normal) var(--transition-timing-function),
     right var(--transition-duration-normal) var(--transition-timing-function);
 }
 
@@ -338,7 +338,8 @@
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--transition-normal),
+  transition:
+    opacity var(--transition-normal),
     visibility 0s var(--transition-duration-normal),
     transform var(--transition-normal);
   overflow: hidden;
@@ -590,10 +591,11 @@
   width: 40px;
 
   padding: 0;
-  transition: width var(--transition-duration-normal)
-      var(--transition-timing-function),
+  transition:
+    width var(--transition-duration-normal) var(--transition-timing-function),
     background-color var(--transition-normal),
-    border-color var(--transition-normal), color var(--transition-normal),
+    border-color var(--transition-normal),
+    color var(--transition-normal),
     transform var(--transition-fast);
 }
 
@@ -624,7 +626,8 @@
   max-width: 0;
   margin-left: 0;
   overflow: hidden;
-  transition: opacity var(--transition-duration-fast) ease-in-out,
+  transition:
+    opacity var(--transition-duration-fast) ease-in-out,
     max-width var(--transition-duration-normal) ease-in-out 0.05s,
     margin-left var(--transition-duration-normal) ease-in-out 0.05s;
   pointer-events: none;

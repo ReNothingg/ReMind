@@ -79,7 +79,9 @@ def _public_row(row: dict) -> dict:
         key: (
             value[:500]
             if isinstance(value, str)
-            else value if not isinstance(value, float) or math.isfinite(value) else None
+            else value
+            if not isinstance(value, float) or math.isfinite(value)
+            else None
         )
         for key, value in row.items()
     }
@@ -174,7 +176,9 @@ def execute_data_tool(
                             else (
                                 min(numbers)
                                 if aggregate == "min" and numbers
-                                else max(numbers) if aggregate == "max" and numbers else None
+                                else max(numbers)
+                                if aggregate == "max" and numbers
+                                else None
                             )
                         )
                     )

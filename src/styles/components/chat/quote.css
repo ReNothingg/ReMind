@@ -26,8 +26,10 @@
   pointer-events: none;
   user-select: none;
 
-  transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.15s ease;
+  transition:
+    opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.15s ease;
 }
 
 .quote-action-button.visible {
@@ -78,8 +80,11 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   background: var(--color-bg-surface-alt);
   border-radius: calc(var(--input-area-border-radius) - 3px);
 
-  transition: all var(--transition-normal), max-height var(--transition-normal),
-    padding var(--transition-normal), margin var(--transition-normal);
+  transition:
+    all var(--transition-normal),
+    max-height var(--transition-normal),
+    padding var(--transition-normal),
+    margin var(--transition-normal);
   align-self: stretch;
   font-family: var(--font-family-main);
   font-size: 0.9rem;
@@ -158,7 +163,6 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   align-items: center;
   justify-content: center;
 }
-
 
 .quote-item-dismiss:active {
   transform: translateY(-50%) scale(0.95);

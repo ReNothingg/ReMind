@@ -313,7 +313,6 @@ class AuthIdentity(db.Model):
 
 
 class AppleAuthChallenge(db.Model):
-
     __tablename__ = "apple_auth_challenge"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -331,7 +330,6 @@ class AppleAuthChallenge(db.Model):
 
 
 class AppleTokenReplay(db.Model):
-
     __tablename__ = "apple_token_replay"
 
     token_hash = db.Column(db.String(64), primary_key=True)
@@ -3901,13 +3899,10 @@ def setup_auth(app):
                     for _column_name, ddl in missing_mind_admin_columns:
                         connection.execute(text(ddl))
                     connection.execute(
-                        text(
-                            "CREATE INDEX IF NOT EXISTS ix_mind_is_featured "
-                            "ON mind (is_featured)"
-                        )
+                        text("CREATE INDEX IF NOT EXISTS ix_mind_is_featured ON mind (is_featured)")
                     )
                     connection.execute(
-                        text("CREATE INDEX IF NOT EXISTS ix_mind_is_banned " "ON mind (is_banned)")
+                        text("CREATE INDEX IF NOT EXISTS ix_mind_is_banned ON mind (is_banned)")
                     )
                 app.logger.info("Added missing mind admin/moderation columns")
         if "user_chat_history" in inspector.get_table_names():

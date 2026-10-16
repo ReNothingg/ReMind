@@ -7,8 +7,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "ReMind instance is down"
-          description: "Prometheus target for ReMind is unavailable."
+          summary: 'ReMind instance is down'
+          description: 'Prometheus target for ReMind is unavailable.'
 
       - alert: ReMindHigh5xxRate
         expr: sum(rate(remind_http_errors_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.5
@@ -16,8 +16,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "High 5xx rate on ReMind API"
-          description: "5xx rate exceeded threshold for /chat, /translate, /synthesize."
+          summary: 'High 5xx rate on ReMind API'
+          description: '5xx rate exceeded threshold for /chat, /translate, /synthesize.'
 
       - alert: ReMindTimeoutSpike
         expr: sum(rate(remind_http_timeouts_total{endpoint=~"/chat|/translate|/synthesize"}[5m])) > 0.1
@@ -25,8 +25,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Timeout spike on ReMind API"
-          description: "Timeout-like responses or very slow requests exceeded threshold."
+          summary: 'Timeout spike on ReMind API'
+          description: 'Timeout-like responses or very slow requests exceeded threshold.'
 
       - alert: ReMindP95LatencyHigh
         expr: histogram_quantile(0.95, sum by (le) (rate(remind_http_request_duration_seconds_bucket{endpoint=~"/chat|/translate|/synthesize"}[5m]))) > 2.5
@@ -34,8 +34,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "High p95 latency on ReMind API"
-          description: "p95 latency is above 2.5s for key endpoints."
+          summary: 'High p95 latency on ReMind API'
+          description: 'p95 latency is above 2.5s for key endpoints.'
 
       - alert: ReMindP99LatencyHigh
         expr: histogram_quantile(0.99, sum by (le) (rate(remind_http_request_duration_seconds_bucket{endpoint=~"/chat|/translate|/synthesize"}[5m]))) > 5
@@ -43,8 +43,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "High p99 latency on ReMind API"
-          description: "p99 latency is above 5s for key endpoints."
+          summary: 'High p99 latency on ReMind API'
+          description: 'p99 latency is above 5s for key endpoints.'
 
       - alert: ReMindErrorBudgetBurnFast
         expr: >-
@@ -57,5 +57,5 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Fast error budget burn on ReMind API"
-          description: "5xx ratio exceeded 2% over 5 minutes (99% SLO budget burn)."
+          summary: 'Fast error budget burn on ReMind API'
+          description: '5xx ratio exceeded 2% over 5 minutes (99% SLO budget burn).'

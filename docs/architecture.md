@@ -32,23 +32,23 @@ sequenceDiagram
 
 ## Основные модули
 
-| Модуль | Ответственность |
-|---|---|
-| `app_factory.py` | Создает Flask app, настраивает CORS, sessions, CSRF, security headers, request context и route registration |
-| `routes/api.py` | Регистрирует feature route groups в API blueprint |
-| `routes/features/chat.py` | Chat endpoint и streaming response handling |
-| `routes/features/sessions.py` | Session list/history management |
-| `routes/features/share.py` | Public read-only chat links |
-| `routes/features/privacy.py` | Export и deletion flows |
-| `services/chat_history.py` | Persistence и retrieval chat history |
-| `services/files.py` | File-related service behavior |
-| `services/model_access.py` | Model access и selection rules |
-| `services/voice.py` | Speech synthesis behavior |
-| `routes/features/github.py` | Явный GitHub connection, repository и PR workflow |
-| `services/github_oauth_flow.py` | Одноразовый encrypted OAuth credential flow в Redis |
-| `ai_engine/gemini.py` | Gemini provider integration |
-| `ai_engine/echo.py` | Local smoke-test provider |
-| `ai_engine/demo_image.py` | Local image-flow smoke-test provider |
+| Модуль                          | Ответственность                                                                                             |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `app_factory.py`                | Создает Flask app, настраивает CORS, sessions, CSRF, security headers, request context и route registration |
+| `routes/api.py`                 | Регистрирует feature route groups в API blueprint                                                           |
+| `routes/features/chat.py`       | Chat endpoint и streaming response handling                                                                 |
+| `routes/features/sessions.py`   | Session list/history management                                                                             |
+| `routes/features/share.py`      | Public read-only chat links                                                                                 |
+| `routes/features/privacy.py`    | Export и deletion flows                                                                                     |
+| `services/chat_history.py`      | Persistence и retrieval chat history                                                                        |
+| `services/files.py`             | File-related service behavior                                                                               |
+| `services/model_access.py`      | Model access и selection rules                                                                              |
+| `services/voice.py`             | Speech synthesis behavior                                                                                   |
+| `routes/features/github.py`     | Явный GitHub connection, repository и PR workflow                                                           |
+| `services/github_oauth_flow.py` | Одноразовый encrypted OAuth credential flow в Redis                                                         |
+| `ai_engine/gemini.py`           | Gemini provider integration                                                                                 |
+| `ai_engine/echo.py`             | Local smoke-test provider                                                                                   |
+| `ai_engine/demo_image.py`       | Local image-flow smoke-test provider                                                                        |
 
 ## API contract
 
@@ -101,12 +101,12 @@ production задайте отдельный `GITHUB_OAUTH_ENCRYPTION_KEY` в ф
 
 Схемы функций хранятся в `ai_engine/tool_schemas.json`. `services/model_runtime.py` формирует разрешённый набор схем, проверяет вызов перед выполнением и требует загрузить соответствующий навык. Google-адаптер в `ai_engine/gemini.py` отвечает за SDK, поток ответа и ограниченный цикл вызовов. Результаты функций и лимиты определены в `services/tool_protocol.py`.
 
-| Исполнитель | Назначение |
-|---|---|
-| `services/model_tools.py` | Веб-поиск, изолированный Python, чтение GitHub и анализ изображений |
-| `services/presentation_tools.py` | Публикация визуализаций, виджетов и документов Canvas |
-| `services/canvas_tools.py` | Работа с документом и совместимость с историческими canmore-ответами |
-| `ai_engine/output_contract.py` | Обнаружение неподдерживаемого формата перед выдачей финального текста |
+| Исполнитель                      | Назначение                                                            |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `services/model_tools.py`        | Веб-поиск, изолированный Python, чтение GitHub и анализ изображений   |
+| `services/presentation_tools.py` | Публикация визуализаций, виджетов и документов Canvas                 |
+| `services/canvas_tools.py`       | Работа с документом и совместимость с историческими canmore-ответами  |
+| `ai_engine/output_contract.py`   | Обнаружение неподдерживаемого формата перед выдачей финального текста |
 
 `render_visualization` принимает HTML-фрагмент или точное имя файла, уже доступного текущему запросу. Сервер не открывает `/tmp/...`, URL или произвольный путь из аргументов модели. Файл проходит существующую проверку принадлежности каталогу загрузок. Размер и формат ограничены; отображение остаётся внутри существующего iframe без доступа к origin приложения. `canvas_write` создаёт документ либо заменяет текущий с сохранением ID. `render_widget` проверяет поддерживаемый формат и JSON-контракт перед передачей существующим клиентским рендерам. Успех публикации не означает выполнение JavaScript, тестирование продукта или развёртывание — это явно указано в результате функции.
 

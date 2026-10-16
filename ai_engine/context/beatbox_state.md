@@ -1,4 +1,5 @@
 CURRENT BEATBOX STATE
+
 ```json
 {{BEATBOX_STATE_JSON}}
 ```

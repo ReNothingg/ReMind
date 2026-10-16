@@ -1,7 +1,7 @@
 name: Feature Request
 description: Предложить улучшение или новую функцию
-title: "[Feature]: "
-labels: ["enhancement", "triage"]
+title: '[Feature]: '
+labels: ['enhancement', 'triage']
 assignees: []
 body:
   - type: markdown
@@ -13,7 +13,7 @@ body:
     attributes:
       label: Problem Statement
       description: Какую реальную проблему нужно решить?
-      placeholder: "Сейчас ... и это затрудняет ..."
+      placeholder: 'Сейчас ... и это затрудняет ...'
     validations:
       required: true
   - type: textarea
@@ -21,7 +21,7 @@ body:
     attributes:
       label: Proposed Solution
       description: Что именно предлагается
-      placeholder: "Предлагаю добавить ... с поведением ..."
+      placeholder: 'Предлагаю добавить ... с поведением ...'
     validations:
       required: true
   - type: textarea
@@ -29,7 +29,7 @@ body:
     attributes:
       label: Alternatives Considered
       description: Какие альтернативы рассматривались
-      placeholder: "Вариант A ...; вариант B ..."
+      placeholder: 'Вариант A ...; вариант B ...'
     validations:
       required: false
   - type: textarea
@@ -37,7 +37,7 @@ body:
     attributes:
       label: Impact
       description: На кого и как повлияет изменение
-      placeholder: "Пользователи получат ...; риск ...; миграция ..."
+      placeholder: 'Пользователи получат ...; риск ...; миграция ...'
     validations:
       required: true
   - type: dropdown

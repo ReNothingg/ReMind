@@ -16,7 +16,7 @@ export interface components {
     };
     AuthCheckResponse: {
       authenticated: boolean;
-      user: components["schemas"]["User"] | null;
+      user: components['schemas']['User'] | null;
     };
     AuthConfigResponse: {
       apple_login_url?: string | null;
@@ -40,7 +40,7 @@ export interface components {
     };
     AuthLoginResponse: {
       message: string;
-      user: components["schemas"]["User"];
+      user: components['schemas']['User'];
     };
     CanvasPythonExecuteRequest: {
       code: string;
@@ -58,13 +58,13 @@ export interface components {
       timed_out?: boolean;
     };
     CanvasSaveRequest: {
-      textdoc: components["schemas"]["CanvasTextdoc"];
+      textdoc: components['schemas']['CanvasTextdoc'];
     };
     CanvasSaveResponse: {
       ok: boolean;
       request_id?: string | null;
       session_id: string;
-      textdoc: components["schemas"]["CanvasTextdoc"];
+      textdoc: components['schemas']['CanvasTextdoc'];
     };
     CanvasTextdoc: {
       comments?: Record<string, unknown>[];
@@ -88,33 +88,33 @@ export interface components {
       session_id?: string | null;
     };
     ChatDraftResponse: {
-      draft?: components["schemas"]["ChatDraft"] | null;
+      draft?: components['schemas']['ChatDraft'] | null;
       error?: string;
       [key: string]: unknown;
     };
     ChatMessage: {
       composer_content?: string;
-      context_usage?: components["schemas"]["ContextUsage"];
+      context_usage?: components['schemas']['ContextUsage'];
       current_variant_index?: number;
-      delivery_status?: "complete" | "interrupted" | null;
+      delivery_status?: 'complete' | 'interrupted' | null;
       id?: string | null;
       is_active?: boolean;
       model_id?: string;
       parent_id?: string | null;
-      parts: components["schemas"]["MessagePart"][];
+      parts: components['schemas']['MessagePart'][];
       request_id?: string | null;
       role: string;
       selected_tools?: string[];
       timestamp?: number | null;
-      variants?: components["schemas"]["ChatMessageVariant"][];
+      variants?: components['schemas']['ChatMessageVariant'][];
       [key: string]: unknown;
     };
     ChatMessageVariant: {
       composer_content?: string;
-      delivery_status?: "complete" | "interrupted" | null;
+      delivery_status?: 'complete' | 'interrupted' | null;
       id: string;
       model_id?: string;
-      parts: components["schemas"]["MessagePart"][];
+      parts: components['schemas']['MessagePart'][];
       request_id?: string | null;
       role: string;
       selected_tools?: string[];
@@ -125,23 +125,23 @@ export interface components {
     ChatOperationRequest: {
       assistant_message_id: string;
       composer_content?: string;
-      history?: components["schemas"]["ChatMessage"][];
+      history?: components['schemas']['ChatMessage'][];
       message?: string;
       model?: string;
-      operation?: "send" | "regenerate" | "edit";
+      operation?: 'send' | 'regenerate' | 'edit';
       request_id: string;
       selected_tools?: string[] | string;
       session_id: string;
       target_message_id?: string | null;
       temporary_chat?: boolean;
-      thinkingLevel?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+      thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
       user_message_id?: string | null;
       [key: string]: unknown;
     };
     ChatOperationResponse: {
-      context_usage?: components["schemas"]["ContextUsage"];
-      delivery_status?: "complete" | "interrupted";
-      history: components["schemas"]["ChatMessage"][];
+      context_usage?: components['schemas']['ContextUsage'];
+      delivery_status?: 'complete' | 'interrupted';
+      history: components['schemas']['ChatMessage'][];
       ok: boolean;
       reply?: string;
       request_id: string;
@@ -173,18 +173,20 @@ export interface components {
       request_id?: string | null;
     };
     GuestChatImportRequest: {
-      history: components["schemas"]["ChatMessage"][];
+      history: components['schemas']['ChatMessage'][];
       mind_id?: string | null;
       session_id: string;
     };
-    GuestChatImportResponse: components["schemas"]["SessionHistoryResponse"] | {
-      created: boolean;
-    };
+    GuestChatImportResponse:
+      | components['schemas']['SessionHistoryResponse']
+      | {
+          created: boolean;
+        };
     HealthResponse: {
       checks?: Record<string, unknown>;
       latency_ms: number;
       ok: boolean;
-      status: "ok" | "degraded" | "fail";
+      status: 'ok' | 'degraded' | 'fail';
       timestamp: string;
       uptime_seconds: number;
       [key: string]: unknown;
@@ -195,13 +197,16 @@ export interface components {
       url_path: string;
       [key: string]: unknown;
     };
-    MessagePart: components["schemas"]["MessageTextPart"] | {
-      image: components["schemas"]["MessageFileRef"];
-      [key: string]: unknown;
-    } | {
-      file: components["schemas"]["MessageFileRef"];
-      [key: string]: unknown;
-    };
+    MessagePart:
+      | components['schemas']['MessageTextPart']
+      | {
+          image: components['schemas']['MessageFileRef'];
+          [key: string]: unknown;
+        }
+      | {
+          file: components['schemas']['MessageFileRef'];
+          [key: string]: unknown;
+        };
     MessageTextPart: {
       text: string;
       [key: string]: unknown;
@@ -221,23 +226,23 @@ export interface components {
       public_id: string;
       starters: string[];
       updated_at?: string | null;
-      visibility: "private" | "link" | "store";
+      visibility: 'private' | 'link' | 'store';
       [key: string]: unknown;
     };
     ModelCatalogEntry: {
       availableUntil?: string;
-      defaultThinkingLevel?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+      defaultThinkingLevel?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
       id: string;
-      stage: "release" | "beta" | "dev" | "alpha";
+      stage: 'release' | 'beta' | 'dev' | 'alpha';
       subtitle: string;
       subtitleKey?: string;
-      thinkingLevels?: ("minimal" | "low" | "medium" | "high" | "xhigh" | "max")[];
+      thinkingLevels?: ('minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max')[];
       title: string;
       titleKey?: string;
     };
     ModelCatalogResponse: {
-      models: components["schemas"]["ModelCatalogEntry"][];
-      tools: components["schemas"]["ComposerToolEntry"][];
+      models: components['schemas']['ModelCatalogEntry'][];
+      tools: components['schemas']['ComposerToolEntry'][];
     };
     PasswordResetCompleteRequest: {
       code: string;
@@ -245,7 +250,7 @@ export interface components {
       reset_request_id: string;
     };
     PasswordResetCompleteResponse: {
-      message: "password_reset_complete";
+      message: 'password_reset_complete';
     };
     PasswordResetRequest: {
       email: string;
@@ -253,7 +258,7 @@ export interface components {
     };
     PasswordResetRequestResponse: {
       expires_in: number;
-      message: "password_reset_code_sent";
+      message: 'password_reset_code_sent';
       reset_request_id: string;
     };
     PrivacyDeleteRequest: {
@@ -280,15 +285,15 @@ export interface components {
       [key: string]: unknown;
     };
     PrivacyExportResponse: {
-      data: components["schemas"]["PrivacyExportPayload"];
+      data: components['schemas']['PrivacyExportPayload'];
       ok: boolean;
       request_id?: string | null;
     };
     SessionHistoryResponse: {
-      history: components["schemas"]["ChatMessage"][];
+      history: components['schemas']['ChatMessage'][];
       is_owner?: boolean;
       is_public?: boolean;
-      mind?: components["schemas"]["Mind"] | null;
+      mind?: components['schemas']['Mind'] | null;
       ok: boolean;
       public_id?: string | null;
       read_only?: boolean;
@@ -304,17 +309,17 @@ export interface components {
       page: number;
       page_size: number;
       request_id?: string | null;
-      sessions: components["schemas"]["SessionSummary"][];
+      sessions: components['schemas']['SessionSummary'][];
       total: number;
     };
     SessionSummary: {
       is_public?: boolean;
       last_message: string;
       last_updated: number;
-      mind?: components["schemas"]["Mind"] | null;
+      mind?: components['schemas']['Mind'] | null;
       public_id?: string | null;
       session_id: string;
-      source?: "web" | "telegram_private" | "telegram_group" | "telegram_guest" | "telegram_inline";
+      source?: 'web' | 'telegram_private' | 'telegram_group' | 'telegram_guest' | 'telegram_inline';
       title: string;
     };
     SynthesizeRequest: {
@@ -336,12 +341,12 @@ export interface components {
     };
     TelegramLinkStatusResponse: {
       code?: string;
-      status: "pending" | "linked" | "expired" | "failed";
-      user?: components["schemas"]["User"];
+      status: 'pending' | 'linked' | 'expired' | 'failed';
+      user?: components['schemas']['User'];
     };
     TelegramLoginRequest: {
       id_token: string;
-      mode?: "login" | "link";
+      mode?: 'login' | 'link';
     };
     TranslateRequest: {
       target_lang: string;
@@ -354,7 +359,7 @@ export interface components {
       [key: string]: unknown;
     };
     User: {
-      auth_methods?: ("apple" | "google" | "password" | "telegram")[];
+      auth_methods?: ('apple' | 'google' | 'password' | 'telegram')[];
       created_at?: string | null;
       email: string | null;
       id: number;
@@ -367,346 +372,346 @@ export interface components {
 }
 
 export interface paths {
-  "/api/auth/apple": {
+  '/api/auth/apple': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["AppleLoginRequest"];
+          'application/json': components['schemas']['AppleLoginRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["AuthLoginResponse"];
+            'application/json': components['schemas']['AuthLoginResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "409": {
+        '409': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/apple/nonce": {
+  '/api/auth/apple/nonce': {
     get: {
       parameters: {
         query: {
-          mode?: "login" | "link";
+          mode?: 'login' | 'link';
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["AppleChallengeResponse"];
+            'application/json': components['schemas']['AppleChallengeResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/check": {
+  '/api/auth/check': {
     get: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["AuthCheckResponse"];
+            'application/json': components['schemas']['AuthCheckResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/config": {
+  '/api/auth/config': {
     get: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["AuthConfigResponse"];
+            'application/json': components['schemas']['AuthConfigResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/login": {
+  '/api/auth/login': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["AuthLoginRequest"];
+          'application/json': components['schemas']['AuthLoginRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["AuthLoginResponse"];
+            'application/json': components['schemas']['AuthLoginResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "403": {
+        '403': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/password-reset/complete": {
+  '/api/auth/password-reset/complete': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["PasswordResetCompleteRequest"];
+          'application/json': components['schemas']['PasswordResetCompleteRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["PasswordResetCompleteResponse"];
+            'application/json': components['schemas']['PasswordResetCompleteResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/password-reset/request": {
+  '/api/auth/password-reset/request': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["PasswordResetRequest"];
+          'application/json': components['schemas']['PasswordResetRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["PasswordResetRequestResponse"];
+            'application/json': components['schemas']['PasswordResetRequestResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/telegram": {
+  '/api/auth/telegram': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["TelegramLoginRequest"];
+          'application/json': components['schemas']['TelegramLoginRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["AuthLoginResponse"];
+            'application/json': components['schemas']['AuthLoginResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "409": {
+        '409': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/telegram/link": {
+  '/api/auth/telegram/link': {
     post: {
       responses: {
-        "201": {
+        '201': {
           content: {
-            "application/json": components["schemas"]["TelegramLinkResponse"];
+            'application/json': components['schemas']['TelegramLinkResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "503": {
+        '503': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/auth/telegram/link/status": {
+  '/api/auth/telegram/link/status': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["TelegramLinkStatusRequest"];
+          'application/json': components['schemas']['TelegramLinkStatusRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["TelegramLinkStatusResponse"];
+            'application/json': components['schemas']['TelegramLinkStatusResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["AuthErrorResponse"];
+            'application/json': components['schemas']['AuthErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/models": {
+  '/api/models': {
     get: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["ModelCatalogResponse"];
+            'application/json': components['schemas']['ModelCatalogResponse'];
           };
         };
       };
     };
   };
-  "/api/privacy/delete": {
+  '/api/privacy/delete': {
     post: {
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["PrivacyDeleteRequest"];
+          'application/json': components['schemas']['PrivacyDeleteRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["PrivacyDeleteResponse"];
+            'application/json': components['schemas']['PrivacyDeleteResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "403": {
+        '403': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/privacy/export": {
+  '/api/privacy/export': {
     get: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["PrivacyExportResponse"];
+            'application/json': components['schemas']['PrivacyExportResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/python/execute": {
+  '/api/python/execute': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["CanvasPythonExecuteRequest"];
+          'application/json': components['schemas']['CanvasPythonExecuteRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["CanvasPythonExecuteResponse"];
+            'application/json': components['schemas']['CanvasPythonExecuteResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "503": {
+        '503': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/api/user/draft": {
+  '/api/user/draft': {
     delete: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": {
+            'application/json': {
               deleted: boolean;
             };
           };
@@ -715,9 +720,9 @@ export interface paths {
     };
     get: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["ChatDraftResponse"];
+            'application/json': components['schemas']['ChatDraftResponse'];
           };
         };
       };
@@ -725,78 +730,78 @@ export interface paths {
     put: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["ChatDraftRequest"];
+          'application/json': components['schemas']['ChatDraftRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["ChatDraftResponse"];
+            'application/json': components['schemas']['ChatDraftResponse'];
           };
         };
-        "409": {
+        '409': {
           content: {
-            "application/json": components["schemas"]["ChatDraftResponse"];
+            'application/json': components['schemas']['ChatDraftResponse'];
           };
         };
       };
     };
   };
-  "/chat": {
+  '/chat': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["ChatOperationRequest"];
-          "multipart/form-data": components["schemas"]["ChatOperationRequest"];
+          'application/json': components['schemas']['ChatOperationRequest'];
+          'multipart/form-data': components['schemas']['ChatOperationRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["ChatOperationResponse"];
-            "text/event-stream": string;
+            'application/json': components['schemas']['ChatOperationResponse'];
+            'text/event-stream': string;
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "403": {
+        '403': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "404": {
+        '404': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "409": {
+        '409': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/health": {
+  '/health': {
     get: {
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["HealthResponse"];
+            'application/json': components['schemas']['HealthResponse'];
           };
         };
-        "503": {
+        '503': {
           content: {
-            "application/json": components["schemas"]["HealthResponse"];
+            'application/json': components['schemas']['HealthResponse'];
           };
         };
       };
     };
   };
-  "/sessions": {
+  '/sessions': {
     get: {
       parameters: {
         query: {
@@ -806,51 +811,51 @@ export interface paths {
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["SessionListResponse"];
+            'application/json': components['schemas']['SessionListResponse'];
           };
         };
       };
     };
   };
-  "/sessions/import-active-guest": {
+  '/sessions/import-active-guest': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["GuestChatImportRequest"];
+          'application/json': components['schemas']['GuestChatImportRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["GuestChatImportResponse"];
+            'application/json': components['schemas']['GuestChatImportResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "413": {
+        '413': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "429": {
+        '429': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/sessions/{session_id}/branch": {
+  '/sessions/{session_id}/branch': {
     put: {
       parameters: {
         path: {
@@ -859,21 +864,21 @@ export interface paths {
       };
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             message_id: string;
           };
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["SessionHistoryResponse"];
+            'application/json': components['schemas']['SessionHistoryResponse'];
           };
         };
       };
     };
   };
-  "/sessions/{session_id}/canvas": {
+  '/sessions/{session_id}/canvas': {
     put: {
       parameters: {
         path: {
@@ -882,34 +887,34 @@ export interface paths {
       };
       requestBody: {
         content: {
-          "application/json": components["schemas"]["CanvasSaveRequest"];
+          'application/json': components['schemas']['CanvasSaveRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["CanvasSaveResponse"];
+            'application/json': components['schemas']['CanvasSaveResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "404": {
+        '404': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/sessions/{session_id}/history": {
+  '/sessions/{session_id}/history': {
     get: {
       parameters: {
         path: {
@@ -917,66 +922,66 @@ export interface paths {
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["SessionHistoryResponse"];
+            'application/json': components['schemas']['SessionHistoryResponse'];
           };
         };
-        "401": {
+        '401': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "404": {
+        '404': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        "500": {
+        '500': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
-          };
-        };
-      };
-    };
-  };
-  "/synthesize": {
-    post: {
-      requestBody: {
-        content: {
-          "application/json": components["schemas"]["SynthesizeRequest"];
-        };
-      };
-      responses: {
-        "200": {
-          content: {
-            "application/json": components["schemas"]["SynthesizeResponse"];
-          };
-        };
-        "400": {
-          content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };
     };
   };
-  "/translate": {
+  '/synthesize': {
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["TranslateRequest"];
+          'application/json': components['schemas']['SynthesizeRequest'];
         };
       };
       responses: {
-        "200": {
+        '200': {
           content: {
-            "application/json": components["schemas"]["TranslateResponse"];
+            'application/json': components['schemas']['SynthesizeResponse'];
           };
         };
-        "400": {
+        '400': {
           content: {
-            "application/json": components["schemas"]["ErrorResponse"];
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+  };
+  '/translate': {
+    post: {
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['TranslateRequest'];
+        };
+      };
+      responses: {
+        '200': {
+          content: {
+            'application/json': components['schemas']['TranslateResponse'];
+          };
+        };
+        '400': {
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
           };
         };
       };

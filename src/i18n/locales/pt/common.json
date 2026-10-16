@@ -30,7 +30,17 @@
     "readOnly": "Abra uma conversa editável para responder.",
     "sendFailed": "Não foi possível enviar. Tente novamente."
   },
-  "reliability": {"offline":"Offline · as mensagens serão enfileiradas","reconnecting":"Restaurando conexão…","queued":"Mensagens na fila: {{count}}","draftSyncing":"Sincronizando rascunho…","draftSynced":"Rascunho sincronizado","draftLocal":"Rascunho salvo localmente","queueFull":"A fila offline está cheia. Reconecte antes de enviar mais arquivos.","temporaryOffline":"Chats temporários exigem conexão e nunca são salvos na fila offline.","interrupted":"A geração foi interrompida. Você pode gerar esta versão novamente."},
+  "reliability": {
+    "offline": "Offline · as mensagens serão enfileiradas",
+    "reconnecting": "Restaurando conexão…",
+    "queued": "Mensagens na fila: {{count}}",
+    "draftSyncing": "Sincronizando rascunho…",
+    "draftSynced": "Rascunho sincronizado",
+    "draftLocal": "Rascunho salvo localmente",
+    "queueFull": "A fila offline está cheia. Reconecte antes de enviar mais arquivos.",
+    "temporaryOffline": "Chats temporários exigem conexão e nunca são salvos na fila offline.",
+    "interrupted": "A geração foi interrompida. Você pode gerar esta versão novamente."
+  },
   "language": {
     "ru": "RU",
     "en": "EN",
@@ -122,9 +132,36 @@
       }
     },
     "passwordReset": {
-      "requestTitle": "Redefinir senha", "confirmTitle": "Digite o código do email", "requestDescription": "Digite o email da sua conta. Se ela existir, enviaremos um código de verificação de uso único.", "confirmDescription": "Digite o código de 6 dígitos recebido por email e escolha uma nova senha. O código expira em 10 minutos.",
-      "forgotPassword": "Esqueceu a senha?", "sendCode": "Enviar código", "sendingCode": "Enviando...", "codeLabel": "Código do email", "newPasswordLabel": "Nova senha", "resetPassword": "Salvar nova senha", "resetting": "Salvando...", "sendAgain": "Enviar novo código", "backToLogin": "Voltar ao login", "codeSent": "Se este email estiver cadastrado, um código de verificação foi enviado.", "complete": "Senha atualizada. Agora você pode entrar.", "invalidCode": "O código é inválido, expirou ou já foi usado.", "requestError": "Não foi possível redefinir a senha. Tente novamente.", "rateLimited": "Muitas tentativas. Aguarde um pouco e tente novamente.",
-      "email": {"subject": "Seu código de redefinição de senha do ReMind", "heading": "Redefinição de senha", "greeting": "Olá, {{username}}!", "intro": "Digite este código de verificação no ReMind para escolher uma nova senha:", "expiry": "O código expira em 10 minutos e só pode ser usado uma vez.", "ignore": "Se você não solicitou a redefinição, ignore este email. Não compartilhe o código.", "changedSubject": "Sua senha do ReMind foi alterada", "changedHeading": "Senha alterada", "changedIntro": "A senha da sua conta ReMind foi alterada com sucesso.", "changedWarning": "Se não foi você, solicite outra redefinição imediatamente e entre em contato com o suporte."}
+      "requestTitle": "Redefinir senha",
+      "confirmTitle": "Digite o código do email",
+      "requestDescription": "Digite o email da sua conta. Se ela existir, enviaremos um código de verificação de uso único.",
+      "confirmDescription": "Digite o código de 6 dígitos recebido por email e escolha uma nova senha. O código expira em 10 minutos.",
+      "forgotPassword": "Esqueceu a senha?",
+      "sendCode": "Enviar código",
+      "sendingCode": "Enviando...",
+      "codeLabel": "Código do email",
+      "newPasswordLabel": "Nova senha",
+      "resetPassword": "Salvar nova senha",
+      "resetting": "Salvando...",
+      "sendAgain": "Enviar novo código",
+      "backToLogin": "Voltar ao login",
+      "codeSent": "Se este email estiver cadastrado, um código de verificação foi enviado.",
+      "complete": "Senha atualizada. Agora você pode entrar.",
+      "invalidCode": "O código é inválido, expirou ou já foi usado.",
+      "requestError": "Não foi possível redefinir a senha. Tente novamente.",
+      "rateLimited": "Muitas tentativas. Aguarde um pouco e tente novamente.",
+      "email": {
+        "subject": "Seu código de redefinição de senha do ReMind",
+        "heading": "Redefinição de senha",
+        "greeting": "Olá, {{username}}!",
+        "intro": "Digite este código de verificação no ReMind para escolher uma nova senha:",
+        "expiry": "O código expira em 10 minutos e só pode ser usado uma vez.",
+        "ignore": "Se você não solicitou a redefinição, ignore este email. Não compartilhe o código.",
+        "changedSubject": "Sua senha do ReMind foi alterada",
+        "changedHeading": "Senha alterada",
+        "changedIntro": "A senha da sua conta ReMind foi alterada com sucesso.",
+        "changedWarning": "Se não foi você, solicite outra redefinição imediatamente e entre em contato com o suporte."
+      }
     }
   },
   "common": {
@@ -168,16 +205,24 @@
     "python": {
       "running": "A executar código Python...",
       "completed": "Execução do Python concluída",
-        "failed": "Falha na execução do Python",
-        "output": "Resultado da execução",
-        "showOutput": "Mostrar resultado",
-        "hideOutput": "Ocultar resultado",
+      "failed": "Falha na execução do Python",
+      "output": "Resultado da execução",
+      "showOutput": "Mostrar resultado",
+      "hideOutput": "Ocultar resultado",
       "showCode": "Mostrar código",
       "hideCode": "Ocultar código"
     },
     "image": {
-      "crop": {"running": "A recortar a imagem...", "completed": "Recorte da imagem pronto", "failed": "Falha ao recortar a imagem"},
-      "tile": {"running": "A dividir a imagem em secções...", "completed": "Secções da imagem prontas", "failed": "Falha ao dividir a imagem"},
+      "crop": {
+        "running": "A recortar a imagem...",
+        "completed": "Recorte da imagem pronto",
+        "failed": "Falha ao recortar a imagem"
+      },
+      "tile": {
+        "running": "A dividir a imagem em secções...",
+        "completed": "Secções da imagem prontas",
+        "failed": "Falha ao dividir a imagem"
+      },
       "source": "Origem: {{filename}}",
       "fragments": "Secções: {{count}}"
     },
@@ -198,9 +243,7 @@
     ]
   },
   "warnings": {
-    "dynamicPhrases": [
-      "O ReMind pode cometer erros."
-    ]
+    "dynamicPhrases": ["O ReMind pode cometer erros."]
   },
   "chat": {
     "readOnly": "O chat é só leitura",
@@ -479,7 +522,16 @@
     "searchHint": "Dica: título, tópico, última mensagem",
     "searchPlaceholder": "Escreva para pesquisar chats",
     "searchInput": "Pesquisa de chats",
-    "channelFilter": { "label": "Filtrar conversas por origem", "all": "Todos", "web": "Web", "telegram": "Telegram", "private": "Pessoal", "group": "Grupo", "guest": "Convidado", "inline": "Inline" },
+    "channelFilter": {
+      "label": "Filtrar conversas por origem",
+      "all": "Todos",
+      "web": "Web",
+      "telegram": "Telegram",
+      "private": "Pessoal",
+      "group": "Grupo",
+      "guest": "Convidado",
+      "inline": "Inline"
+    },
     "yourChats": "Os seus chats",
     "untitled": "Sem título",
     "expand": "Expandir",

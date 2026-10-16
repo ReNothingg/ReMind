@@ -2,9 +2,21 @@
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-quick: cubic-bezier(0.4, 0, 1, 1);
   --ease-spring: linear(
-    0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%,
-    0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%,
-    1.001 85.5%, 1
+    0,
+    0.006,
+    0.025 2.8%,
+    0.101 6.1%,
+    0.539 18.9%,
+    0.721 25.3%,
+    0.849 31.5%,
+    0.937 38.1%,
+    0.968 41.8%,
+    0.991 45.7%,
+    1.006 50.1%,
+    1.015 55%,
+    1.017 63.9%,
+    1.001 85.5%,
+    1
   );
   --motion-pop: 420ms var(--ease-spring);
   --motion-enter: 360ms var(--ease-out-quint);
@@ -43,7 +55,6 @@
     transform: translateY(0);
   }
 }
-
 
 .ui-composer-shell,
 .input-wrapper {
@@ -132,7 +143,6 @@
   }
 }
 
-
 .chat-scroll-latest {
   position: absolute;
   bottom: calc(100% + 12px);
@@ -194,7 +204,6 @@
   }
 }
 
-
 .message.user-message {
   animation: message-send 380ms var(--ease-out-quint) backwards;
 }
@@ -228,14 +237,18 @@
   }
 }
 
-
-
 body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::after {
   position: absolute;
   z-index: -1;
   inset-inline: 0;
   top: 50%;
-  bottom: calc(-1 * (var(--app-composer-bottom-gap) + env(safe-area-inset-bottom, 0px) + var(--app-visual-viewport-bottom-inset) + 4px));
+  bottom: calc(
+    -1 *
+      (
+        var(--app-composer-bottom-gap) + env(safe-area-inset-bottom, 0px) +
+          var(--app-visual-viewport-bottom-inset) + 4px
+      )
+  );
   background: var(--color-bg-canvas);
   content: '';
   pointer-events: none;
@@ -256,7 +269,9 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
 }
 
 @media (min-width: 768px) {
-  .main-input-area.landing:not(.expanded) .compact-model-selector .model-dropdown.ui-toolbar-dropdown-closed {
+  .main-input-area.landing:not(.expanded)
+    .compact-model-selector
+    .model-dropdown.ui-toolbar-dropdown-closed {
     transform: translateY(-6px) scale(0.985);
   }
 }
@@ -299,7 +314,6 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
   }
 }
 
-
 .think-block-wrapper.is-streaming .think-block-label {
   animation: think-breathe 1.8s ease-in-out infinite;
 }
@@ -322,12 +336,24 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
   animation: actions-item-reveal 280ms var(--ease-out-quint) backwards;
 }
 
-.ai-message .actions-bar.ui-message-actions > :nth-child(1) { animation-delay: 80ms; }
-.ai-message .actions-bar.ui-message-actions > :nth-child(2) { animation-delay: 110ms; }
-.ai-message .actions-bar.ui-message-actions > :nth-child(3) { animation-delay: 140ms; }
-.ai-message .actions-bar.ui-message-actions > :nth-child(4) { animation-delay: 170ms; }
-.ai-message .actions-bar.ui-message-actions > :nth-child(5) { animation-delay: 200ms; }
-.ai-message .actions-bar.ui-message-actions > :nth-child(n + 6) { animation-delay: 230ms; }
+.ai-message .actions-bar.ui-message-actions > :nth-child(1) {
+  animation-delay: 80ms;
+}
+.ai-message .actions-bar.ui-message-actions > :nth-child(2) {
+  animation-delay: 110ms;
+}
+.ai-message .actions-bar.ui-message-actions > :nth-child(3) {
+  animation-delay: 140ms;
+}
+.ai-message .actions-bar.ui-message-actions > :nth-child(4) {
+  animation-delay: 170ms;
+}
+.ai-message .actions-bar.ui-message-actions > :nth-child(5) {
+  animation-delay: 200ms;
+}
+.ai-message .actions-bar.ui-message-actions > :nth-child(n + 6) {
+  animation-delay: 230ms;
+}
 
 @keyframes actions-reveal {
   from {
@@ -351,18 +377,31 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
   }
 }
 
-
 .chat-history-item.ui-rail-item {
   animation: rail-item-in 320ms var(--ease-out-quint) backwards;
 }
 
-.chat-history-item.ui-rail-item:nth-child(2) { animation-delay: 20ms; }
-.chat-history-item.ui-rail-item:nth-child(3) { animation-delay: 40ms; }
-.chat-history-item.ui-rail-item:nth-child(4) { animation-delay: 60ms; }
-.chat-history-item.ui-rail-item:nth-child(5) { animation-delay: 80ms; }
-.chat-history-item.ui-rail-item:nth-child(6) { animation-delay: 100ms; }
-.chat-history-item.ui-rail-item:nth-child(7) { animation-delay: 120ms; }
-.chat-history-item.ui-rail-item:nth-child(n + 8) { animation-delay: 140ms; }
+.chat-history-item.ui-rail-item:nth-child(2) {
+  animation-delay: 20ms;
+}
+.chat-history-item.ui-rail-item:nth-child(3) {
+  animation-delay: 40ms;
+}
+.chat-history-item.ui-rail-item:nth-child(4) {
+  animation-delay: 60ms;
+}
+.chat-history-item.ui-rail-item:nth-child(5) {
+  animation-delay: 80ms;
+}
+.chat-history-item.ui-rail-item:nth-child(6) {
+  animation-delay: 100ms;
+}
+.chat-history-item.ui-rail-item:nth-child(7) {
+  animation-delay: 120ms;
+}
+.chat-history-item.ui-rail-item:nth-child(n + 8) {
+  animation-delay: 140ms;
+}
 
 [dir='rtl'] .chat-history-item.ui-rail-item {
   animation-name: rail-item-in-rtl;
@@ -395,11 +434,9 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
   animation: menu-reveal 220ms var(--ease-out-quint) backwards;
 }
 
-
 .model-btn-chevron {
   transition: transform 360ms var(--ease-out-quint);
 }
-
 
 .ui-modal-overlay:not(.ui-modal-ghost) {
   animation: overlay-fade-in 240ms var(--ease-out-quint) backwards;
@@ -420,13 +457,21 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
 }
 
 @keyframes overlay-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes overlay-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes modal-enter {
@@ -483,7 +528,6 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
     }
   }
 }
-
 
 .toast-container > .toast-message {
   animation: toast-in 420ms var(--ease-spring) backwards;
@@ -555,13 +599,11 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
   }
 }
 
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 320ms;
   animation-timing-function: var(--ease-out-quint);
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   .ui-landing-copy,

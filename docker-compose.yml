@@ -1,8 +1,8 @@
 x-default-logging: &default-logging
   driver: json-file
   options:
-    max-size: "10m"
-    max-file: "5"
+    max-size: '10m'
+    max-file: '5'
 
 services:
   nginx:
@@ -13,7 +13,7 @@ services:
       app:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,7 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile
     expose:
-      - "5000"
+      - '5000'
     env_file:
       - path: .env
         required: false
@@ -90,7 +90,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:5000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -113,7 +113,7 @@ services:
   telegram-bot:
     image: remind-app:latest
     command: python telegram_bot.py
-    profiles: ["telegram"]
+    profiles: ['telegram']
     env_file:
       - path: .env
         required: false
@@ -176,7 +176,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate --url http://nginx:80
-    profiles: ["tunnel"]
+    profiles: ['tunnel']
     depends_on:
       nginx:
         condition: service_healthy
@@ -248,7 +248,7 @@ services:
 
   init-storage:
     image: remind-app:latest
-    user: "0:0"
+    user: '0:0'
     command:
       - sh
       - -c
@@ -256,7 +256,7 @@ services:
     volumes:
       - ./database:/app/database
       - ./logs:/app/logs
-    restart: "no"
+    restart: 'no'
     cap_drop:
       - ALL
     cap_add:
@@ -272,7 +272,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.python-runner
-    user: "0:0"
+    user: '0:0'
     command:
       - sh
       - -c
@@ -280,7 +280,7 @@ services:
     volumes:
       - python_runner_queue:/jobs
     network_mode: none
-    restart: "no"
+    restart: 'no'
     cap_drop:
       - ALL
     cap_add:
@@ -308,7 +308,7 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=640m,mode=0711
       - /dev/shm:rw,noexec,nosuid,nodev,size=1m,mode=000
-    user: "0:0"
+    user: '0:0'
     cap_drop:
       - ALL
     cap_add:
@@ -368,7 +368,7 @@ services:
         condition: service_healthy
       init-storage:
         condition: service_completed_successfully
-    restart: "no"
+    restart: 'no'
     cap_drop:
       - ALL
     security_opt:
@@ -386,7 +386,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U remind -d remind_db"]
+      test: ['CMD-SHELL', 'pg_isready -U remind -d remind_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -405,31 +405,31 @@ services:
     command:
       - redis-server
       - --appendonly
-      - "yes"
+      - 'yes'
       - --maxmemory
       - 256mb
       - --maxmemory-policy
       - allkeys-lru
       - --protected-mode
-      - "yes"
+      - 'yes'
       - --bind
       - 0.0.0.0
       - --requirepass
       - ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       - --rename-command
       - CONFIG
-      - ""
+      - ''
       - --rename-command
       - FLUSHALL
-      - ""
+      - ''
       - --rename-command
       - FLUSHDB
-      - ""
+      - ''
       - --rename-command
       - SHUTDOWN
-      - ""
+      - ''
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 10

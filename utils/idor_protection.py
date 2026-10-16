@@ -67,14 +67,11 @@ def check_resource_ownership(resource_type, resource_id_arg="resource_id"):
                 is_owner = share is not None
 
             elif resource_type == "public_chat":
-
                 share = ChatShare.query.filter_by(session_id=str(resource_id)).first()
 
                 if share and share.is_public:
-
                     is_owner = True
                 elif share and share.user_id == user_id:
-
                     is_owner = True
 
             if not is_owner:

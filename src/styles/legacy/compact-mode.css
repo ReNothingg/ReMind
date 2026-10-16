@@ -66,4 +66,3 @@ body.compact-mode .action-btn img {
 html[data-theme='light'] body.compact-mode {
   --spacing-unit: var(--compact-spacing-unit, 3px);
 }
-

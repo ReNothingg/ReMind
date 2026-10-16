@@ -70,8 +70,7 @@ export function initI18n() {
   i18n.on('languageChanged', (lng) => {
     try {
       localStorage.setItem(LANGUAGE_STORAGE_KEY, normalizeLanguage(lng));
-    } catch {
-    }
+    } catch {}
   });
 
   return initPromise;

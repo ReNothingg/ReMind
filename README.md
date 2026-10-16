@@ -37,18 +37,17 @@
 
 <a id="stars"></a>
 
-
 ## Обзор
 
 **ReMind** это AI-приложение на React/Vite и Flask, собранное как продуктовая база: streaming chat, сохранение сессий, share-ссылки, авторизация, безопасные загрузки, privacy endpoints, OpenAPI-контракт, Celery worker и Docker Compose-инфраструктура лежат в одном репозитории.
 
-| Что важно | Как это устроено |
-|---|---|
-| AI chat workspace | SSE-стриминг, история сообщений, session management, guest/auth режимы |
-| Мультимодальность | File upload pipeline, image flow, voice synthesis, translate endpoint |
-| Приватность | Экспорт данных, удаление аккаунта/данных, secure session handling |
-| Production base | Nginx, PostgreSQL, Redis, Celery, health checks, metrics, CI/security gate |
-| Extensibility | OpenAPI и shared services поверх общего backend layer |
+| Что важно         | Как это устроено                                                           |
+| ----------------- | -------------------------------------------------------------------------- |
+| AI chat workspace | SSE-стриминг, история сообщений, session management, guest/auth режимы     |
+| Мультимодальность | File upload pipeline, image flow, voice synthesis, translate endpoint      |
+| Приватность       | Экспорт данных, удаление аккаунта/данных, secure session handling          |
+| Production base   | Nginx, PostgreSQL, Redis, Celery, health checks, metrics, CI/security gate |
+| Extensibility     | OpenAPI и shared services поверх общего backend layer                      |
 
 <a id="features"></a>
 
@@ -70,14 +69,14 @@
 
 ## Технологический стек
 
-| Слой | Стек |
-|---|---|
-| Frontend | React 19, TypeScript, Vite 7, i18next, Chart.js, D3, Mermaid, Nomnoml |
-| Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-Session, Authlib, Waitress, Gunicorn |
-| AI / Media | AI provider adapter, local `echo`, `demo_image`, Pillow, server-side speech synthesis |
-| Storage / Queue | SQLite for local development, PostgreSQL for deployment, Redis, Celery |
-| Infra | Docker, Docker Compose, Nginx |
-| Quality | Ruff, Black, MyPy, ESLint, TypeScript, GitHub Actions |
+| Слой            | Стек                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Frontend        | React 19, TypeScript, Vite 7, i18next, Chart.js, D3, Mermaid, Nomnoml                 |
+| Backend         | Python 3.11, Flask, Flask-SQLAlchemy, Flask-Session, Authlib, Waitress, Gunicorn      |
+| AI / Media      | AI provider adapter, local `echo`, `demo_image`, Pillow, server-side speech synthesis |
+| Storage / Queue | SQLite for local development, PostgreSQL for deployment, Redis, Celery                |
+| Infra           | Docker, Docker Compose, Nginx                                                         |
+| Quality         | Ruff, Black, MyPy, ESLint, TypeScript, GitHub Actions                                 |
 
 <a id="quick-start"></a>
 
@@ -144,9 +143,9 @@ npm run dev
 
 Команда запускает:
 
-| Сервис | URL |
-|---|---|
-| Flask API | `http://127.0.0.1:5000` |
+| Сервис          | URL                     |
+| --------------- | ----------------------- |
+| Flask API       | `http://127.0.0.1:5000` |
 | Vite dev server | `http://127.0.0.1:5173` |
 
 Vite проксирует API-запросы на backend.
@@ -172,11 +171,11 @@ celery -A celery_worker.celery worker --loglevel=info --concurrency=2
 
 В репозитории есть отдельные Compose-конфигурации для разработки и production-проверки.
 
-| Режим | Команда | Назначение |
-|---|---|---|
-| Dev | `docker compose -f docker-compose.dev.yml up --build` | Hot reload frontend, backend and worker |
-| Dev shortcut | `npm run docker:dev` | Запуск dev Compose stack |
-| Production | `npm run docker:prod` | HTTPS Nginx + Flask app + worker + PostgreSQL + Redis |
+| Режим        | Команда                                               | Назначение                                            |
+| ------------ | ----------------------------------------------------- | ----------------------------------------------------- |
+| Dev          | `docker compose -f docker-compose.dev.yml up --build` | Hot reload frontend, backend and worker               |
+| Dev shortcut | `npm run docker:dev`                                  | Запуск dev Compose stack                              |
+| Production   | `npm run docker:prod`                                 | HTTPS Nginx + Flask app + worker + PostgreSQL + Redis |
 
 Dev URLs:
 
@@ -204,31 +203,31 @@ graph TD
 
 Ключевые точки входа:
 
-| Путь | Ответственность |
-|---|---|
-| `app_factory.py` | Flask app assembly, middleware, security, sessions and routes |
-| `routes/features/` | Feature-oriented API modules |
-| `services/` | Chat history, files, model access, voice and shared business logic |
-| `ai_engine/` | AI provider adapters and local smoke-test providers |
-| `src/` | React SPA |
-| `openapi/openapi.json` | API contract used to generate `src/generated/openapi.ts` |
+| Путь                   | Ответственность                                                    |
+| ---------------------- | ------------------------------------------------------------------ |
+| `app_factory.py`       | Flask app assembly, middleware, security, sessions and routes      |
+| `routes/features/`     | Feature-oriented API modules                                       |
+| `services/`            | Chat history, files, model access, voice and shared business logic |
+| `ai_engine/`           | AI provider adapters and local smoke-test providers                |
+| `src/`                 | React SPA                                                          |
+| `openapi/openapi.json` | API contract used to generate `src/generated/openapi.ts`           |
 
 ### Инструменты чата
 
 Встроенный Python/React-рантайм выполняет инструменты только в рамках текущего ответа.
 Код независим от внешних агентных платформ; shell-доступа к серверу, субагентов и фонового цикла нет.
 
-| Возможность | Реализация ReMind |
-|---|---|
-| Типизированные инструменты и проверки | `ai_engine/tool_schemas.json`, `services/tool_validation.py`, существующие правила доступа |
-| Связанные вызовы и результаты | `services/tool_execution.py`: каждый вызов получает результат, включая ошибки и лимиты; успешные повторы возвращают прежний результат без повторной публикации |
-| Файлы и версии | Чтение с пагинацией, поиск по маске и содержимому, сравнение, создание и точечные правки с проверкой версии; оригиналы сохраняются |
-| Точечные правки | `canvas_read`, `canvas_edit`: версия документа, точное единственное совпадение, сохранение ID Canvas |
-| Веб-исследование | До трёх запросов одновременно, фильтры доменов и свежести, чтение страниц по частям, поиск по тексту и переходы по реальным ссылкам |
-| Табличные данные | CSV и плоские JSON-массивы: схема, пропуски, фильтры, сортировка, группировка, агрегаты и CSV-экспорт |
-| GitHub | Чтение нескольких разрешённых файлов и поиск текста в явно выбранных путях подключённого репозитория |
-| План и уточнения | Карточка шагов и вопросы с выбором либо свободным ответом; ответ пользователя отправляется обычным сообщением |
-| Журнал выполнения | Состояния инструментов, время, ошибки и прогресс в существующем мобильном блоке; старые сохранённые блоки поддерживаются |
+| Возможность                           | Реализация ReMind                                                                                                                                              |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Типизированные инструменты и проверки | `ai_engine/tool_schemas.json`, `services/tool_validation.py`, существующие правила доступа                                                                     |
+| Связанные вызовы и результаты         | `services/tool_execution.py`: каждый вызов получает результат, включая ошибки и лимиты; успешные повторы возвращают прежний результат без повторной публикации |
+| Файлы и версии                        | Чтение с пагинацией, поиск по маске и содержимому, сравнение, создание и точечные правки с проверкой версии; оригиналы сохраняются                             |
+| Точечные правки                       | `canvas_read`, `canvas_edit`: версия документа, точное единственное совпадение, сохранение ID Canvas                                                           |
+| Веб-исследование                      | До трёх запросов одновременно, фильтры доменов и свежести, чтение страниц по частям, поиск по тексту и переходы по реальным ссылкам                            |
+| Табличные данные                      | CSV и плоские JSON-массивы: схема, пропуски, фильтры, сортировка, группировка, агрегаты и CSV-экспорт                                                          |
+| GitHub                                | Чтение нескольких разрешённых файлов и поиск текста в явно выбранных путях подключённого репозитория                                                           |
+| План и уточнения                      | Карточка шагов и вопросы с выбором либо свободным ответом; ответ пользователя отправляется обычным сообщением                                                  |
+| Журнал выполнения                     | Состояния инструментов, время, ошибки и прогресс в существующем мобильном блоке; старые сохранённые блоки поддерживаются                                       |
 
 Google SDK сохраняет исходные части ответа и thought signatures внутри одного запроса;
 ID функции возвращается в соответствующем результате. В интерфейс попадают сводки,
@@ -256,19 +255,19 @@ Python сохраняет существующий изолированный ru
 
 Полезные endpoints:
 
-| Endpoint | Назначение |
-|---|---|
-| `POST /chat` | Streaming chat response |
-| `GET /sessions` | Список сессий |
-| `GET /sessions/<id>/history` | История выбранной сессии |
-| `POST /sessions/<id>/share` | Создание public read-only share link |
-| `POST /translate` | Translate text |
-| `POST /synthesize` | Text-to-speech synthesis |
-| `GET /api/privacy/export` | Экспорт пользовательских данных |
-| `POST /api/privacy/delete` | Удаление пользовательских данных |
-| `GET /health` | Health check |
-| `GET /metrics` | Runtime metrics |
-| `GET /openapi.json` | OpenAPI schema |
+| Endpoint                     | Назначение                           |
+| ---------------------------- | ------------------------------------ |
+| `POST /chat`                 | Streaming chat response              |
+| `GET /sessions`              | Список сессий                        |
+| `GET /sessions/<id>/history` | История выбранной сессии             |
+| `POST /sessions/<id>/share`  | Создание public read-only share link |
+| `POST /translate`            | Translate text                       |
+| `POST /synthesize`           | Text-to-speech synthesis             |
+| `GET /api/privacy/export`    | Экспорт пользовательских данных      |
+| `POST /api/privacy/delete`   | Удаление пользовательских данных     |
+| `GET /health`                | Health check                         |
+| `GET /metrics`               | Runtime metrics                      |
+| `GET /openapi.json`          | OpenAPI schema                       |
 
 Проверить generated TypeScript client:
 

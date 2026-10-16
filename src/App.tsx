@@ -22,12 +22,7 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
 import SEOHelmet from './components/UI/SEOHelmet';
-import {
-  apiService,
-  type CanvasTextdoc,
-  type Mind,
-  type ThinkingLevel,
-} from './services/api';
+import { apiService, type CanvasTextdoc, type Mind, type ThinkingLevel } from './services/api';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
@@ -205,10 +200,17 @@ const MainLayout = () => {
 
   const isRailExpanded = isMobileViewport ? isMobileRailOpen : isRailExpandedDesktop;
   const selectedModel =
-    isAuthLoading || isModelAvailable(currentModel, availableModels.filter((model) => !isImageToolModel(model)))
+    isAuthLoading ||
+    isModelAvailable(
+      currentModel,
+      availableModels.filter((model) => !isImageToolModel(model))
+    )
       ? currentModel
       : getFallbackModelId(availableModels.filter((model) => !isImageToolModel(model)));
-  const currentContextUsage = useMemo(() => sessionContextUsage(history, selectedModel), [history, selectedModel]);
+  const currentContextUsage = useMemo(
+    () => sessionContextUsage(history, selectedModel),
+    [history, selectedModel]
+  );
   const selectedModelDefinition = availableModels.find((model) => model.id === selectedModel);
   const selectedThinkingLevel = selectedModelDefinition?.thinkingLevels.includes(thinkingLevel)
     ? thinkingLevel
@@ -247,12 +249,15 @@ const MainLayout = () => {
     let revision = 0;
     const refreshCatalog = () => {
       const currentRevision = ++revision;
-      void apiService.listModelCatalog().then(({ models, tools }) => {
-        if (!cancelled && revision === currentRevision) {
-          setAvailableModels(normalizeModelOptions(models));
-          setAvailableTools(tools);
-        }
-      }).catch((error) => console.warn('Failed to load model catalog:', error));
+      void apiService
+        .listModelCatalog()
+        .then(({ models, tools }) => {
+          if (!cancelled && revision === currentRevision) {
+            setAvailableModels(normalizeModelOptions(models));
+            setAvailableTools(tools);
+          }
+        })
+        .catch((error) => console.warn('Failed to load model catalog:', error));
     };
     refreshCatalog();
     window.addEventListener('focus', refreshCatalog);
@@ -550,7 +555,16 @@ const MainLayout = () => {
   }, [routePath]);
 
   const handleSendMessage = useCallback(
-    (text: string, files: File[], options: { composerContent?: string; tools?: string[]; webSearch?: boolean; autoWebSearch?: boolean } = {}) => {
+    (
+      text: string,
+      files: File[],
+      options: {
+        composerContent?: string;
+        tools?: string[];
+        webSearch?: boolean;
+        autoWebSearch?: boolean;
+      } = {}
+    ) => {
       setInitialPrompt(null);
       const path = window.location.pathname;
       if (!isTemporaryChat && (path === '/' || !path.startsWith('/c/'))) {
@@ -571,18 +585,23 @@ const MainLayout = () => {
   const modelForMessage = (messageId: string | null, editing = false) => {
     const index = history.findIndex((message) => message.id === messageId);
     const message = history[index + (editing ? 1 : 0)];
-    const imageModel = availableModels.find((model) => model.id === message?.modelId && isImageToolModel(model));
+    const imageModel = availableModels.find(
+      (model) => model.id === message?.modelId && isImageToolModel(model)
+    );
     return imageModel?.id || selectedModel;
   };
 
-  const handleRepairPython = useCallback((error: string, code: string) => {
-    const repairPrompt = t('canvas.pythonTerminal.repairPrompt', {
-      error,
-      code,
-      interpolation: { escapeValue: false },
-    });
-    handleSendMessage(repairPrompt, [], {});
-  }, [handleSendMessage, t]);
+  const handleRepairPython = useCallback(
+    (error: string, code: string) => {
+      const repairPrompt = t('canvas.pythonTerminal.repairPrompt', {
+        error,
+        code,
+        interpolation: { escapeValue: false },
+      });
+      handleSendMessage(repairPrompt, [], {});
+    },
+    [handleSendMessage, t]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -864,19 +883,17 @@ const MainLayout = () => {
 
   useEffect(() => {
     if (
-      !isAuthOpen
-      || isAuthenticated
-      || isTemporaryChat
-      || !currentSessionId
-      || history.length === 0
-      || !(routePath === '/' || routePath.startsWith('/c/'))
+      !isAuthOpen ||
+      isAuthenticated ||
+      isTemporaryChat ||
+      !currentSessionId ||
+      history.length === 0 ||
+      !(routePath === '/' || routePath.startsWith('/c/'))
     ) {
       return;
     }
 
-    const transferableHistory = prepareGuestChatTransferHistory(
-      buildHistoryForAPI(null, history)
-    );
+    const transferableHistory = prepareGuestChatTransferHistory(buildHistoryForAPI(null, history));
     if (transferableHistory.length === 0) return;
     stageGuestChatTransfer({
       sessionId: currentSessionId,
@@ -900,7 +917,8 @@ const MainLayout = () => {
     if (!transfer) return;
 
     guestChatImportStartedRef.current = true;
-    void apiService.importActiveGuestChat(transfer)
+    void apiService
+      .importActiveGuestChat(transfer)
       .then(async (data) => {
         clearGuestChatTransfer();
         const sessionId = data.session_id || transfer.sessionId;
@@ -1273,7 +1291,9 @@ const MainLayout = () => {
                       availableTools={availableTools}
                       onModelChange={setCurrentModel}
                       thinkingLevel={selectedThinkingLevel}
-                      onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
+                      onThinkingLevelChange={(level) =>
+                        setThinkingLevel(normalizeThinkingLevel(level))
+                      }
                     />
                   </LandingHero>
                 </div>
@@ -1330,13 +1350,22 @@ const MainLayout = () => {
                       onRegenerate={(messageId) => {
                         if (regenerateMessage) {
                           notifyOnDoneRef.current = true;
-                          regenerateMessage(messageId, modelForMessage(messageId), selectedThinkingLevel);
+                          regenerateMessage(
+                            messageId,
+                            modelForMessage(messageId),
+                            selectedThinkingLevel
+                          );
                         }
                       }}
                       onEdit={(messageId, newText) => {
                         if (editMessage) {
                           notifyOnDoneRef.current = true;
-                          editMessage(messageId, newText, modelForMessage(messageId, true), selectedThinkingLevel);
+                          editMessage(
+                            messageId,
+                            newText,
+                            modelForMessage(messageId, true),
+                            selectedThinkingLevel
+                          );
                         }
                       }}
                       onSwitchVariant={(messageId, direction) => {
@@ -1366,7 +1395,9 @@ const MainLayout = () => {
                       availableTools={availableTools}
                       onModelChange={setCurrentModel}
                       thinkingLevel={selectedThinkingLevel}
-                      onThinkingLevelChange={(level) => setThinkingLevel(normalizeThinkingLevel(level))}
+                      onThinkingLevelChange={(level) =>
+                        setThinkingLevel(normalizeThinkingLevel(level))
+                      }
                     />
                   </>
                 </Suspense>
@@ -1467,14 +1498,22 @@ const MainLayout = () => {
                 ? document.querySelector(`[data-message-id="${imageLightbox.messageId}"]`)
                 : null
             }
-            onClose={() => setImageLightbox({
-              isOpen: false,
-              imageSrc: null,
-              messageId: null,
-              canRegenerate: true,
-              downloadName: null,
-            })}
-            currentModel={history.find((message) => message.id === imageLightbox.messageId)?.selectedTools?.includes('demo_image') ? 'demo_image' : modelForMessage(imageLightbox.messageId)}
+            onClose={() =>
+              setImageLightbox({
+                isOpen: false,
+                imageSrc: null,
+                messageId: null,
+                canRegenerate: true,
+                downloadName: null,
+              })
+            }
+            currentModel={
+              history
+                .find((message) => message.id === imageLightbox.messageId)
+                ?.selectedTools?.includes('demo_image')
+                ? 'demo_image'
+                : modelForMessage(imageLightbox.messageId)
+            }
             sessionId={currentSessionId}
             canRegenerate={imageLightbox.canRegenerate}
             downloadName={imageLightbox.downloadName}

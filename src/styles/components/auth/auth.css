@@ -510,31 +510,41 @@ html[data-theme='light'] .auth-modal .form-group input:focus {
 
 .auth-modal .password-strength.is-score-0 .password-strength__meter::-webkit-meter-optimum-value,
 .auth-modal .password-strength.is-score-0 .password-strength__meter::-webkit-meter-suboptimum-value,
-.auth-modal .password-strength.is-score-0 .password-strength__meter::-webkit-meter-even-less-good-value {
+.auth-modal
+  .password-strength.is-score-0
+  .password-strength__meter::-webkit-meter-even-less-good-value {
   background: var(--color-text-tertiary);
 }
 
 .auth-modal .password-strength.is-score-1 .password-strength__meter::-webkit-meter-optimum-value,
 .auth-modal .password-strength.is-score-1 .password-strength__meter::-webkit-meter-suboptimum-value,
-.auth-modal .password-strength.is-score-1 .password-strength__meter::-webkit-meter-even-less-good-value {
+.auth-modal
+  .password-strength.is-score-1
+  .password-strength__meter::-webkit-meter-even-less-good-value {
   background: var(--color-error);
 }
 
 .auth-modal .password-strength.is-score-2 .password-strength__meter::-webkit-meter-optimum-value,
 .auth-modal .password-strength.is-score-2 .password-strength__meter::-webkit-meter-suboptimum-value,
-.auth-modal .password-strength.is-score-2 .password-strength__meter::-webkit-meter-even-less-good-value {
+.auth-modal
+  .password-strength.is-score-2
+  .password-strength__meter::-webkit-meter-even-less-good-value {
   background: var(--color-warning);
 }
 
 .auth-modal .password-strength.is-score-3 .password-strength__meter::-webkit-meter-optimum-value,
 .auth-modal .password-strength.is-score-3 .password-strength__meter::-webkit-meter-suboptimum-value,
-.auth-modal .password-strength.is-score-3 .password-strength__meter::-webkit-meter-even-less-good-value {
+.auth-modal
+  .password-strength.is-score-3
+  .password-strength__meter::-webkit-meter-even-less-good-value {
   background: var(--color-accent);
 }
 
 .auth-modal .password-strength.is-score-4 .password-strength__meter::-webkit-meter-optimum-value,
 .auth-modal .password-strength.is-score-4 .password-strength__meter::-webkit-meter-suboptimum-value,
-.auth-modal .password-strength.is-score-4 .password-strength__meter::-webkit-meter-even-less-good-value {
+.auth-modal
+  .password-strength.is-score-4
+  .password-strength__meter::-webkit-meter-even-less-good-value {
   background: var(--color-success);
 }
 

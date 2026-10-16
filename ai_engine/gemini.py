@@ -293,7 +293,7 @@ def _parts_from_chunk(chunk: Any) -> list[Any]:
 
 def _thought_block(content: str, opened_at: int, closed_at: int) -> str:
     safe_content = html.escape(content[:MAX_THOUGHT_SUMMARY_CHARS], quote=False)
-    return f'<think data-open="{opened_at}" data-close="{closed_at}">' f"{safe_content}</think>"
+    return f'<think data-open="{opened_at}" data-close="{closed_at}">{safe_content}</think>'
 
 
 def _thinking_update(
@@ -537,7 +537,9 @@ def _execution_activity(
             else (
                 "web_search_failed"
                 if not output.get("ok")
-                else "web_search_done" if result.sources else "web_search_no_results"
+                else "web_search_done"
+                if result.sources
+                else "web_search_no_results"
             )
         )
         return _search_activity_token(

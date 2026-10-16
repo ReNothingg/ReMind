@@ -1266,7 +1266,7 @@
   height: 7px;
   border-radius: 50%;
   background: currentColor;
-  content: "";
+  content: '';
 }
 
 .user-settings-modal .account-connected-app-status.is-sync-required {
