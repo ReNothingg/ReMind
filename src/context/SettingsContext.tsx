@@ -42,7 +42,7 @@ const detectInterfaceLanguage = () => {
 };
 
 const DEFAULT_SETTINGS = {
-  theme: 'light',
+  theme: 'system',
   accentColor: 'white',
   renderMarkdown: true,
   codeWrap: true,
@@ -90,6 +90,9 @@ export const SettingsProvider = ({ children }) => {
       }
     });
     const merged = { ...DEFAULT_SETTINGS, ...saved };
+    if (merged.theme !== 'light' && merged.theme !== 'dark') {
+      merged.theme = DEFAULT_SETTINGS.theme;
+    }
 
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('settings_personalization_nickname');
