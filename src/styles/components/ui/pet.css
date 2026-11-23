@@ -1,0 +1,82 @@
+.ui-pet {
+  display: inline-grid;
+  flex: none;
+  width: var(--pet-size, 28px);
+  height: var(--pet-size, 28px);
+  place-items: center;
+  pointer-events: none;
+}
+
+.ui-pet img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.ui-composer-status {
+  --pet-size: 70px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  min-height: 46px;
+  margin-block-end: calc(-1 * var(--composer-row-gap));
+  padding-block-end: 8px;
+  padding-inline: calc(var(--pet-size) - 2px) 8px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.ui-composer-status > .ui-pet {
+  position: absolute;
+  z-index: 1;
+  inset-inline-start: 3px;
+  inset-block-end: calc(var(--pet-size) * -5 / 28);
+}
+
+.ui-composer-status > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ui-rail-session-pet {
+  --pet-size: 24px;
+}
+
+.ui-rail-session-pet {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 20px;
+}
+
+.ui-rail-session-pet > .ui-pet {
+  transform: translateY(-2px);
+}
+
+.think-block-header > .ui-pet {
+  margin-inline-end: 6px;
+}
+
+.ui-message-delivery-state,
+.ui-pet-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ui-image-placeholder-pet {
+  --pet-size: 64px;
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 767px) {
+  .ui-composer-status {
+    --pet-size: 56px;
+    min-height: 38px;
+    padding-block-end: 6px;
+  }
+}

@@ -1,4 +1,5 @@
 import { normalizeHistoryMessage } from '../features/chat/historyMessages';
+import type { ChatGenerationOutcome } from '../features/chat/petActivity';
 import {
   extractLatestBeatboxState,
   extractLatestCanvasTextdoc,
@@ -240,6 +241,7 @@ export const useChat = () => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [isTemporaryChat, setIsTemporaryChat] = useState(false);
   const [sessionActivity, setSessionActivity] = useState<Record<string, SessionActivity>>({});
+  const [generationOutcome, setGenerationOutcome] = useState<ChatGenerationOutcome | null>(null);
   const [optimisticSessions, setOptimisticSessions] = useState({});
   const [connectionState, setConnectionState] = useState<'online' | 'offline' | 'reconnecting'>(
     typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'online'
@@ -520,6 +522,7 @@ export const useChat = () => {
 
       sessionAbortControllersRef.current.set(sessionId, controller);
       sessionRequestIdsRef.current.set(sessionId, requestId);
+      if (currentSessionIdRef.current === sessionId) setGenerationOutcome(null);
       setSessionActivityState(sessionId, 'generating');
 
       return { requestId, controller };
@@ -528,7 +531,13 @@ export const useChat = () => {
   );
 
   const completeSessionRequest = useCallback(
-    (sessionId, requestId, status: SessionActivityStatus | null = 'complete', message = '') => {
+    (
+      sessionId: string,
+      requestId: number,
+      status: 'complete' | 'error' | null = 'complete',
+      message = '',
+      resolvedSessionId = sessionId
+    ) => {
       if (!isSessionRequestCurrent(sessionId, requestId)) {
         return false;
       }
@@ -536,10 +545,20 @@ export const useChat = () => {
       sessionAbortControllersRef.current.delete(sessionId);
       sessionRequestIdsRef.current.delete(sessionId);
 
-      if (!status || currentSessionIdRef.current === sessionId) {
-        setSessionActivityState(sessionId, null);
-      } else {
+      const active = currentSessionIdRef.current === resolvedSessionId;
+      if (active) {
+        setGenerationOutcome({
+          sessionId: resolvedSessionId,
+          status: status || 'stopped',
+          finishedAt: Date.now(),
+        });
+        if (resolvedSessionId !== sessionId) setIsLoading(false);
+      }
+
+      if (!active && (status === 'complete' || status === 'error')) {
         setSessionActivityState(sessionId, status, message);
+      } else {
+        setSessionActivityState(sessionId, null);
       }
 
       return true;
@@ -1524,7 +1543,9 @@ export const useChat = () => {
               completeSessionRequest(
                 sessionId,
                 chatRequestId,
-                finalData?.aborted ? null : 'complete'
+                finalData?.aborted ? null : 'complete',
+                '',
+                resolvedSessionId
               );
               if (_queueId && deliverySucceeded) {
                 void removeQueuedChatMessage(_queueId).then(() => {
@@ -1582,7 +1603,9 @@ export const useChat = () => {
             completeSessionRequest(
               sessionId,
               chatRequestId,
-              finalData?.aborted ? null : 'complete'
+              finalData?.aborted ? null : 'complete',
+              '',
+              temporaryChat ? sessionId : resolvedSessionId
             );
             if (_queueId && deliverySucceeded) {
               void removeQueuedChatMessage(_queueId).then(() => {
@@ -2571,6 +2594,7 @@ export const useChat = () => {
     isReadOnly,
     isTemporaryChat,
     sessionActivity,
+    generationOutcome,
     optimisticSessions,
     connectionState,
     queuedMessageCount,

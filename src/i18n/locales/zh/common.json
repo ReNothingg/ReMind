@@ -175,6 +175,7 @@
     "presentation": {
       "think": "思考",
       "working": "处理中",
+      "writingCode": "正在编写代码…",
       "search": "搜索",
       "model": "模型",
       "input": "输入",
@@ -393,6 +394,7 @@
     }
   },
   "composer": {
+    "statusWaiting": "正在等待回复…",
     "tools": {
       "image_analysis": "图像分析",
       "image_analysisDescription": "检查附件图像及其细节",

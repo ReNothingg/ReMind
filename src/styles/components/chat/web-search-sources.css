@@ -1,6 +1,6 @@
 .web-search-progress {
   display: inline-grid;
-  grid-template-columns: 8px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   width: fit-content;
   max-width: min(540px, 100%);
   align-items: center;
@@ -16,10 +16,6 @@
   line-height: 1.35;
   backdrop-filter: none;
   animation: fadeIn 0.18s ease-out;
-}
-
-.web-search-progress .thinking-status-dot {
-  background: var(--color-accent);
 }
 
 .web-sources-container {

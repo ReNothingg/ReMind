@@ -87,7 +87,7 @@ export default function GlobalHeader({
         {isAuthenticated && (
           <HeaderIconButton
             id="mobileMenuToggle"
-            className="mobile-menu-btn inline-flex md:hidden"
+            className="mobile-menu-btn"
             onClick={onMenuToggle}
             title={t('app.menu')}
             aria-label={t('app.menu')}

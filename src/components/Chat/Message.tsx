@@ -23,6 +23,8 @@ import Spinwheel from '../Widgets/Spinwheel';
 import Beatbox from '../Widgets/Beatbox';
 import Visualization from '../Widgets/Visualization';
 import ThinkBlock from '../Widgets/ThinkBlock';
+import Pet, { type PetState } from '../UI/Pet';
+import { getPetStatusLabel } from '../../features/chat/petActivity';
 import ArtifactDownloadCard from './ArtifactDownloadCard';
 import ToolPanel from '../Widgets/ToolPanel';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
@@ -576,9 +578,10 @@ const ThinkingStatus = ({
   query = '',
   queryLabel = '',
   className = 'live-thinking-animation',
+  petState = 'thinking' as PetState,
 }) => (
   <div className={cn('thinking-status', className)} role="status" aria-live="polite">
-    <span className="thinking-status-dot" aria-hidden="true" />
+    <Pet state={petState} />
     <span className="thinking-status-body">
       <span className="thinking-status-label">{label}</span>
       {query && (
@@ -607,6 +610,7 @@ const WebSearchProgress = ({ status, t }) => {
     <ThinkingStatus
       className="web-search-progress"
       label={label}
+      petState="searching"
       query={query}
       queryLabel={t('webSearch.queryLabel')}
     />
@@ -927,6 +931,7 @@ const GitHubDiffCard = ({ payload, t }) => {
 
 const Message = ({
   message,
+  petState = 'waiting' as PetState,
   sessionId,
   onRegenerate,
   onEdit,
@@ -966,6 +971,8 @@ const Message = ({
   const composerContent = currentVariant ? currentVariant.composerContent : message.composerContent;
   const liveThinking = currentVariant?.thinking || message.thinking;
   const streamedThinking = !isUser && isLoading && liveThinking?.id ? liveThinking : null;
+  const isThinking = Boolean(streamedThinking && streamedThinking.status !== 'complete');
+  const hasActiveSearch = isActiveWebSearchStatus(webSearchStatus?.status);
   const displayDeliveryState = currentVariant?.deliveryState || deliveryState;
   const githubTool = getGitHubToolPayload(message, currentVariant);
   const githubDiffPayload = useMemo(() => getGitHubDiffPayload(githubTool), [githubTool]);
@@ -1801,7 +1808,7 @@ const Message = ({
               </div>
             )}
 
-            {!isUser && isLoading && webSearchStatus && !streamedThinking && (
+            {!isUser && isLoading && hasActiveSearch && !isThinking && (
               <WebSearchProgress status={webSearchStatus} t={t} />
             )}
 
@@ -1814,7 +1821,8 @@ const Message = ({
                 content={thought.content}
                 openTime={thought.openTime}
                 closeTime={thought.closeTime}
-                isStreaming={Boolean(streamedThinking && streamedThinking.status !== 'complete')}
+                isStreaming={isThinking}
+                petState={petState}
               />
             ))}
 
@@ -1831,18 +1839,7 @@ const Message = ({
               <div className="image-generation-placeholder ui-message-image-placeholder">
                 <div className="image-placeholder-visual ui-message-image-visual">
                   <div className="shimmer-effect"></div>
-                  <svg
-                    className="placeholder-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" x2="12" y1="3" y2="15" />
-                  </svg>
+                  <Pet state="working" className="ui-image-placeholder-pet" />
                 </div>
                 <div className="image-placeholder-caption ui-message-image-caption">
                   {t('chatImage.generating', { prompt: imagePrompt || '' })}
@@ -1932,11 +1929,17 @@ const Message = ({
               return null;
             })}
 
-            {isLoading &&
-              !displayContent &&
+            {!isUser &&
+              isLoading &&
               !isGeneratingImage &&
-              !webSearchStatus &&
-              !streamedThinking && (
+              !hasActiveSearch &&
+              !isThinking &&
+              (displayContent || streamedThinking || petState === 'coding' ? (
+                <ThinkingStatus
+                  petState={petState}
+                  label={t(getPetStatusLabel(petState) ?? 'think.presentation.working')}
+                />
+              ) : (
                 <ThinkBlock
                   content=""
                   openTime={
@@ -1944,12 +1947,14 @@ const Message = ({
                       ? Number(message.timestamp || 0) * 1000
                       : Number(message.timestamp || 0)
                   }
+                  petState={petState}
                   isStreaming
                 />
-              )}
+              ))}
 
             {!isLoading && displayDeliveryState === 'interrupted' && (
               <div className="ui-message-delivery-state" role="status">
+                <Pet state="paused" animate={false} />
                 {t('reliability.interrupted')}
               </div>
             )}

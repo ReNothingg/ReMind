@@ -1,6 +1,7 @@
 import { type FormEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Circle, LoaderCircle } from 'lucide-react';
+import Pet from '../UI/Pet';
 
 type Step = { id: string; title: string; status: 'pending' | 'in_progress' | 'completed' };
 type Question = { id: string; question: string; options: string[] };
@@ -89,7 +90,13 @@ export default function ToolPanel({
       className={`chat-tool-panel chat-tool-panel-${kind}`}
       aria-label={t(`toolPanels.${kind}`)}
     >
-      <h3>{panel.title}</h3>
+      <h3 className="ui-pet-panel-heading">
+        <Pet
+          state={kind === 'questions' ? 'review' : 'working'}
+          animate={kind === 'questions' ? !locked : disabled}
+        />
+        {panel.title}
+      </h3>
       {panel.steps && (
         <ol className="chat-tool-plan">
           {panel.steps.map((step) => (

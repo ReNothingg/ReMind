@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { removeGuestSession } from '../../features/sessions/guestSessionStorage';
 import { cn } from '../../utils/cn';
+import Pet, { type PetState } from '../UI/Pet';
 
 const normalizeText = (value) => {
   if (!value) return '';
@@ -168,6 +169,7 @@ const AppRail = ({
   onSessionRenamed,
   onSettingsClick,
   onToggle,
+  petState = 'idle' as PetState,
   pinnedMinds = [],
   sessionActivity = {},
   sessions,
@@ -479,24 +481,21 @@ const AppRail = ({
       aria-hidden={isMobile && !isExpanded ? true : undefined}
       inert={isMobile && !isExpanded ? true : undefined}
     >
-      <div className="ui-rail-mobile-header">
-        <img
-          className="ui-rail-mobile-brand"
-          src="/icons/branding/logo.svg"
-          alt=""
-          aria-hidden="true"
-        />
-        <button
-          type="button"
-          className="ui-rail-mobile-close"
-          data-rail-close
-          onClick={onToggle}
-          aria-label={t('common.close')}
-          title={t('common.close')}
-        >
-          <X aria-hidden="true" />
-        </button>
-      </div>
+      {isMobile && (
+        <div className="ui-rail-mobile-header">
+          <img className="ui-rail-mobile-brand" src="/icons/branding/logo.svg" alt="" />
+          <button
+            type="button"
+            className="ui-rail-mobile-close"
+            data-rail-close
+            onClick={onToggle}
+            aria-label={t('common.close')}
+            title={t('common.close')}
+          >
+            <X aria-hidden="true" />
+          </button>
+        </div>
+      )}
       <div className="rail-toggle-zone ui-rail-toggle-zone">
         <button
           type="button"
@@ -777,7 +776,22 @@ const AppRail = ({
                           {t('rail.public')}
                         </span>
                       )}
-                      {activity?.status && (
+                      {activity?.status === 'generating' ? (
+                        <span
+                          className="ui-rail-session-pet"
+                          role="img"
+                          aria-label={activityLabel}
+                          title={activityLabel}
+                        >
+                          <Pet
+                            state={
+                              currentSessionId === session.session_id && petState !== 'idle'
+                                ? petState
+                                : 'working'
+                            }
+                          />
+                        </span>
+                      ) : activity?.status ? (
                         <span
                           className={cn(
                             'ui-rail-status-indicator',
@@ -786,7 +800,7 @@ const AppRail = ({
                           title={activityLabel}
                           aria-label={activityLabel}
                         />
-                      )}
+                      ) : null}
                     </span>
                     {showPreview && (
                       <span className="chat-item-preview ui-rail-preview">{preview}</span>

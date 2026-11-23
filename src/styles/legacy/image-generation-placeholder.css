@@ -19,14 +19,6 @@
   overflow: hidden;
 }
 
-.image-placeholder-visual .placeholder-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--text-color-secondary);
-  opacity: 0.5;
-  z-index: 2;
-}
-
 .shimmer-effect {
   position: absolute;
   top: 0;

@@ -8,9 +8,9 @@ export type SearchActivityStatus =
   | 'web_search_failed';
 
 export type SearchActivitySource = Record<string, unknown> & {
-  rank?: number;
+  rank?: number | undefined;
   title: string;
-  url?: string;
+  url?: string | undefined;
   displayUrl: string;
   siteName: string;
   snippet: string;
@@ -72,22 +72,21 @@ export function decodeSearchActivity(encoded: string): DecodedSearchActivity | n
       return null;
     }
 
-    const sources = Array.isArray(payload.sources)
-      ? payload.sources
-          .filter(
-            (source: unknown): source is Record<string, unknown> =>
-              Boolean(source) && typeof source === 'object'
-          )
-          .map((source): SearchActivitySource => ({
-            rank: Number.isFinite(Number(source.rank)) ? Number(source.rank) : undefined,
-            title: String(source.title || '').slice(0, 240),
-            url: safeHttpUrl(source.url),
-            displayUrl: String(source.display_url || source.displayUrl || '').slice(0, 240),
-            siteName: String(source.site_name || source.siteName || '').slice(0, 160),
-            snippet: String(source.snippet || '').slice(0, 600),
-            faviconUrl: safeHttpUrl(source.favicon_url || source.faviconUrl) || '',
-          }))
-      : [];
+    const rawSources: unknown[] = Array.isArray(payload.sources) ? payload.sources : [];
+    const sources = rawSources
+      .filter(
+        (source): source is Record<string, unknown> =>
+          Boolean(source) && typeof source === 'object'
+      )
+      .map((source): SearchActivitySource => ({
+        rank: Number.isFinite(Number(source.rank)) ? Number(source.rank) : undefined,
+        title: String(source.title || '').slice(0, 240),
+        url: safeHttpUrl(source.url),
+        displayUrl: String(source.display_url || source.displayUrl || '').slice(0, 240),
+        siteName: String(source.site_name || source.siteName || '').slice(0, 160),
+        snippet: String(source.snippet || '').slice(0, 600),
+        faviconUrl: safeHttpUrl(source.favicon_url || source.faviconUrl) || '',
+      }));
 
     return {
       status: payload.status,
@@ -106,7 +105,7 @@ export function extractCompletedSearchSources(value: string): RawWebSource[] {
   SEARCH_ACTIVITY_PATTERN.lastIndex = 0;
 
   while ((match = SEARCH_ACTIVITY_PATTERN.exec(text)) !== null) {
-    const activity = decodeSearchActivity(match[1]);
+    const activity = decodeSearchActivity(match[1] || '');
     if (activity?.status !== 'web_search_done') {
       continue;
     }

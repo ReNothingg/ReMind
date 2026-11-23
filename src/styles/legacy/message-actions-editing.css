@@ -10,7 +10,7 @@
 
 .thinking-status {
   display: inline-grid;
-  grid-template-columns: 8px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   width: fit-content;
   max-width: min(540px, 100%);
   align-items: center;
@@ -19,15 +19,6 @@
   font-size: 0.84rem;
   line-height: 1.35;
   user-select: none;
-}
-
-.thinking-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--color-text-tertiary);
-  opacity: 0.7;
-  animation: thinkingStatusPulse 1.4s ease-in-out infinite;
 }
 
 .thinking-status-body {
@@ -63,17 +54,6 @@
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-@keyframes thinkingStatusPulse {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-
-  50% {
-    opacity: 0.9;
-  }
 }
 
 .modern-loader {

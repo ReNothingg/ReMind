@@ -180,6 +180,7 @@
 
       "think": "Réflexion",
       "working": "En cours",
+      "writingCode": "Écriture du code…",
       "search": "Recherche",
       "model": "Modèle",
       "input": "Entrée",
@@ -402,6 +403,7 @@
     }
   },
   "composer": {
+    "statusWaiting": "En attente d’une réponse…",
     "tools": {
       "image_analysis": "Analyse d’images",
       "image_analysisDescription": "Examiner les images jointes et leurs détails",

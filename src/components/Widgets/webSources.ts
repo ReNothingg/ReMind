@@ -99,8 +99,8 @@ export function normalizeAndMergeWebSources(
         ? `url:${source.url}`
         : `meta:${source.siteName.toLocaleLowerCase()}\u001f${source.title.toLocaleLowerCase()}\u001f${source.displayUrl.toLocaleLowerCase()}`;
       const existingIndex = positions.get(identity);
-      if (existingIndex !== undefined) {
-        const existing = merged[existingIndex];
+      const existing = existingIndex === undefined ? undefined : merged[existingIndex];
+      if (existingIndex !== undefined && existing) {
         merged[existingIndex] = {
           ...existing,
           title: existing.title || source.title,

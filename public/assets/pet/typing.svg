@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+  <style>
+    .remind-pet-typing {
+      animation-duration: 665ms;
+      animation-timing-function: step-end;
+      animation-iteration-count: infinite;
+      animation-fill-mode: both;
+    }
+    .remind-pet-typing-0 { animation-name: remind-pet-typing-0; }
+    @keyframes remind-pet-typing-0 {
+      0%, 100% { visibility: visible; }
+      24.06015% { visibility: hidden; }
+    }
+    .remind-pet-typing-1 { animation-name: remind-pet-typing-1; }
+    @keyframes remind-pet-typing-1 {
+      24.06015% { visibility: visible; }
+      0%, 40.6015%, 100% { visibility: hidden; }
+    }
+    .remind-pet-typing-2 { animation-name: remind-pet-typing-2; }
+    @keyframes remind-pet-typing-2 {
+      40.6015% { visibility: visible; }
+      0%, 63.90977%, 100% { visibility: hidden; }
+    }
+    .remind-pet-typing-3 { animation-name: remind-pet-typing-3; }
+    @keyframes remind-pet-typing-3 {
+      63.90977% { visibility: visible; }
+      0%, 78.94737%, 100% { visibility: hidden; }
+    }
+    .remind-pet-typing-4 { animation-name: remind-pet-typing-4; }
+    @keyframes remind-pet-typing-4 {
+      78.94737% { visibility: visible; }
+      0%, 100% { visibility: hidden; }
+    }
+    #still:target ~ .remind-pet-typing { animation: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .remind-pet-typing { animation: none; }
+    }
+  </style>
+  <g id="still"/>
+  <g class="remind-pet-typing remind-pet-typing-0" visibility="hidden">
+    <path fill="#8F9DB1" d="M11 11h4v1h-4z M9 12h2v1h-2z M14 12h3v1h-3z M8 13h2v1h-2z M15 13h3v1h-3z M8 14h1v1h-1z M16 14h2v1h-2z M7 15h2v2h-2z M16 15h3v2h-3z M8 17h2v1h-2z M15 17h3v1h-3z M8 18h3v1h-3z M14 18h6v1h-6z M9 19h10v1h-10z M10 20h8v1h-8z"/>
+    <path fill="#7486A0" d="M7 17h1v1h-1z M18 17h1v1h-1z"/>
+    <path fill="#F3F6FB" d="M11 12h3v1h-3z M10 13h5v1h-5z M9 14h2v1h-2z M13 14h3v1h-3z M11 15h1v1h-1z M9 15h1v2h-1z M14 15h2v2h-2z M14 17h1v1h-1z M13 18h1v1h-1z"/>
+    <path fill="#222A38" d="M11 14h2v1h-2z M10 15h1v1h-1z M12 15h2v1h-2z M10 16h4v2h-4z M11 18h2v1h-2z"/>
+    <path fill="#516388" d="M8 19h1v1h-1z M19 19h1v1h-1z M7 20h3v1h-3z M18 20h3v1h-3z M6 21h6v1h-6z M16 21h6v1h-6z"/>
+    <path fill="#445477" d="M7 22h4v1h-4z M17 22h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-typing remind-pet-typing-1" visibility="hidden">
+    <path fill="#8F9DB1" d="M11 11h4v1h-4z M9 12h2v1h-2z M14 12h3v1h-3z M8 13h2v1h-2z M15 13h3v1h-3z M8 14h1v1h-1z M16 14h2v1h-2z M7 15h2v2h-2z M16 15h3v2h-3z M8 17h2v1h-2z M15 17h3v1h-3z M8 18h3v1h-3z M14 18h6v1h-6z M9 19h10v1h-10z M10 20h8v1h-8z"/>
+    <path fill="#7486A0" d="M7 17h1v1h-1z M18 17h1v1h-1z"/>
+    <path fill="#F3F6FB" d="M11 12h3v1h-3z M10 13h5v1h-5z M9 14h3v1h-3z M14 14h2v1h-2z M12 15h1v1h-1z M9 15h2v2h-2z M15 15h1v2h-1z M10 17h1v1h-1z M11 18h1v1h-1z"/>
+    <path fill="#222A38" d="M12 14h2v1h-2z M11 15h1v1h-1z M13 15h2v1h-2z M11 16h4v2h-4z M12 18h2v1h-2z"/>
+    <path fill="#516388" d="M8 19h1v1h-1z M19 19h1v1h-1z M7 20h3v1h-3z M18 20h3v1h-3z M6 21h6v1h-6z M16 21h6v1h-6z"/>
+    <path fill="#445477" d="M7 22h4v1h-4z M17 22h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-typing remind-pet-typing-2" visibility="visible">
+    <path fill="#8F9DB1" d="M13 11h4v1h-4z M11 12h2v1h-2z M16 12h3v1h-3z M10 13h2v1h-2z M17 13h3v1h-3z M10 14h1v1h-1z M18 14h2v1h-2z M9 15h2v2h-2z M18 15h3v2h-3z M10 17h2v1h-2z M17 17h3v1h-3z M8 18h5v1h-5z M16 18h4v1h-4z M9 19h10v1h-10z M10 20h8v1h-8z"/>
+    <path fill="#7486A0" d="M9 17h1v1h-1z M20 17h1v1h-1z"/>
+    <path fill="#F3F6FB" d="M13 12h3v1h-3z M12 13h5v1h-5z M11 14h4v1h-4z M17 14h1v1h-1z M15 15h1v1h-1z M11 15h3v2h-3z M12 17h2v1h-2z M13 18h2v1h-2z"/>
+    <path fill="#222A38" d="M15 14h2v1h-2z M14 15h1v1h-1z M16 15h2v1h-2z M14 16h4v1h-4z M14 17h3v1h-3z M15 18h1v1h-1z"/>
+    <path fill="#516388" d="M8 19h1v1h-1z M19 19h1v1h-1z M7 20h3v1h-3z M18 20h3v1h-3z M6 21h6v1h-6z M16 21h6v1h-6z"/>
+    <path fill="#445477" d="M7 22h4v1h-4z M17 22h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-typing remind-pet-typing-3" visibility="hidden">
+    <path fill="#8F9DB1" d="M13 11h4v1h-4z M11 12h2v1h-2z M16 12h3v1h-3z M10 13h2v1h-2z M17 13h3v1h-3z M10 14h1v1h-1z M18 14h2v1h-2z M9 15h2v2h-2z M18 15h3v2h-3z M10 17h2v1h-2z M17 17h3v1h-3z M8 18h5v1h-5z M16 18h4v1h-4z M9 19h10v1h-10z M10 20h8v1h-8z"/>
+    <path fill="#7486A0" d="M9 17h1v1h-1z M20 17h1v1h-1z"/>
+    <path fill="#F3F6FB" d="M13 12h3v1h-3z M12 13h5v1h-5z M11 14h4v1h-4z M17 14h1v1h-1z M15 15h1v1h-1z M11 15h3v2h-3z M12 17h2v1h-2z M13 18h2v1h-2z"/>
+    <path fill="#222A38" d="M15 14h2v1h-2z M14 15h1v1h-1z M16 15h2v1h-2z M14 16h4v1h-4z M14 17h3v1h-3z M15 18h1v1h-1z"/>
+    <path fill="#516388" d="M8 19h1v1h-1z M19 19h2v1h-2z M7 20h3v1h-3z M18 20h4v1h-4z M6 21h6v1h-6z"/>
+    <path fill="#445477" d="M17 21h4v1h-4z M7 22h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-typing remind-pet-typing-4" visibility="hidden">
+    <path fill="#8F9DB1" d="M12 11h4v1h-4z M10 12h2v1h-2z M15 12h3v1h-3z M9 13h2v1h-2z M16 13h3v1h-3z M9 14h1v1h-1z M17 14h2v1h-2z M8 15h2v2h-2z M17 15h3v2h-3z M9 17h2v1h-2z M16 17h3v1h-3z M8 18h4v1h-4z M15 18h5v1h-5z M9 19h10v1h-10z M10 20h8v1h-8z"/>
+    <path fill="#7486A0" d="M8 17h1v1h-1z M19 17h1v1h-1z"/>
+    <path fill="#F3F6FB" d="M12 12h3v1h-3z M11 13h5v1h-5z M10 14h3v1h-3z M15 14h2v1h-2z M13 15h1v1h-1z M10 15h2v2h-2z M16 15h1v2h-1z M11 17h1v1h-1z M12 18h1v1h-1z"/>
+    <path fill="#222A38" d="M13 14h2v1h-2z M12 15h1v1h-1z M14 15h2v1h-2z M12 16h4v2h-4z M13 18h2v1h-2z"/>
+    <path fill="#516388" d="M8 19h1v1h-1z M19 19h1v1h-1z M7 20h3v1h-3z M18 20h3v1h-3z M6 21h6v1h-6z M16 21h6v1h-6z"/>
+    <path fill="#445477" d="M7 22h4v1h-4z M17 22h4v1h-4z"/>
+  </g>
+</svg>

@@ -175,6 +175,7 @@
     "presentation": {
       "think": "विचार",
       "working": "काम जारी है",
+      "writingCode": "कोड लिख रहा हूँ…",
       "search": "खोज",
       "model": "मॉडल",
       "input": "इनपुट",
@@ -397,6 +398,7 @@
     }
   },
   "composer": {
+    "statusWaiting": "जवाब का इंतज़ार है…",
     "tools": {
       "image_analysis": "चित्र विश्लेषण",
       "image_analysisDescription": "संलग्न चित्रों और उनके विवरणों की जाँच करें",

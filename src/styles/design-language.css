@@ -330,7 +330,7 @@ html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
   transform: translateY(6px) scale(0.985);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1025px) {
   .ui-toolbar-navigation-group.is-authenticated {
     display: none;
   }

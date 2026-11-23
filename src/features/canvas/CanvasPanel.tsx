@@ -30,6 +30,7 @@ import {
 } from '../../services/api';
 import CanvasCodeEditor from './CanvasCodeEditor';
 import CanvasMarkdownPreview from './CanvasMarkdownPreview';
+import Pet from '../../components/UI/Pet';
 
 type CanvasPanelProps = {
   textdoc: CanvasTextdoc;
@@ -379,6 +380,9 @@ const CanvasPanel = ({
     <aside className="chat-canvas-panel" aria-label={t('canvas.ariaLabel')}>
       <header className="chat-canvas-header">
         <div className="chat-canvas-title-block">
+          {(isStreaming || pythonRun.state === 'running') && (
+            <Pet state={isCode ? 'coding' : 'working'} />
+          )}
           <strong title={textdoc.name}>{textdoc.name}</strong>
           <span className="chat-canvas-type-label">{typeLabel}</span>
         </div>

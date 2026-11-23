@@ -175,6 +175,7 @@
     "presentation": {
       "think": "চিন্তা",
       "working": "কাজ চলছে",
+      "writingCode": "কোড লিখছি…",
       "search": "অনুসন্ধান",
       "model": "মডেল",
       "input": "ইনপুট",
@@ -397,6 +398,7 @@
     }
   },
   "composer": {
+    "statusWaiting": "উত্তরের অপেক্ষায়…",
     "tools": {
       "image_analysis": "ছবি বিশ্লেষণ",
       "image_analysisDescription": "সংযুক্ত ছবি ও তার বিস্তারিত পরীক্ষা করুন",

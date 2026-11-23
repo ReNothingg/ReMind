@@ -7,6 +7,9 @@ import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useStat
 import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
+import Pet, { type PetState } from '../UI/Pet';
+import { getPetStatusLabel } from '../../features/chat/petActivity';
+import { useComposerPetMood } from '../../features/chat/useComposerPetMood';
 import ScrollToLatestButton from './ScrollToLatestButton';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -29,6 +32,9 @@ const InputArea = ({
   onSendMessage,
   onStop,
   isLoading,
+  petState = 'idle' as PetState,
+  connectionState = 'online' as 'online' | 'offline' | 'reconnecting',
+  queuedMessageCount = 0,
   initialPrompt,
   onInitialPromptConsumed = undefined,
   onOpenAuth,
@@ -517,6 +523,25 @@ const InputArea = ({
     : settings.requireCtrlEnterToSend
       ? t('composer.sendCtrlEnter')
       : t('composer.sendEnter');
+  const isPetAvailable =
+    !isReadOnly &&
+    !isLoading &&
+    petState === 'idle' &&
+    connectionState === 'online' &&
+    queuedMessageCount === 0;
+  const mood = useComposerPetMood(isPetAvailable, composerRef, currentSessionId);
+  let statusPet = isPetAvailable ? mood : petState;
+  const statusKey = getPetStatusLabel(petState);
+  let statusLabel = statusKey ? t(statusKey) : '';
+  if (!isLoading && connectionState !== 'online') {
+    statusPet = connectionState === 'offline' ? 'paused' : 'waiting';
+    statusLabel = t(
+      connectionState === 'offline' ? 'reliability.offline' : 'reliability.reconnecting'
+    );
+  } else if (!isLoading && queuedMessageCount > 0) {
+    statusPet = 'waiting';
+    statusLabel = t('reliability.queued', { count: queuedMessageCount });
+  }
 
   return (
     <>
@@ -614,6 +639,12 @@ const InputArea = ({
           </Suspense>
         )}
 
+        {!isReadOnly && (
+          <div className="ui-composer-status" role={!isLoading && statusLabel ? 'status' : undefined}>
+            <Pet state={statusPet} />
+            {statusLabel && <span>{statusLabel}</span>}
+          </div>
+        )}
         <div className={cn('input-wrapper ui-composer-shell', hasQuotes && 'has-quotes')}>
           {hasQuotes && (
             <div

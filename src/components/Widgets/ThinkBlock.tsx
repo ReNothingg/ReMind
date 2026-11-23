@@ -13,6 +13,8 @@ import {
   Wrench,
 } from 'lucide-react';
 import { Github } from '../UI/BrandIcons';
+import Pet, { type PetState } from '../UI/Pet';
+import { getPetStatusLabel } from '../../features/chat/petActivity';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-python';
 import { cn } from '../../utils/cn';
@@ -28,6 +30,7 @@ type ThinkBlockProps = {
   openTime?: number;
   closeTime?: number;
   isStreaming?: boolean;
+  petState?: PetState;
 };
 
 type RowState = 'running' | 'complete' | 'failed' | 'interrupted';
@@ -328,6 +331,7 @@ export default function ThinkBlock({
   openTime,
   closeTime,
   isStreaming = false,
+  petState = 'thinking',
 }: ThinkBlockProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<boolean | null>(null);
@@ -381,6 +385,7 @@ export default function ThinkBlock({
           aria-controls={contentId}
           onClick={() => setExpanded(!open)}
         >
+          <Pet state="content" animate={false} />
           <span className="think-block-label">{title}</span>
           <ChevronRight className="think-block-icon" aria-hidden="true" />
           {openTime ? <span className="think-block-timer">{duration}</span> : null}
@@ -407,7 +412,10 @@ export default function ThinkBlock({
       </div>
       {isStreaming && (
         <div className="think-block-pending">
-          <span role="status">{t('think.presentation.working')}</span>
+          <Pet state={petState} />
+          <span role="status">
+            {t(getPetStatusLabel(petState) ?? 'think.presentation.working')}
+          </span>
           {openTime ? <span className="think-block-timer">{duration}</span> : null}
         </div>
       )}

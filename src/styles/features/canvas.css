@@ -208,6 +208,7 @@ body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) {
 }
 
 body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .input-wrapper,
+body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .ui-composer-status,
 body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .attach-area {
   width: min(720px, 100%) !important;
   max-width: 100% !important;
@@ -1370,6 +1371,7 @@ body.canvas-resizing .chat-canvas-resize-handle::before {
   }
 
   body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .input-wrapper,
+  body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .ui-composer-status,
   body.has-canvas-dock .main-input-area.ui-main-input-shell:not(.landing) > .attach-area {
     width: auto !important;
     max-width: none !important;

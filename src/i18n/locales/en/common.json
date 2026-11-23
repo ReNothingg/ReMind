@@ -180,6 +180,7 @@
 
       "think": "Think",
       "working": "Working",
+      "writingCode": "Writing code…",
       "search": "Search",
       "model": "Model",
       "input": "Input",
@@ -457,6 +458,7 @@
     }
   },
   "composer": {
+    "statusWaiting": "Waiting for a response…",
     "tools": {
       "data": "Data",
       "dataDescription": "Inspect, filter and export CSV/JSON",

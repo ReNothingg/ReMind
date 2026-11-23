@@ -175,6 +175,7 @@
     "presentation": {
       "think": "التفكير",
       "working": "جارٍ العمل",
+      "writingCode": "أكتب الكود…",
       "search": "البحث",
       "model": "النموذج",
       "input": "الإدخال",
@@ -393,6 +394,7 @@
     }
   },
   "composer": {
+    "statusWaiting": "أنتظر الرد…",
     "tools": {
       "image_analysis": "تحليل الصور",
       "image_analysisDescription": "فحص الصور المرفقة وتفاصيلها",

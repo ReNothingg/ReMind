@@ -99,7 +99,7 @@ export function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
         mergedItems.push(item);
       } else {
         const existing = mergedItems[existingIndex];
-        if (existing.kind === 'image') {
+        if (existing?.kind === 'image') {
           mergedItems[existingIndex] = {
             ...existing,
             ...item,
@@ -121,7 +121,7 @@ export function parseThoughtTimeline(value: string): ThoughtTimelineItem[] {
       return;
     }
     const existing = mergedItems[existingIndex];
-    if (existing.kind === 'python') {
+    if (existing?.kind === 'python') {
       mergedItems[existingIndex] = {
         ...existing,
         ...item,

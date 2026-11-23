@@ -22,12 +22,14 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
 import SEOHelmet from './components/UI/SEOHelmet';
+import Pet from './components/UI/Pet';
 import { apiService, type CanvasTextdoc, type Mind, type ThinkingLevel } from './services/api';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
 import { ALLOW_GUEST_CHATS_SAVE } from './utils/constants';
 import GlobalHeader from './features/chat/components/GlobalHeader';
+import { useChatPet } from './features/chat/useChatPet';
 import {
   FALLBACK_MODELS,
   getFallbackModelId,
@@ -184,7 +186,10 @@ const MainLayout = () => {
     sessionAccess,
     isReadOnly,
     isTemporaryChat,
+    connectionState,
+    queuedMessageCount,
     sessionActivity,
+    generationOutcome,
     optimisticSessions,
     markSessionActivitySeen,
     startTemporaryChat,
@@ -192,6 +197,14 @@ const MainLayout = () => {
     disableSharing,
     buildHistoryForAPI,
   } = useChat();
+
+  const petState = useChatPet(
+    history,
+    isLoading,
+    currentSessionId,
+    generationOutcome,
+    isCanvasStreaming ? canvasTextdoc?.type : undefined
+  );
 
   const { sessions, refreshSessions, removeSession, onSessionRenamed } = useSessionList({
     isAuthenticated,
@@ -1149,6 +1162,7 @@ const MainLayout = () => {
             currentPath={routePath}
             activeMindId={activeMind?.public_id || null}
             pinnedMinds={pinnedMinds}
+            petState={petState}
             onSelectMind={handleStartMind}
             onSessionDeleted={(sessionId) => {
               removeSession(sessionId);
@@ -1280,6 +1294,9 @@ const MainLayout = () => {
                         stopGeneration();
                       }}
                       isLoading={isLoading}
+                      petState={petState}
+                      connectionState={connectionState}
+                      queuedMessageCount={queuedMessageCount}
                       isReadOnly={isReadOnly}
                       initialPrompt={initialPrompt}
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
@@ -1345,6 +1362,7 @@ const MainLayout = () => {
                     <ChatContainer
                       history={history}
                       isLoading={isLoading}
+                      petState={petState}
                       currentSessionId={isTemporaryChat ? null : currentSessionId}
                       isReadOnly={isReadOnly}
                       onRegenerate={(messageId) => {
@@ -1384,6 +1402,9 @@ const MainLayout = () => {
                         stopGeneration();
                       }}
                       isLoading={isLoading}
+                      petState={petState}
+                      connectionState={connectionState}
+                      queuedMessageCount={queuedMessageCount}
                       isReadOnly={isReadOnly}
                       initialPrompt={initialPrompt}
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
@@ -1448,7 +1469,13 @@ const MainLayout = () => {
                 title={t('canvas.card.openAria', { name: canvasDockTextdoc.name })}
               >
                 <span className="chat-canvas-dock-icon" aria-hidden="true">
-                  {canvasDockIsCode ? <FileCode2 size={18} /> : <FileText size={18} />}
+                  {isCanvasStreaming ? (
+                    <Pet state={canvasDockIsCode ? 'coding' : 'working'} />
+                  ) : canvasDockIsCode ? (
+                    <FileCode2 size={18} />
+                  ) : (
+                    <FileText size={18} />
+                  )}
                 </span>
                 <span className="chat-canvas-dock-copy">
                   <strong>{canvasDockTextdoc.name}</strong>

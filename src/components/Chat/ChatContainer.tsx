@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Message from './Message';
+import type { PetState } from '../UI/Pet';
 
 const ChatContainer = ({
   history,
   isLoading,
+  petState = 'waiting' as PetState,
   onRegenerate,
   onEdit,
   onSwitchVariant,
@@ -88,6 +90,7 @@ const ChatContainer = ({
           <Message
             key={msg.id}
             message={msg}
+            petState={msg.isLoading ? petState : undefined}
             sessionId={currentSessionId}
             onRegenerate={isReadOnly ? null : onRegenerate}
             onEdit={isReadOnly ? null : onEdit}
