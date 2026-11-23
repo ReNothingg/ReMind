@@ -34,7 +34,7 @@ const CustomSelect = ({
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | null>(null);
   const selectId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedOption = options.find((opt) => opt.value === value);
@@ -67,16 +67,16 @@ const CustomSelect = ({
     }
 
     const updateDropdownPlacement = () => {
-      if (!containerRef.current || !dropdownRef.current) {
+      if (!triggerRef.current || !listRef.current) {
         return;
       }
 
       const viewportGap = 12;
       const triggerGap = 6;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const dropdownHeight = Math.min(dropdownRef.current.scrollHeight, 280);
-      const spaceBelow = window.innerHeight - containerRect.bottom - viewportGap;
-      const spaceAbove = containerRect.top - viewportGap;
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const dropdownHeight = Math.min(listRef.current.scrollHeight, 280);
+      const spaceBelow = window.innerHeight - triggerRect.bottom - viewportGap;
+      const spaceAbove = triggerRect.top - viewportGap;
       const shouldOpenUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
       const availableSpace = Math.max(
         120,
@@ -104,8 +104,8 @@ const CustomSelect = ({
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
+        triggerRef.current?.focus();
         setIsOpen(false);
-        window.requestAnimationFrame(() => triggerRef.current?.focus());
       }
     };
 
@@ -138,9 +138,9 @@ const CustomSelect = ({
   };
 
   const handleSelect = (optionValue: string) => {
+    triggerRef.current?.focus();
     onChange(optionValue);
     setIsOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
   const handleToggle = () => {
@@ -149,8 +149,6 @@ const CustomSelect = ({
         setIsOpen(false);
         return;
       }
-      setDropDirection('down');
-      setDropdownMaxHeight(null);
       setIsOpen(true);
     }
   };
@@ -166,11 +164,7 @@ const CustomSelect = ({
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
-      if (!isOpen) {
-        setDropDirection('down');
-        setDropdownMaxHeight(null);
-        setIsOpen(true);
-      }
+      setIsOpen(true);
     }
   };
 
@@ -219,7 +213,7 @@ const CustomSelect = ({
       className={cn(
         'custom-select-wrapper flex w-full flex-col gap-1.5',
         isOpen && 'is-open',
-        isOpen && dropDirection === 'up' && 'is-drop-up',
+        dropDirection === 'up' && 'is-drop-up',
         className
       )}
     >
@@ -232,58 +226,58 @@ const CustomSelect = ({
         </span>
       )}
 
-      <button
-        type="button"
-        ref={triggerRef}
-        className={cn(
-          'custom-select-container relative flex h-11 w-full cursor-pointer items-center rounded-md border border-border bg-interactive px-3 text-sm text-foreground transition duration-200 ease-out select-none',
-          isOpen && 'open border-accent-brand bg-surface',
-          isOpen && dropDirection === 'down' && 'rounded-b-none border-b-transparent',
-          isOpen && dropDirection === 'up' && 'rounded-t-none border-t-transparent',
-          disabled && 'disabled cursor-not-allowed opacity-50',
-          !disabled && 'hover:border-border-heavy hover:bg-surface-alt'
-        )}
-        onClick={handleToggle}
-        onKeyDown={handleTriggerKeyDown}
-        disabled={disabled}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-controls={isOpen ? listboxId : undefined}
-        aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
-        aria-label={!label ? displayText : undefined}
-      >
-        <div className="custom-select-value flex w-full items-center justify-between gap-1.5">
-          <span
-            id={valueId}
-            className={cn(
-              'min-w-0 flex-1 truncate text-sm',
-              selectedOption ? 'selected-text text-foreground' : 'placeholder-text text-subtle'
-            )}
-          >
-            {displayText}
-          </span>
-          <svg
-            className={cn(
-              'custom-select-arrow size-4 shrink-0 text-muted transition-transform duration-200 ease-out',
-              isOpen && 'rotate-180'
-            )}
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <polyline points="6 10 8 12 10 10" />
-            <polyline points="6 6 8 4 10 6" />
-          </svg>
-        </div>
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          ref={triggerRef}
+          className={cn(
+            'custom-select-container relative flex h-11 w-full cursor-pointer items-center rounded-md border border-border bg-interactive px-3 text-sm text-foreground select-none',
+            isOpen && 'open border-accent-brand bg-surface',
+            isOpen && dropDirection === 'down' && 'rounded-b-none border-b-transparent',
+            isOpen && dropDirection === 'up' && 'rounded-t-none border-t-transparent',
+            disabled && 'disabled cursor-not-allowed opacity-50',
+            !disabled && 'hover:border-border-heavy hover:bg-surface-alt'
+          )}
+          onClick={handleToggle}
+          onKeyDown={handleTriggerKeyDown}
+          disabled={disabled}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
+          aria-label={!label ? displayText : undefined}
+        >
+          <div className="custom-select-value flex w-full items-center justify-between gap-1.5">
+            <span
+              id={valueId}
+              className={cn(
+                'min-w-0 flex-1 truncate text-sm',
+                selectedOption ? 'selected-text text-foreground' : 'placeholder-text text-subtle'
+              )}
+            >
+              {displayText}
+            </span>
+            <svg
+              className={cn(
+                'custom-select-arrow size-4 shrink-0 text-muted transition-transform duration-200 ease-out',
+                isOpen && 'rotate-180'
+              )}
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="6 10 8 12 10 10" />
+              <polyline points="6 6 8 4 10 6" />
+            </svg>
+          </div>
+        </button>
 
-      {isOpen && (
         <div
           className={cn(
             'custom-select-dropdown absolute inset-x-0 z-[var(--z-popups)] overflow-hidden border border-border-strong bg-surface',
@@ -291,9 +285,10 @@ const CustomSelect = ({
               ? 'custom-select-dropdown-up rounded-b-none rounded-t-md border-b-0'
               : 'custom-select-dropdown-down rounded-b-md rounded-t-none border-t-0'
           )}
-          ref={dropdownRef}
+          inert={!isOpen}
           role="listbox"
           id={listboxId}
+          aria-hidden={!isOpen}
           aria-labelledby={label ? labelId : undefined}
           style={
             dropdownMaxHeight
@@ -303,7 +298,10 @@ const CustomSelect = ({
               : undefined
           }
         >
-          <div className="custom-select-list ui-scrollbar-thin overflow-x-hidden overflow-y-auto py-1">
+          <div
+            ref={listRef}
+            className="custom-select-list ui-scrollbar-thin overflow-x-hidden overflow-y-auto py-1"
+          >
             {options.map((option, index) => (
               <button
                 type="button"
@@ -337,7 +335,7 @@ const CustomSelect = ({
             ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

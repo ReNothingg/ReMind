@@ -1,6 +1,6 @@
 from celery import Celery
 
-from app_factory import create_app
+from backend.app_factory import create_app
 
 
 def make_celery(app):

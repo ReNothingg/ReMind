@@ -1,3 +1,4 @@
-templates/
+backend/templates/
 public/yandex_*.html
 migrations/
+src/generated/openapi.ts

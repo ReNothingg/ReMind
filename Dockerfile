@@ -27,7 +27,7 @@ FROM python:3.14-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    FLASK_APP=app_factory.py \
+    FLASK_APP=backend.app_factory:create_app \
     FLASK_ENV=production \
     FLASK_DEBUG=0
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -72,7 +72,7 @@ jobs:
         run: black --check .
 
       - name: Mypy
-        run: mypy app_factory.py routes utils services
+        run: mypy backend
 
   frontend-build:
     runs-on: ubuntu-latest

@@ -236,16 +236,6 @@
   background: var(--color-bg-interactive);
 }
 
-button:active:not(.password-toggle):not(.think-block-header):not(.think-row-trigger):not(
-    .quote-item-dismiss
-  ),
-.action-btn:active,
-.rail-btn:active,
-.file-card:active {
-  transform: scale(0.96);
-  transition: transform 0.1s ease-out;
-}
-
 .shake,
 .error-state {
   animation: shake-x 0.5s ease-in-out;

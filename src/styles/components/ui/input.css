@@ -227,10 +227,6 @@
   border-color: rgba(var(--color-white-raw), 0.2);
 }
 
-.file-card:active {
-  transform: scale(0.98);
-}
-
 .file-card-preview {
   flex-grow: 1;
   background: rgba(var(--color-black-raw), 0.2);

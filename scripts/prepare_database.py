@@ -68,6 +68,6 @@ def validate_production_environment() -> None:
 if __name__ == "__main__":
     validate_production_environment()
 
-    from app_factory import create_app
+    from backend.app_factory import create_app
 
     create_app()

@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
+import { sessionsApi } from '../../../services/api/sessions';
+import { readGuestSessionIds } from '../guestSessionStorage';
 
 export interface SessionSummary {
   session_id: string;
@@ -10,34 +12,9 @@ export interface SessionSummary {
   source?: 'web' | 'telegram_private' | 'telegram_group' | 'telegram_guest' | 'telegram_inline';
 }
 
-interface ListSessionsResponse {
-  ok?: boolean;
-  sessions?: SessionSummary[];
-  has_more?: boolean;
-}
-
 interface UseSessionListOptions {
   isAuthenticated: boolean;
   allowGuestChatsSave: boolean;
-}
-
-const GUEST_SESSIONS_KEY = 'guest_chat_history_ids';
-
-function readGuestSessionIds(): string[] {
-  try {
-    const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
-    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return [
-      ...new Set(
-        parsed.filter((value): value is string => typeof value === 'string' && value.length > 0)
-      ),
-    ];
-  } catch {
-    return [];
-  }
 }
 
 function orderGuestSessions(sessions: SessionSummary[], guestIds: string[]): SessionSummary[] {
@@ -49,54 +26,10 @@ function orderGuestSessions(sessions: SessionSummary[], guestIds: string[]): Ses
   const ordered = guestIds
     .map((id) => byId.get(id))
     .filter((session): session is SessionSummary => Boolean(session));
-  const remaining = sessions.filter((session) => !guestIds.includes(session.session_id));
+  const guestIdSet = new Set(guestIds);
+  const remaining = sessions.filter((session) => !guestIdSet.has(session.session_id));
 
   return [...ordered, ...remaining];
-}
-
-function getGuestSessionTokens(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem('guest_chat_tokens');
-    const parsed = raw ? (JSON.parse(raw) as unknown) : {};
-    if (!parsed || typeof parsed !== 'object') {
-      return {};
-    }
-    return parsed as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
-
-async function fetchSessionsPage(
-  idsQuery: string,
-  page: number,
-  pageSize: number
-): Promise<ListSessionsResponse> {
-  const params = new URLSearchParams();
-  if (idsQuery) {
-    params.set('ids', idsQuery);
-  }
-  params.set('page', String(page));
-  params.set('page_size', String(pageSize));
-
-  const guestTokens = getGuestSessionTokens();
-  const headers = Object.keys(guestTokens).length
-    ? { 'X-Guest-Tokens': JSON.stringify(guestTokens) }
-    : undefined;
-
-  const requestOptions: RequestInit = {
-    method: 'GET',
-    credentials: 'include',
-  };
-  if (headers) {
-    requestOptions.headers = headers;
-  }
-
-  const response = await fetch(`/sessions?${params.toString()}`, requestOptions);
-  if (!response.ok) {
-    throw new Error(`Failed to list sessions: HTTP ${response.status}`);
-  }
-  return (await response.json()) as ListSessionsResponse;
 }
 
 async function loadAllPages(idsQuery = ''): Promise<SessionSummary[]> {
@@ -105,7 +38,7 @@ async function loadAllPages(idsQuery = ''): Promise<SessionSummary[]> {
   const pageSize = 50;
 
   while (page <= 20) {
-    const data = await fetchSessionsPage(idsQuery, page, pageSize);
+    const data = await sessionsApi.listSessions({ idsQuery, page, pageSize });
     if (Array.isArray(data?.sessions) && data.sessions.length > 0) {
       merged.push(...data.sessions);
     }

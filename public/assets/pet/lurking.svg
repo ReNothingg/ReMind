@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+  <style>
+    .remind-pet-lurking {
+      animation-duration: 2240ms;
+      animation-timing-function: step-end;
+      animation-iteration-count: infinite;
+      animation-fill-mode: both;
+    }
+    .remind-pet-lurking-0 { animation-name: remind-pet-lurking-0; }
+    @keyframes remind-pet-lurking-0 {
+      0%, 100% { visibility: visible; }
+      24.10714% { visibility: hidden; }
+    }
+    .remind-pet-lurking-1 { animation-name: remind-pet-lurking-1; }
+    @keyframes remind-pet-lurking-1 {
+      24.10714% { visibility: visible; }
+      0%, 29.01786%, 100% { visibility: hidden; }
+    }
+    .remind-pet-lurking-2 { animation-name: remind-pet-lurking-2; }
+    @keyframes remind-pet-lurking-2 {
+      29.01786% { visibility: visible; }
+      0%, 35.26786%, 100% { visibility: hidden; }
+    }
+    .remind-pet-lurking-3 { animation-name: remind-pet-lurking-3; }
+    @keyframes remind-pet-lurking-3 {
+      35.26786%, 64.28571% { visibility: visible; }
+      0%, 60.71429%, 84.82143%, 100% { visibility: hidden; }
+    }
+    .remind-pet-lurking-4 { animation-name: remind-pet-lurking-4; }
+    @keyframes remind-pet-lurking-4 {
+      60.71429% { visibility: visible; }
+      0%, 64.28571%, 100% { visibility: hidden; }
+    }
+    .remind-pet-lurking-5 { animation-name: remind-pet-lurking-5; }
+    @keyframes remind-pet-lurking-5 {
+      84.82143% { visibility: visible; }
+      0%, 89.28571%, 100% { visibility: hidden; }
+    }
+    .remind-pet-lurking-6 { animation-name: remind-pet-lurking-6; }
+    @keyframes remind-pet-lurking-6 {
+      89.28571% { visibility: visible; }
+      0%, 100% { visibility: hidden; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .remind-pet-lurking { animation: none; }
+    }
+  </style>
+  <g class="remind-pet-lurking remind-pet-lurking-0" visibility="hidden">
+    <path fill="#EFCAA2" d="M1 13h4v1h-4z M0 14h1v1h-1z M4 14h3v1h-3z M5 15h3v1h-3z M6 16h2v1h-2z M6 17h3v2h-3z M5 19h3v1h-3z M0 20h1v1h-1z M4 20h4v1h-4z M0 21h7v1h-7z M0 22h6v1h-6z"/>
+    <path fill="#E1AE90" d="M8 19h1v1h-1z"/>
+    <path fill="#FFF7E8" d="M1 14h3v1h-3z M0 15h3v1h-3z M3 16h1v1h-1z M0 16h2v3h-2z M0 19h3v1h-3z M1 20h3v1h-3z"/>
+    <path fill="#322C45" d="M3 15h2v1h-2z M2 16h1v1h-1z M4 16h2v1h-2z M2 17h4v2h-4z M3 19h2v1h-2z"/>
+    <path fill="#565477" d="M7 21h1v1h-1z M6 22h3v1h-3z M4 23h6v1h-6z"/>
+    <path fill="#454361" d="M5 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-lurking remind-pet-lurking-1" visibility="hidden">
+    <path fill="#EFCAA2" d="M2 13h4v1h-4z M0 14h2v1h-2z M5 14h3v1h-3z M0 15h1v1h-1z M6 15h3v1h-3z M7 16h2v1h-2z M7 17h3v2h-3z M0 19h1v1h-1z M6 19h3v1h-3z M0 20h2v1h-2z M5 20h5v1h-5z M0 21h9v1h-9z M0 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M9 19h1v1h-1z"/>
+    <path fill="#FFF7E8" d="M2 14h3v1h-3z M1 15h3v1h-3z M4 16h1v1h-1z M0 16h3v3h-3z M1 19h3v1h-3z M2 20h3v1h-3z"/>
+    <path fill="#322C45" d="M4 15h2v1h-2z M3 16h1v1h-1z M5 16h2v1h-2z M3 17h4v2h-4z M4 19h2v1h-2z"/>
+    <path fill="#565477" d="M9 21h1v1h-1z M8 22h3v1h-3z M0 23h2v1h-2z M6 23h6v1h-6z"/>
+    <path fill="#454361" d="M0 24h1v1h-1z M7 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-lurking remind-pet-lurking-2" visibility="hidden">
+    <path fill="#EFCAA2" d="M5 13h4v1h-4z M3 14h2v1h-2z M8 14h3v1h-3z M2 15h2v1h-2z M9 15h3v1h-3z M2 16h1v1h-1z M10 16h2v1h-2z M1 17h2v2h-2z M10 17h3v2h-3z M2 19h2v1h-2z M9 19h3v1h-3z M0 20h5v1h-5z M8 20h4v1h-4z M1 21h10v1h-10z M2 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M1 19h1v1h-1z M12 19h1v1h-1z"/>
+    <path fill="#FFF7E8" d="M5 14h3v1h-3z M4 15h3v1h-3z M7 16h1v1h-1z M3 16h3v3h-3z M4 19h3v1h-3z M5 20h3v1h-3z"/>
+    <path fill="#322C45" d="M7 15h2v1h-2z M6 16h1v1h-1z M8 16h2v1h-2z M6 17h4v2h-4z M7 19h2v1h-2z"/>
+    <path fill="#565477" d="M0 21h1v1h-1z M11 21h1v1h-1z M0 22h2v1h-2z M10 22h3v1h-3z M0 23h4v1h-4z M8 23h6v1h-6z"/>
+    <path fill="#454361" d="M0 24h3v1h-3z M9 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-lurking remind-pet-lurking-3" visibility="visible">
+    <path fill="#EFCAA2" d="M4 13h4v1h-4z M2 14h2v1h-2z M7 14h3v1h-3z M1 15h2v1h-2z M8 15h3v1h-3z M1 16h1v1h-1z M9 16h2v1h-2z M0 17h2v2h-2z M9 17h3v2h-3z M1 19h2v1h-2z M8 19h3v1h-3z M0 20h4v1h-4z M7 20h5v1h-5z M1 21h10v1h-10z M2 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M0 19h1v1h-1z M11 19h1v1h-1z"/>
+    <path fill="#FFF7E8" d="M4 14h3v1h-3z M3 15h3v1h-3z M6 16h1v1h-1z M2 16h3v3h-3z M3 19h3v1h-3z M4 20h3v1h-3z"/>
+    <path fill="#322C45" d="M6 15h2v1h-2z M5 16h1v1h-1z M7 16h2v1h-2z M5 17h4v2h-4z M6 19h2v1h-2z"/>
+    <path fill="#565477" d="M0 21h1v1h-1z M11 21h1v1h-1z M0 22h2v1h-2z M10 22h3v1h-3z M0 23h4v1h-4z M8 23h6v1h-6z"/>
+    <path fill="#454361" d="M0 24h3v1h-3z M9 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-lurking remind-pet-lurking-4" visibility="hidden">
+    <path fill="#EFCAA2" d="M4 13h4v1h-4z M2 14h8v1h-8z M1 15h10v2h-10z M0 17h12v1h-12z M0 18h2v1h-2z M3 18h5v1h-5z M9 18h3v1h-3z M1 19h2v1h-2z M8 19h3v1h-3z M0 20h12v1h-12z M1 21h10v1h-10z M2 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M0 19h1v1h-1z M11 19h1v1h-1z"/>
+    <path fill="#322C45" d="M2 18h1v1h-1z M8 18h1v1h-1z M3 19h5v1h-5z"/>
+    <path fill="#565477" d="M0 21h1v1h-1z M11 21h1v1h-1z M0 22h2v1h-2z M10 22h3v1h-3z M0 23h4v1h-4z M8 23h6v1h-6z"/>
+    <path fill="#454361" d="M0 24h3v1h-3z M9 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-lurking remind-pet-lurking-5" visibility="hidden">
+    <path fill="#EFCAA2" d="M2 13h4v1h-4z M0 14h2v1h-2z M5 14h3v1h-3z M0 15h1v1h-1z M6 15h3v1h-3z M7 16h2v1h-2z M7 17h3v2h-3z M0 19h1v1h-1z M6 19h3v1h-3z M0 20h2v1h-2z M5 20h5v1h-5z M0 21h9v1h-9z M0 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M9 19h1v1h-1z"/>
+    <path fill="#FFF7E8" d="M2 14h3v1h-3z M1 15h1v1h-1z M4 15h2v1h-2z M2 16h1v1h-1z M0 16h1v3h-1z M5 16h2v3h-2z M1 19h1v1h-1z M4 19h2v1h-2z M2 20h3v1h-3z"/>
+    <path fill="#322C45" d="M2 15h2v1h-2z M1 16h1v1h-1z M3 16h2v1h-2z M1 17h4v2h-4z M2 19h2v1h-2z"/>
+    <path fill="#565477" d="M9 21h1v1h-1z M8 22h3v1h-3z M0 23h2v1h-2z M6 23h6v1h-6z"/>
+    <path fill="#454361" d="M0 24h1v1h-1z M7 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-lurking remind-pet-lurking-6" visibility="hidden">
+    <path fill="#EFCAA2" d="M0 13h3v1h-3z M2 14h3v1h-3z M3 15h3v1h-3z M4 16h2v1h-2z M4 17h3v2h-3z M3 19h3v1h-3z M2 20h5v1h-5z M0 21h6v1h-6z M0 22h5v1h-5z"/>
+    <path fill="#E1AE90" d="M6 19h1v1h-1z"/>
+    <path fill="#FFF7E8" d="M0 14h2v1h-2z M1 15h2v1h-2z M2 16h2v3h-2z M1 19h2v1h-2z M0 20h2v1h-2z"/>
+    <path fill="#322C45" d="M0 15h1v1h-1z M0 16h2v3h-2z M0 19h1v1h-1z"/>
+    <path fill="#565477" d="M6 21h1v1h-1z M5 22h3v1h-3z M3 23h6v1h-6z"/>
+    <path fill="#454361" d="M4 24h4v1h-4z"/>
+  </g>
+</svg>

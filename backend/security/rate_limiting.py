@@ -1,0 +1,294 @@
+import logging
+import os
+import re
+import time
+from collections import defaultdict
+from dataclasses import dataclass
+from functools import wraps
+from threading import Lock
+from typing import DefaultDict
+
+from flask import make_response, request, session
+
+rate_limit_store: DefaultDict[str, list[int]] = defaultdict(list)
+rate_limit_lock = Lock()
+redis_connection_lock = Lock()
+redis_clients: dict[str, object] = {}
+redis_retry_at: dict[str, float] = {}
+
+
+def _redis_client(redis_url):
+    with redis_connection_lock:
+        if redis_url in redis_clients:
+            return redis_clients[redis_url]
+        if time.monotonic() < redis_retry_at.get(redis_url, 0):
+            return None
+        try:
+            import redis
+
+            client = redis.from_url(redis_url, socket_connect_timeout=1, socket_timeout=1)
+            client.ping()
+        except Exception:
+            redis_retry_at[redis_url] = time.monotonic() + 30
+            logging.getLogger("remind").warning(
+                "Redis unavailable; rate limits use process memory. Retrying in 30 seconds."
+            )
+            return None
+        redis_clients[redis_url] = client
+        redis_retry_at.pop(redis_url, None)
+        return client
+
+
+@dataclass(frozen=True)
+class RateLimitState:
+    allowed: bool
+    limit: int
+    remaining: int
+    reset_at: int
+
+
+class RateLimiter:
+    REDIS_LUA = """
+local key = KEYS[1]
+local seq_key = key .. ':seq'
+
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local window_start = now - window
+
+redis.call('ZREMRANGEBYSCORE', key, '-inf', window_start)
+
+local count = redis.call('ZCARD', key)
+local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+local reset_at = now + window
+if oldest[2] then
+  reset_at = tonumber(oldest[2]) + window
+end
+
+if count >= limit then
+  return {0, limit, 0, math.floor(reset_at)}
+end
+
+local seq = redis.call('INCR', seq_key)
+local member = tostring(now) .. '-' .. tostring(seq)
+redis.call('ZADD', key, now, member)
+redis.call('EXPIRE', key, window)
+redis.call('EXPIRE', seq_key, window)
+
+count = redis.call('ZCARD', key)
+oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+reset_at = now + window
+if oldest[2] then
+  reset_at = tonumber(oldest[2]) + window
+end
+
+local remaining = limit - count
+if remaining < 0 then
+  remaining = 0
+end
+
+return {1, limit, remaining, math.floor(reset_at)}
+"""
+
+    def __init__(self, max_requests=100, time_window=3600, use_redis=None, namespace=None):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        raw_namespace = str(namespace or f"limit_{max_requests}_{time_window}")
+        self.namespace = re.sub(r"[^a-zA-Z0-9_-]", "_", raw_namespace)[:80]
+        if use_redis is None:
+            use_redis = bool(os.getenv("REDIS_URL"))
+
+        self.use_redis = use_redis
+        self.redis_client = None
+        self._redis_script = None
+
+        if use_redis:
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            self.redis_client = _redis_client(redis_url)
+            self.use_redis = self.redis_client is not None
+            if self.redis_client is not None:
+                self._redis_script = self.redis_client.register_script(self.REDIS_LUA)
+
+    def get_identifier(self, request_obj):
+        try:
+            if session and "user_id" in session:
+                return f"{self.namespace}:user_{session.get('user_id')}"
+        except RuntimeError:
+            pass
+        return f"{self.namespace}:ip_{request_obj.remote_addr}"
+
+    def evaluate(self, identifier):
+        now = int(time.time())
+        if self.use_redis and self.redis_client is not None and self._redis_script is not None:
+            return self._evaluate_redis(identifier, now)
+        return self._evaluate_memory(identifier, now)
+
+    def is_allowed(self, identifier):
+        return self.evaluate(identifier).allowed
+
+    def _evaluate_memory(self, identifier, now):
+        window_start = now - self.time_window
+
+        with rate_limit_lock:
+            requests_in_window = [ts for ts in rate_limit_store[identifier] if ts > window_start]
+            rate_limit_store[identifier] = requests_in_window
+
+            if len(requests_in_window) >= self.max_requests:
+                oldest = min(requests_in_window) if requests_in_window else now
+                reset_at = int(oldest + self.time_window)
+                return RateLimitState(
+                    allowed=False,
+                    limit=self.max_requests,
+                    remaining=0,
+                    reset_at=reset_at,
+                )
+
+            requests_in_window.append(now)
+            rate_limit_store[identifier] = requests_in_window
+            remaining = max(0, self.max_requests - len(requests_in_window))
+            oldest = min(requests_in_window) if requests_in_window else now
+            reset_at = int(oldest + self.time_window)
+            return RateLimitState(
+                allowed=True,
+                limit=self.max_requests,
+                remaining=remaining,
+                reset_at=reset_at,
+            )
+
+    def _evaluate_redis(self, identifier, now):
+        key = f"ratelimit:{identifier}"
+        try:
+            raw = self._redis_script(keys=[key], args=[now, self.time_window, self.max_requests])
+            allowed = bool(int(raw[0]))
+            limit = int(raw[1])
+            remaining = int(raw[2])
+            reset_at = int(raw[3])
+            return RateLimitState(
+                allowed=allowed,
+                limit=limit,
+                remaining=max(0, remaining),
+                reset_at=max(now, reset_at),
+            )
+        except Exception:
+            logging.getLogger("remind").warning(
+                "Redis rate limit script failed; request denied",
+            )
+            return RateLimitState(
+                allowed=False,
+                limit=self.max_requests,
+                remaining=0,
+                reset_at=now + self.time_window,
+            )
+
+    def get_remaining_requests(self, identifier):
+        return self.evaluate(identifier).remaining
+
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        return max(minimum, min(maximum, int(os.getenv(name, str(default)))))
+    except (TypeError, ValueError):
+        return default
+
+
+login_limiter = RateLimiter(
+    max_requests=_bounded_env_int("LOGIN_RATE_LIMIT_MAX_REQUESTS", 5, 1, 1000),
+    time_window=_bounded_env_int("LOGIN_RATE_LIMIT_WINDOW_SECONDS", 300, 1, 86400),
+    namespace="login",
+)
+password_reset_limiter = RateLimiter(max_requests=3, time_window=3600, namespace="password_reset")
+password_reset_verify_limiter = RateLimiter(
+    max_requests=10,
+    time_window=900,
+    namespace="password_reset_verify",
+)
+api_limiter = RateLimiter(max_requests=100, time_window=3600, namespace="api")
+upload_limiter = RateLimiter(max_requests=20, time_window=3600, namespace="upload")
+
+
+def _headers_from_state(state):
+    return {
+        "X-RateLimit-Limit": str(state.limit),
+        "X-RateLimit-Remaining": str(max(0, state.remaining)),
+        "X-RateLimit-Reset": str(max(int(time.time()), int(state.reset_at))),
+    }
+
+
+def _inject_rate_headers(response, state):
+    for key, value in _headers_from_state(state).items():
+        response.headers[key] = value
+    return response
+
+
+def rate_limit(limiter, error_message="Too many requests"):
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_function(*args, **kwargs):
+            identifier = limiter.get_identifier(request)
+            state = limiter.evaluate(identifier)
+
+            if not state.allowed:
+                from backend.responses import make_error
+
+                blocked = make_response(
+                    make_error(
+                        error_message,
+                        status=429,
+                        code="rate_limit_exceeded",
+                        extra={"remaining_requests": state.remaining},
+                    )
+                )
+                retry_after = max(1, state.reset_at - int(time.time()))
+                blocked.headers["Retry-After"] = str(retry_after)
+                return _inject_rate_headers(blocked, state)
+
+            result = view_func(*args, **kwargs)
+            response = make_response(result)
+            return _inject_rate_headers(response, state)
+
+        return decorated_function
+
+    return decorator
+
+
+def anonymous_rate_limit(limiter, error_message="Too many anonymous requests"):
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_function(*args, **kwargs):
+            try:
+                if session and "user_id" in session:
+                    return view_func(*args, **kwargs)
+            except RuntimeError:
+                pass
+
+            identifier = (
+                f"anonymous:{limiter.get_identifier(request)}:{request.endpoint or request.path}"
+            )
+            state = limiter.evaluate(identifier)
+
+            if not state.allowed:
+                from backend.responses import make_error
+
+                blocked = make_response(
+                    make_error(
+                        error_message,
+                        status=429,
+                        code="anonymous_rate_limit_exceeded",
+                        extra={"remaining_requests": state.remaining},
+                    )
+                )
+                retry_after = max(1, state.reset_at - int(time.time()))
+                blocked.headers["Retry-After"] = str(retry_after)
+                return _inject_rate_headers(blocked, state)
+
+            return view_func(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
+def get_rate_limit_headers(limiter, identifier):
+    state = limiter.evaluate(identifier)
+    return _headers_from_state(state)

@@ -1,6 +1,13 @@
+@property --custom-select-hidden-area {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 100%;
+}
+
 .custom-select-wrapper {
   position: relative;
   width: 100%;
+  --custom-select-list-cap: 280px;
 }
 
 .custom-select-label {
@@ -24,7 +31,10 @@
   display: flex;
   align-items: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color var(--transition-normal),
+    border-color var(--transition-normal),
+    border-radius var(--transition-normal);
   user-select: none;
   font-size: 0.875rem;
   appearance: none;
@@ -109,7 +119,7 @@ html[data-theme='light'] .placeholder-text {
   width: 14px;
   height: 14px;
   color: var(--color-text-secondary);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--transition-normal), rotate var(--transition-normal);
 }
 
 html[data-theme='light'] .custom-select-arrow {
@@ -130,22 +140,32 @@ html[data-theme='light'] .custom-select-arrow {
   box-shadow: none;
   z-index: 1000;
   overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    --custom-select-hidden-area var(--transition-normal),
+    visibility 0s var(--transition-duration-normal);
 }
 
 .custom-select-dropdown.custom-select-dropdown-down {
   top: calc(100% - 1px);
   border-top: none;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
-  transform-origin: top center;
-  animation: customSelectRevealDown var(--transition-fast);
+  clip-path: inset(0 0 var(--custom-select-hidden-area, 100%) 0 round 0 0 var(--radius-md) var(--radius-md));
 }
 
 .custom-select-dropdown.custom-select-dropdown-up {
   bottom: calc(100% - 1px);
   border-bottom: none;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
-  transform-origin: bottom center;
-  animation: customSelectRevealUp var(--transition-fast);
+  clip-path: inset(var(--custom-select-hidden-area, 100%) 0 0 0 round var(--radius-md) var(--radius-md) 0 0);
+}
+
+.custom-select-wrapper.is-open .custom-select-dropdown {
+  --custom-select-hidden-area: 0%;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
 }
 
 html[data-theme='light'] .custom-select-dropdown {
@@ -154,30 +174,8 @@ html[data-theme='light'] .custom-select-dropdown {
   box-shadow: none;
 }
 
-@keyframes customSelectRevealDown {
-  from {
-    opacity: 0;
-    transform: scaleY(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: scaleY(1);
-  }
-}
-
-@keyframes customSelectRevealUp {
-  from {
-    opacity: 0;
-    transform: scaleY(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: scaleY(1);
-  }
-}
-
 .custom-select-list {
-  max-height: var(--custom-select-dropdown-max-height, 280px);
+  max-height: min(var(--custom-select-dropdown-max-height, 280px), var(--custom-select-list-cap));
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px 0;
@@ -285,8 +283,8 @@ html[data-theme='light'] .custom-select-option.disabled {
     font-size: 0.85rem;
   }
 
-  .custom-select-dropdown {
-    max-height: 220px;
+  .custom-select-wrapper {
+    --custom-select-list-cap: 220px;
   }
 
   .custom-select-option {
@@ -317,13 +315,9 @@ html[data-theme='light'] .custom-select-option.disabled {
 @media (prefers-reduced-motion: reduce) {
   .custom-select-container,
   .custom-select-arrow,
+  .custom-select-wrapper .custom-select-dropdown,
   .custom-select-option {
     transition: none;
-  }
-
-  .custom-select-dropdown.custom-select-dropdown-down,
-  .custom-select-dropdown.custom-select-dropdown-up {
-    animation: none;
   }
 }
 

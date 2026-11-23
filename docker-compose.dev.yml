@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: backend-dev
-    command: flask --app app_factory:create_app run --host=0.0.0.0 --port=5000 --debug
+    command: flask --app backend.app_factory:create_app run --host=0.0.0.0 --port=5000 --debug
     ports:
       - '5000:5000'
     env_file:

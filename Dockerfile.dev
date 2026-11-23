@@ -13,7 +13,7 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    FLASK_APP=app_factory:create_app \
+    FLASK_APP=backend.app_factory:create_app \
     FLASK_ENV=development \
     FLASK_DEBUG=1
 
@@ -32,4 +32,4 @@ COPY requirements ./requirements
 RUN pip install --no-cache-dir -r requirements/dev.txt -c requirements/constraints.txt
 
 EXPOSE 5000
-CMD ["flask", "--app", "app_factory:create_app", "run", "--host=0.0.0.0", "--port=5000", "--debug"]
+CMD ["flask", "--app", "backend.app_factory:create_app", "run", "--host=0.0.0.0", "--port=5000", "--debug"]

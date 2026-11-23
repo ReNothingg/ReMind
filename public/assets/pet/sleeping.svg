@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+  <style>
+    .remind-pet-sleeping {
+      animation-duration: 2940ms;
+      animation-timing-function: step-end;
+      animation-iteration-count: infinite;
+      animation-fill-mode: both;
+    }
+    .remind-pet-sleeping-0 { animation-name: remind-pet-sleeping-0; }
+    @keyframes remind-pet-sleeping-0 {
+      0%, 100% { visibility: visible; }
+      38.09524% { visibility: hidden; }
+    }
+    .remind-pet-sleeping-1 { animation-name: remind-pet-sleeping-1; }
+    @keyframes remind-pet-sleeping-1 {
+      38.09524%, 81.63265% { visibility: visible; }
+      0%, 54.08163%, 100% { visibility: hidden; }
+    }
+    .remind-pet-sleeping-2 { animation-name: remind-pet-sleeping-2; }
+    @keyframes remind-pet-sleeping-2 {
+      54.08163% { visibility: visible; }
+      0%, 81.63265%, 100% { visibility: hidden; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .remind-pet-sleeping { animation: none; }
+    }
+  </style>
+  <g class="remind-pet-sleeping remind-pet-sleeping-0" visibility="visible">
+    <path fill="#EFCAA2" d="M12 14h4v1h-4z M10 15h8v1h-8z M9 16h10v2h-10z M8 18h12v1h-12z M9 19h1v1h-1z M11 19h5v1h-5z M17 19h2v1h-2z M8 20h3v1h-3z M16 20h4v1h-4z M9 21h10v1h-10z M10 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M8 19h1v1h-1z M19 19h1v1h-1z"/>
+    <path fill="#322C45" d="M10 19h1v1h-1z M16 19h1v1h-1z M11 20h5v1h-5z"/>
+    <path fill="#565477" d="M8 21h1v1h-1z M19 21h1v1h-1z M7 22h3v1h-3z M18 22h3v1h-3z M6 23h6v1h-6z M16 23h6v1h-6z"/>
+    <path fill="#454361" d="M7 24h4v1h-4z M17 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-sleeping remind-pet-sleeping-1" visibility="hidden">
+    <path fill="#EFCAA2" d="M11 14h4v1h-4z M9 15h8v1h-8z M8 16h10v2h-10z M7 18h12v1h-12z M8 19h1v1h-1z M10 19h5v1h-5z M16 19h2v1h-2z M8 20h2v1h-2z M15 20h5v1h-5z M9 21h10v1h-10z M10 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M7 19h1v1h-1z M18 19h1v1h-1z"/>
+    <path fill="#322C45" d="M9 19h1v1h-1z M15 19h1v1h-1z M10 20h5v1h-5z"/>
+    <path fill="#565477" d="M8 21h1v1h-1z M19 21h1v1h-1z M7 22h3v1h-3z M18 22h3v1h-3z M6 23h6v1h-6z M16 23h6v1h-6z"/>
+    <path fill="#454361" d="M7 24h4v1h-4z M17 24h4v1h-4z"/>
+  </g>
+  <g class="remind-pet-sleeping remind-pet-sleeping-2" visibility="hidden">
+    <path fill="#EFCAA2" d="M12 13h4v1h-4z M10 14h8v1h-8z M9 15h10v2h-10z M8 17h12v1h-12z M8 18h2v1h-2z M11 18h5v1h-5z M17 18h3v1h-3z M9 19h2v1h-2z M16 19h3v1h-3z M8 20h12v1h-12z M9 21h10v1h-10z M10 22h8v1h-8z"/>
+    <path fill="#E1AE90" d="M8 19h1v1h-1z M19 19h1v1h-1z"/>
+    <path fill="#322C45" d="M10 18h1v1h-1z M16 18h1v1h-1z M11 19h5v1h-5z"/>
+    <path fill="#565477" d="M8 21h1v1h-1z M19 21h1v1h-1z M7 22h3v1h-3z M18 22h3v1h-3z M6 23h6v1h-6z M16 23h6v1h-6z"/>
+    <path fill="#454361" d="M7 24h4v1h-4z M17 24h4v1h-4z"/>
+  </g>
+</svg>

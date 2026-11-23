@@ -29,7 +29,7 @@ import WebSourcesPanel from '../Widgets/WebSourcesPanel';
 import { normalizeAndMergeWebSources, sourceFallbackIcon } from '../Widgets/webSources';
 import { extractCompletedSearchSources } from '../Widgets/searchActivityUtils';
 import { useAudio } from '../../hooks/useAudio';
-import { Utils } from '../../utils/utils';
+import { renderContentVisualizations, Utils } from '../../utils/utils';
 import TranslationPanel from './TranslationPanel';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -1032,7 +1032,7 @@ const Message = ({
     [displayContent, displaySourceItems]
   );
   const hasMultipleVariants = variants && variants.length > 1;
-  const contentRef = useRef(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const waveformCanvasRef = useRef(null);
   const [showTranslation, setShowTranslation] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(null);
@@ -1149,7 +1149,7 @@ const Message = ({
     const applySyntaxHighlighting = () => {
       highlightCode(currentRef);
 
-      const codeBlockContents = currentRef.querySelectorAll('.code-block-content');
+      const codeBlockContents = currentRef.querySelectorAll<HTMLElement>('.code-block-content');
       codeBlockContents.forEach((content) => {
         if (!content.dataset.initialMaxHeight) {
           const computedStyle = window.getComputedStyle(content);
@@ -1228,38 +1228,16 @@ const Message = ({
   ]);
 
   useEffect(() => {
-    if (!markdownEnabledForMessage || !contentRef.current) return;
+    const root = contentRef.current;
+    if (!markdownEnabledForMessage || !root) return;
 
-    const renderVisuals = async () => {
-      if (Utils.renderSvgPreviews) {
-        Utils.renderSvgPreviews();
-        requestAnimationFrame(() => {
-          Utils.renderSvgPreviews();
-        });
-      }
-
-      if (Utils.renderCharts) {
-        await Utils.renderCharts();
-      }
-
-      if (Utils.renderD3) {
-        await Utils.renderD3();
-      }
-
-      if (Utils.renderNomnoml) {
-        await Utils.renderNomnoml();
-      }
-
-      if (Utils.renderMermaid) {
-        await Utils.renderMermaid();
-      }
-
-      if (Utils.attachDiagramPan) {
-        Utils.attachDiagramPan();
-      }
+    const controller = new AbortController();
+    void renderContentVisualizations(root, controller.signal);
+    const frame = window.requestAnimationFrame(() => Utils.renderSvgPreviews(root));
+    return () => {
+      controller.abort();
+      window.cancelAnimationFrame(frame);
     };
-
-    renderVisuals();
   }, [
     htmlContent,
     isLoading,

@@ -188,10 +188,6 @@
   transition: transform 320ms var(--ease-spring);
 }
 
-.chat-scroll-latest:active {
-  transform: translate(-50%, 0) scale(0.94);
-}
-
 .chat-scroll-latest:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
@@ -288,10 +284,6 @@ body:not(.has-canvas-dock) .main-input-area.ui-main-input-shell:not(.landing)::a
 
 .compact-model-selector .model-option {
   transition: background-color var(--motion-quick);
-}
-
-.compact-model-selector .model-option:active {
-  transform: scale(0.985);
 }
 
 @keyframes model-panel-back-fade {

@@ -163,7 +163,3 @@ html[data-theme='light'] .ui-selection-quote-button:focus-visible {
   align-items: center;
   justify-content: center;
 }
-
-.quote-item-dismiss:active {
-  transform: translateY(-50%) scale(0.95);
-}

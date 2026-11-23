@@ -14,7 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatText, highlightCode, refreshCodeLineNumbers } from '../../utils/formatting';
 import { renderedMarkdownToSource } from '../../utils/markdownDom';
-import { Utils } from '../../utils/utils';
+import { renderContentVisualizations, Utils } from '../../utils/utils';
 
 type CanvasMarkdownPreviewProps = {
   content: string;
@@ -150,25 +150,9 @@ const CanvasMarkdownPreview = ({ content, onChange, onBlur }: CanvasMarkdownPrev
   useEffect(() => {
     const root = previewRef.current;
     if (!root || !renderedContent) return;
-    let cancelled = false;
-
-    const renderVisuals = async () => {
-      Utils.renderSvgPreviews?.(root);
-      await Utils.renderCharts?.(root);
-      if (cancelled) return;
-      await Utils.renderD3?.(root);
-      if (cancelled) return;
-      await Utils.renderNomnoml?.(root);
-      if (cancelled) return;
-      await Utils.renderMermaid?.(root);
-      if (cancelled) return;
-      Utils.attachDiagramPan?.(root);
-    };
-
-    void renderVisuals();
-    return () => {
-      cancelled = true;
-    };
+    const controller = new AbortController();
+    void renderContentVisualizations(root, controller.signal);
+    return () => controller.abort();
   }, [renderedContent]);
 
   const showTemporaryButtonState = useCallback(

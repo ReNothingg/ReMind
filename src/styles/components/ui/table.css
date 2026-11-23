@@ -169,11 +169,6 @@
   transform: none;
 }
 
-.table-wrapper .table-copy-btn:active {
-  transform: scale(0.98);
-  transition-duration: 0.05s;
-}
-
 .table-wrapper .table-copy-btn img,
 .table-wrapper .table-copy-btn svg {
   width: 18px;

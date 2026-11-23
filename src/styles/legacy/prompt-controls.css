@@ -100,10 +100,6 @@
   transform: rotate(15deg);
 }
 
-.user-settings-btn:active {
-  transform: scale(0.95);
-}
-
 .empty-history-message {
   padding: 20px;
   text-align: center;
@@ -132,10 +128,6 @@
 .theme-toggle-btn:hover {
   transform: translateY(-2px) scale(1.05);
   border-color: var(--color-border-strong);
-}
-
-.theme-toggle-btn:active {
-  transform: scale(0.95);
 }
 
 .theme-toggle-btn img {

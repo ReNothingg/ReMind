@@ -677,10 +677,6 @@ html[data-theme='light'] .settings-tabs {
   transform: translateX(22px);
 }
 
-.toggle-switch:active::after {
-  transform: translateX(22px) scale(0.9);
-}
-
 .toggle-switch:hover {
   border-color: var(--color-border-strong);
 }

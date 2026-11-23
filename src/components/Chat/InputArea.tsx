@@ -3,13 +3,11 @@ import {
   ComposerTextEditor,
   type ComposerTextEditorHandle,
 } from '../../features/chat/components/ComposerTextEditor';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
-import FileModal from '../Modals/FileModal';
 import ScrollToLatestButton from './ScrollToLatestButton';
-import { Utils } from '../../utils/utils';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { cn } from '../../utils/cn';
@@ -24,6 +22,8 @@ import {
   getRemoteDraft,
   saveRemoteDraft,
 } from '../../services/reliability';
+
+const FileModal = lazy(() => import('../Modals/FileModal'));
 
 const InputArea = ({
   onSendMessage,
@@ -46,6 +46,7 @@ const InputArea = ({
 }) => {
   const [text, setText] = useState(initialPrompt || '');
   const [quotes, setQuotes] = useState([]);
+  const [warningSeed] = useState(() => Math.random());
   const [fileModal, setFileModal] = useState({ isOpen: false, file: null, content: null });
   const [expanded, setExpanded] = useState(false);
   const [mention, setMention] = useState<{ start: number; end: number; query: string } | null>(
@@ -243,9 +244,9 @@ const InputArea = ({
     if (!showDynamicWarning) return;
     const phrases = t('warnings.dynamicPhrases', { returnObjects: true });
     const list = Array.isArray(phrases) ? phrases : [phrases].filter(Boolean);
-    const fallback = list[0] || '';
-    return Utils.getRandomPhrase(list.length > 0 ? list : [fallback], fallback);
-  }, [showDynamicWarning, t]);
+    const validPhrases = list.filter((phrase) => typeof phrase === 'string' && phrase.trim());
+    return validPhrases[Math.floor(warningSeed * validPhrases.length)] ?? (list[0] || '');
+  }, [showDynamicWarning, t, warningSeed]);
 
   const {
     files,
@@ -602,12 +603,16 @@ const InputArea = ({
 
         {variant !== 'landing' && <ScrollToLatestButton />}
 
-        <FileModal
-          isOpen={fileModal.isOpen}
-          onClose={() => setFileModal({ isOpen: false, file: null, content: null })}
-          file={fileModal.file}
-          content={fileModal.content}
-        />
+        {fileModal.isOpen && (
+          <Suspense fallback={null}>
+            <FileModal
+              isOpen={fileModal.isOpen}
+              onClose={() => setFileModal({ isOpen: false, file: null, content: null })}
+              file={fileModal.file}
+              content={fileModal.content}
+            />
+          </Suspense>
+        )}
 
         <div className={cn('input-wrapper ui-composer-shell', hasQuotes && 'has-quotes')}>
           {hasQuotes && (

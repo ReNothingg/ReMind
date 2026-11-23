@@ -16,6 +16,20 @@ export const sanitizeGeneratedDiagramSvg = (markup: string) =>
     FORBID_ATTR: ['href', 'xlink:href'],
   });
 
+export async function renderContentVisualizations(root: ParentNode, signal: AbortSignal) {
+  Utils.renderSvgPreviews(root);
+  for (const render of [
+    Utils.renderCharts,
+    Utils.renderD3,
+    Utils.renderNomnoml,
+    Utils.renderMermaid,
+  ]) {
+    if (signal.aborted) return;
+    await render(root);
+  }
+  if (!signal.aborted) Utils.attachDiagramPan(root);
+}
+
 const TRANSPARENT_BACKGROUND_VALUES = new Set(['transparent', 'rgba(0, 0, 0, 0)', 'rgba(0,0,0,0)']);
 
 type PanZoomOptions = {
@@ -276,14 +290,6 @@ export const Utils = {
     const sendBtn = document.querySelector('.send-button');
     const target = active || preview || sendBtn || document.body;
     Utils.flashElement(target, active ? 'error' : 'warning');
-  },
-
-  getRandomPhrase: (phrasesArray: readonly string[], defaultPhrase: string) => {
-    if (!Array.isArray(phrasesArray) || phrasesArray.length === 0) return defaultPhrase;
-    const validPhrases = phrasesArray.filter((p) => typeof p === 'string' && p.trim() !== '');
-    return validPhrases.length > 0
-      ? (validPhrases[Math.floor(Math.random() * validPhrases.length)] ?? defaultPhrase)
-      : defaultPhrase;
   },
 
   getFileIconPath: (ext?: string | null) => {

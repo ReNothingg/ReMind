@@ -186,12 +186,6 @@ html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
   transform: none;
 }
 
-.ui-composer-icon-button:active,
-.attach-button:active,
-.send-button:active {
-  transform: scale(0.96);
-}
-
 .composer-model-selector {
   --composer-trailing-control-offset: 44px;
   position: relative;
@@ -542,11 +536,6 @@ html[data-theme='light'] .user-message .message-content {
   transform: none;
 }
 
-.action-btn:active,
-.message-action-btn:active {
-  transform: scale(0.96);
-}
-
 .ui-surface,
 .ui-surface-muted,
 .ui-inline-panel,
@@ -666,8 +655,35 @@ html .user-settings-modal .mac-chat-panel-card {
 
 html .user-settings-modal .custom-select-container,
 html .user-settings-modal .settings-input {
-  border-color: transparent;
   background: var(--color-bg-surface-alt);
+}
+
+html .user-settings-modal .settings-input {
+  border-color: transparent;
+}
+
+html .user-settings-modal :is(.custom-select-container, .custom-select-dropdown) {
+  border-color: var(--color-border-medium);
+}
+
+html .user-settings-modal .custom-select-dropdown {
+  background-image: linear-gradient(
+    var(--custom-select-gradient-direction, to bottom),
+    var(--color-bg-surface-alt),
+    var(--color-bg-surface) 24px
+  );
+}
+
+.user-settings-modal .custom-select-dropdown-up {
+  --custom-select-gradient-direction: to top;
+}
+
+.user-settings-modal .custom-select-wrapper:not(.is-drop-up) .custom-select-container.open {
+  border-bottom-color: transparent;
+}
+
+.user-settings-modal .custom-select-wrapper.is-drop-up .custom-select-container.open {
+  border-top-color: transparent;
 }
 
 html .auth-modal .form-group input {

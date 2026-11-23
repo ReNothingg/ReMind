@@ -1,37 +1,18 @@
 import { SERIOUS_ERROR_KEYPHRASES } from '../../utils/constants';
 import { requestJson, type RequestJsonOptions } from '../http';
 
-export const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
-
-export type GuestSessionTokenMap = Record<string, string>;
+export {
+  GUEST_SESSION_TOKENS_KEY,
+  type GuestSessionTokenMap,
+  getGuestSessionToken,
+  getGuestSessionTokens,
+} from '../../features/sessions/guestSessionStorage';
 
 export type ApiServiceError = Error & {
   data?: unknown;
   isSerious?: boolean;
   status?: number;
 };
-
-export function getGuestSessionToken(sessionId: string): string {
-  if (!sessionId) return '';
-
-  try {
-    const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
-    const tokens = raw ? (JSON.parse(raw) as GuestSessionTokenMap) : {};
-    return tokens[sessionId] || '';
-  } catch {
-    return '';
-  }
-}
-
-export function getGuestSessionTokens(): GuestSessionTokenMap {
-  try {
-    const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
-    const tokens = raw ? (JSON.parse(raw) as unknown) : {};
-    return tokens && typeof tokens === 'object' ? (tokens as GuestSessionTokenMap) : {};
-  } catch {
-    return {};
-  }
-}
 
 export function toApiServiceError(error: unknown): ApiServiceError {
   return error instanceof Error ? (error as ApiServiceError) : new Error(String(error));

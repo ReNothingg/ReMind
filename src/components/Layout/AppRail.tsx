@@ -5,7 +5,7 @@ import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { ALLOW_GUEST_CHATS_SAVE } from '../../utils/constants';
+import { removeGuestSession } from '../../features/sessions/guestSessionStorage';
 import { cn } from '../../utils/cn';
 
 const normalizeText = (value) => {
@@ -319,22 +319,7 @@ const AppRail = ({
       if (onSessionDeleted) {
         onSessionDeleted(sessionId);
       }
-      if (ALLOW_GUEST_CHATS_SAVE) {
-        try {
-          const raw = localStorage.getItem('guest_chat_history_ids');
-          let list = raw ? JSON.parse(raw) : [];
-          list = list.filter((id) => id !== sessionId);
-          localStorage.setItem('guest_chat_history_ids', JSON.stringify(list));
-          const rawTokens = localStorage.getItem('guest_chat_tokens');
-          const tokens = rawTokens ? JSON.parse(rawTokens) : {};
-          if (tokens && typeof tokens === 'object' && sessionId in tokens) {
-            delete tokens[sessionId];
-            localStorage.setItem('guest_chat_tokens', JSON.stringify(tokens));
-          }
-        } catch (e) {
-          console.warn('Failed to update guest sessions list', e);
-        }
-      }
+      removeGuestSession(sessionId);
     } catch (error) {
       console.error('Failed to delete session:', error);
     }

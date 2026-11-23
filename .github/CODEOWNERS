@@ -1,8 +1,5 @@
 * @SynvexAI @renothingg
 
 /.github/ @SynvexAI @renothingg
-/routes/ @SynvexAI @renothingg
-/utils/ @SynvexAI @renothingg
-/services/ @SynvexAI @renothingg
-/ai_engine/ @SynvexAI @renothingg
+/backend/ @SynvexAI @renothingg
 /src/ @SynvexAI @renothingg

@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.auth import db
+from backend.db.models import db
 
 config = context.config
 if config.config_file_name is not None:

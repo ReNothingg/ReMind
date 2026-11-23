@@ -144,10 +144,6 @@
   border-color: var(--color-border-subtle);
 }
 
-.rail-chat-list .favorite-btn:active {
-  transform: scale(0.96);
-}
-
 .rail-chat-list .favorite-btn.favorited {
   color: var(--color-accent);
   opacity: 1;

@@ -1,4 +1,10 @@
-import { isKnownComposerTool } from '../features/chat/composerTools';
+import { normalizeHistoryMessage } from '../features/chat/historyMessages';
+import {
+  extractLatestBeatboxState,
+  extractLatestCanvasTextdoc,
+  normalizeBeatboxState,
+  normalizeCanvasTextdoc,
+} from '../features/chat/historyArtifacts';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/api';
@@ -6,6 +12,11 @@ import { getChatErrorCode, getChatErrorMessage } from '../services/api/chat';
 import { showToast } from '../utils/toast';
 import { fileService } from '../services/fileService';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
+import {
+  addGuestSession,
+  removeGuestSession,
+  storeGuestSessionToken,
+} from '../features/sessions/guestSessionStorage';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -27,8 +38,6 @@ const MAX_TEMPORARY_CHAT_VARIANTS = 50;
 const SLUG_INDEX_KEY = 'session_slug_index';
 const SESSION_ID_KEY = 'session_id';
 const SESSION_SLUG_KEY = 'session_slug';
-const GUEST_SESSIONS_KEY = 'guest_chat_history_ids';
-const GUEST_SESSION_TOKENS_KEY = 'guest_chat_tokens';
 
 type HistoryMode = 'replace' | 'push' | 'none';
 
@@ -177,56 +186,6 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-function normalizeHistoryImage(value) {
-  if (typeof value === 'string') return value;
-  if (!value || typeof value !== 'object') return '';
-  const urlPath = value.url_path || value.url || value.path || '';
-  if (!urlPath) return '';
-  const hasArtifactShape = Boolean(
-    value.original_name && value.mime_type && Number.isFinite(Number(value.size))
-  );
-  return {
-    url_path: urlPath,
-    original_name: value.original_name || value.name || undefined,
-    mime_type: value.mime_type || undefined,
-    source: value.source === 'python' || hasArtifactShape ? 'python' : undefined,
-    metadata: value.metadata && typeof value.metadata === 'object' ? value.metadata : undefined,
-  };
-}
-
-function normalizeHistoryVariant(value) {
-  if (!value || typeof value !== 'object') return null;
-  const parts = Array.isArray(value.parts) ? value.parts : [];
-  const content =
-    typeof value.content === 'string'
-      ? value.content
-      : parts.find((part) => typeof part?.text === 'string')?.text || '';
-  return {
-    id: value.variant_id || value.id || crypto.randomUUID(),
-    variantId: value.variant_id || value.id || null,
-    content,
-    images: parts
-      .filter((part) => part?.image)
-      .map((part) => normalizeHistoryImage(part.image))
-      .filter(Boolean),
-    files: parts.filter((part) => part?.file).map((part) => ({ file: part.file })),
-    sources: Array.isArray(value.sources) ? value.sources : [],
-    githubTool: value.github_tool || value.githubTool || null,
-    canvasTextdoc: normalizeCanvasTextdoc(value.canvas_textdoc || value.canvasTextdoc),
-    canvasUpdates: Array.isArray(value.canvas_updates || value.canvasUpdates)
-      ? value.canvas_updates || value.canvasUpdates
-      : [],
-    composerContent: value.composer_content || value.composerContent,
-    selectedTools: value.selected_tools || value.selectedTools || [],
-    modelId: value.model_id || value.modelId,
-    thinkingTime: value.thinkingTime,
-    contextUsage: value.context_usage || value.contextUsage,
-    timestamp: value.timestamp,
-    deliveryState: value.delivery_status === 'interrupted' ? 'interrupted' : undefined,
-    parts,
-  };
-}
-
 function patchMessageVariant(message, variantId, patch) {
   if (!Array.isArray(message?.variants) || !variantId) return message;
   return {
@@ -263,241 +222,6 @@ function patchThinkingUpdate(message, update) {
       closeTime: Number.isFinite(closeTime) && closeTime > 0 ? closeTime : undefined,
     },
   };
-}
-
-export function normalizeHistoryMessage(
-  msg,
-  index?: number,
-  messages?: Array<Record<string, unknown>>
-) {
-  const parts = msg.parts || [];
-  let text = parts.find((part) => part.text)?.text || '';
-
-  if (text.trim().startsWith('{') && text.trim().endsWith('}')) {
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed.url_path || parsed.original_name || parsed.mime_type) {
-        text = '';
-      }
-    } catch {}
-  }
-
-  text = text.replace(/---\s*File:\s*[^-\n]+---[\s\S]*?---\s*End\s*File\s*---/gi, '');
-  text = text.replace(/\[Binary\s+file:[^\]]+\]/gi, '');
-
-  const images =
-    parts
-      .filter((part) => part.image)
-      .map((part) => normalizeHistoryImage(part.image))
-      .filter(Boolean) || [];
-  const files =
-    parts
-      .filter((part) => part.file)
-      .map((part) => ({
-        file: {
-          url_path: part.file.url_path || part.file,
-          original_name: part.file.original_name || part.file.name || 'file',
-          mime_type: part.file.mime_type || 'application/octet-stream',
-          size: part.file.size || 0,
-        },
-      })) || [];
-
-  const variants = Array.isArray(msg.variants)
-    ? msg.variants.map(normalizeHistoryVariant).filter(Boolean)
-    : [];
-  const requestedVariantIndex = Number(msg.current_variant_index ?? msg.currentVariantIndex ?? 0);
-  const currentVariantIndex = variants.length
-    ? Math.max(
-        0,
-        Math.min(
-          Number.isFinite(requestedVariantIndex) ? requestedVariantIndex : 0,
-          variants.length - 1
-        )
-      )
-    : undefined;
-  const currentVariant = currentVariantIndex !== undefined ? variants[currentVariantIndex] : null;
-
-  const followingReply = index !== undefined ? messages?.[index + 1] : undefined;
-  const legacyTools = Array.isArray(followingReply?.selected_tools)
-    ? followingReply.selected_tools.filter(
-        (id): id is string => typeof id === 'string' && isKnownComposerTool(id)
-      )
-    : [];
-  if (followingReply?.model_id === 'demo_image' || followingReply?.model_id === 'mindart')
-    legacyTools.push(followingReply.model_id);
-
-  return {
-    toolBadges: msg.role === 'user' ? [...new Set(legacyTools)] : [],
-    id: msg.id || Math.random().toString(36).substr(2, 9),
-    role: msg.role,
-    composerContent: currentVariant
-      ? currentVariant.composerContent
-      : msg.composer_content || msg.composerContent,
-    selectedTools: currentVariant?.selectedTools || msg.selected_tools || msg.selectedTools || [],
-    modelId: currentVariant?.modelId || msg.model_id || msg.modelId,
-    contextUsage: currentVariant
-      ? currentVariant.contextUsage
-      : msg.context_usage || msg.contextUsage,
-    content: currentVariant?.content ?? text.trim(),
-    images: currentVariant?.images ?? images,
-    files: currentVariant?.files?.length ? currentVariant.files : files,
-    sources: currentVariant?.sources ?? (Array.isArray(msg.sources) ? msg.sources : []),
-    githubTool: currentVariant?.githubTool || msg.github_tool || msg.githubTool || null,
-    canvasTextdoc:
-      currentVariant?.canvasTextdoc ||
-      normalizeCanvasTextdoc(msg.canvas_textdoc || msg.canvasTextdoc),
-    canvasUpdates:
-      currentVariant?.canvasUpdates ??
-      (Array.isArray(msg.canvas_updates || msg.canvasUpdates)
-        ? msg.canvas_updates || msg.canvasUpdates
-        : []),
-    timestamp: currentVariant?.timestamp ?? msg.timestamp,
-    deliveryState:
-      currentVariant?.deliveryState ??
-      (msg.delivery_status === 'interrupted' ? 'interrupted' : undefined),
-    parts: currentVariant?.parts ?? parts,
-    variants,
-    currentVariantIndex,
-  };
-}
-
-function normalizeCanvasTextdoc(value): CanvasTextdoc | null {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  const name = typeof value.name === 'string' ? value.name : '';
-  const type = typeof value.type === 'string' ? value.type : '';
-  if (!name || !type) {
-    return null;
-  }
-
-  return {
-    id: typeof value.id === 'string' ? value.id : undefined,
-    name,
-    type,
-    content: typeof value.content === 'string' ? value.content : '',
-    comments: Array.isArray(value.comments) ? value.comments : [],
-    updated_at: typeof value.updated_at === 'number' ? value.updated_at : undefined,
-  };
-}
-
-function extractLatestCanvasTextdoc(messages): CanvasTextdoc | null {
-  if (!Array.isArray(messages)) {
-    return null;
-  }
-
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const textdoc = normalizeCanvasTextdoc(
-      messages[index]?.canvasTextdoc || messages[index]?.canvas_textdoc
-    );
-    if (textdoc) {
-      return textdoc;
-    }
-  }
-
-  return null;
-}
-
-function normalizeBeatboxState(value) {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  const rawMeta = value.meta && typeof value.meta === 'object' ? value.meta : {};
-  const bpm = Math.max(40, Math.min(240, Number.parseInt(rawMeta.bpm, 10) || 120));
-  const bars = Math.max(1, Math.min(16, Number.parseInt(rawMeta.bars, 10) || 1));
-  const rawTracks = Array.isArray(value.tracks) ? value.tracks : [];
-  const tracks = rawTracks
-    .slice(0, 32)
-    .map((track, index) => {
-      if (!track || typeof track !== 'object') {
-        return null;
-      }
-      const steps = Array.isArray(track.steps)
-        ? track.steps.slice(0, bars * 16).map((step) => (step === 1 || step === true ? 1 : 0))
-        : [];
-      if (!steps.length) {
-        return null;
-      }
-      const adsr = track.adsr && typeof track.adsr === 'object' ? track.adsr : {};
-      return {
-        id:
-          typeof track.id === 'string' && track.id.trim()
-            ? track.id.slice(0, 80)
-            : `track_${index + 1}`,
-        type: 'drum',
-        drum:
-          typeof track.drum === 'string' && track.drum.trim() ? track.drum.slice(0, 40) : 'kick',
-        steps,
-        adsr: {
-          attack: Number.isFinite(Number(adsr.attack)) ? Number(adsr.attack) : 0.001,
-          decay: Number.isFinite(Number(adsr.decay)) ? Number(adsr.decay) : 0.1,
-          sustain: Number.isFinite(Number(adsr.sustain)) ? Number(adsr.sustain) : 0,
-          release: Number.isFinite(Number(adsr.release)) ? Number(adsr.release) : 0.05,
-        },
-      };
-    })
-    .filter(Boolean);
-
-  if (!tracks.length) {
-    return null;
-  }
-
-  return {
-    meta: { bpm, bars },
-    tracks,
-    isPlaying: false,
-    currentStep: 0,
-    timerId: null,
-  };
-}
-
-function extractLatestBeatboxState(messages) {
-  if (!Array.isArray(messages)) {
-    return null;
-  }
-
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const texts = [];
-    if (typeof messages[index]?.content === 'string') {
-      texts.push(messages[index].content);
-    }
-    if (Array.isArray(messages[index]?.parts)) {
-      messages[index].parts.forEach((part) => {
-        if (typeof part?.text === 'string') {
-          texts.push(part.text);
-        }
-      });
-    }
-    for (const text of texts) {
-      const matches = [...text.matchAll(/<beatbox>([\s\S]*?)<\/beatbox>/gi)];
-      for (let matchIndex = matches.length - 1; matchIndex >= 0; matchIndex -= 1) {
-        try {
-          const state = normalizeBeatboxState(JSON.parse(matches[matchIndex][1].trim()));
-          if (state) {
-            return state;
-          }
-        } catch {}
-      }
-    }
-
-    const widgets = messages[index]?.widgets;
-    if (!Array.isArray(widgets)) {
-      continue;
-    }
-    for (let widgetIndex = widgets.length - 1; widgetIndex >= 0; widgetIndex -= 1) {
-      const widget = widgets[widgetIndex];
-      if (widget?.type === 'beatbox') {
-        const state = normalizeBeatboxState(widget.state);
-        if (state) {
-          return state;
-        }
-      }
-    }
-  }
-
-  return null;
 }
 
 export const useChat = () => {
@@ -912,61 +636,6 @@ export const useChat = () => {
     }
   }, []);
 
-  const addGuestSession = useCallback((sessionId) => {
-    if (!ALLOW_GUEST_CHATS_SAVE || !sessionId) return;
-    try {
-      const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      const list = Array.isArray(parsed) ? parsed : [];
-      const nextList = [sessionId, ...list.filter((id) => id !== sessionId)].slice(0, 50);
-      localStorage.setItem(GUEST_SESSIONS_KEY, JSON.stringify(nextList));
-    } catch (e) {
-      console.warn('Guest session storage error', e);
-    }
-  }, []);
-
-  const removeGuestSession = useCallback((sessionId) => {
-    if (!ALLOW_GUEST_CHATS_SAVE || !sessionId) return;
-    try {
-      const raw = localStorage.getItem(GUEST_SESSIONS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      const list = Array.isArray(parsed) ? parsed : [];
-      localStorage.setItem(
-        GUEST_SESSIONS_KEY,
-        JSON.stringify(list.filter((id) => id !== sessionId))
-      );
-    } catch (e) {
-      console.warn('Guest session removal error', e);
-    }
-  }, []);
-
-  const storeGuestSessionToken = useCallback((sessionId, token) => {
-    if (!ALLOW_GUEST_CHATS_SAVE || !sessionId || !token) return;
-    try {
-      const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
-      const tokens = raw ? JSON.parse(raw) : {};
-      tokens[sessionId] = token;
-      localStorage.setItem(GUEST_SESSION_TOKENS_KEY, JSON.stringify(tokens));
-    } catch (e) {
-      console.warn('Guest session token storage error', e);
-    }
-  }, []);
-
-  const removeGuestSessionToken = useCallback((sessionId) => {
-    if (!ALLOW_GUEST_CHATS_SAVE || !sessionId) return;
-    try {
-      const raw = localStorage.getItem(GUEST_SESSION_TOKENS_KEY);
-      const tokens = raw ? JSON.parse(raw) : {};
-      if (!tokens || typeof tokens !== 'object' || !(sessionId in tokens)) {
-        return;
-      }
-      delete tokens[sessionId];
-      localStorage.setItem(GUEST_SESSION_TOKENS_KEY, JSON.stringify(tokens));
-    } catch (e) {
-      console.warn('Guest session token removal error', e);
-    }
-  }, []);
-
   useEffect(() => {
     loadSlugIndex();
   }, [loadSlugIndex]);
@@ -1004,7 +673,6 @@ export const useChat = () => {
         addGuestSession(sessionId);
         if (previousSessionId && previousSessionId !== sessionId) {
           removeGuestSession(previousSessionId);
-          removeGuestSessionToken(previousSessionId);
         }
       }
 
@@ -1016,15 +684,7 @@ export const useChat = () => {
         syncBrowserPath(`/c/${encodeURIComponent(slug)}`, historyMode);
       }
     },
-    [
-      addGuestSession,
-      registerSessionSlug,
-      removeGuestSession,
-      removeGuestSessionToken,
-      syncBrowserPath,
-      syncPersistedCurrentSession,
-      updateSessionIdentity,
-    ]
+    [registerSessionSlug, syncBrowserPath, syncPersistedCurrentSession, updateSessionIdentity]
   );
 
   useEffect(
@@ -2045,7 +1705,6 @@ export const useChat = () => {
       }
     },
     [
-      addGuestSession,
       applyCanvasUpdate,
       beginSessionRequest,
       buildHistoryForAPI,
@@ -2061,7 +1720,6 @@ export const useChat = () => {
       settings?.automaticWebSearch,
       setCanvasTextdocState,
       setTemporaryChatMode,
-      storeGuestSessionToken,
       revokeLocalPreviewUrls,
       syncBrowserPath,
       syncPersistedCurrentSession,
@@ -2456,7 +2114,6 @@ export const useChat = () => {
       settings?.automaticWebSearch,
       setCanvasTextdocState,
       setSessionActivityState,
-      storeGuestSessionToken,
       t,
       updateBeatboxState,
       updateSessionHistory,
@@ -2845,7 +2502,6 @@ export const useChat = () => {
       settings?.automaticWebSearch,
       setCanvasTextdocState,
       setSessionActivityState,
-      storeGuestSessionToken,
       t,
       updateBeatboxState,
       updateSessionHistory,

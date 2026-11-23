@@ -4,8 +4,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from app_factory import create_app
-from utils.feedback import export_feedback_dataset
+from backend.app_factory import create_app
+from backend.services.feedback import export_feedback_dataset
 
 
 def main() -> int:

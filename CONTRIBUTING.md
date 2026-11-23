@@ -14,7 +14,7 @@
 
 Мы принимаем вклад в:
 
-- backend (`routes/`, `services/`, `utils/`, `ai_engine/`);
+- backend (`backend/`);
 - frontend (`src/`, `public/`);
 - инфраструктуру (`Dockerfile`, `docker-compose.yml`, `.github/`);
 - документацию (`README.md`, policy-файлы).
@@ -86,7 +86,7 @@ cp .env.example .env       # Windows: Copy-Item .env.example .env
 
 ```bash
 npm run build
-python -m py_compile main.py app_factory.py routes/api.py utils/auth.py
+python -m compileall -q backend main.py wsgi.py celery_worker.py telegram_bot.py
 ```
 
 Если меняли Docker/infra, дополнительно:

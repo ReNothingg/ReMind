@@ -286,10 +286,6 @@ html[data-theme='light'] .user-settings-header {
   transform: translateX(20px);
 }
 
-.toggle-switch:active::after {
-  transform: translateX(20px) scale(0.9);
-}
-
 .toggle-switch:hover {
   border-color: var(--color-border-strong);
 }

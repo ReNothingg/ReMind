@@ -6,7 +6,7 @@ sys.path.insert(0, str(base_dir))
 
 
 def create_application():
-    from main import create_app
+    from backend.app_factory import create_app
 
     return create_app()
 

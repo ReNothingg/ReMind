@@ -6,6 +6,28 @@ import { AIResponseFeedbackPayload } from './types/common';
 
 export const CHAT_STREAM_IDLE_TIMEOUT_MS = 135_000;
 
+const PART_FIELDS = [
+  'reply_part',
+  'status',
+  'images',
+  'sources',
+  'thinkingTime',
+  'thinking_update',
+  'canvas_textdoc',
+  'canvas_updates',
+];
+
+const STREAM_FIELDS = new Set([
+  ...PART_FIELDS,
+  'reply',
+  'end_of_stream',
+  'aborted',
+  'sessionId',
+  'sessionSlug',
+  'widget_update',
+  'canvas_update',
+]);
+
 const CHAT_ERROR_KEYS: Record<string, string> = {
   provider_access_denied: 'chat.providerErrors.accessDenied',
   provider_not_configured: 'chat.providerErrors.notConfigured',
@@ -155,6 +177,8 @@ export const chatApi = {
 
             try {
               const data = JSON.parse(part.substring(6)) as ChatStreamResult;
+              if (!data || typeof data !== 'object' || Array.isArray(data)) continue;
+              if (Object.hasOwn(data, '__proto__')) delete data.__proto__;
 
               if (data.error) {
                 await reader.cancel().catch(() => undefined);
@@ -189,18 +213,7 @@ export const chatApi = {
                 continue;
               }
 
-              const shouldEmitPart = [
-                'reply_part',
-                'status',
-                'images',
-                'sources',
-                'thinkingTime',
-                'thinking_update',
-                'canvas_textdoc',
-                'canvas_updates',
-              ].some((key) => key in data);
-
-              if (shouldEmitPart) {
+              if (PART_FIELDS.some((key) => Object.hasOwn(data, key))) {
                 onPart?.(data);
               }
 
@@ -232,37 +245,14 @@ export const chatApi = {
                 }
               }
 
-              const knownKeys = new Set([
-                'reply',
-                'reply_part',
-                'end_of_stream',
-                'images',
-                'sources',
-                'thinkingTime',
-                'thinking_update',
-                'status',
-                'aborted',
-                'sessionId',
-                'sessionSlug',
-                'widget_update',
-                'canvas_update',
-                'canvas_updates',
-                'canvas_textdoc',
-              ]);
-
-              Object.keys(data).forEach((key) => {
-                if (!knownKeys.has(key)) {
+              for (const key of Object.keys(data)) {
+                if (!STREAM_FIELDS.has(key)) {
                   finalData[key] = data[key];
                 }
-              });
+              }
             } catch (chunkError) {
               if (chunkError instanceof ChatStreamError) throw chunkError;
-              console.error(
-                'Error parsing stream data chunk:',
-                chunkError,
-                'Chunk:',
-                part.substring(6)
-              );
+              console.error('Error parsing stream data chunk:');
             }
           }
         }

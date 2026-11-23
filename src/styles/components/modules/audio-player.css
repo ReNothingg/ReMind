@@ -90,11 +90,6 @@
   transform: translateY(-1px);
 }
 
-.audio-play-pause-btn:active {
-  transform: scale(0.95);
-  transition-duration: 0.05s;
-}
-
 .audio-play-pause-btn svg {
   width: 17px;
   height: 17px;
