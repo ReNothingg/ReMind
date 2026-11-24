@@ -6,7 +6,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from backend.security.rate_limiting import RateLimiter
+from backend.services.deepseek_web import deepseek_fetch, deepseek_search, has_web_credentials
 from backend.services.tools.tool_protocol import ModelToolResult
+from backend.services.web_research_settings import WebResearchSettings
 from backend.services.web_search import (
     fetch_full_page,
     get_site_name,
@@ -24,6 +26,8 @@ class ResearchSession:
     sources: dict[int, dict[str, Any]] = field(default_factory=dict)
     source_ids: dict[str, int] = field(default_factory=dict)
     pages: dict[str, dict[str, Any]] = field(default_factory=dict)
+    settings: WebResearchSettings = field(default_factory=WebResearchSettings)
+    control: Any = None
 
     def register(self, source: dict[str, Any]) -> dict[str, Any]:
         url = str(source.get("final_url") or source.get("url") or "")
@@ -50,7 +54,7 @@ class ResearchSession:
         queries = list(dict.fromkeys(arguments.get("queries") or [arguments.get("query", "")]))
         if not queries or len(queries) > 3 or any(not query.strip() for query in queries):
             raise ValueError("invalid_query")
-        if any(_has_credentials(query) for query in queries):
+        if any(has_web_credentials(query) for query in queries):
             raise ValueError("private_data_in_web_request")
         domains = list(
             dict.fromkeys(domain.lower().rstrip(".") for domain in arguments.get("domains", []))
@@ -75,6 +79,10 @@ class ResearchSession:
             if domains:
                 search_query += " (" + " OR ".join(f"site:{domain}" for domain in domains) + ")"
             try:
+                if self.settings.search_provider != "remind":
+                    return deepseek_search(
+                        search_query, self.settings, domains=domains, freshness=time_limit, control=self.control
+                    )
                 return run_web_search(
                     search_query,
                     max_results=6,
@@ -82,16 +90,25 @@ class ResearchSession:
                     timelimit=time_limit,
                     domains=domains,
                 )
-            except Exception:
+            except ValueError as exc:
+                return {"error": str(exc), "sources": []}
+            except (OSError, RuntimeError):
+                if self.control:
+                    self.control.check()
                 return {"error": "search_provider_unavailable", "sources": []}
 
         with ThreadPoolExecutor(max_workers=min(3, len(queries))) as pool:
             batches = list(pool.map(search_one, queries))
         public: list[dict[str, Any]] = []
         groups = []
+        truncated = False
         for query, batch in zip(queries, batches, strict=True):
             results = []
             for source in batch.get("sources", []):
+                key = navigation_url_key(source.get("final_url") or source.get("url") or "")
+                if len(self.sources) >= 96 and key not in self.source_ids:
+                    truncated = True
+                    continue
                 registered = self.register({**source, "evidence": "search_snippet"})
                 public.extend(public_sources({"sources": [registered]}))
                 results.append(
@@ -100,6 +117,8 @@ class ResearchSession:
                         for key in ("rank", "title", "url", "snippet", "published_at", "evidence")
                     }
                 )
+                if registered.get("text") and self.settings.search_provider != "remind":
+                    results[-1]["summary"] = registered["text"]
             groups.append({"query": query, "sources": results, "error": batch.get("error")})
         ok = any(not batch.get("error") for batch in batches)
         public = list({source["rank"]: source for source in public}.values())
@@ -110,8 +129,8 @@ class ResearchSession:
             {
                 "ok": ok,
                 "results": groups,
-                "partial": any(batch.get("error") for batch in batches),
-                "error": None if ok else "search_provider_unavailable",
+                "partial": truncated or any(batch.get("error") for batch in batches),
+                "error": None if ok else (batches[0].get("error") or "search_provider_unavailable"),
                 "evidence": "search_snippets_only",
             },
             events=[{"status": status, "query": " · ".join(queries), "sources": public}],
@@ -129,7 +148,7 @@ class ResearchSession:
                 raise ValueError("source_not_available")
             url = source["url"]
         url = str(url or "")
-        if _has_credentials(url):
+        if has_web_credentials(url):
             raise ValueError("private_data_in_web_request")
         key = navigation_url_key(url)
         if key not in self.allowed_urls:
@@ -140,7 +159,11 @@ class ResearchSession:
                 raise ValueError("page_limit_reached")
             if not web_limiter.evaluate(f"web_tools:{self.rate_key}").allowed:
                 raise ValueError("web_rate_limit")
-            page = fetch_full_page(url, max_chars=100_000)
+            page = (
+                fetch_full_page(url, max_chars=100_000)
+                if self.settings.fetch_provider == "remind"
+                else deepseek_fetch(url, self.settings, control=self.control)
+            )
             if not page.get("ok") or not page.get("text"):
                 return ModelToolResult(
                     {"ok": False, "error": page.get("error") or "readable_text_unavailable"}
@@ -203,16 +226,6 @@ class ResearchSession:
                 "next_offset": end if end < len(text) else None,
             }
         return ModelToolResult(output, sources=public)
-
-
-def _has_credentials(text: str) -> bool:
-    return bool(
-        re.search(
-            r"(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,}|AIza[A-Za-z0-9_-]{20,}|-----BEGIN[^-]*PRIVATE KEY-----|Bearer\s+[A-Za-z0-9._-]{16,})",
-            text,
-            re.I,
-        )
-    )
 
 
 def navigation_url_key(url: str) -> str:

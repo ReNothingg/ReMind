@@ -1,0 +1,67 @@
+.project-artifact-action,
+.project-artifact-image,
+.project-patch-preview {
+  display: grid;
+  min-width: 0;
+  gap: .55rem;
+}
+
+.project-patch-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.project-artifact-action button,
+.project-patch-card button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 44px;
+  gap: .45rem;
+  padding: .35rem .65rem;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: .65rem;
+}
+
+.project-artifact-action button:hover:not(:disabled),
+.project-patch-card button:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.project-artifact-action button:disabled,
+.project-patch-card button:disabled {
+  opacity: .64;
+}
+
+.project-patch-preview pre {
+  min-width: 0;
+  max-height: 18rem;
+  padding: .65rem;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-medium);
+  border-radius: .65rem;
+}
+
+.project-patch-preview ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.project-patch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.project-artifact-action p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

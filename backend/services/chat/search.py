@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from backend.responses import logger
+from backend.services.deepseek_web import deepseek_search
+from backend.services.web_research_settings import load_web_research
 from backend.services.web_search import (
     build_web_search_augmented_message,
     classify_auto_web_search_intent,
@@ -57,9 +59,15 @@ def _execute_and_attach_web_search(
     original_message: str,
     search_query: str | None = None,
     decision: dict[str, Any] | None = None,
+    owner: int | None = None,
 ) -> list[dict[str, Any]]:
     query = str(search_query or original_message or "").strip()
-    search_payload = run_web_search(query)
+    settings = load_web_research(owner)
+    search_payload = (
+        run_web_search(query)
+        if settings.search_provider == "remind"
+        else deepseek_search(query, settings)
+    )
     user_data["web_search"] = search_payload
     if decision:
         user_data["web_search_decision"] = decision
@@ -144,7 +152,7 @@ def _resolve_web_search_plan(
 
 
 def attach_web_search_context(
-    user_data: dict[str, Any], original_message: str, *, auto_enabled: bool
+    user_data: dict[str, Any], original_message: str, *, auto_enabled: bool, owner: int | None
 ) -> None:
     try:
         plan = _resolve_web_search_plan(user_data, original_message, auto_enabled=auto_enabled)
@@ -154,6 +162,7 @@ def attach_web_search_context(
                 original_message,
                 search_query=plan.get("query"),
                 decision=plan.get("decision"),
+                owner=owner,
             )
     except Exception as exc:
         logger.warning("Web search failed: %s", exc, exc_info=True)

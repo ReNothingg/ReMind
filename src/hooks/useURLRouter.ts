@@ -38,27 +38,28 @@ export const useURLRouter = () => {
     return parts.length > 0 && parts[0] === 'settings';
   }, [getHashParts]);
   const getSettingsTab = useCallback(() => {
-    const parts = getHashParts();
-    if (parts.length < 2) return null;
-    return parts[1].toLowerCase();
+    return getHashParts()[1]?.toLowerCase() ?? null;
   }, [getHashParts]);
   const getQueryParam = useCallback(
-    (key) => {
+    (key: string) => {
       return queryParams.get(key);
     },
     [queryParams]
   );
   const getAllQueryParams = useCallback(() => {
-    const result = {};
+    const result: Record<string, string> = {};
     queryParams.forEach((value, key) => {
       result[key] = value;
     });
     return result;
   }, [queryParams]);
   const navigate = useCallback(
-    (newHash, replaceHistory = false) => {
+    (newHash: string, replaceHistory = false) => {
       if (replaceHistory) {
-        window.history.replaceState(null, '', `#${newHash}`);
+        const url = new URL(window.location.href);
+        url.hash = newHash;
+        window.history.replaceState(window.history.state, '', url);
+        window.dispatchEvent(new Event('hashchange'));
       } else {
         window.location.hash = newHash;
       }
@@ -96,7 +97,7 @@ export const useURLRouter = () => {
     parseURL();
   }, [parseURL]);
   const hasQueryParam = useCallback(
-    (key) => {
+    (key: string) => {
       return queryParams.has(key);
     },
     [queryParams]

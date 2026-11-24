@@ -6,8 +6,10 @@ from typing import Any
 
 from sqlalchemy import or_
 
+from backend.ai_engine.skills import SKILL_BY_ID
 from backend.db.models import Mind, MindPin, db
 from backend.errors import ApiError
+from backend.services.agent_skills import SKILL_REF, is_skill_reference, owned_skill_references
 
 PUBLIC_ID_RE = re.compile(r"^[A-Za-z0-9_-]{3,128}$")
 
@@ -207,7 +209,9 @@ def _apply_category(query, category: str):
     return query.filter(Mind.category == normalized)
 
 
-def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> dict[str, Any]:
+def _payload_to_mind_fields(
+    data: dict[str, Any], *, partial: bool = False, owner: int | None = None
+) -> dict[str, Any]:
     fields: dict[str, Any] = {}
 
     if not partial or "name" in data:
@@ -237,6 +241,46 @@ def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> d
         fields["starters"] = _normalize_starters(
             data.get("starters", data.get("conversation_starters"))
         )
+    if "allow_external_use" in data:
+        if type(data["allow_external_use"]) is not bool:
+            raise ApiError("invalid_mind_settings", status=400, code="validation_error")
+        fields["allow_external_use"] = data["allow_external_use"]
+    if "skill_ids" in data:
+        ids = data["skill_ids"]
+        if ids is not None and (
+            not isinstance(ids, list)
+            or len(ids) > len(SKILL_BY_ID) + 32
+            or any(
+                not isinstance(item, str) or (item not in SKILL_BY_ID and not is_skill_reference(item))
+                for item in ids
+            )
+        ):
+            raise ApiError("Invalid skill selection", status=400, code="invalid_tool_selection")
+        imports = {item for item in ids or [] if is_skill_reference(item)}
+        if imports and imports != owned_skill_references(owner, [item[len(SKILL_REF):] for item in imports]):
+            raise ApiError("Invalid skill selection", status=400, code="invalid_tool_selection")
+        fields["skill_ids"] = list(dict.fromkeys(ids)) if ids is not None else None
+    if "custom_skills" in data:
+        entries = data["custom_skills"]
+        if not isinstance(entries, list) or len(entries) > 6:
+            raise ApiError("Invalid skills", status=400, code="validation_error")
+        skills = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ApiError("Invalid skill", status=400, code="validation_error")
+            name = _clean_text_field(entry.get("name"), "Name", min_length=1, max_length=80)
+            instructions = _clean_text_field(
+                entry.get("instructions"),
+                "Instructions",
+                min_length=1,
+                max_length=4000,
+                multiline=True,
+                allow_plain_text_markup=True,
+            )
+            if any(skill["name"].casefold() == name.casefold() for skill in skills):
+                raise ApiError("Duplicate skill", status=400, code="validation_error")
+            skills.append({"name": name, "instructions": instructions})
+        fields["custom_skills"] = skills
 
     visibility = (
         _normalize_visibility(data.get("visibility"))
@@ -255,15 +299,7 @@ def _payload_to_mind_fields(data: dict[str, Any], *, partial: bool = False) -> d
     return fields
 
 
-def resolve_mind_context_for_chat(
-    public_id: str | None, viewer_id: int | None
-) -> dict[str, Any] | None:
-    if not public_id:
-        return None
-
-    mind = _get_mind_or_404(public_id, viewer_id)
-    if mind.is_banned:
-        raise ApiError("Mind is unavailable", status=403, code="mind_unavailable")
+def _chat_profile(mind: Mind) -> dict[str, Any]:
     return {
         "id": mind.id,
         "public_id": mind.public_id,
@@ -271,7 +307,32 @@ def resolve_mind_context_for_chat(
         "description": mind.description,
         "instructions": mind.instructions,
         "category": mind.category,
+        "skill_ids": mind.skill_ids,
+        "owner_id": mind.user_id,
+        "allow_external_use": bool(mind.allow_external_use),
+        "custom_skills": mind.custom_skills or [],
     }
+
+
+def require_portable_mind(profile, viewer_id):
+    if profile and profile.get("owner_id") != viewer_id and not profile.get("allow_external_use"):
+        raise ApiError("mind_external_disabled", status=403, code="mind_external_disabled")
+    return profile
+
+
+def resolve_mind_context_for_chat(
+    public_id: str | None, viewer_id: int | None
+) -> dict[str, Any] | None:
+    if not public_id:
+        return None
+    mind = _get_mind_or_404(public_id, viewer_id)
+    if mind.is_banned:
+        raise ApiError("Mind is unavailable", status=403, code="mind_unavailable")
+    return _chat_profile(mind)
+
+
+def resolve_portable_mind(public_id: str | None, viewer_id: int) -> dict[str, Any] | None:
+    return require_portable_mind(resolve_mind_context_for_chat(public_id, viewer_id), viewer_id)
 
 
 def resolve_bound_mind_context_for_chat(
@@ -286,14 +347,7 @@ def resolve_bound_mind_context_for_chat(
     if mind.is_banned:
         return None
 
-    return {
-        "id": mind.id,
-        "public_id": mind.public_id,
-        "name": mind.name,
-        "description": mind.description,
-        "instructions": mind.instructions,
-        "category": mind.category,
-    }
+    return _chat_profile(mind)
 
 
 def get_mind_for_session_binding(public_id: str | None, viewer_id: int | None) -> Mind | None:

@@ -6,12 +6,15 @@ from pathlib import Path
 from flask import current_app, has_app_context
 
 from backend.config import CHATS_FOLDER, CREATE_IMAGE_FOLDER, UPLOAD_FOLDER
+from backend.db.models import AgentProviderKey, AgentSkill, WorkspacePatchProposal
 from backend.responses import logger
+from backend.services import chatgpt_account, workspaces
 from backend.services.attachment_lifecycle import (
     collect_managed_references,
     delete_unreferenced_managed_files,
     merge_managed_references,
 )
+from backend.services.telegram import agent as telegram_agent
 
 SERVICE_IMPROVEMENT_SETTING_KEY = "service_improvement_opt_in"
 
@@ -72,16 +75,22 @@ def export_user_data(user_id):
     from backend.auth.accounts import is_telegram_placeholder_email
     from backend.db.models import (
         AIResponseFeedback,
+        AutomationProposal,
+        AutomationTask,
         ChatShare,
         GitHubAgentTask,
         GitHubInstallation,
         Mind,
         MindPin,
+        ReMindWorkspace,
         User,
         UserChatHistory,
         UserSettings,
         db,
     )
+    from backend.services.agent_plugins import catalog
+    from backend.services.automations import serialize_run, serialize_task, task_runs
+    from backend.services.project_resources import workspace_document
 
     export_data = {
         "exported_at": datetime.utcnow().isoformat(),
@@ -120,6 +129,35 @@ def export_user_data(user_id):
     }
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
     export_data["chats"] = [chat.to_dict() for chat in chats]
+    export_data["projects"] = [
+        {**workspace_document(row), "created_at": row.created_at.isoformat()}
+        for row in ReMindWorkspace.query.filter_by(user_id=user_id).all()
+    ]
+    export_data["automations"] = [
+        {**serialize_task(task), "runs": [serialize_run(run) for run in task_runs(task.id, 100)]}
+        for task in AutomationTask.query.filter_by(user_id=user_id).all()
+    ]
+    export_data["automation_proposals"] = [
+        {
+            "id": row.id,
+            "session_id": row.session_id,
+            "operation": row.operation,
+            "task_id": row.task_id,
+            "changes": row.changes,
+            "expires_at": row.expires_at.isoformat(),
+            "applied_at": row.applied_at.isoformat() if row.applied_at else None,
+        }
+        for row in AutomationProposal.query.filter_by(user_id=user_id).all()
+    ]
+    export_data["agent_plugins"] = catalog(user_id)
+    export_data["workspace_patch_proposals"] = [
+        {
+            "id": row.id, "workspace_id": row.workspace_id, "patch": row.patch,
+            "changes": row.changes, "expires_at": row.expires_at.isoformat(),
+            "applied_at": row.applied_at.isoformat() if row.applied_at else None,
+        }
+        for row in WorkspacePatchProposal.query.filter_by(user_id=user_id)
+    ]
     feedback = AIResponseFeedback.query.filter_by(user_id=user_id).all()
     export_data["ai_response_feedback"] = [item.to_dict() for item in feedback]
     shares = ChatShare.query.filter_by(user_id=user_id).all()
@@ -146,20 +184,27 @@ def export_user_data(user_id):
 
 def delete_user_data(user_id, delete_account=False):
     from backend.db.models import (
+        AgentPlugin,
         AIResponseFeedback,
         AppleAuthChallenge,
         AuthIdentity,
+        AutomationProposal,
+        AutomationTask,
         ChatShare,
         GitHubAgentTask,
         GitHubInstallation,
         Mind,
         MindPin,
+        ReMindWorkspace,
         User,
         UserChatHistory,
         UserSettings,
         db,
     )
     from backend.security.audit_log import AuditEvents, log_audit_event
+    from backend.services.chat.context_compaction import delete_owner_checkpoints
+    from backend.services.chat.provider_replay import delete_owner_replays
+    from backend.services.project_resources import delete_owner_files, remove_uploads
 
     results = {
         "user_id": user_id,
@@ -169,6 +214,13 @@ def delete_user_data(user_id, delete_account=False):
 
     try:
         github_tasks_deleted = GitHubAgentTask.query.filter_by(user_id=user_id).delete()
+        registration = chatgpt_account.remove_registration(user_id)
+        workspace_removal = workspaces.release(user_id)
+        telegram_agent.forget(user_id)
+        results["items_deleted"]["agent_provider_keys"] = AgentProviderKey.query.filter_by(
+            user_id=user_id
+        ).delete()
+        results["items_deleted"]["chatgpt_connections"] = int(registration is not None)
         results["items_deleted"]["github_agent_tasks"] = github_tasks_deleted
         github_installations_deleted = GitHubInstallation.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["github_installations"] = github_installations_deleted
@@ -181,8 +233,26 @@ def delete_user_data(user_id, delete_account=False):
         managed_references = merge_managed_references(
             *(collect_managed_references(chat.get_messages()) for chat in chats)
         )
+        delete_owner_checkpoints(user_id)
+        delete_owner_replays(user_id)
+        results["items_deleted"]["workspace_patch_proposals"] = WorkspacePatchProposal.query.filter_by(user_id=user_id).delete()
         chats_deleted = UserChatHistory.query.filter_by(user_id=user_id).delete()
         results["items_deleted"]["chats"] = chats_deleted
+        results["items_deleted"]["automations"] = AutomationTask.query.filter_by(
+            user_id=user_id
+        ).delete()
+        results["items_deleted"]["automation_proposals"] = AutomationProposal.query.filter_by(
+            user_id=user_id
+        ).delete()
+        results["items_deleted"]["agent_plugins"] = AgentPlugin.query.filter_by(
+            user_id=user_id
+        ).delete()
+        results["items_deleted"]["agent_skills"] = AgentSkill.query.filter_by(user_id=user_id).delete()
+        project_uploads = delete_owner_files(user_id)
+        results["items_deleted"]["project_files"] = len(project_uploads)
+        results["items_deleted"]["projects"] = ReMindWorkspace.query.filter_by(
+            user_id=user_id
+        ).delete()
         owned_mind_ids = [mind.id for mind in Mind.query.filter_by(user_id=user_id).all()]
         pins_deleted = MindPin.query.filter_by(user_id=user_id).delete()
         if owned_mind_ids:
@@ -212,6 +282,10 @@ def delete_user_data(user_id, delete_account=False):
                 results["account_deleted"] = True
 
         db.session.commit()
+        remove_uploads(project_uploads)
+        workspaces.notify_removal(workspace_removal)
+        if registration is not None:
+            results["chatgpt_session_revoked"] = chatgpt_account.revoke_removed(registration)
 
         files_deleted = 0
         chats_folder = _configured_folder("CHATS_FOLDER", CHATS_FOLDER)
@@ -250,16 +324,23 @@ def delete_user_data(user_id, delete_account=False):
 
 def anonymize_user_data(user_id):
     from backend.db.models import (
+        AgentPlugin,
         AIResponseFeedback,
         AppleAuthChallenge,
         AuthIdentity,
+        AutomationProposal,
+        AutomationTask,
         GitHubAgentTask,
         GitHubInstallation,
+        ReMindWorkspace,
         User,
         UserChatHistory,
         UserSettings,
         db,
     )
+    from backend.services.chat.context_compaction import delete_owner_checkpoints
+    from backend.services.chat.provider_replay import delete_owner_replays
+    from backend.services.project_resources import delete_owner_files, remove_uploads
 
     user = db.session.get(User, user_id)
     if not user:
@@ -277,6 +358,10 @@ def anonymize_user_data(user_id):
     AuthIdentity.query.filter_by(user_id=user_id).delete()
     GitHubAgentTask.query.filter_by(user_id=user_id).delete()
     GitHubInstallation.query.filter_by(user_id=user_id).delete()
+    registration = chatgpt_account.remove_registration(user_id)
+    workspace_removal = workspaces.release(user_id)
+    telegram_agent.forget(user_id)
+    AgentProviderKey.query.filter_by(user_id=user_id).delete()
     UserSettings.query.filter_by(user_id=user_id).delete()
     AIResponseFeedback.query.filter_by(user_id=user_id).delete()
     chats = UserChatHistory.query.filter_by(user_id=user_id).all()
@@ -286,8 +371,22 @@ def anonymize_user_data(user_id):
     for chat in chats:
         chat.title = "Deleted Chat"
         chat.messages_data = "[]"
+        chat.workspace_id = None
+    delete_owner_checkpoints(user_id)
+    delete_owner_replays(user_id)
+    WorkspacePatchProposal.query.filter_by(user_id=user_id).delete()
+    db.session.flush()
+    AutomationTask.query.filter_by(user_id=user_id).delete()
+    AutomationProposal.query.filter_by(user_id=user_id).delete()
+    AgentPlugin.query.filter_by(user_id=user_id).delete()
+    AgentSkill.query.filter_by(user_id=user_id).delete()
+    project_uploads = delete_owner_files(user_id)
+    ReMindWorkspace.query.filter_by(user_id=user_id).delete()
 
     db.session.commit()
+    remove_uploads(project_uploads)
+    workspaces.notify_removal(workspace_removal)
+    chatgpt_account.revoke_removed(registration)
     try:
         delete_unreferenced_managed_files(managed_references)
     except Exception:

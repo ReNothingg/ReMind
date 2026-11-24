@@ -41,6 +41,10 @@ MAX_ARTIFACT_BYTES = 512 * 1024
 artifact_limiter = RateLimiter(max_requests=60, time_window=3600, namespace="chat_artifacts")
 
 
+def claim_artifact_quota(user_id: int) -> bool:
+    return artifact_limiter.evaluate(f"chat_artifacts:user_{user_id}").allowed
+
+
 def spreadsheet_safe_csv(content: str) -> tuple[str, bool]:
     result = io.StringIO(newline="")
     writer = csv.writer(result)
@@ -81,8 +85,6 @@ class ArtifactWorkspace:
             or Path(filename).suffix.lower() not in TEXT_EXTENSIONS
         ):
             raise ValueError("invalid_artifact_filename")
-        if self.created >= 8:
-            raise ValueError("artifact_limit_reached")
         if not content or "\x00" in content:
             raise ValueError("invalid_text_content")
         escaped = False
@@ -98,12 +100,45 @@ class ArtifactWorkspace:
             except csv.Error as exc:
                 raise ValueError("invalid_csv") from exc
         raw = content.encode("utf-8")
-        if len(raw) > MAX_ARTIFACT_BYTES or self.written_bytes + len(raw) > 2 * 1024 * 1024:
+        if len(raw) > MAX_ARTIFACT_BYTES:
             raise ValueError("artifact_too_large")
-        available = resolve_input_files(files)
+        mime = {".json": "application/json", ".csv": "text/csv", ".md": "text/markdown"}.get(
+            suffix, "text/plain"
+        )
+        result = self._persist(filename, raw, mime, files)
+        result.output["spreadsheet_formulas_escaped"] = escaped
+        return result
+
+    def save_presentation(self, filename: str, raw: bytes, files: list[dict]) -> ModelToolResult:
         if (
-            len(available) >= 24
-            or sum(path.stat().st_size for _, path in available) + len(raw) > MAX_INPUT_TOTAL_BYTES
+            not filename.endswith(".pptx")
+            or secure_filename(filename) != filename
+            or len(filename) > 120
+        ):
+            raise ValueError("invalid_artifact_filename")
+        return self._persist(
+            filename,
+            raw,
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            files,
+        )
+
+    def _persist(self, filename: str, raw: bytes, mime: str, files: list[dict]) -> ModelToolResult:
+        if self.user_id is None or not self.allow_artifacts:
+            raise ValueError("persistent_account_required")
+        if self.created >= 8:
+            raise ValueError("artifact_limit_reached")
+        if self.written_bytes + len(raw) > 2 * 1024 * 1024:
+            raise ValueError("artifact_too_large")
+        suffix = Path(filename).suffix.lower()
+        available = resolve_input_files(files)
+        chat_inputs = resolve_input_files(
+            [file for file in files if not file.get("workspace_file_id")]
+        )
+        if (
+            len(chat_inputs) >= 24
+            or sum(path.stat().st_size for _, path in chat_inputs) + len(raw)
+            > MAX_INPUT_TOTAL_BYTES
         ):
             raise ValueError("workspace_limit_reached")
         used = {name for name, _ in available}
@@ -112,7 +147,7 @@ class ArtifactWorkspace:
         while actual_name in used:
             actual_name = f"{Path(filename).stem[:105]}-{version}{suffix}"
             version += 1
-        if not artifact_limiter.evaluate(f"chat_artifacts:user_{self.user_id}").allowed:
+        if not claim_artifact_quota(self.user_id):
             raise ValueError("artifact_rate_limit")
         root = Path(UPLOAD_FOLDER).resolve()
         root.mkdir(parents=True, exist_ok=True)
@@ -129,9 +164,6 @@ class ArtifactWorkspace:
             raise
         self.created += 1
         self.written_bytes += len(raw)
-        mime = {".json": "application/json", ".csv": "text/csv", ".md": "text/markdown"}.get(
-            suffix, "text/plain"
-        )
         artifact: dict[str, Any] = {
             "url_path": f"/uploads/{target.name}",
             "original_name": actual_name,
@@ -146,7 +178,6 @@ class ArtifactWorkspace:
                 "artifact": artifact,
                 "filename": actual_name,
                 "revision": artifact["metadata"]["sha256"],
-                "spreadsheet_formulas_escaped": escaped,
             },
             events=[{"python_artifacts": [artifact]}],
             reusable_files=[{**artifact, "path": str(target)}],

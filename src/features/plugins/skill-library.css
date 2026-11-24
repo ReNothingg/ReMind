@@ -1,0 +1,148 @@
+.skill-library {
+  display: grid;
+  min-width: 0;
+  gap: .85rem;
+}
+
+.skill-library-import,
+.skill-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+
+.skill-library-import {
+  justify-content: space-between;
+}
+
+.skill-library p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.skill-library button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-height: 44px;
+  padding: .35rem .65rem;
+  border: 1px solid var(--color-border-medium);
+  border-radius: .65rem;
+  color: inherit;
+}
+
+.skill-library button:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.skill-library button:disabled {
+  opacity: .55;
+}
+
+.skill-library-paste summary,
+.project-skill-library > summary {
+  display: list-item;
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: .65rem;
+}
+
+.skill-library-paste form,
+.skill-library-draft,
+.skill-library-list article {
+  display: grid;
+  gap: .65rem;
+  min-width: 0;
+}
+
+.skill-library-paste form button {
+  justify-self: start;
+}
+
+.skill-library textarea,
+.skill-library pre {
+  width: 100%;
+  min-width: 0;
+  padding: .65rem;
+  font-family: monospace;
+  color: inherit;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-medium);
+  border-radius: .65rem;
+}
+
+.skill-library pre {
+  max-height: 15rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+.skill-library-list {
+  display: grid;
+  padding: 0;
+  gap: .65rem;
+  list-style: none;
+}
+
+.skill-library-list article,
+.skill-library-draft {
+  padding: .8rem;
+  border: 1px solid var(--color-border-medium);
+  border-radius: .75rem;
+}
+
+.skill-library-list h3,
+.skill-library-draft h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.skill-library code {
+  overflow-wrap: anywhere;
+}
+
+.skill-library-resources {
+  min-width: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.skill-library-scripts {
+  display: grid;
+  min-width: 0;
+  gap: .4rem;
+}
+
+.skill-library-scripts h4 {
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.skill-library-scripts details {
+  min-width: 0;
+  border: 1px solid var(--color-border-medium);
+  border-radius: .65rem;
+  padding-inline: .65rem;
+}
+
+.skill-library-scripts summary {
+  min-height: 44px;
+  padding-block: .7rem;
+  cursor: pointer;
+}
+
+.skill-library-scripts details > pre {
+  margin-block-end: .65rem;
+}
+
+@media (max-width: 640px) {
+  .skill-library-import {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

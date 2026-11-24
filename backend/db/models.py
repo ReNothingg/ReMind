@@ -30,11 +30,16 @@ REMOVED_SETTINGS_DATA_KEYS = frozenset(
 
 
 def sanitize_settings_data(raw_settings: Any) -> dict[str, Any]:
+    from backend.agent_profile import normalize_agent_runtime
+
     if not isinstance(raw_settings, dict):
         return {}
-    return {
+    settings = {
         key: value for key, value in raw_settings.items() if key not in REMOVED_SETTINGS_DATA_KEYS
     }
+    if "agentRuntime" in settings:
+        settings["agentRuntime"] = normalize_agent_runtime(settings["agentRuntime"])
+    return settings
 
 
 class User(db.Model):
@@ -212,6 +217,168 @@ class UserSettings(db.Model):
         }
 
 
+class ReMindWorkspace(db.Model):
+    __tablename__ = "remind_workspace"
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name = db.Column(db.String(80), nullable=False)
+    instructions = db.Column(db.Text, nullable=False, default="", server_default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ReMindWorkspaceFile(db.Model):
+    __tablename__ = "remind_workspace_file"
+    __table_args__ = (
+        db.UniqueConstraint("workspace_id", "name_key", name="uq_workspace_file_name"),
+    )
+
+    id = db.Column(db.String(32), primary_key=True)
+    workspace_id = db.Column(
+        db.String(32),
+        db.ForeignKey("remind_workspace.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    storage_name = db.Column(db.String(48), nullable=False, unique=True)
+    original_name = db.Column(db.String(255), nullable=False)
+    name_key = db.Column(db.String(64), nullable=False)
+    mime_type = db.Column(db.String(120), nullable=False)
+    size = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class WorkspacePatchProposal(db.Model):
+    __tablename__ = "workspace_patch_proposal"
+    __table_args__ = (
+        db.UniqueConstraint("chat_id", "request_id", name="uq_workspace_patch_request"),
+        db.Index("ix_workspace_patch_owner_expires", "user_id", "expires_at"),
+    )
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    workspace_id = db.Column(
+        db.String(32), db.ForeignKey("remind_workspace.id", ondelete="CASCADE"), nullable=False
+    )
+    chat_id = db.Column(
+        db.Integer, db.ForeignKey("user_chat_history.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    request_id = db.Column(db.String(100), nullable=False)
+    patch = db.Column(db.Text, nullable=False)
+    base_revision = db.Column(db.String(64), nullable=False)
+    changes = db.Column(db.JSON, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    applied_at = db.Column(db.DateTime)
+
+
+class AutomationTask(db.Model):
+    __tablename__ = "automation_task"
+    __table_args__ = (db.Index("ix_automation_task_due", "enabled", "next_run_at"),)
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title = db.Column(db.String(120), nullable=False)
+    prompt = db.Column(db.Text, nullable=False)
+    model = db.Column(db.String(200), nullable=False)
+    web_search = db.Column(db.Boolean, nullable=False, default=False)
+    workspace_id = db.Column(
+        db.String(32), db.ForeignKey("remind_workspace.id", ondelete="SET NULL")
+    )
+    target_session_id = db.Column(db.String(100))
+    timing = db.Column(db.JSON, nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    next_run_at = db.Column(db.DateTime)
+    last_requested_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AutomationRun(db.Model):
+    __tablename__ = "automation_run"
+    __table_args__ = (
+        db.Index("ix_automation_run_queue", "status", "queued_at"),
+        db.Index("ix_automation_run_task_time", "task_id", "queued_at"),
+    )
+
+    id = db.Column(db.String(32), primary_key=True)
+    task_id = db.Column(
+        db.String(32), db.ForeignKey("automation_task.id", ondelete="CASCADE"), nullable=False
+    )
+    status = db.Column(db.String(16), nullable=False)
+    session_id = db.Column(db.String(100))
+    occurrence_at = db.Column(db.DateTime, nullable=False)
+    queued_at = db.Column(db.DateTime, nullable=False)
+    started_at = db.Column(db.DateTime)
+    finished_at = db.Column(db.DateTime)
+    error = db.Column(db.String(64))
+
+
+class AutomationProposal(db.Model):
+    __tablename__ = "automation_proposal"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "request_id", name="uq_automation_proposal_request"),
+    )
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    request_id = db.Column(db.String(100), nullable=False)
+    session_id = db.Column(db.String(100), nullable=False)
+    operation = db.Column(db.String(12), nullable=False)
+    task_id = db.Column(db.String(32))
+    task_state = db.Column(db.String(64))
+    changes = db.Column(db.JSON, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    applied_at = db.Column(db.DateTime)
+    result = db.Column(db.JSON)
+
+
+class AgentPlugin(db.Model):
+    __tablename__ = "agent_plugin"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    plugin_id = db.Column(db.String(72), primary_key=True)
+    manifest = db.Column(db.JSON)
+    enabled = db.Column(db.Boolean, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AgentSkill(db.Model):
+    __tablename__ = "agent_skill"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "scope", "name", name="uq_agent_skill_scope_name"),
+    )
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    scope = db.Column(db.String(32), nullable=False)
+    workspace_id = db.Column(
+        db.String(32), db.ForeignKey("remind_workspace.id", ondelete="CASCADE"), index=True
+    )
+    name = db.Column(db.String(64), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    resources = db.Column(db.JSON, nullable=False)
+    properties = db.Column(db.JSON, nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ChatModelSelection(db.Model):
+    __tablename__ = "chat_model_selection"
+
+    chat_id = db.Column(
+        db.Integer, db.ForeignKey("user_chat_history.id", ondelete="CASCADE"), primary_key=True
+    )
+    pending = db.Column(db.JSON(none_as_null=True))
+    last_used = db.Column(db.JSON(none_as_null=True))
+    last_request_order = db.Column(db.BigInteger())
+
+
 class UserChatHistory(db.Model):
     __table_args__ = (
         db.UniqueConstraint("user_id", "session_id", name="uq_user_chat_history_user_session"),
@@ -225,6 +392,13 @@ class UserChatHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     session_id = db.Column(db.String(100), nullable=False)
+    workspace_id = db.Column(
+        db.String(32),
+        db.ForeignKey(
+            "remind_workspace.id", name="fk_user_chat_history_workspace_id", ondelete="SET NULL"
+        ),
+        index=True,
+    )
     mind_id = db.Column(
         db.Integer, db.ForeignKey("mind.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -267,6 +441,7 @@ class UserChatHistory(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "session_id": self.session_id,
+            "workspace_id": self.workspace_id,
             "mind_id": self.mind_id,
             "title": self.title,
             "source": self.source or "web",
@@ -274,6 +449,38 @@ class UserChatHistory(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class ChatContextCheckpoint(db.Model):
+    __tablename__ = "chat_context_checkpoint"
+    __table_args__ = (
+        db.UniqueConstraint("chat_id", "prefix_digest", name="uq_chat_context_prefix"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    chat_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user_chat_history.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    covered_count = db.Column(db.Integer, nullable=False)
+    prefix_digest = db.Column(db.String(64), nullable=False)
+    excerpts = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ChatProviderReplay(db.Model):
+    __tablename__ = "chat_provider_replay"
+
+    chat_id = db.Column(
+        db.Integer, db.ForeignKey("user_chat_history.id", ondelete="CASCADE"), primary_key=True
+    )
+    message_id = db.Column(db.String(120), primary_key=True)
+    route_key = db.Column(db.String(64), nullable=False)
+    history_digest = db.Column(db.String(64), nullable=False)
+    payload = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
 class TelegramInlineResult(db.Model):
@@ -362,6 +569,91 @@ class ChatShare(db.Model):
         }
 
 
+class ChatGPTConnection(db.Model):
+    __tablename__ = "chatgpt_connection"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    host_id = db.Column(db.String(64), nullable=False)
+    credentials = db.Column(db.Text)
+    pending = db.Column(db.Text)
+    models = db.Column(db.JSON)
+    catalog_time = db.Column(db.Integer, default=0, nullable=False)
+
+
+class AgentWorkspaceSlot(db.Model):
+    __tablename__ = "agent_workspace_slot"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), unique=True)
+    workspace_id = db.Column(db.String(32), unique=True)
+    generation = db.Column(db.Integer, nullable=False, default=0)
+    mind_public_id = db.Column(db.String(128))
+    codex_catalog = db.Column(db.JSON)
+    codex_catalog_time = db.Column(db.Integer, nullable=False, default=0)
+
+
+class AgentWorkspaceTicket(db.Model):
+    __tablename__ = "agent_workspace_ticket"
+    digest = db.Column(db.String(64), primary_key=True)
+    slot_id = db.Column(
+        db.Integer, db.ForeignKey("agent_workspace_slot.id", ondelete="CASCADE"), nullable=False
+    )
+    expires = db.Column(db.BigInteger, nullable=False, index=True)
+
+
+class AgentCodexLogin(db.Model):
+    __tablename__ = "agent_codex_login"
+    slot_id = db.Column(
+        db.Integer, db.ForeignKey("agent_workspace_slot.id", ondelete="CASCADE"), primary_key=True
+    )
+    attempt_id = db.Column(db.String(32), nullable=False)
+    expires_at = db.Column(db.BigInteger, nullable=False, index=True)
+    encrypted_code = db.Column(db.Text)
+
+
+class TelegramAgentSettings(db.Model):
+    __tablename__ = "telegram_agent_settings"
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    model = db.Column(db.String(200), nullable=False, default="base")
+    mind_id = db.Column(db.String(128))
+    service_tier = db.Column(db.String(16), nullable=False, default="standard")
+    web_search = db.Column(db.Boolean, nullable=False, default=False)
+    secretary_mode = db.Column(db.String(16), nullable=False, default="off")
+
+
+class TelegramBusinessLink(db.Model):
+    __tablename__ = "telegram_business_link"
+    connection_id = db.Column(db.String(200), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    telegram_user_id = db.Column(db.String(32), nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False)
+    can_reply = db.Column(db.Boolean, nullable=False)
+    last_update = db.Column(db.BigInteger, nullable=False)
+
+
+class TelegramBusinessDelivery(db.Model):
+    __tablename__ = "telegram_business_delivery"
+    connection_id = db.Column(
+        db.String(200),
+        db.ForeignKey("telegram_business_link.connection_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    chat_id = db.Column(db.BigInteger, primary_key=True)
+    message_id = db.Column(db.BigInteger, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+
+class AgentProviderKey(db.Model):
+    __tablename__ = "agent_provider_key"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    provider = db.Column(db.String(48), primary_key=True)
+    secret = db.Column(db.Text, nullable=False)
+    catalog = db.Column(db.JSON, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
 class Mind(db.Model):
     __tablename__ = "mind"
 
@@ -372,6 +664,11 @@ class Mind(db.Model):
     description = db.Column(db.String(280), nullable=False)
     instructions = db.Column(db.Text, nullable=False)
     starters_data = db.Column(db.Text, default="[]", nullable=False)
+    allow_external_use = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+    skill_ids = db.Column(db.JSON(none_as_null=True))
+    custom_skills = db.Column(db.JSON(none_as_null=True))
     category = db.Column(db.String(50), default="general", nullable=False, index=True)
     visibility = db.Column(db.String(20), default="private", nullable=False, index=True)
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
@@ -399,8 +696,16 @@ class Mind(db.Model):
             "public_id": self.public_id,
             "name": self.name,
             "description": self.description,
-            "instructions": self.instructions if is_owner else "",
+            "instructions": self.instructions if is_owner or self.allow_external_use else "",
+            "allow_external_use": bool(self.allow_external_use),
             "starters": self.get_starters(),
+            "skill_ids": self.skill_ids if is_owner or self.skill_ids is None else [
+                skill for skill in self.skill_ids if isinstance(skill, str) and not skill.startswith("skill:")
+            ],
+            "custom_skills": (self.custom_skills or [])
+            if is_owner or self.allow_external_use
+            else [],
+            "custom_skill_names": [skill["name"] for skill in self.custom_skills or []],
             "category": self.category,
             "visibility": self.visibility,
             "is_verified": bool(self.is_verified),

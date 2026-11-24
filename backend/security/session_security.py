@@ -19,7 +19,9 @@ SESSIONLESS_REQUEST_PATHS = frozenset(
 
 
 def is_sessionless_request() -> bool:
-    return has_request_context() and request.path in SESSIONLESS_REQUEST_PATHS
+    return has_request_context() and (
+        request.path.startswith("/internal/agent/") or request.path in SESSIONLESS_REQUEST_PATHS
+    )
 
 
 def _extract_hostname(raw_host: str | None) -> str:

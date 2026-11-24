@@ -126,11 +126,24 @@ def execute_document_tool(
                 }
             )
         if name == "file_list":
+            project_names = {
+                item["path"]: item["original_name"]
+                for item in files
+                if item.get("workspace_file_id")
+            }
             return ModelToolResult(
                 {
                     "ok": True,
                     "files": [
-                        {"filename": filename, "bytes": path.stat().st_size}
+                        {
+                            "filename": filename,
+                            "bytes": path.stat().st_size,
+                            **(
+                                {"project_name": project_names[str(path)]}
+                                if str(path) in project_names
+                                else {}
+                            ),
+                        }
                         for filename, path in resolve_input_files(files)
                     ],
                 }

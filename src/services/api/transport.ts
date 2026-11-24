@@ -56,3 +56,12 @@ export async function fetchApi<TResponse = unknown>(
     throw typedError;
   }
 }
+
+export function writeApiJson<TResponse = unknown>(path: string, method: string, payload?: unknown) {
+  return fetchApi<TResponse>(path, {
+    method,
+    ...(payload === undefined
+      ? {}
+      : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+  });
+}

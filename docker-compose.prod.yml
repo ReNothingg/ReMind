@@ -6,6 +6,9 @@ services:
     volumes:
       - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
+  agent-router:
+    environment:
+      REMIND_INTERNAL_HOST: ${AGENT_INTERNAL_HOST:-chat.synvexai.com}
   app:
     environment:
       - ENABLE_STRICT_HTTPS=True

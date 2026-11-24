@@ -10,6 +10,9 @@ const petStatusLabels: Partial<Record<PetState, string>> = {
   thinking: 'think.label',
   searching: 'webSearch.status.started',
   working: 'think.presentation.working',
+  planning: 'agentPet.planning',
+  learning: 'agentPet.learning',
+  presenting: 'agentPet.presenting',
   coding: 'think.presentation.writingCode',
   review: 'toolPanels.questions',
   paused: 'chat.generationStopped',
@@ -59,8 +62,17 @@ function getToolPetState(item: ThoughtTimelineItem): PetState {
     case 'python':
       return 'coding';
     case 'tool':
-      if (item.name === 'ask_user' || item.name === 'plan_update') return 'review';
-      if (item.name === 'python_execute') return 'coding';
+      if (
+        item.name === 'ask_user' ||
+        item.name === 'schedule_create' ||
+        item.name === 'schedule_edit'
+      )
+        return 'review';
+      if (item.name === 'apply_patch') return 'review';
+      if (['plan_update', 'delegate_tasks', 'list_subagent_models'].includes(item.name)) return 'planning';
+      if (['read_skill', 'skill', 'skill_resource'].includes(item.name)) return 'learning';
+      if (item.name === 'create_presentation') return 'presenting';
+      if (['python_execute', 'shell_pipeline', 'skill_script'].includes(item.name)) return 'coding';
       if (item.name.startsWith('web_')) return 'searching';
   }
   return 'working';

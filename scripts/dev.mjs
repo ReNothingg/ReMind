@@ -87,14 +87,22 @@ for (const processConfig of processes) {
   const child = spawn(processConfig.command, processConfig.args, {
     cwd: process.cwd(),
     detached: process.platform !== 'win32',
-    env: process.env,
+    env: {
+      ...process.env,
+      REMIND_LOCAL_DEV: '1',
+
+    },
     stdio: ['inherit', 'pipe', 'pipe'],
   });
 
   children.add(child);
 
-  child.stdout.on('data', (chunk) => writePrefixed(processConfig.name, chunk, process.stdout));
-  child.stderr.on('data', (chunk) => writePrefixed(processConfig.name, chunk, process.stderr));
+  for (const [source, destination] of [
+    [child.stdout, process.stdout],
+    [child.stderr, process.stderr],
+  ]) {
+    source.on('data', (chunk) => writePrefixed(processConfig.name, chunk, destination));
+  }
 
   child.on('error', (error) => {
     console.error(`[${processConfig.name}] failed to start: ${error.message}`);

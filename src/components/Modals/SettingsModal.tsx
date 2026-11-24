@@ -45,6 +45,9 @@ import { requestNotificationPermission } from '../../utils/notifications';
 import { showToast } from '../../utils/toast';
 import { cn } from '../../utils/cn';
 import { safeGitHubUrl } from '../../utils/githubUrls';
+import AgentWorkspace from '../../features/chat/AgentWorkspace';
+import ProviderSettings from '../../features/chat/ProviderSettings';
+import TelegramAgentSettings from '../../features/chat/TelegramAgentSettings';
 import {
   firstAccountFieldError,
   localizeAccountError,
@@ -54,6 +57,9 @@ import {
 } from '../../utils/accountValidation';
 
 type SettingsTabId =
+  | 'workspace'
+  | 'telegram'
+  | 'models'
   | 'account'
   | 'appearance'
   | 'personalization'
@@ -109,6 +115,8 @@ type SettingToggleProps = {
 type SettingsModalProps = {
   onClose: () => void;
   onOpenAuth: (mode?: 'login' | 'link') => void;
+  onOpenPlugins: () => void;
+  onOpenAutomations: () => void;
 };
 
 type ProfileMessage = {
@@ -336,7 +344,7 @@ const SettingToggle = ({
   </div>
 );
 
-const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
+const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }: SettingsModalProps) => {
   const { t, i18n } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
@@ -391,16 +399,34 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
   }, [user]);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const tab = getSettingsTab();
-      if (tab) {
+    const syncTab = () => {
+      const [section, tab] = window.location.hash.slice(1).split('/');
+      if (
+        section === 'settings' &&
+        tab &&
+        [
+          'account',
+          'models',
+          'workspace',
+          'telegram',
+          'appearance',
+          'personalization',
+          'privacy',
+          'interface',
+          'accessibility',
+          'about',
+        ].includes(tab)
+      ) {
         setActiveTab(tab);
       }
     };
-
-    window.addEventListener('hashRouteChange', handleHashChange);
-    return () => window.removeEventListener('hashRouteChange', handleHashChange);
-  }, [getSettingsTab]);
+    window.addEventListener('hashchange', syncTab);
+    window.addEventListener('hashRouteChange', syncTab);
+    return () => {
+      window.removeEventListener('hashchange', syncTab);
+      window.removeEventListener('hashRouteChange', syncTab);
+    };
+  }, []);
 
   useEffect(() => {
     const handleEscapeKey = (e) => {
@@ -700,6 +726,21 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
       label: t('settings.tabs.account'),
       icon: <UserRound size={18} strokeWidth={1.9} />,
     },
+    ...(isAuthenticated
+      ? [
+          {
+            id: 'models' as const,
+            label: t('agentSettings.title'),
+            icon: <SlidersHorizontal size={18} />,
+          },
+          {
+            id: 'workspace' as const,
+            label: t('workspace.title'),
+            icon: <SlidersHorizontal size={18} />,
+          },
+          { id: 'telegram' as const, label: t('agentTelegram.title'), icon: <Send size={18} /> },
+        ]
+      : []),
     {
       id: 'appearance',
       label: t('settings.tabs.appearance'),
@@ -1214,6 +1255,39 @@ const SettingsModal = ({ onClose, onOpenAuth }: SettingsModalProps) => {
 
         <div className="settings-content">
           {activeTab === 'account' && renderAccountTab()}
+          {activeTab === 'workspace' && isAuthenticated && (
+            <SettingsPane dataPane="workspace">
+              <AgentWorkspace
+                key={user?.id}
+                onOpenPlugins={onOpenPlugins}
+                onOpenAutomations={onOpenAutomations}
+              />
+            </SettingsPane>
+          )}
+          {activeTab === 'telegram' && isAuthenticated && (
+            <SettingsPane dataPane="telegram">
+              <TelegramAgentSettings />
+            </SettingsPane>
+          )}
+          {activeTab === 'models' && (
+            <SettingsPane dataPane="models">
+              {isAuthenticated ? (
+                <ProviderSettings
+                  key={user?.id}
+                  defaultModel={settings.agentSelection?.owner === user?.id ? settings.agentSelection?.model || '' : ''}
+                  onDefaultModelChange={(model) => updateSetting('agentSelection', {
+                    ...(settings.agentSelection?.owner === user?.id ? settings.agentSelection : {}),
+                    owner: user?.id,
+                    model,
+                  })}
+                />
+              ) : (
+                <button type="button" onClick={() => onOpenAuth()}>
+                  {t('auth.login')}
+                </button>
+              )}
+            </SettingsPane>
+          )}
 
           {activeTab === 'appearance' && (
             <SettingsPane dataPane="appearance" className="settings-pane-standard">

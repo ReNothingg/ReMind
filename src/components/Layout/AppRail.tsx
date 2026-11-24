@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronRight, ListFilter, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, ChevronRight, ListFilter, MessageSquarePlus, Pencil, Plus, Settings2, ShieldCheck, Trash2, X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,25 @@ import { useSettings } from '../../context/SettingsContext';
 import { removeGuestSession } from '../../features/sessions/guestSessionStorage';
 import { cn } from '../../utils/cn';
 import Pet, { type PetState } from '../UI/Pet';
+
+function ProjectIcon({ add = false }: { add?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3.5 7.7a2 2 0 0 1 2-2h4l2.1 2.2h6.8a2.1 2.1 0 0 1 2.1 2.1v6.4a2 2 0 0 1-2 2H5.5a2 2 0 0 1-2-2z" />
+      {add && <path d="M12 11.1v4.1M10 13.1h4" />}
+    </svg>
+  );
+}
 
 const normalizeText = (value) => {
   if (!value) return '';
@@ -161,12 +180,24 @@ const AppRail = ({
   isExpanded,
   isMobile = false,
   onAdminClick,
+  onAutomationsClick,
   onMindsClick,
+  onPluginsClick,
+  onOpenProject,
+  onProjectSettings,
+  onNewPersonalChat,
+  onReferenceChat,
+  activeProjectId,
+  projectStore,
+  onSessionMoved,
+  onProjectsChanged,
   onNewChat,
   onSelectMind,
   onSelectSession,
   onSessionDeleted,
   onSessionRenamed,
+  onCompactSession,
+  onViewContext,
   onSettingsClick,
   onToggle,
   petState = 'idle' as PetState,
@@ -177,6 +208,25 @@ const AppRail = ({
   const { t } = useTranslation();
   const { isAuthenticated, user } = useAuth();
   const { settings } = useSettings();
+  const projectHeading = useRef<HTMLDivElement>(null);
+  const [projectEditor, setProjectEditor] = useState<{ id?: string; name: string } | null>(null);
+  const [foldedProjects, setFoldedProjects] = useState<ReadonlySet<string>>(() => new Set());
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [projectError, setProjectError] = useState(false);
+  const projects = projectStore.projects;
+  const projectIds = new Set(projects.map((project) => project.id));
+  const changeProject = async (action: () => Promise<unknown>) => {
+    if (projectBusy) return;
+    setProjectBusy(true);
+    setProjectError(false);
+    try {
+      await action();
+    } catch {
+      setProjectError(true);
+    } finally {
+      setProjectBusy(false);
+    }
+  };
   const [favorites, setFavorites] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingSessionId, setEditingSessionId] = useState(null);
@@ -471,6 +521,277 @@ const AppRail = ({
     if (target instanceof HTMLElement) target.focus();
   };
 
+  const renderSession = (session) => {
+    const isFavorite = favorites.includes(session.session_id);
+    const activity = sessionActivity[session.session_id];
+    const activityLabel = getSessionActivityLabel(activity);
+    const preview =
+      session.last_message && session.last_message.trim() ? session.last_message.trim() : '';
+    const title =
+      (session.title && session.title.trim()) ||
+      preview ||
+      (session.session_id || '').slice(0, 16) ||
+      t('rail.untitled');
+    const showPreview = !!settings.showChatPreview && !!preview && preview !== title;
+
+    return (
+      <li
+        key={session.session_id}
+        className={cn(
+          'chat-history-item ui-rail-item',
+          currentSessionId === session.session_id && 'active ui-rail-item-active',
+          isFavorite && 'favorite ui-rail-item-favorite'
+        )}
+      >
+        {editingSessionId === session.session_id ? (
+          <div className="chat-item-main ui-rail-item-main">
+            <input
+              type="text"
+              value={editingTitle}
+              onChange={(e) => setEditingTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSaveRename(session.session_id);
+                } else if (e.key === 'Escape') {
+                  handleCancelRename();
+                }
+              }}
+              onBlur={() => handleSaveRename(session.session_id)}
+              autoFocus
+              className="chat-rename-input ui-rail-rename-input"
+              maxLength={200}
+              aria-label={t('rail.rename')}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="chat-item-main ui-rail-item-main ui-rail-session-button"
+            title={title}
+            onClick={() => onSelectSession(session.session_id)}
+            aria-current={currentSessionId === session.session_id ? 'page' : undefined}
+          >
+            <span className="chat-item-title-row ui-rail-title-row">
+              <span className="chat-item-title ui-rail-title">{title}</span>
+              {session.source?.startsWith('telegram_') && (
+                <span className="ui-rail-source-chip">{getSourceLabel(session.source)}</span>
+              )}
+              {session.is_public && (
+                <span className="chat-public-chip ui-rail-public-chip" title={t('rail.publicChat')}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      fill="none"
+                      strokeWidth="1.6"
+                    />
+                    <path
+                      d="M2 12h20M12 2c3.5 3.2 3.5 16.8 0 20M7.5 4.5c2.2 2.2 2.2 13 0 15.2M16.5 4.5c-2.2 2.2-2.2 13 0 15.2"
+                      stroke="currentColor"
+                      fill="none"
+                      strokeWidth="1.4"
+                    />
+                  </svg>
+                  {t('rail.public')}
+                </span>
+              )}
+              {activity?.status === 'generating' ? (
+                <span
+                  className="ui-rail-session-pet"
+                  role="img"
+                  aria-label={activityLabel}
+                  title={activityLabel}
+                >
+                  <Pet
+                    state={
+                      currentSessionId === session.session_id && petState !== 'idle'
+                        ? petState
+                        : 'working'
+                    }
+                  />
+                </span>
+              ) : activity?.status ? (
+                <span
+                  className={cn('ui-rail-status-indicator', `ui-rail-status-${activity.status}`)}
+                  title={activityLabel}
+                  aria-label={activityLabel}
+                />
+              ) : null}
+            </span>
+            {showPreview && <span className="chat-item-preview ui-rail-preview">{preview}</span>}
+          </button>
+        )}
+        <span className="chat-item-details ui-rail-item-details">
+          <div className="chat-item-actions ui-rail-item-actions">
+            <div
+              className={cn(
+                'chat-menu-wrapper ui-rail-menu-anchor',
+                openMenuId === session.session_id && 'ui-rail-menu-anchor-open'
+              )}
+            >
+              <button
+                type="button"
+                className="chat-menu-btn ui-rail-menu-trigger"
+                ref={(element) => {
+                  if (element) menuTriggerRefs.current.set(session.session_id, element);
+                  else menuTriggerRefs.current.delete(session.session_id);
+                }}
+                title={t('rail.menu')}
+                aria-label={t('rail.menu')}
+                aria-haspopup="menu"
+                aria-expanded={openMenuId === session.session_id}
+                aria-controls={
+                  openMenuId === session.session_id
+                    ? `rail-session-menu-${session.session_id}`
+                    : undefined
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const shouldOpen = openMenuId !== session.session_id;
+                  setOpenMenuId(shouldOpen ? session.session_id : null);
+                  if (shouldOpen) focusSessionMenuItem(session.session_id);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                  event.preventDefault();
+                  setOpenMenuId(session.session_id);
+                  focusSessionMenuItem(
+                    session.session_id,
+                    event.key === 'ArrowUp' ? 'last' : 'first'
+                  );
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <circle cx="12" cy="5" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="12" cy="19" r="2" />
+                </svg>
+              </button>
+              {openMenuId === session.session_id && (
+                <div
+                  className="chat-dropdown-menu ui-rail-menu"
+                  id={`rail-session-menu-${session.session_id}`}
+                  role="menu"
+                  onKeyDown={(event) => handleSessionMenuKeyDown(event, session.session_id)}
+                >
+                  <RailMenuItem
+                    className="menu-item favorite-menu-item"
+                    icon={
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    }
+                    onClick={(e) => {
+                      toggleFavorite(session.session_id, e);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    {isFavorite ? t('rail.favorite.remove') : t('rail.favorite.add')}
+                  </RailMenuItem>
+                  <RailMenuItem
+                    className="menu-item"
+                    icon={
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    }
+                    onClick={(e) => {
+                      handleRename(session.session_id, e);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    {t('rail.rename')}
+                  </RailMenuItem>
+                  {!session.is_public && (!session.source || session.source === 'web') && onReferenceChat &&
+                    session.session_id !== currentSessionId && (
+                    <RailMenuItem
+                      className="menu-item"
+                      icon={<MessageSquarePlus size={16} aria-hidden="true" />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenMenuId(null);
+                        onReferenceChat({ session_id: session.session_id, title });
+                      }}
+                    >
+                      {t('chatReferences.title')}
+                    </RailMenuItem>
+                  )}
+                  {!session.is_public && (!session.source || session.source === 'web') && onCompactSession && (
+                    <RailMenuItem
+                      className="menu-item"
+                      icon={
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 5h14M5 19h14M12 4v5m-3-1 3 3 3-3m-3 12v-5m-3 1 3-3 3 3" />
+                        </svg>
+                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenMenuId(null);
+                        void onCompactSession(session.session_id);
+                      }}
+                    >
+                      {t('chatMemory.compact')}
+                    </RailMenuItem>
+                  )}
+                  {!session.is_public && (!session.source || session.source === 'web') && onViewContext && (
+                    <RailMenuItem
+                      className="menu-item"
+                      icon={<BookOpen size={16} aria-hidden="true" />}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenMenuId(null);
+                        onViewContext(session.session_id);
+                      }}
+                    >
+                      {t('chatMemory.view')}
+                    </RailMenuItem>
+                  )}
+                  <RailMenuItem
+                    className="menu-item delete-menu-item"
+                    danger
+                    icon={
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                      </svg>
+                    }
+                    onClick={(e) => {
+                      handleDelete(session.session_id, e);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    {t('rail.delete')}
+                  </RailMenuItem>
+                </div>
+              )}
+            </div>
+          </div>
+        </span>
+      </li>
+    );
+  };
+
   return (
     <nav
       className={cn(
@@ -483,7 +804,14 @@ const AppRail = ({
     >
       {isMobile && (
         <div className="ui-rail-mobile-header">
-          <img className="ui-rail-mobile-brand" src="/icons/branding/logo.svg" alt="" />
+          <button
+            type="button"
+            className="ui-rail-mobile-brand-home"
+            onClick={onNewPersonalChat}
+            aria-label={t('projects.personalChat')}
+          >
+            <img className="ui-rail-mobile-brand" src="/icons/branding/logo.svg" alt="" />
+          </button>
           <button
             type="button"
             className="ui-rail-mobile-close"
@@ -495,6 +823,12 @@ const AppRail = ({
             <X aria-hidden="true" />
           </button>
         </div>
+      )}
+      {isExpanded && !isMobile && (
+        <button type="button" className="ui-rail-agent-brand" onClick={onNewPersonalChat} aria-label={t('projects.personalChat')}>
+          <Pet state={petState} />
+          <strong>ReMind</strong>
+        </button>
       )}
       <div className="rail-toggle-zone ui-rail-toggle-zone">
         <button
@@ -541,6 +875,51 @@ const AppRail = ({
             strokeLinejoin="round"
           >
             <path d="M12 5v14M5 12h14" />
+          </svg>
+        </RailActionButton>
+        <RailActionButton
+          expanded={isExpanded}
+          onClick={
+            isExpanded
+              ? () => projectHeading.current?.scrollIntoView({ block: 'nearest' })
+              : onToggle
+          }
+          className="rail-icon-btn"
+          id="railWorkspace"
+          label={t('projects.title')}
+          title={t('projects.title')}
+          aria-label={t('projects.title')}
+        >
+          <ProjectIcon />
+        </RailActionButton>
+        <RailActionButton
+          active={currentPath === '/plugins'}
+          expanded={isExpanded}
+          onClick={onPluginsClick}
+          className="rail-icon-btn"
+          id="railPlugins"
+          label={t('plugins.title')}
+          title={t('plugins.title')}
+          aria-label={t('plugins.title')}
+        >
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4" />
+            <path d="M12 6.5 17.5 12 12 17.5 6.5 12z" />
+          </svg>
+        </RailActionButton>
+        <RailActionButton
+          active={currentPath === '/automations'}
+          expanded={isExpanded}
+          onClick={onAutomationsClick}
+          className="rail-icon-btn"
+          id="railAutomations"
+          label={t('automations.title')}
+          title={t('automations.title')}
+          aria-label={t('automations.title')}
+        >
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 3.5h6M19 5l1.5 1.5M12 9v4l2.5 1.5" />
+            <circle cx="12" cy="13" r="7.5" />
           </svg>
         </RailActionButton>
         <div className="ui-rail-minds-section">
@@ -693,244 +1072,179 @@ const AppRail = ({
         )}
       >
         <ul id="chatHistoryList" className="rail-chat-list ui-rail-list ui-scrollbar-thin">
-          {filteredSessions.map((session) => {
-            const isFavorite = favorites.includes(session.session_id);
-            const activity = sessionActivity[session.session_id];
-            const activityLabel = getSessionActivityLabel(activity);
-            const preview =
-              session.last_message && session.last_message.trim()
-                ? session.last_message.trim()
-                : '';
-            const title =
-              (session.title && session.title.trim()) ||
-              preview ||
-              (session.session_id || '').slice(0, 16) ||
-              t('rail.untitled');
-            const showPreview = !!settings.showChatPreview && !!preview && preview !== title;
-
-            return (
-              <li
-                key={session.session_id}
-                className={cn(
-                  'chat-history-item ui-rail-item',
-                  currentSessionId === session.session_id && 'active ui-rail-item-active',
-                  isFavorite && 'favorite ui-rail-item-favorite'
-                )}
-              >
-                {editingSessionId === session.session_id ? (
-                  <div className="chat-item-main ui-rail-item-main">
-                    <input
-                      type="text"
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSaveRename(session.session_id);
-                        } else if (e.key === 'Escape') {
-                          handleCancelRename();
-                        }
-                      }}
-                      onBlur={() => handleSaveRename(session.session_id)}
-                      autoFocus
-                      className="chat-rename-input ui-rail-rename-input"
-                      maxLength={200}
-                      aria-label={t('rail.rename')}
-                    />
-                  </div>
-                ) : (
+          {isExpanded && (
+            <li className="ui-rail-projects">
+              <div className="ui-rail-projects-heading" ref={projectHeading}>
+                <span>{t('projects.title')}</span>
+                <button
+                  type="button"
+                  aria-label={t('projects.new')}
+                  onClick={() => setProjectEditor({ name: '' })}
+                >
+                  <ProjectIcon add />
+                </button>
+              </div>
+              {projectEditor && (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void changeProject(async () => {
+                      const project = await projectStore.save(projectEditor.name.trim(), projectEditor.id);
+                      if (!projectEditor.id) onOpenProject(project.id);
+                      setProjectEditor(null);
+                    });
+                  }}
+                >
+                  <input
+                    aria-label={t('projects.name')}
+                    maxLength={80}
+                    autoFocus
+                    required
+                    value={projectEditor.name}
+                    onChange={(event) =>
+                      setProjectEditor({ ...projectEditor, name: event.target.value })
+                    }
+                  />
+                  <button
+                    type="submit"
+                    disabled={projectBusy || !projectEditor.name.trim()}
+                    aria-label={t('projects.save')}
+                  >
+                    <Check size={16} />
+                  </button>
                   <button
                     type="button"
-                    className="chat-item-main ui-rail-item-main ui-rail-session-button"
-                    title={title}
-                    onClick={() => onSelectSession(session.session_id)}
-                    aria-current={currentSessionId === session.session_id ? 'page' : undefined}
+                    onClick={() => setProjectEditor(null)}
+                    aria-label={t('projects.cancel')}
                   >
-                    <span className="chat-item-title-row ui-rail-title-row">
-                      <span className="chat-item-title ui-rail-title">{title}</span>
-                      {session.source?.startsWith('telegram_') && (
-                        <span className="ui-rail-source-chip">
-                          {getSourceLabel(session.source)}
-                        </span>
-                      )}
-                      {session.is_public && (
-                        <span
-                          className="chat-public-chip ui-rail-public-chip"
-                          title={t('rail.publicChat')}
-                        >
-                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              fill="none"
-                              strokeWidth="1.6"
-                            />
-                            <path
-                              d="M2 12h20M12 2c3.5 3.2 3.5 16.8 0 20M7.5 4.5c2.2 2.2 2.2 13 0 15.2M16.5 4.5c-2.2 2.2-2.2 13 0 15.2"
-                              stroke="currentColor"
-                              fill="none"
-                              strokeWidth="1.4"
-                            />
-                          </svg>
-                          {t('rail.public')}
-                        </span>
-                      )}
-                      {activity?.status === 'generating' ? (
-                        <span
-                          className="ui-rail-session-pet"
-                          role="img"
-                          aria-label={activityLabel}
-                          title={activityLabel}
-                        >
-                          <Pet
-                            state={
-                              currentSessionId === session.session_id && petState !== 'idle'
-                                ? petState
-                                : 'working'
-                            }
-                          />
-                        </span>
-                      ) : activity?.status ? (
-                        <span
-                          className={cn(
-                            'ui-rail-status-indicator',
-                            `ui-rail-status-${activity.status}`
-                          )}
-                          title={activityLabel}
-                          aria-label={activityLabel}
-                        />
-                      ) : null}
-                    </span>
-                    {showPreview && (
-                      <span className="chat-item-preview ui-rail-preview">{preview}</span>
-                    )}
+                    <X size={16} />
                   </button>
-                )}
-                <span className="chat-item-details ui-rail-item-details">
-                  <div className="chat-item-actions ui-rail-item-actions">
-                    <div
-                      className={cn(
-                        'chat-menu-wrapper ui-rail-menu-anchor',
-                        openMenuId === session.session_id && 'ui-rail-menu-anchor-open'
-                      )}
+                </form>
+              )}
+              {(projectError || projectStore.loadError) && (
+                <p role="alert">{t('projects.failed')}</p>
+              )}
+              {projects.map((project) => {
+                const expanded = !foldedProjects.has(project.id);
+                const active = project.id === activeProjectId;
+                const chatsId = 'project-chats-' + project.id;
+                return (
+                <div key={project.id} className={cn('ui-rail-project', active && 'is-active')}>
+                  <div className="ui-rail-project-row">
+                    <button
+                      type="button"
+                      className="ui-rail-project-fold"
+                      aria-label={t('projects.showChats', { name: project.name })}
+                      aria-expanded={expanded}
+                      aria-controls={chatsId}
+                      onClick={() => {
+                        setFoldedProjects((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(project.id)) next.delete(project.id);
+                          else next.add(project.id);
+                          return next;
+                        });
+                      }}
                     >
-                      <button
-                        type="button"
-                        className="chat-menu-btn ui-rail-menu-trigger"
-                        ref={(element) => {
-                          if (element) menuTriggerRefs.current.set(session.session_id, element);
-                          else menuTriggerRefs.current.delete(session.session_id);
-                        }}
-                        title={t('rail.menu')}
-                        aria-label={t('rail.menu')}
-                        aria-haspopup="menu"
-                        aria-expanded={openMenuId === session.session_id}
-                        aria-controls={
-                          openMenuId === session.session_id
-                            ? `rail-session-menu-${session.session_id}`
-                            : undefined
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const shouldOpen = openMenuId !== session.session_id;
-                          setOpenMenuId(shouldOpen ? session.session_id : null);
-                          if (shouldOpen) focusSessionMenuItem(session.session_id);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-                          event.preventDefault();
-                          setOpenMenuId(session.session_id);
-                          focusSessionMenuItem(
-                            session.session_id,
-                            event.key === 'ArrowUp' ? 'last' : 'first'
-                          );
-                        }}
-                      >
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                          <circle cx="12" cy="5" r="2" />
-                          <circle cx="12" cy="12" r="2" />
-                          <circle cx="12" cy="19" r="2" />
-                        </svg>
-                      </button>
-                      {openMenuId === session.session_id && (
-                        <div
-                          className="chat-dropdown-menu ui-rail-menu"
-                          id={`rail-session-menu-${session.session_id}`}
-                          role="menu"
-                          onKeyDown={(event) => handleSessionMenuKeyDown(event, session.session_id)}
-                        >
-                          <RailMenuItem
-                            className="menu-item favorite-menu-item"
-                            icon={
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="16"
-                                height="16"
-                                fill="currentColor"
-                                aria-hidden="true"
-                              >
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                              </svg>
-                            }
-                            onClick={(e) => {
-                              toggleFavorite(session.session_id, e);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            {isFavorite ? t('rail.favorite.remove') : t('rail.favorite.add')}
-                          </RailMenuItem>
-                          <RailMenuItem
-                            className="menu-item"
-                            icon={
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="16"
-                                height="16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                              >
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                              </svg>
-                            }
-                            onClick={(e) => {
-                              handleRename(session.session_id, e);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            {t('rail.rename')}
-                          </RailMenuItem>
-                          <RailMenuItem
-                            className="menu-item delete-menu-item"
-                            danger
-                            icon={
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="16"
-                                height="16"
-                                fill="currentColor"
-                                aria-hidden="true"
-                              >
-                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                              </svg>
-                            }
-                            onClick={(e) => {
-                              handleDelete(session.session_id, e);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            {t('rail.delete')}
-                          </RailMenuItem>
-                        </div>
-                      )}
-                    </div>
+                      <ChevronRight size={15} aria-hidden="true" />
+                    </button>
+                    <button type="button" className="ui-rail-project-name" aria-current={active ? 'true' : undefined} onClick={() => onOpenProject(project.id)} title={project.name}>
+                      <ProjectIcon />
+                      <span>{project.name}</span>
+                    </button>
                   </div>
-                </span>
-              </li>
-            );
-          })}
+                  <div className="ui-rail-project-actions">
+                    <button
+                      type="button"
+                      disabled={projectBusy}
+                      aria-label={t('rail.newChat')}
+                      title={t('rail.newChat')}
+                      onClick={() => onOpenProject(project.id)}
+                    >
+                      <Plus size={17} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={projectBusy}
+                      aria-label={t('projects.details')}
+                      title={t('projects.details')}
+                      onClick={() => onProjectSettings(project.id)}
+                    >
+                      <Settings2 size={17} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={projectBusy}
+                      aria-label={t('rail.rename')}
+                      title={t('rail.rename')}
+                      onClick={() => setProjectEditor(project)}
+                    >
+                      <Pencil size={16} aria-hidden="true" />
+                    </button>
+                    {currentSessionId &&
+                      !localSessions.some(
+                        (item) =>
+                          item.session_id === currentSessionId && item.workspace_id === project.id
+                      ) && (
+                        <button
+                          type="button"
+                          disabled={projectBusy}
+                          aria-label={t('projects.moveCurrent')}
+                          title={t('projects.moveCurrent')}
+                          onClick={() =>
+                            void changeProject(async () => {
+                              await projectStore.moveChat(currentSessionId, project.id);
+                              onSessionMoved(currentSessionId, project.id);
+                              setLocalSessions((items) =>
+                                items.map((item) =>
+                                  item.session_id === currentSessionId
+                                    ? { ...item, workspace_id: project.id }
+                                    : item
+                                )
+                              );
+                            })
+                          }
+                        >
+                          <ArrowRight size={17} aria-hidden="true" />
+                        </button>
+                      )}
+                    <button
+                      type="button"
+                      disabled={projectBusy}
+                      aria-label={t('rail.delete')}
+                      title={t('rail.delete')}
+                      onClick={() => {
+                        if (!window.confirm(t('projects.confirmRemove', { name: project.name })))
+                          return;
+                        void changeProject(async () => {
+                          await projectStore.remove(project.id);
+                          onProjectsChanged();
+                          setLocalSessions((items) =>
+                            items.map((item) =>
+                              item.workspace_id === project.id
+                                ? { ...item, workspace_id: null }
+                                : item
+                            )
+                          );
+                        });
+                      }}
+                    >
+                      <Trash2 size={17} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <ul id={chatsId} hidden={!expanded}>
+                    {filteredSessions
+                      .filter((item) => item.workspace_id === project.id)
+                      .map(renderSession)}
+                  </ul>
+                </div>
+                );
+              })}
+            </li>
+          )}
+          {filteredSessions
+            .filter((session) => !projectIds.has(session.workspace_id))
+            .map(renderSession)}
 
           {filteredSessions.length === 0 && (
             <li className="empty-history-message ui-rail-empty">

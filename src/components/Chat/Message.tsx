@@ -6,7 +6,8 @@ import { toolMarker, isKnownComposerTool } from '../../features/chat/composerToo
 import { renderComposerMentions } from '../../features/chat/renderComposerMentions';
 import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronDown, Copy, Download, ExternalLink, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, Download, ExternalLink, MessageSquare, X } from 'lucide-react';
+import type { ChatReference } from '../../features/chat/ChatReferencePicker';
 import {
   formatText,
   formatPlainText,
@@ -27,6 +28,9 @@ import Pet, { type PetState } from '../UI/Pet';
 import { getPetStatusLabel } from '../../features/chat/petActivity';
 import ArtifactDownloadCard from './ArtifactDownloadCard';
 import ToolPanel from '../Widgets/ToolPanel';
+import AutomationProposalCard from '../Widgets/AutomationProposalCard';
+import SaveProjectArtifact from '../../features/projects/SaveProjectArtifact';
+import WorkspacePatchCard from '../../features/projects/WorkspacePatchCard';
 import WebSourcesPanel from '../Widgets/WebSourcesPanel';
 import { normalizeAndMergeWebSources, sourceFallbackIcon } from '../Widgets/webSources';
 import { extractCompletedSearchSources } from '../Widgets/searchActivityUtils';
@@ -206,7 +210,13 @@ const MessageImageAttachment = (props) => (
   <MessageImageAttachmentContent key={props.src} {...props} />
 );
 
-const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
+const MessageFileAttachments = ({
+  files,
+  isUser,
+  messageId,
+  t,
+  projectScope = null as { projectId: string; sessionId: string } | null,
+}) => {
   if (!files?.length) return null;
 
   return (
@@ -232,6 +242,14 @@ const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
         const fullUrl = resolveMediaUrl(fileUrl);
         const fileSize = file.size ? fileService.formatFileSize(file.size) : '';
         const extension = fileName.split('.').pop()?.toLowerCase() || '';
+        const project =
+          projectScope &&
+          !isUser &&
+          (file.source === 'tool' || file.source === 'python') &&
+          typeof file.url_path === 'string' &&
+          /^\/uploads\/[a-f0-9]{32}\.[a-z0-9]{1,12}$/.test(file.url_path)
+            ? { ...projectScope, artifactPath: file.url_path }
+            : null;
         const iconPath = fileService.getFileIconPath(extension);
         const isImage = fileService.isImageFile({
           name: fileName,
@@ -251,11 +269,13 @@ const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
               key={`${file.url_path || fileName}-${index}`}
               path={fullUrl}
               filename={fileName}
+              slides={file.metadata?.slides}
               size={Number(file.size) || undefined}
+              {...(project ? { project } : {})}
             />
           );
 
-        return (
+        const imageCard = (
           <div
             key={`${file.url_path || fileName}-${index}`}
             className="attachment-file-card ui-attachment-card"
@@ -331,6 +351,12 @@ const MessageFileAttachments = ({ files, isUser, messageId, t }) => {
             </div>
           </div>
         );
+        return project ? (
+          <div className="project-artifact-image" key={`${file.url_path || fileName}-${index}`}>
+            {imageCard}
+            <SaveProjectArtifact key={project.projectId + project.artifactPath} {...project} />
+          </div>
+        ) : imageCard;
       })}
     </div>
   );
@@ -933,6 +959,7 @@ const Message = ({
   message,
   petState = 'waiting' as PetState,
   sessionId,
+  projectId = '',
   onRegenerate,
   onEdit,
   onSwitchVariant,
@@ -969,6 +996,7 @@ const Message = ({
       ? variants[currentVariantIndex]
       : null;
   const composerContent = currentVariant ? currentVariant.composerContent : message.composerContent;
+  const chatReferences: ChatReference[] = currentVariant?.chatReferences ?? message.chatReferences ?? [];
   const liveThinking = currentVariant?.thinking || message.thinking;
   const streamedThinking = !isUser && isLoading && liveThinking?.id ? liveThinking : null;
   const isThinking = Boolean(streamedThinking && streamedThinking.status !== 'complete');
@@ -987,6 +1015,8 @@ const Message = ({
           original_name: p.file.original_name || p.file.name || 'file',
           mime_type: p.file.mime_type || 'application/octet-stream',
           size: p.file.size || 0,
+          source: p.file.source === 'tool' || p.file.source === 'python' ? p.file.source : undefined,
+          metadata: p.file.metadata,
         },
       }));
   }, [files, parts]);
@@ -1104,7 +1134,7 @@ const Message = ({
       return formatPlainText(
         (displayContent || '')
           .replace(
-            /<tool_panel data-kind="(?:plan|questions)" data-b64="[A-Za-z0-9+/=]{1,32000}"><\/tool_panel>/g,
+            /<tool_panel data-kind="(?:plan|questions|automation)" data-b64="[A-Za-z0-9+/=]{1,32000}"><\/tool_panel>/g,
             ''
           )
           .replace(/<tool_panel[\s\S]*$/, '')
@@ -1685,6 +1715,20 @@ const Message = ({
           </div>
         ) : (
           <>
+            {isUser && chatReferences.length > 0 && (
+              <div className="chat-reference-chips" role="group" aria-label={t('chatReferences.title')}>
+                {chatReferences.map((reference) => {
+                  const title = reference.title || t('chatReferences.untitled');
+                  return (
+                    <a className="chat-reference-chip" key={reference.session_id}
+                      href={`/c/${encodeURIComponent(reference.session_id)}`} aria-label={t('chatReferences.open', { title })}>
+                      <MessageSquare size={15} aria-hidden="true" />
+                      <span title={title}>{title}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
             {isUser && displayFiles?.length > 0 && (
               <div
                 className={cn(
@@ -1832,6 +1876,7 @@ const Message = ({
                 isUser={false}
                 messageId={message.id}
                 t={t}
+                projectScope={projectId && !isLoading && typeof sessionId === 'string' ? { projectId, sessionId } : null}
               />
             )}
 
@@ -1852,6 +1897,9 @@ const Message = ({
               className="message-text ui-message-text"
               dangerouslySetInnerHTML={{ __html: htmlContent }}
             />
+            {!isUser && isLoading && typeof message.replyPreview === 'string' && message.replyPreview && (
+              <div className="message-text ui-message-text ui-message-reply-preview">{message.replyPreview}</div>
+            )}
 
             {displayImages?.length > 0 && (
               <div
@@ -1892,6 +1940,12 @@ const Message = ({
             {githubDiffPayload && <GitHubDiffCard payload={githubDiffPayload} t={t} />}
 
             {widgets.map((widget) => {
+              if (widget.type === 'automation' && isAuthenticated && !isUser) {
+                return <AutomationProposalCard key={widget.id} state={widget.state} ready={!isLoading} />;
+              }
+              if (widget.type === 'workspace_patch' && projectId && isAuthenticated && !isUser) {
+                return <WorkspacePatchCard key={widget.id} state={widget.state} ready={!isLoading} projectId={projectId} />;
+              }
               if (widget.type === 'plan' || widget.type === 'questions') {
                 return (
                   <ToolPanel

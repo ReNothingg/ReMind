@@ -3,9 +3,19 @@ import { isKnownComposerTool } from './composerTools';
 import { normalizeCanvasTextdoc } from './historyArtifacts';
 
 type ChatMessage = components['schemas']['ChatMessage'];
+type ChatReference = components['schemas']['ChatReference'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function chatReferences(value: unknown): ChatReference[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 3).flatMap((item) => {
+    if (!isRecord(item) || typeof item.title !== 'string' || typeof item.session_id !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,100}$/.test(item.session_id)) return [];
+    return [{ session_id: item.session_id, title: item.title }];
+  });
 }
 
 function normalizeHistoryImage(value: unknown) {
@@ -47,6 +57,7 @@ function normalizeHistoryVariant(value: unknown) {
       ? value.canvas_updates || value.canvasUpdates
       : [],
     composerContent: value.composer_content || value.composerContent,
+    chatReferences: chatReferences(value.chat_references),
     selectedTools: value.selected_tools || value.selectedTools || [],
     modelId: value.model_id || value.modelId,
     thinkingTime: value.thinkingTime,
@@ -89,6 +100,8 @@ export function normalizeHistoryMessage(
           original_name: file.original_name || file.name || 'file',
           mime_type: file.mime_type || 'application/octet-stream',
           size: file.size || 0,
+          source: file.source === 'tool' || file.source === 'python' ? file.source : undefined,
+          metadata: isRecord(file.metadata) ? file.metadata : undefined,
         },
       },
     ];
@@ -125,6 +138,7 @@ export function normalizeHistoryMessage(
     composerContent: currentVariant
       ? currentVariant.composerContent
       : msg.composer_content || msg.composerContent,
+    chatReferences: currentVariant?.chatReferences ?? chatReferences(msg.chat_references),
     selectedTools: currentVariant?.selectedTools || msg.selected_tools || msg.selectedTools || [],
     modelId: currentVariant?.modelId || msg.model_id || msg.modelId,
     contextUsage: currentVariant

@@ -1,12 +1,14 @@
-import type { ModelOption, ModelStage, ThinkingLevel } from '../../services/api';
+import type { ModelOption, ModelSpeed, ModelStage, ThinkingLevel } from '../../services/api';
 
 export const THINKING_LEVELS: ThinkingLevel[] = [
+  'none',
   'minimal',
   'low',
   'medium',
   'high',
   'xhigh',
   'max',
+  'ultra',
 ];
 const VALID_THINKING_LEVELS = new Set<ThinkingLevel>(THINKING_LEVELS);
 
@@ -14,12 +16,18 @@ export type ChatModel = {
   id: string;
   title: string;
   subtitle: string;
+  source: string;
+  provider: string;
+  serviceTiers: ModelSpeed[];
   stage: ModelStage;
   titleKey?: string;
   subtitleKey?: string;
   thinkingLevels: ThinkingLevel[];
   defaultThinkingLevel?: ThinkingLevel;
   availableUntil?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  inputModalities?: Array<'text' | 'image'>;
 };
 
 export const FALLBACK_MODELS: ChatModel[] = [];
@@ -69,10 +77,19 @@ function normalizeModel(model: ModelOption): ChatModel | null {
     title: String(model.title || id).trim() || id,
     subtitle: String(model.subtitle || '').trim(),
     stage: normalizeStage(model.stage),
+    source: model.source || 'platform',
+    provider: model.provider || '',
+    serviceTiers: [
+      'standard',
+      ...(['fast', 'ultrafast'] as const).filter((speed) => model.serviceTiers?.includes(speed)),
+    ],
     thinkingLevels,
     ...(titleKey ? { titleKey } : {}),
     ...(subtitleKey ? { subtitleKey } : {}),
     ...(defaultThinkingLevel ? { defaultThinkingLevel } : {}),
+    ...(typeof model.contextWindow === 'number' && model.contextWindow > 0 ? { contextWindow: model.contextWindow } : {}),
+    ...(typeof model.maxTokens === 'number' && model.maxTokens > 0 ? { maxTokens: model.maxTokens } : {}),
+    ...(Array.isArray(model.inputModalities) ? { inputModalities: model.inputModalities } : {}),
     ...(/^\d{4}-\d{2}-\d{2}$/.test(availableUntil) ? { availableUntil } : {}),
   };
 }

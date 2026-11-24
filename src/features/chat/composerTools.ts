@@ -20,6 +20,7 @@ export function readComposerTools(value: string, tools: readonly ComposerTool[])
 }
 
 const TOOL_ICONS: Record<string, string> = {
+  slides: 'M2 3h20M4 3v13h16V3M12 16v5m-4 1 4-3 4 3',
   files: 'M14 2H5v20h14V7ZM14 2v5h5M8 12h8M8 16h6',
   data: 'M4 4h16v16H4ZM4 9h16M9 4v16M4 14h16',
   workflow: 'M8 5h12M8 12h12M8 19h12M3 5h1M3 12h1M3 19h1',
@@ -28,6 +29,8 @@ const TOOL_ICONS: Record<string, string> = {
   github:
     'M9 19c-5 1-5-3-7-3M15 22v-4a4 4 0 0 0-1-3c4 0 6-2 6-5a4 4 0 0 0-1-3 4 4 0 0 0 0-4s-2 0-4 2a13 13 0 0 0-6 0C7 3 5 3 5 3a4 4 0 0 0 0 4 4 4 0 0 0-1 3c0 3 2 5 6 5a4 4 0 0 0-1 3v4',
   python: 'm8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16',
+  shell: 'M4 5h16v14H4ZM8 9l3 3-3 3m5 0h3',
+  subagents: 'M9 3h6v5H9ZM3 16h6v5H3Zm12 0h6v5h-6ZM12 8v4m-6 4v-4h12v4',
   image_analysis:
     'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M5 12s3-4 7-4 7 4 7 4-3 4-7 4-7-4-7-4Zm7-1v2',
   canvas: 'M14 2H5v20h14V7ZM14 2v5h5M8 12h8M8 16h6',

@@ -13,15 +13,20 @@ from flask import (
 )
 
 from backend.ai_engine.errors import ProviderRequestError
+from backend.errors import ApiError
 from backend.responses import logger
 from backend.services.chat.attachments import (
     build_model_message_for_history,
     cleanup_temporary_uploads,
 )
+from backend.services.chat.cancellation import GenerationStopped, observe_cancellation
+from backend.services.chat.context_compaction import prepare_generation_context
 from backend.services.chat.history import (
     generate_guest_session_token,
     persist_chat_operation,
 )
+from backend.services.chat.model_selection import used_model_selection
+from backend.services.chat.provider_replay import ReplayDraft
 from backend.services.chat.search import merge_web_sources
 from backend.services.tools.canvas_tools import (
     find_canmore_marker,
@@ -58,7 +63,15 @@ def stream_chat_response(
     captured_app = cast(Flask, cast(Any, current_app)._get_current_object())
 
     def stream_generator() -> Iterator[str]:
-        with captured_app.app_context():
+        with (
+            captured_app.app_context(),
+            observe_cancellation(
+                captured_app.config.get("REDIS_URL"),
+                user_data.get("_cancel_scope"),
+                user_data.get("_generation_control"),
+            ) as control,
+        ):
+            user_data["_generation_control"] = control
             full_response = ""
             internal_reply_parts: list[str] = []
             pending_reply_buffer = ""
@@ -68,6 +81,8 @@ def stream_chat_response(
             current_canvas_textdoc = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
             stream_completed = False
             persisted = False
+            scope_conflict = False
+            provider_replay = None
             model_stream = None
             live_thought: dict[str, Any] = {}
 
@@ -141,16 +156,30 @@ def stream_chat_response(
                     user_id=db_user_id,
                     allow_guest_file_persistence=allow_guest_file_persistence,
                     mind_id=mind_context.get("id") if mind_context else None,
+                    require_existing=user_data.get("_automation") is True,
+                    workspace_scope=user_data.get("_workspace_scope"),
+                    provider_replay=provider_replay if delivery_status == "complete" else None,
+                    selection=used_model_selection(model_name, user_data),
                 )
                 persisted = True
                 return history
 
             try:
+                control.check()
                 yield _stream_event({"status": "generating_text"})
 
+                prepare_generation_context(user_data, db_user_id)
+                control.check()
                 model_stream = model_func(db_user_id, user_data)
                 for chunk in model_stream:
+                    control.check()
+                    if isinstance(chunk, ReplayDraft):
+                        provider_replay = chunk
+                        continue
                     if isinstance(chunk, dict):
+                        if "reply_preview" in chunk:
+                            yield _stream_event({"reply_preview": chunk["reply_preview"]})
+                            continue
                         if "thinking_update" in chunk:
                             update = chunk["thinking_update"]
                             if update.get("id") != live_thought.get("id"):
@@ -228,6 +257,7 @@ def stream_chat_response(
                     full_response += chunk_str
                     yield from stream_reply_text(chunk_str)
 
+                control.check()
                 if not suppress_canmore_output and pending_reply_buffer:
                     yield _stream_event({"reply_part": pending_reply_buffer})
 
@@ -254,12 +284,16 @@ def stream_chat_response(
                     )
                 yield _stream_event(final_data)
 
-            except ProviderRequestError as exc:
-                logger.warning("Model request failed: model=%s code=%s", model_name, exc.code)
-                yield _stream_event({"error": {"code": exc.code, "status": exc.status}})
             except Exception as exc:
-                logger.error("Stream error for '%s': %s", model_name, exc, exc_info=True)
-                yield _stream_event({"error": "stream_failed"})
+                if isinstance(exc, GenerationStopped) or control.stopped.is_set():
+                    yield _stream_event({"aborted": True, "end_of_stream": True})
+                elif isinstance(exc, (ProviderRequestError, ApiError)):
+                    scope_conflict = exc.code == "workspace_chat_scope_changed"
+                    logger.warning("Model request failed: model=%s code=%s", model_name, exc.code)
+                    yield _stream_event({"error": {"code": exc.code, "status": exc.status}})
+                else:
+                    logger.error("Stream error for '%s': %s", model_name, exc, exc_info=True)
+                    yield _stream_event({"error": "stream_failed"})
 
             finally:
                 if model_stream is not None and hasattr(model_stream, "close"):
@@ -267,7 +301,7 @@ def stream_chat_response(
                         model_stream.close()
                     except Exception:
                         logger.exception("Failed to close model stream")
-                if not temporary_chat and not persisted:
+                if not temporary_chat and not persisted and not scope_conflict:
                     try:
                         persist_delivery("complete" if stream_completed else "interrupted")
                     except Exception as exc:

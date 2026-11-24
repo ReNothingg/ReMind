@@ -1,3 +1,6 @@
+include:
+  - docker-compose.agents.yml
+
 name: remind_dev
 
 services:
@@ -37,6 +40,7 @@ services:
       - path: .env.dev
         required: false
     environment:
+      - AGENT_SLOT_COUNT=${AGENT_SLOT_COUNT:-2}
       - ENVIRONMENT=development
       - LOAD_DOTENV=false
       - FLASK_SKIP_DOTENV=1
@@ -87,7 +91,9 @@ services:
       retries: 10
       start_period: 15s
     networks:
-      - dev
+      dev: {}
+      agent-control:
+        aliases: [remind-control]
 
   worker:
     build:

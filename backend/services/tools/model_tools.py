@@ -72,6 +72,7 @@ def _execute_python(
         arguments.get("code"),
         user_id=user_id,
         input_files=input_files,
+        selected_inputs=arguments.get("input_files"),
         allow_artifacts=allow_artifacts,
         include_model_artifacts=True,
         max_artifacts=artifact_limit,

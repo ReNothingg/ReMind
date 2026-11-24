@@ -236,11 +236,18 @@ def _safe_unlink(filepath):
 
 
 def handle_file_upload(file_storage, user_id):
-    if not file_storage or not file_storage.filename:
-        return None
     try:
         InputValidator.validate_text(str(user_id), min_length=1, max_length=100)
     except Exception:
+        return None
+    result = store_validated_upload(file_storage, UPLOAD_FOLDER, prepare_model=True)
+    if result is not None:
+        result["url_path"] = f"/uploads/{Path(result['path']).name}"
+    return result
+
+
+def store_validated_upload(file_storage, destination, *, prepare_model=False):
+    if not file_storage or not file_storage.filename:
         return None
     is_valid, error, safe_filename_result = _validate_chat_filename(file_storage.filename)
     if not is_valid:
@@ -253,7 +260,7 @@ def handle_file_upload(file_storage, user_id):
     if not extension_is_image and extension not in ALLOWED_FILE_EXTENSIONS:
         return None
     final_filename = f"{uuid.uuid4().hex}.{extension}" if extension else uuid.uuid4().hex
-    filepath = UPLOAD_FOLDER / final_filename
+    filepath = destination / final_filename
 
     try:
         file_storage.save(str(filepath))
@@ -272,15 +279,11 @@ def handle_file_upload(file_storage, user_id):
         mimetype, text = classification
 
         model_part = {}
-        if extension_is_image or extension in CHAT_DOCUMENT_MIME_TYPES:
+        if prepare_model and (extension_is_image or extension in CHAT_DOCUMENT_MIME_TYPES):
             encoded = base64.b64encode(filepath.read_bytes()).decode("utf-8")
             model_part = {"inline_data": {"mime_type": mimetype, "data": encoded}}
-        elif text is not None:
+        elif prepare_model and text is not None:
             model_part = {"text": f"--- File: {safe_filename_result} ---\n{text}\n--- End File ---"}
-        else:
-            _safe_unlink(filepath)
-            return None
-
         if extension not in CHAT_SOURCE_EXTENSIONS and not is_safe_to_serve(str(filepath)):
             _safe_unlink(filepath)
             return None
@@ -290,7 +293,6 @@ def handle_file_upload(file_storage, user_id):
 
     return {
         "path": str(filepath),
-        "url_path": f"/uploads/{final_filename}",
         "mime_type": mimetype,
         "original_name": safe_filename_result,
         "model_part": model_part,

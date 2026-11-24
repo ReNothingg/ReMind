@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir --no-index --no-deps /wheels/* \
     && rm -rf /wheels /tmp/requirements.txt /root/.cache /usr/local/bin/pip*
 
 WORKDIR /runner
-COPY python_runner/supervisor.py python_runner/healthcheck.py ./
+COPY python_runner/supervisor.py python_runner/healthcheck.py python_runner/workspace_shell.py ./
 
 RUN mkdir -p /jobs /tmp \
     && chown 1001:1001 /jobs \

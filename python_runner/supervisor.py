@@ -9,6 +9,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -146,7 +147,7 @@ def _copy_inputs(job_id: str, destination: Path, requested: list[Any]) -> list[s
         if not source.is_file() or source.is_symlink():
             continue
         total_bytes += source_stat.st_size
-        if source_stat.st_size <= 0 or total_bytes > MAX_INPUT_BYTES:
+        if total_bytes > MAX_INPUT_BYTES:
             break
         target = input_root / name
         shutil.copyfile(source, target, follow_symlinks=False)
@@ -154,6 +155,109 @@ def _copy_inputs(job_id: str, destination: Path, requested: list[Any]) -> list[s
         os.chown(target, SANDBOX_UID, SANDBOX_GID)
         copied.append(name)
     return copied
+
+
+def _shell_args(shell, names):
+    if not isinstance(shell, dict):
+        return None
+    command, lines, pattern = shell.get("command"), shell.get("lines"), shell.get("pattern")
+    if command not in ("ls", "cat", "head", "tail", "wc", "grep", "diff"):
+        return None
+    timeout, max_bytes = shell.get("timeout_ms"), shell.get("max_output_bytes")
+    if (
+        type(timeout) is not int
+        or not 100 <= timeout <= 15_000
+        or type(max_bytes) is not int
+        or not 256 <= max_bytes <= 16_000
+        or type(lines) is not int
+        or not 1 <= lines <= 200
+    ):
+        return None
+    if command == "ls":
+        return ["/usr/bin/ls", "-1", "--", "."]
+    if len(names) != (2 if command == "diff" else 1) or any(
+        _safe_child_name(name) != name for name in names
+    ):
+        return None
+    paths = [f"./{name}" for name in names]
+    if command == "grep":
+        if (
+            not isinstance(pattern, str)
+            or not 1 <= len(pattern) <= 240
+            or "\x00" in pattern
+            or "\n" in pattern
+        ):
+            return None
+        return ["/usr/bin/grep", "-F", "-n", "-m", str(lines), "-e", pattern, "--", *paths]
+    options = {
+        "head": ["-n", str(lines)],
+        "tail": ["-n", str(lines)],
+        "diff": ["-u"],
+    }
+    return [f"/usr/bin/{command}", *options.get(command, []), "--", *paths]
+
+
+def _shell_text(handle, limit):
+    handle.seek(0)
+    data = handle.read(limit + 1)
+    text = data[:limit].decode("utf-8", errors="replace")
+    return re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "", text), len(data) > limit, min(len(data), limit)
+
+
+def _execute_shell(request, work_root, job_id):
+    requested = request.get("input_files")
+    if not isinstance(requested, list) or len(requested) > MAX_INPUT_FILES:
+        return {"ok": False, "error": "shell_invalid_files"}
+    input_names = _copy_inputs(job_id, work_root, requested)
+    if input_names != requested:
+        return {"ok": False, "error": "shell_invalid_files"}
+    shell = request.get("shell")
+    argv = _shell_args(shell, input_names)
+    if argv is None:
+        return {"ok": False, "error": "shell_invalid_command"}
+    timeout = shell["timeout_ms"] / 1000
+    limit = shell["max_output_bytes"]
+    started = time.monotonic()
+    timed_out = False
+    with (
+        tempfile.TemporaryFile(dir=work_root) as stdout,
+        tempfile.TemporaryFile(dir=work_root) as stderr,
+    ):
+        process = subprocess.Popen(
+            argv,
+            cwd=work_root / "input",
+            env={"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"},
+            stdin=subprocess.DEVNULL,
+            stdout=stdout,
+            stderr=stderr,
+            preexec_fn=_prepare_limits,
+        )
+        try:
+            exit_code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+            exit_code = None
+        stdout_text, stdout_truncated, used = _shell_text(stdout, limit)
+        stderr_text, stderr_truncated, _ = _shell_text(stderr, limit - used)
+    ok = exit_code == 0 or (exit_code == 1 and shell["command"] in {"diff", "grep"})
+    return {
+        "ok": ok,
+        "error": "execution_timed_out" if timed_out else None if ok else "execution_failed",
+        "exit_code": exit_code,
+        "timed_out": timed_out,
+        "duration_ms": int((time.monotonic() - started) * 1000),
+        "stdout": stdout_text,
+        "stderr": stderr_text,
+        "stdout_truncated": stdout_truncated,
+        "stderr_truncated": stderr_truncated,
+        "input_files": input_names,
+        "artifacts": [],
+    }
 
 
 def _collect_artifacts(output_root: Path, response_root: Path) -> list[dict[str, Any]]:
@@ -194,6 +298,104 @@ def _collect_artifacts(output_root: Path, response_root: Path) -> list[dict[str,
     return artifacts
 
 
+def _wait_pipeline(process, deadline, marker):
+    while True:
+        if marker.exists():
+            error = "execution_cancelled"
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            error = "execution_timed_out"
+            break
+        try:
+            return process.wait(timeout=min(0.05, remaining)), None
+        except subprocess.TimeoutExpired:
+            continue
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait()
+    return None, error
+
+
+def _execute_pipeline(request, work_root, job_id, response_root):
+    pipeline = request.get("pipeline")
+    requested = request.get("input_files")
+    fields = {"line", "files", "timeout_ms", "max_output_bytes"}
+    if (
+        not isinstance(pipeline, dict)
+        or set(pipeline) not in (fields, fields | {"arguments"})
+        or not isinstance(requested, list)
+        or len(requested) > MAX_INPUT_FILES
+        or any(_safe_child_name(name) != name for name in requested)
+        or len(set(requested)) != len(requested)
+    ):
+        return {"ok": False, "error": "shell_invalid_pipeline"}
+    limit, timeout = pipeline["max_output_bytes"], pipeline["timeout_ms"]
+    if (
+        type(limit) is not int
+        or not 256 <= limit <= 16_000
+        or type(timeout) is not int
+        or not 100 <= timeout <= 15_000
+    ):
+        return {"ok": False, "error": "shell_invalid_pipeline"}
+    marker = REQUESTS_DIR / job_id / ".cancelled"
+    if marker.exists():
+        return {"ok": False, "error": "execution_cancelled"}
+    input_names = _copy_inputs(job_id, work_root, requested)
+    if input_names != requested:
+        return {"ok": False, "error": "shell_invalid_files"}
+    output_root = work_root / "output"
+    output_root.mkdir(mode=0o700)
+    os.chown(output_root, SANDBOX_UID, SANDBOX_GID)
+    payload = json.dumps(
+        {
+            "line": pipeline["line"],
+            "files": pipeline["files"],
+            "staged_names": input_names,
+            "max_output_bytes": limit,
+            **({"arguments": pipeline["arguments"]} if "arguments" in pipeline else {}),
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    if len(payload) > 64 * 1024:
+        return {"ok": False, "error": "shell_invalid_pipeline"}
+    started = time.monotonic()
+    with (
+        tempfile.TemporaryFile(dir=work_root) as stdin,
+        tempfile.TemporaryFile(dir=work_root) as stdout,
+    ):
+        stdin.write(payload)
+        stdin.seek(0)
+        process = subprocess.Popen(
+            [sys.executable, "-I", "-B", str(Path(__file__).with_name("workspace_shell.py"))],
+            cwd=work_root,
+            env={"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONIOENCODING": "utf-8"},
+            stdin=stdin,
+            stdout=stdout,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=_prepare_limits,
+        )
+        exit_code, error = _wait_pipeline(process, started + timeout / 1000, marker)
+        if error:
+            return {"ok": False, "error": error, "timed_out": error == "execution_timed_out"}
+        stdout.seek(0)
+        response = stdout.read(64 * 1024 + 1)
+    if exit_code != 0 or len(response) > 64 * 1024:
+        return {"ok": False, "error": "shell_pipeline_failed"}
+    try:
+        result = json.loads(response)
+    except (ValueError, UnicodeError):
+        return {"ok": False, "error": "shell_pipeline_failed"}
+    if not isinstance(result, dict):
+        return {"ok": False, "error": "shell_pipeline_failed"}
+    result["input_files"] = input_names
+    result["duration_ms"] = int((time.monotonic() - started) * 1000)
+    result["artifacts"] = _collect_artifacts(output_root, response_root) if result.get("ok") else []
+    return result
+
+
 def _execute_job(job_id: str, request_path: Path) -> dict[str, Any]:
     started = time.monotonic()
     response_root = RESPONSES_DIR / job_id
@@ -206,6 +408,10 @@ def _execute_job(job_id: str, request_path: Path) -> dict[str, Any]:
 
     try:
         request = json.loads(request_path.read_text(encoding="utf-8"))
+        if isinstance(request, dict) and "pipeline" in request:
+            return _execute_pipeline(request, work_root, job_id, response_root)
+        if isinstance(request, dict) and "shell" in request:
+            return _execute_shell(request, work_root, job_id)
         code = request.get("code")
         if not isinstance(code, str) or not code.strip() or len(code) > MAX_CODE_CHARS:
             return {"ok": False, "error": "invalid_code"}

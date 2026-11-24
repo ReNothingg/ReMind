@@ -15,15 +15,22 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { BadgeCheck, BrainCircuit, FileCode2, FileText, LockKeyhole, X } from 'lucide-react';
+import { BadgeCheck, BrainCircuit, FileCode2, FileText, LockKeyhole, Settings2, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import LandingHero from './components/Chat/LandingHero';
 import InputArea from './components/Chat/InputArea';
+import { maxChatReferences, type ChatReference } from './features/chat/ChatReferencePicker';
 import SEOHelmet from './components/UI/SEOHelmet';
 import Pet from './components/UI/Pet';
-import { apiService, type CanvasTextdoc, type Mind, type ThinkingLevel } from './services/api';
+import {
+  apiService,
+  type CanvasTextdoc,
+  type Mind,
+  type ModelSpeed,
+  type ThinkingLevel,
+} from './services/api';
 import { useChat } from './hooks/useChat';
 import { useURLRouter } from './hooks/useURLRouter';
 import { notifyThinkingDone } from './utils/notifications';
@@ -34,12 +41,16 @@ import {
   FALLBACK_MODELS,
   getFallbackModelId,
   isImageToolModel,
-  isModelAvailable,
   normalizeModelOptions,
   normalizeThinkingLevel,
   type ChatModel,
 } from './features/chat/modelSelection';
 import { useSessionList, type SessionSummary } from './features/sessions/hooks/useSessionList';
+import { useProjects } from './features/projects/useProjects';
+import { projectIdForPath, projectPath } from './features/projects/projectNavigation';
+import ProjectRecentChats from './features/projects/ProjectRecentChats';
+import { useSessionModelSelection, type ChatModelPreference } from './features/chat/useSessionModelSelection';
+import { showToast } from './utils/toast';
 import type { CanvasHtmlPreviewHandle } from './features/canvas/CanvasHtmlPreview';
 import {
   clearGuestChatTransfer,
@@ -82,10 +93,14 @@ const CANVAS_MAX_WIDTH = 820;
 const AppRail = lazy(() => import('./components/Layout/AppRail'));
 const ChatContainer = lazy(() => import('./components/Chat/ChatContainer'));
 const SettingsModal = lazy(() => import('./components/Modals/SettingsModal'));
+const ProjectDetailsModal = lazy(() => import('./features/projects/ProjectDetailsModal'));
+const ContextCheckpointModal = lazy(() => import('./features/chat/ContextCheckpointModal'));
 const AuthModal = lazy(() => import('./components/Modals/AuthModal'));
 const ImageLightbox = lazy(() => import('./components/Modals/ImageLightbox'));
 const ShareModal = lazy(() => import('./features/share/components/ShareModal'));
 const MindsPage = lazy(() => import('./features/minds/MindsPage'));
+const AutomationPage = lazy(() => import('./features/automations/AutomationPage'));
+const PluginsPage = lazy(() => import('./features/plugins/PluginsPage'));
 const MindEditorPage = lazy(() => import('./features/minds/MindEditorPage'));
 const AdminPanel = lazy(() => import('./features/admin/AdminPanel'));
 const CanvasPanel = lazy(() => import('./features/canvas/CanvasPanel'));
@@ -124,6 +139,9 @@ const MainLayout = () => {
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_RAIL_MEDIA_QUERY).matches : false
   );
   const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [projectDetailsId, setProjectDetailsId] = useState<string | null>(null);
+  const [contextSessionId, setContextSessionId] = useState<string | null>(null);
+  const [referenceDraft, setReferenceDraft] = useState<{ scope: string; choices: ChatReference[] }>({ scope: '', choices: [] });
   const [isAuthOpen, setAuthOpen] = useState<AuthModalState>(false);
   const [imageLightbox, setImageLightbox] = useState<ImageLightboxState>({
     isOpen: false,
@@ -145,12 +163,13 @@ const MainLayout = () => {
     return clampCanvasWidth(Number.isFinite(parsed) ? parsed : CANVAS_DEFAULT_WIDTH);
   });
   const [isCanvasResizing, setCanvasResizing] = useState(false);
-  const [currentModel, setCurrentModel] = useState('');
-  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(() => {
+  const [modelChoices, setModelChoices] = useState<Record<string, ChatModelPreference>>({});
+  const [legacyGuestEffort] = useState(() => {
     if (typeof window === 'undefined') {
-      return 'medium';
+      return null;
     }
-    return normalizeThinkingLevel(window.localStorage.getItem(THINKING_LEVEL_STORAGE_KEY));
+    const stored = window.localStorage.getItem(THINKING_LEVEL_STORAGE_KEY);
+    return stored ? normalizeThinkingLevel(stored) : null;
   });
   const [availableTools, setAvailableTools] = useState<ComposerToolOption[]>([]);
   const [availableModels, setAvailableModels] = useState<ChatModel[]>(FALLBACK_MODELS);
@@ -165,6 +184,9 @@ const MainLayout = () => {
   const { isSettingsView, clearHash } = useURLRouter();
   const { isAuthenticated, loading: isAuthLoading, user } = useAuth();
   const { settings } = useSettings();
+  const selectionOwner = user?.id || 0;
+  const profileSelection =
+    settings.agentSelection?.owner === selectionOwner ? settings.agentSelection : null;
   const { t } = useTranslation();
 
   const {
@@ -173,6 +195,8 @@ const MainLayout = () => {
     isLoading,
     isCanvasStreaming,
     sendMessage,
+    compactSession,
+    compactingSessions,
     stopGeneration,
     loadSession,
     clearChat,
@@ -184,6 +208,7 @@ const MainLayout = () => {
     updateCanvasTextdocContent,
     updateBeatboxState,
     sessionAccess,
+    sessionProject,
     isReadOnly,
     isTemporaryChat,
     connectionState,
@@ -198,36 +223,97 @@ const MainLayout = () => {
     buildHistoryForAPI,
   } = useChat();
 
-  const petState = useChatPet(
+  const chatPetState = useChatPet(
     history,
     isLoading,
     currentSessionId,
     generationOutcome,
     isCanvasStreaming ? canvasTextdoc?.type : undefined
   );
+  const petState = currentSessionId && compactingSessions.has(currentSessionId) ? 'learning' : chatPetState;
 
-  const { sessions, refreshSessions, removeSession, onSessionRenamed } = useSessionList({
+  const projectStore = useProjects(isAuthenticated ? user?.id : undefined);
+  const { sessions, refreshSessions, removeSession, onSessionRenamed, onSessionMoved } = useSessionList({
     isAuthenticated,
     allowGuestChatsSave: ALLOW_GUEST_CHATS_SAVE,
   });
 
-  const isRailExpanded = isMobileViewport ? isMobileRailOpen : isRailExpandedDesktop;
+  const desktopRailExpanded = isRailExpandedDesktop;
+  const isRailExpanded = isMobileViewport ? isMobileRailOpen : desktopRailExpanded;
+  const activeSessionRow = sessions.find((row) => row.session_id === currentSessionId);
+  const persistedWebChat = Boolean(
+    (activeSessionRow && (!activeSessionRow.source || activeSessionRow.source === 'web')) ||
+    (!activeSessionRow && sessionAccess?.isOwner)
+  );
+  const savedModel = useSessionModelSelection(
+    selectionOwner,
+    currentSessionId,
+    isAuthenticated && !isTemporaryChat && !isReadOnly && persistedWebChat,
+    generationOutcome?.sessionId === currentSessionId ? generationOutcome.finishedAt : undefined
+  );
+  const modelChoiceKey = `${selectionOwner}:${currentSessionId || 'new'}`;
+  const currentChoice = modelChoices[modelChoiceKey] || savedModel.choice;
+  const historyModel = history.findLast((message) =>
+    message.role === 'model' && typeof message.modelId === 'string'
+      && !isImageToolModel({ id: message.modelId })
+  )?.modelId;
+  const requestedModel = currentChoice?.model || historyModel || profileSelection?.model || '';
   const selectedModel =
-    isAuthLoading ||
-    isModelAvailable(
-      currentModel,
-      availableModels.filter((model) => !isImageToolModel(model))
-    )
-      ? currentModel
-      : getFallbackModelId(availableModels.filter((model) => !isImageToolModel(model)));
+    requestedModel || getFallbackModelId(availableModels.filter((model) => !isImageToolModel(model)));
+  const changeModelOptions = (choice: ChatModelPreference) => {
+    setModelChoices((choices) => ({
+      ...choices,
+      [modelChoiceKey]: choice,
+    }));
+    void savedModel.save(choice)?.then((saved) => {
+      if (!saved) return;
+      setModelChoices((choices) => {
+        if (choices[modelChoiceKey] !== choice) return choices;
+        const next = { ...choices };
+        delete next[modelChoiceKey];
+        return next;
+      });
+    });
+  };
+  const chooseModel = (model: string) => {
+    if (model !== selectedModel) changeModelOptions({ model });
+  };
   const currentContextUsage = useMemo(
     () => sessionContextUsage(history, selectedModel),
     [history, selectedModel]
   );
   const selectedModelDefinition = availableModels.find((model) => model.id === selectedModel);
-  const selectedThinkingLevel = selectedModelDefinition?.thinkingLevels.includes(thinkingLevel)
-    ? thinkingLevel
-    : selectedModelDefinition?.defaultThinkingLevel || 'medium';
+  const modelUnavailable = Boolean(selectedModel) && !selectedModelDefinition && availableModels.length > 0;
+  const chosenSpeed = currentChoice
+    ? currentChoice.serviceTier || 'standard'
+    : (profileSelection?.speeds?.[selectedModel] as ModelSpeed) || 'standard';
+  const selectedSpeed = selectedModelDefinition?.serviceTiers.includes(chosenSpeed)
+    ? chosenSpeed
+    : 'standard';
+  const mindTools = availableTools.filter(
+    (tool) =>
+      (!activeMind?.skill_ids || activeMind.skill_ids.includes(tool.id)) &&
+      !(tool.id === 'slides' && isTemporaryChat)
+  );
+  const preferredEffort = currentChoice
+    ? currentChoice.thinkingLevel
+    : profileSelection?.efforts?.[selectedModel] || (!isAuthenticated ? legacyGuestEffort : null);
+  const selectedThinkingLevel = preferredEffort && selectedModelDefinition?.thinkingLevels.includes(preferredEffort)
+    ? preferredEffort : undefined;
+  const chooseSpeed = (speed: ModelSpeed) => {
+    changeModelOptions({
+      model: selectedModel,
+      ...(selectedThinkingLevel ? { thinkingLevel: selectedThinkingLevel } : {}),
+      ...(speed === 'standard' ? {} : { serviceTier: speed }),
+    });
+  };
+  const chooseEffort = (level: ThinkingLevel | null) => {
+    changeModelOptions({
+      model: selectedModel,
+      ...(level ? { thinkingLevel: level } : {}),
+      ...(selectedSpeed !== 'standard' ? { serviceTier: selectedSpeed } : {}),
+    });
+  };
   const visibleSessions = useMemo<SessionSummary[]>(() => {
     const byId = new Map<string, SessionSummary>(
       sessions.map((session) => [session.session_id, session])
@@ -241,6 +327,18 @@ const MainLayout = () => {
       (a, b) => (Number(b.last_updated) || 0) - (Number(a.last_updated) || 0)
     );
   }, [optimisticSessions, sessions]);
+  const projectRouteId = projectIdForPath(routePath);
+  const projectDetails = projectStore.projects.find((project) => project.id === projectDetailsId);
+  const routedProject = projectStore.projects.find((project) => project.id === projectRouteId);
+  const chatProjectId = activeSessionRow?.workspace_id !== undefined
+    ? activeSessionRow.workspace_id
+    : sessionProject?.sessionId === currentSessionId
+      ? sessionProject.id
+      : null;
+  const activeProjectId = projectRouteId || chatProjectId;
+  const activeProject = projectStore.projects.find((project) => project.id === activeProjectId)
+    || (sessionProject?.sessionId === currentSessionId && sessionProject.id === activeProjectId
+      ? sessionProject : undefined);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -274,17 +372,14 @@ const MainLayout = () => {
     };
     refreshCatalog();
     window.addEventListener('focus', refreshCatalog);
+    window.addEventListener('remind:model-catalog', refreshCatalog);
     return () => {
       cancelled = true;
       window.removeEventListener('focus', refreshCatalog);
+      window.removeEventListener('remind:model-catalog', refreshCatalog);
     };
   }, [isAuthenticated, user?.id]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(THINKING_LEVEL_STORAGE_KEY, selectedThinkingLevel);
-    }
-  }, [selectedThinkingLevel]);
 
   useEffect(() => {
     if (isMobileRailOpen && (!isMobileViewport || !isAuthenticated)) {
@@ -296,13 +391,13 @@ const MainLayout = () => {
 
   useLayoutEffect(() => {
     const hasDesktopRail = !!isAuthenticated && !isMobileViewport;
-    const isDesktopRailOpen = hasDesktopRail && !!isRailExpandedDesktop;
+    const isDesktopRailOpen = hasDesktopRail && desktopRailExpanded;
     const isMobileOverlayOpen = !!isAuthenticated && isMobileViewport && !!isMobileRailOpen;
 
     document.body.classList.toggle('has-rail', hasDesktopRail);
     document.body.classList.toggle('rail-open', isDesktopRailOpen);
     document.body.classList.toggle('mobile-menu-open', isMobileOverlayOpen);
-  }, [isAuthenticated, isMobileViewport, isMobileRailOpen, isRailExpandedDesktop]);
+  }, [isAuthenticated, isMobileViewport, isMobileRailOpen, desktopRailExpanded]);
 
   useEffect(() => {
     if (!isAuthenticated || !isMobileViewport || !isMobileRailOpen) {
@@ -501,13 +596,15 @@ const MainLayout = () => {
 
   useEffect(() => {
     const handleRouteChange = () => {
-      const path = normalizeAppPath(window.location.pathname);
+      const legacyWorkspace = window.location.pathname === '/workspace';
+      const path = legacyWorkspace ? '/' : normalizeAppPath(window.location.pathname);
       if (path !== window.location.pathname) {
         window.history.replaceState(
           {},
           '',
-          `${path}${window.location.search}${window.location.hash}`
+          `${path}${window.location.search}${legacyWorkspace ? '#settings/workspace' : window.location.hash}`
         );
+        if (legacyWorkspace) window.dispatchEvent(new Event('hashchange'));
       }
       setRoutePath(path);
       if (path.startsWith('/c/')) {
@@ -528,6 +625,7 @@ const MainLayout = () => {
         }
         return;
       }
+      setActiveMind(null);
       clearChat({ historyMode: 'none' });
     };
 
@@ -573,13 +671,20 @@ const MainLayout = () => {
       files: File[],
       options: {
         composerContent?: string;
+        chatReferences?: ChatReference[];
         tools?: string[];
         webSearch?: boolean;
         autoWebSearch?: boolean;
       } = {}
     ) => {
       setInitialPrompt(null);
+      if (modelUnavailable && !(text.trim() === '/compact' && files.length === 0)) {
+        showToast(t('agentSettings.modelUnavailable'), { type: 'error' });
+        return;
+      }
       const path = window.location.pathname;
+      const projectId = projectIdForPath(path);
+      if (projectId && (!routedProject || routedProject.id !== projectId)) return;
       if (!isTemporaryChat && (path === '/' || !path.startsWith('/c/'))) {
         clearChat({ historyMode: 'none' });
       }
@@ -589,10 +694,26 @@ const MainLayout = () => {
         ...options,
         mindId: activeMind?.public_id || null,
         _sessionMind: activeMind || null,
-        thinkingLevel: selectedThinkingLevel,
+        ...(selectedThinkingLevel ? { thinkingLevel: selectedThinkingLevel } : {}),
+        serviceTier: selectedSpeed,
+        ...(projectId && routedProject ? { project: routedProject } : {}),
       });
+      if (path !== window.location.pathname) {
+        setRoutePath(normalizeAppPath(window.location.pathname));
+      }
     },
-    [activeMind, clearChat, isTemporaryChat, selectedModel, selectedThinkingLevel, sendMessage]
+    [
+      activeMind,
+      clearChat,
+      isTemporaryChat,
+      selectedModel,
+      selectedThinkingLevel,
+      selectedSpeed,
+      sendMessage,
+      modelUnavailable,
+      routedProject,
+      t,
+    ]
   );
 
   const modelForMessage = (messageId: string | null, editing = false) => {
@@ -625,7 +746,11 @@ const MainLayout = () => {
       const decodedPrompt = decodeURIComponent(prompt);
       setTimeout(() => {
         setInitialPrompt(decodedPrompt);
-        if (params.get('auto_send') === 'true') {
+        if (
+          params.get('auto_send') === 'true' &&
+          !projectIdForPath(window.location.pathname) &&
+          !/^(chatgpt|codex|key)\//.test(params.get('model') || selectedModel)
+        ) {
           setTimeout(() => {
             handleSendMessage(decodedPrompt, [], {});
             setInitialPrompt(null);
@@ -637,7 +762,10 @@ const MainLayout = () => {
 
     const model = params.get('model');
     if (model) {
-      setTimeout(() => setCurrentModel(decodeURIComponent(model)), 0);
+      setTimeout(
+        () => setModelChoices((choices) => ({ ...choices, [modelChoiceKey]: { model: decodeURIComponent(model) } })),
+        0
+      );
       shouldUpdateURL = true;
     }
 
@@ -664,7 +792,7 @@ const MainLayout = () => {
       const cleanURL = `${window.location.pathname}${window.location.hash}`;
       window.history.replaceState(null, '', cleanURL);
     }
-  }, [handleSendMessage, isAuthenticated, isAuthLoading]);
+  }, [handleSendMessage, isAuthenticated, isAuthLoading, selectedModel, modelChoiceKey]);
 
   useEffect(() => {
     setTimeout(() => refreshSessions(), 0);
@@ -801,13 +929,38 @@ const MainLayout = () => {
     [currentSessionId, loadSession, markSessionActivitySeen]
   );
 
-  const handleNewChat = useCallback(() => {
+  const handleNewPersonalChat = useCallback(() => {
     notifyOnDoneRef.current = false;
     setActiveMind(null);
+    setModelChoices((choices) => {
+      const next = { ...choices };
+      delete next[`${selectionOwner}:new`];
+      return next;
+    });
     clearChat({ historyMode: 'push' });
     setRoutePath('/');
     setMobileRailOpen(false);
-  }, [clearChat]);
+  }, [clearChat, selectionOwner]);
+
+  const handleOpenProject = useCallback((id: string) => {
+    setMobileRailOpen(false);
+    if (projectIdForPath(window.location.pathname) === id) return;
+    notifyOnDoneRef.current = false;
+    setActiveMind(null);
+    setInitialPrompt(null);
+    clearChat({ historyMode: 'none' });
+    navigateTo(projectPath(id));
+  }, [clearChat, navigateTo]);
+
+  const handleProjectSettings = useCallback((id: string) => {
+    setMobileRailOpen(false);
+    setProjectDetailsId(id);
+  }, []);
+
+  const handleNewChat = useCallback(() => {
+    if (activeProject && !isTemporaryChat && !isReadOnly) handleOpenProject(activeProject.id);
+    else handleNewPersonalChat();
+  }, [activeProject, handleNewPersonalChat, handleOpenProject, isReadOnly, isTemporaryChat]);
 
   const handleTemporaryChat = useCallback(() => {
     notifyOnDoneRef.current = false;
@@ -821,6 +974,18 @@ const MainLayout = () => {
   const handleMindsClick = useCallback(() => {
     clearChat({ historyMode: 'none' });
     navigateTo('/minds');
+    setMobileRailOpen(false);
+  }, [clearChat, navigateTo]);
+
+  const handleAutomationsClick = useCallback(() => {
+    clearChat({ historyMode: 'none' });
+    navigateTo('/automations');
+    setMobileRailOpen(false);
+  }, [clearChat, navigateTo]);
+
+  const handlePluginsClick = useCallback(() => {
+    clearChat({ historyMode: 'none' });
+    navigateTo('/plugins');
     setMobileRailOpen(false);
   }, [clearChat, navigateTo]);
 
@@ -886,9 +1051,23 @@ const MainLayout = () => {
     ? decodeURIComponent(routePath.slice('/minds/editor/'.length))
     : null;
   const isMindsRoute = routePath === '/minds';
+  const isAutomationRoute = routePath === '/automations';
+  const isPluginsRoute = routePath === '/plugins';
   const isEditorRoute = routePath === '/minds/editor' || routePath.startsWith('/minds/editor/');
   const isAdminRoute = routePath === '/admin' || routePath.startsWith('/admin/');
-  const isChatSurface = !isMindsRoute && !isEditorRoute && !isAdminRoute;
+  const isChatSurface = !isMindsRoute && !isEditorRoute && !isAdminRoute && !isAutomationRoute && !isPluginsRoute;
+  const referenceScope = `${user?.id || ''}:${routePath}:${activeProjectId || ''}`;
+  const allowChatReferences = isAuthenticated && isChatSurface && !isTemporaryChat && !isReadOnly &&
+    !sessionAccess?.isPublic && (!activeMind || activeMind.is_owner) && !isImageToolModel({ id: selectedModel });
+  const chatReferences = allowChatReferences && referenceDraft.scope === referenceScope ? referenceDraft.choices : [];
+  const changeChatReferences = (choices: ChatReference[]) => setReferenceDraft({ scope: referenceScope, choices });
+
+  function attachChatReference(choice: ChatReference) {
+    if (!allowChatReferences || chatReferences.length >= maxChatReferences ||
+      chatReferences.some((item) => item.session_id === choice.session_id)) return;
+    changeChatReferences([...chatReferences, choice]);
+    setMobileRailOpen(false);
+  }
   const showTemporaryChatButton = routePath === '/' && history.length === 0 && !isTemporaryChat;
   const canvasTextdocVersion = canvasTextdoc
     ? `${canvasTextdoc.id || ''}:${canvasTextdoc.updated_at || 0}`
@@ -1140,7 +1319,7 @@ const MainLayout = () => {
 
   return (
     <>
-      <SEOHelmet />
+      <SEOHelmet title={projectRouteId ? t('projects.title') : null} />
 
       {isAuthenticated && (
         <Suspense fallback={null}>
@@ -1153,7 +1332,17 @@ const MainLayout = () => {
             currentSessionId={currentSessionId}
             onSelectSession={handleSelectSession}
             onNewChat={handleNewChat}
+            onNewPersonalChat={handleNewPersonalChat}
+            onReferenceChat={allowChatReferences && chatReferences.length < maxChatReferences ? attachChatReference : undefined}
+            activeProjectId={activeProjectId}
+            onOpenProject={handleOpenProject}
+            onProjectSettings={handleProjectSettings}
+            projectStore={projectStore}
+            onSessionMoved={onSessionMoved}
+            onProjectsChanged={refreshSessions}
             onMindsClick={handleMindsClick}
+            onAutomationsClick={handleAutomationsClick}
+            onPluginsClick={handlePluginsClick}
             onAdminClick={handleAdminClick}
             onSettingsClick={() => {
               setMobileRailOpen(false);
@@ -1172,6 +1361,13 @@ const MainLayout = () => {
               refreshSessions();
             }}
             onSessionRenamed={onSessionRenamed}
+            onCompactSession={(sessionId: string) => compactSession(
+              sessionId, sessionId === currentSessionId ? selectedModel : undefined
+            )}
+            onViewContext={(sessionId: string) => {
+              setMobileRailOpen(false);
+              setContextSessionId(sessionId);
+            }}
           />
         </Suspense>
       )}
@@ -1203,6 +1399,7 @@ const MainLayout = () => {
                 isTemporaryChat={isTemporaryChat}
                 showChatControls={isChatSurface}
                 showTemporaryChatButton={showTemporaryChatButton}
+                {...(activeProject && !isTemporaryChat && !projectRouteId ? { activeProject } : {})}
               />
 
               {isAdminRoute ? (
@@ -1210,6 +1407,23 @@ const MainLayout = () => {
                   <AdminPanel
                     isAuthenticated={isAuthenticated}
                     onOpenAuth={() => setAuthOpen('login')}
+                  />
+                </Suspense>
+              ) : isPluginsRoute ? (
+                <Suspense fallback={null}>
+                  <PluginsPage onOpenAuth={() => setAuthOpen('login')} />
+                </Suspense>
+              ) : isAutomationRoute ? (
+                <Suspense fallback={null}>
+                  <AutomationPage
+                    models={availableModels}
+                    selectedModel={selectedModel}
+                    sessions={visibleSessions}
+                    onOpenAuth={() => setAuthOpen('login')}
+                    onOpenChat={(id) => {
+                      void refreshSessions();
+                      handleSelectSession(id);
+                    }}
                   />
                 </Suspense>
               ) : isMindsRoute ? (
@@ -1233,9 +1447,29 @@ const MainLayout = () => {
                     onSaved={handleMindSaved}
                   />
                 </Suspense>
-              ) : history.length === 0 ? (
+              ) : projectRouteId && !routedProject ? (
                 <div className="ui-empty-conversation-shell">
-                  <LandingHero isReadOnly={isReadOnly}>
+                  <LandingHero title={t('projects.title')}>
+                    {isAuthLoading || (isAuthenticated && !projectStore.loaded && !projectStore.loadError) ? (
+                      <p role="status">{t('common.loading')}</p>
+                    ) : !isAuthenticated ? (
+                      <button type="button" className="project-home-settings" onClick={() => setAuthOpen('login')}>
+                        {t('auth.login')}
+                      </button>
+                    ) : (
+                      <p role="status">{t(projectStore.loadError ? 'projects.failed' : 'projects.unavailable')}</p>
+                    )}
+                  </LandingHero>
+                </div>
+              ) : projectRouteId || history.length === 0 ? (
+                <div className="ui-empty-conversation-shell">
+                  <LandingHero isReadOnly={isReadOnly} title={routedProject?.name || null}>
+                    {routedProject && (
+                      <button type="button" className="project-home-settings" onClick={() => handleProjectSettings(routedProject.id)}>
+                        <Settings2 size={16} aria-hidden="true" />
+                        {t('projects.details')}
+                      </button>
+                    )}
                     {isTemporaryChat && (
                       <p className="ui-landing-temporary-note">
                         <LockKeyhole size={15} aria-hidden="true" />
@@ -1286,6 +1520,7 @@ const MainLayout = () => {
                       </div>
                     )}
                     <InputArea
+                      key={routedProject?.id || 'landing'}
                       variant="landing"
                       showDynamicWarning={false}
                       onSendMessage={handleSendMessage}
@@ -1302,16 +1537,28 @@ const MainLayout = () => {
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
                       onOpenAuth={() => setAuthOpen('login')}
                       currentSessionId={currentSessionId}
+                      projectDraftId={routedProject?.id || null}
+                      referenceProjectId={routedProject?.id || null}
+                      allowChatReferences={allowChatReferences}
+                      chatReferences={chatReferences}
+                      onChatReferencesChange={changeChatReferences}
                       currentModel={selectedModel}
+                      modelUnavailable={modelUnavailable}
                       contextUsage={currentContextUsage}
                       models={availableModels}
-                      availableTools={availableTools}
-                      onModelChange={setCurrentModel}
-                      thinkingLevel={selectedThinkingLevel}
-                      onThinkingLevelChange={(level) =>
-                        setThinkingLevel(normalizeThinkingLevel(level))
-                      }
+                      availableTools={mindTools}
+                      onModelChange={chooseModel}
+                      serviceTier={selectedSpeed}
+                      onServiceTierChange={chooseSpeed}
+                      thinkingLevel={selectedThinkingLevel ?? null}
+                      onThinkingLevelChange={chooseEffort}
                     />
+                    {routedProject && (
+                      <ProjectRecentChats
+                        sessions={visibleSessions.filter((item) => item.workspace_id === routedProject.id).slice(0, 4)}
+                        onOpen={handleSelectSession}
+                      />
+                    )}
                   </LandingHero>
                 </div>
               ) : (
@@ -1365,13 +1612,16 @@ const MainLayout = () => {
                       petState={petState}
                       currentSessionId={isTemporaryChat ? null : currentSessionId}
                       isReadOnly={isReadOnly}
+                      projectId={isAuthenticated && !isTemporaryChat && !isReadOnly && !sessionAccess?.isPublic
+                        ? activeProject?.id || '' : ''}
                       onRegenerate={(messageId) => {
                         if (regenerateMessage) {
                           notifyOnDoneRef.current = true;
                           regenerateMessage(
                             messageId,
                             modelForMessage(messageId),
-                            selectedThinkingLevel
+                            selectedThinkingLevel,
+                            selectedSpeed
                           );
                         }
                       }}
@@ -1382,7 +1632,8 @@ const MainLayout = () => {
                             messageId,
                             newText,
                             modelForMessage(messageId, true),
-                            selectedThinkingLevel
+                            selectedThinkingLevel,
+                            selectedSpeed
                           );
                         }
                       }}
@@ -1410,15 +1661,20 @@ const MainLayout = () => {
                       onInitialPromptConsumed={() => setInitialPrompt(null)}
                       onOpenAuth={() => setAuthOpen('login')}
                       currentSessionId={currentSessionId}
+                      referenceProjectId={activeProject?.id || null}
+                      allowChatReferences={allowChatReferences}
+                      chatReferences={chatReferences}
+                      onChatReferencesChange={changeChatReferences}
                       currentModel={selectedModel}
+                      modelUnavailable={modelUnavailable}
                       contextUsage={currentContextUsage}
                       models={availableModels}
-                      availableTools={availableTools}
-                      onModelChange={setCurrentModel}
-                      thinkingLevel={selectedThinkingLevel}
-                      onThinkingLevelChange={(level) =>
-                        setThinkingLevel(normalizeThinkingLevel(level))
-                      }
+                      availableTools={mindTools}
+                      onModelChange={chooseModel}
+                      serviceTier={selectedSpeed}
+                      onServiceTierChange={chooseSpeed}
+                      thinkingLevel={selectedThinkingLevel ?? null}
+                      onThinkingLevelChange={chooseEffort}
                     />
                   </>
                 </Suspense>
@@ -1501,7 +1757,32 @@ const MainLayout = () => {
               setAuthOpen(mode);
               clearHash();
             }}
+            onOpenPlugins={() => {
+              setSettingsOpen(false);
+              clearHash();
+              handlePluginsClick();
+            }}
+            onOpenAutomations={() => {
+              setSettingsOpen(false);
+              clearHash();
+              handleAutomationsClick();
+            }}
           />
+        </Suspense>
+      )}
+      {isAuthenticated && contextSessionId && (
+        <Suspense fallback={null}>
+          <ContextCheckpointModal
+            key={String(user?.id) + ':' + contextSessionId}
+            sessionId={contextSessionId}
+            models={availableModels}
+            onClose={() => setContextSessionId(null)}
+          />
+        </Suspense>
+      )}
+      {isAuthenticated && projectDetails && (
+        <Suspense fallback={null}>
+          <ProjectDetailsModal key={projectDetails.id} project={projectDetails} onClose={() => setProjectDetailsId(null)} />
         </Suspense>
       )}
 

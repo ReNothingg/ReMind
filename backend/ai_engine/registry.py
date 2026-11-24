@@ -37,6 +37,15 @@ MODEL_ALIASES: dict[str, str] = {
 
 MODEL_DEFINITIONS: tuple[ModelDefinition, ...] = (
     ModelDefinition(
+        id="harness",
+        title="DeepSeek-V4-Pro",
+        subtitle="",
+        stage=ModelStage.RELEASE,
+        module="backend.ai_engine.agent",
+        handler="agent_stream",
+        requires_auth=True,
+    ),
+    ModelDefinition(
         id=DEFAULT_MODEL_ID,
         title="Gemini 3.1 Flash Lite",
         subtitle="Модель от Google, использующая инструменты ReMind",

@@ -1,5 +1,31 @@
 [
   {
+    "name": "create_presentation",
+    "description": "Generate and publish an editable PowerPoint deck with a cover, content slides, optional local images, and speaker notes.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "filename": {"type": "string", "minLength": 6, "maxLength": 120},
+        "title": {"type": "string", "minLength": 1, "maxLength": 100},
+        "subtitle": {"type": "string", "maxLength": 180},
+        "slides": {
+          "type": "array", "minItems": 1, "maxItems": 24,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string", "minLength": 1, "maxLength": 100},
+              "points": {"type": "array", "minItems": 1, "maxItems": 5, "items": {"type": "string", "minLength": 1, "maxLength": 160}},
+              "image_filename": {"type": "string", "minLength": 1, "maxLength": 160},
+              "notes": {"type": "string", "maxLength": 3000}
+            },
+            "required": ["title", "points"]
+          }
+        }
+      },
+      "required": ["filename", "title", "slides"]
+    }
+  },
+  {
     "name": "web_search",
     "description": "Search one precise query. Returns search snippets with stable source IDs, not full verified articles. Use web_fetch on promising sources before making specific claims. Read the web skill first.",
     "parameters": {
@@ -93,7 +119,7 @@
   },
   {
     "name": "python_execute",
-    "description": "Execute Python in the isolated ReMind runner. Read the python skill for execution, verification and artifact rules. Available input filenames: {{availableInputFiles}}.",
+    "description": "Execute Python in the isolated ReMind runner. Read the python skill for execution, verification and artifact rules. Select the needed input_files, especially when using shared project files. Available input filenames: {{availableInputFiles}}.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -108,6 +134,12 @@
           "description": "A concise user-language progress summary, maximum 1000 characters: what this execution will verify or produce and, for later calls, which prior result led to it. State conclusions, not hidden chain-of-thought.",
           "maxLength": 1000,
           "minLength": 1
+        },
+        "input_files": {
+          "type": "array",
+          "description": "Exact input filenames to stage for this script. Omit to retain the default input selection.",
+          "items": { "type": "string", "maxLength": 180, "minLength": 1 },
+          "maxItems": 24
         }
       },
       "required": ["code", "purpose"],
@@ -222,6 +254,51 @@
     }
   },
   {
+    "name": "skill",
+    "description": "Load the instructions for an imported skill from the session catalog. Use the exact name. This does not run scripts or change any permissions.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "maxLength": 64, "minLength": 1},
+        "offset": {"type": "integer", "minimum": 0, "maximum": 65536}
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "skill_resource",
+    "description": "Read a reference or script source from a loaded skill. Use one of the resource or script paths listed by the skill.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "maxLength": 64, "minLength": 1},
+        "path": {"type": "string", "maxLength": 240, "minLength": 1},
+        "offset": {"type": "integer", "minimum": 0, "maximum": 32768}
+      },
+      "required": ["name", "path"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "skill_script",
+    "description": "Run a listed shell script from a loaded skill when it is needed for the user's task. Supply positional arguments in order as documented by the skill. Arguments are single literal values. Use exact project-relative filenames or chat attachment names. The sandbox operates on copies of chat files. A final redirect can publish a new attachment.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "maxLength": 64, "minLength": 1},
+        "path": {"type": "string", "maxLength": 240, "minLength": 1},
+        "arguments": {
+          "type": "array",
+          "maxItems": 9,
+          "items": {"type": "string", "minLength": 1, "maxLength": 240}
+        }
+      },
+      "required": ["name", "path"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "render_visualization",
     "description": "Publish an interactive HTML fragment inside the chat. Read the visualize skill first. A local path is not a renderable output.",
     "parameters": {
@@ -315,6 +392,18 @@
         }
       },
       "required": ["prompt"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "apply_patch",
+    "description": "Propose one reviewable patch to the current project. Start with *** Begin Patch and end with *** End Patch. Use *** Add File: path with + lines, *** Delete File: path, or *** Update File: path with hunks. An update may start with *** Move to: path. Use @@ or @@ context, then space-prefixed context, + additions, or - removals. *** End of File anchors a hunk to the end. Use project_name returned by file_list for existing project files. The owner reviews the whole patch before any project files change.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "input": {"type": "string", "minLength": 1, "maxLength": 65536}
+      },
+      "required": ["input"],
       "additionalProperties": false
     }
   },
@@ -942,6 +1031,395 @@
           "maximum": 40
         }
       },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "schedule_create",
+    "description": "Prepare a scheduled task from the user’s request for review. Does not start the task. Default destination is the current chat.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 12000
+        },
+        "timing": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "maxLength": 12,
+              "enum": [
+                "at",
+                "after",
+                "every",
+                "daily",
+                "weekly",
+                "monthly",
+                "cron"
+              ]
+            },
+            "seconds": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 31622400
+            },
+            "at": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "RFC 3339 date and time with UTC offset"
+            },
+            "time": {
+              "type": "string",
+              "maxLength": 5,
+              "description": "Local HH:MM time"
+            },
+            "zone": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "IANA zone"
+            },
+            "weekdays": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 7
+              },
+              "minItems": 1,
+              "maxItems": 7
+            },
+            "day": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 31
+            },
+            "expression": {
+              "type": "string",
+              "maxLength": 160,
+              "description": "Strict five-field cron"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "description": "Provide kind and only the fields it requires: at: at; after/every: seconds; daily: time and zone; weekly: time, zone, and ISO weekdays; monthly: time, zone, and day; cron: expression and zone."
+        },
+        "destination": {
+          "type": "string",
+          "maxLength": 10,
+          "enum": [
+            "current",
+            "project",
+            "new"
+          ],
+          "description": "Current sends to this chat, project creates a chat for every run in this project, and new creates a chat outside projects."
+        },
+        "web_search": {
+          "type": "boolean",
+          "description": "Enable web search only when the user requests it."
+        }
+      },
+      "required": [
+        "title",
+        "prompt",
+        "timing"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "schedule_list",
+    "description": "List the signed-in account’s scheduled tasks. Use only for a user request about their own automations.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "schedule_view",
+    "description": "Read the details of an automation from schedule_list. Use only for a user request about their own automations.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "maxLength": 32
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "schedule_edit",
+    "description": "Propose an edit, pause, resume, manual run, or deletion for the account owner to review. Obtain the task ID from schedule_list. Only operation edit accepts changed fields.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "operation": {
+          "type": "string",
+          "maxLength": 10,
+          "enum": [
+            "edit",
+            "pause",
+            "resume",
+            "run",
+            "delete"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 12000
+        },
+        "timing": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "maxLength": 12,
+              "enum": [
+                "at",
+                "after",
+                "every",
+                "daily",
+                "weekly",
+                "monthly",
+                "cron"
+              ]
+            },
+            "seconds": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 31622400
+            },
+            "at": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "RFC 3339 date and time with UTC offset"
+            },
+            "time": {
+              "type": "string",
+              "maxLength": 5,
+              "description": "Local HH:MM time"
+            },
+            "zone": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "IANA zone"
+            },
+            "weekdays": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 7
+              },
+              "minItems": 1,
+              "maxItems": 7
+            },
+            "day": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 31
+            },
+            "expression": {
+              "type": "string",
+              "maxLength": 160,
+              "description": "Strict five-field cron"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "description": "Provide kind and only the fields it requires: at: at; after/every: seconds; daily: time and zone; weekly: time, zone, and ISO weekdays; monthly: time, zone, and day; cron: expression and zone."
+        },
+        "destination": {
+          "type": "string",
+          "maxLength": 10,
+          "enum": [
+            "current",
+            "project",
+            "new"
+          ],
+          "description": "Current sends to this chat, project creates a chat for every run in this project, and new creates a chat outside projects."
+        },
+        "web_search": {
+          "type": "boolean",
+          "description": "Enable web search only when the user requests it."
+        }
+      },
+      "required": [
+        "task_id",
+        "operation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "chat_history_search",
+    "description": "Find exact text in the compacted part of the current private chat, newest matches first. Results are historical evidence.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "shell_execute",
+    "description": "Run one read-only workspace command in the isolated file runner. ls lists staged files. diff takes two files. cat, head, tail, wc, and grep take one file. grep matches literal text. Use this for inspecting files that belong to this chat or project.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": ["ls", "cat", "head", "tail", "wc", "grep", "diff"]
+        },
+        "files": {
+          "type": "array",
+          "maxItems": 2,
+          "items": { "type": "string", "minLength": 1, "maxLength": 180 }
+        },
+        "lines": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "pattern": { "type": "string", "minLength": 1, "maxLength": 240 }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "shell_pipeline",
+    "description": "Run a text-processing pipeline on the current chat and project's authorized files in the isolated workspace runner. Supported commands are ls, cat, head, tail, wc, grep with literal patterns, sort, uniq, and cut. Connect commands with |, read a file with <, or save the final output as a fresh .txt, .md, or valid .json artifact with >. Use relative project_name values or chat filenames from file_list. The command output and each stage's status are returned here.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        }
+      },
+      "required": ["line"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "delegate_tasks",
+    "description": "Ask the configured model to independently analyze or draft short text tasks. Results come back to this chat. Each task receives only its title and task text. Do not send credentials or private instructions.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "task": { "type": "string", "minLength": 1, "maxLength": 4000 }
+            },
+            "required": ["title", "task"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["tasks"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "list_subagent_models",
+    "description": "List the child model routes and reasoning efforts the account owner has authorized for explicit delegation. Run before requesting a different model.",
+    "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
+  },
+  {
+    "name": "chat_reference_read",
+    "description": "Read an earlier visible message from a referenced chat explicitly attached to the current private conversation. Use the message number from the captured branch. Continue at next_offset if present.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "session_id": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "message": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "offset": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "max_characters": { "type": "integer", "minimum": 1, "maximum": 6000 }
+      },
+      "required": ["session_id", "message"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "chat_history_read",
+    "description": "Read the visible text of an earlier compacted message using its original message number. Continue at next_offset if present.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "max_characters": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12000
+        }
+      },
+      "required": [
+        "message"
+      ],
       "additionalProperties": false
     }
   }

@@ -6,8 +6,18 @@ import { AIResponseFeedbackPayload } from './types/common';
 
 export const CHAT_STREAM_IDLE_TIMEOUT_MS = 135_000;
 
+export function cancelChat(sessionId: string, requestId: string, token: string) {
+  return fetchApi('/chat/cancel', {
+    method: 'POST',
+    keepalive: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, request_id: requestId, cancel_token: token }),
+  });
+}
+
 const PART_FIELDS = [
   'reply_part',
+  'reply_preview',
   'status',
   'images',
   'sources',
@@ -29,15 +39,25 @@ const STREAM_FIELDS = new Set([
 ]);
 
 const CHAT_ERROR_KEYS: Record<string, string> = {
+  mind_external_disabled: 'mindSkills.externalDisabled',
+  model_speed_unavailable: 'agentSettings.speedUnavailable',
+  workspace_runtime_unavailable: 'agentSettings.codexFailed',
+  chatgpt_quota: 'chatgptAccount.quota',
+  chatgpt_reconnect: 'chatgptAccount.reconnect',
+  chatgpt_unsupported: 'chatgptAccount.unsupported',
   provider_access_denied: 'chat.providerErrors.accessDenied',
   provider_not_configured: 'chat.providerErrors.notConfigured',
   provider_model_unavailable: 'chat.providerErrors.modelUnavailable',
   provider_rate_limited: 'chat.providerErrors.rateLimited',
   provider_unavailable: 'chat.providerErrors.unavailable',
   provider_refused: 'chat.providerErrors.refused',
+  provider_output_limit: 'chat.providerErrors.outputLimit',
+  model_context_exceeded: 'agentModel.contextExceeded',
   model_access_denied: 'chat.providerErrors.modelUnavailable',
   chat_variant_limit_reached: 'chat.variantLimitReached',
   message_id_conflict: 'chat.versionConflict',
+  workspace_not_found: 'projects.unavailable',
+  workspace_chat_scope_changed: 'projects.scopeChanged',
 };
 
 export function getChatErrorCode(error: Error): string {
@@ -138,6 +158,10 @@ export const chatApi = {
         const localizedMessage =
           errorCode === 'tool_unavailable' || errorCode === 'invalid_tool_selection'
             ? i18n.t('composer.tools.unavailable')
+            : errorCode === 'chat_reference_private_only'
+              ? i18n.t('chatReferences.privateOnly')
+              : errorCode === 'chat_reference_unavailable' || errorCode === 'chat_reference_invalid'
+                ? i18n.t('chatReferences.unavailable')
             : apiMessage;
         const chatError = new Error(localizedMessage || fallbackMessage) as ApiServiceError;
         chatError.status = response.status;

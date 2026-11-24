@@ -19,6 +19,7 @@ interface GlobalHeaderProps {
   isTemporaryChat?: boolean;
   showChatControls?: boolean;
   showTemporaryChatButton?: boolean;
+  activeProject?: { id: string; name: string };
 }
 
 interface HeaderIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -56,6 +57,7 @@ export default function GlobalHeader({
   isTemporaryChat = false,
   showChatControls = true,
   showTemporaryChatButton = true,
+  activeProject,
 }: GlobalHeaderProps) {
   const { t } = useTranslation();
   const isShared = !!shareInfo?.isPublic;
@@ -69,11 +71,15 @@ export default function GlobalHeader({
         : t('share.shareChat');
 
   return (
-    <div className="global-controls ui-toolbar-shell">
+    <div className={cn(
+      'global-controls ui-toolbar-shell',
+      activeProject && showChatControls && 'ui-toolbar-with-project'
+    )}>
       <div
         className={cn(
           'ui-toolbar-group ui-toolbar-navigation-group',
-          isAuthenticated && 'is-authenticated'
+          isAuthenticated && 'is-authenticated',
+          activeProject && showChatControls && 'has-active-project'
         )}
       >
         {!isAuthenticated && (
@@ -106,6 +112,27 @@ export default function GlobalHeader({
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </HeaderIconButton>
+        )}
+        {showChatControls && isAuthenticated && activeProject && (
+          <div
+            className="active-project-label"
+            title={t('projects.active', { name: activeProject.name })}
+          >
+            <svg
+              aria-hidden="true"
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3.5 7.7a2 2 0 0 1 2-2h4l2.1 2.2h6.8a2.1 2.1 0 0 1 2.1 2.1v6.4a2 2 0 0 1-2 2H5.5a2 2 0 0 1-2-2z" />
+            </svg>
+            <span>{activeProject.name}</span>
+          </div>
         )}
       </div>
 

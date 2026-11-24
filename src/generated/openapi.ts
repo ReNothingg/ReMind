@@ -1,5 +1,151 @@
 export interface components {
   schemas: {
+    AgentBuiltinPlugin: {
+      description_key: string | null;
+      enabled: boolean;
+      id: string;
+      title_key: string | null;
+    };
+    AgentCustomPlugin: {
+      description: string;
+      enabled: boolean;
+      id: string;
+      instructions: string;
+      kind: "custom";
+      name: string;
+      skills: string[];
+      version: string;
+    };
+    AgentPluginManifest: {
+      description: string;
+      id: string;
+      instructions: string;
+      name: string;
+      skills: string[];
+      version: string;
+    };
+    AgentProviderCatalogMode: "provider" | "custom";
+    AgentProviderConnection: {
+      baseUrl: string;
+      catalogMode: components["schemas"]["AgentProviderCatalogMode"];
+      connected: boolean;
+      custom: boolean;
+      defaultBaseUrl: string;
+      id: string;
+      modelCount: number;
+      models: components["schemas"]["AgentProviderModel"][];
+      name: string;
+      protocol: "openai-completions" | "openai-responses" | "anthropic-messages" | "google-generative-ai";
+      reasoningLevels?: components["schemas"]["ModelReasoningLevel"][];
+      retryPolicy?: components["schemas"]["ProviderRetryPolicy"];
+      revision: components["schemas"]["AgentProviderRevision"];
+    };
+    AgentProviderConnections: {
+      providers: components["schemas"]["AgentProviderConnection"][];
+    };
+    AgentProviderModel: {
+      contextWindow?: number;
+      inputModalities?: ("text" | "image")[];
+      maxTokens?: number;
+      reasoningEfforts?: false | {
+        high?: string;
+        low?: string;
+        max?: string;
+        medium?: string;
+        minimal?: string;
+        none?: string | null;
+        off?: string | null;
+        ultra?: string;
+        xhigh?: string;
+      };
+      slug: string;
+      title: string;
+    };
+    AgentProviderRevision: string | null;
+    AgentProviderWriteCondition: {
+      expectedRevision?: components["schemas"]["AgentProviderRevision"];
+    };
+    AgentRuntimeSettings: {
+      contextCompaction: "automatic" | "manual";
+      contextHeadroomTokens: number;
+      contextRetainPercent: number;
+      contextRetainTokens: number;
+      contextSummaryMode: "excerpts" | "model";
+      contextSummaryModel: string;
+      contextSummaryRetries: number;
+      contextSummaryTokens: number;
+      contextThresholdPercent: number;
+      maxSteps: number;
+      maxToolCalls: number;
+      maxToolCallsPerStep: number;
+      modelReplayEnabled: boolean;
+      shellEnabled: boolean;
+      shellMaxOutputBytes: number;
+      shellTimeoutMs: number;
+      subagentAllowedModels: string[];
+      subagentMaxActive: number;
+      subagentMaxDepth: number;
+      subagentModel: string;
+      subagentModelSelection: boolean;
+      toolTimeSeconds: number;
+    };
+    AgentSkillCatalog: {
+      skills: components["schemas"]["AgentSkillSummary"][];
+    };
+    AgentSkillDocument: {
+      body: string;
+      compatibility?: string;
+      description: string;
+      license?: string;
+      modelInvocable?: boolean;
+      name: string;
+      resources?: Record<string, string>;
+      userInvocable?: boolean;
+      whenToUse?: string;
+    };
+    AgentSkillInspectionResult: {
+      skill: components["schemas"]["AgentSkillSummary"] | {
+        body: string;
+        resources: string[];
+        scripts?: string[];
+      };
+    };
+    AgentSkillResult: {
+      skill: components["schemas"]["AgentSkillSummary"];
+    };
+    AgentSkillSummary: {
+      compatibility?: string;
+      description: string;
+      enabled: boolean;
+      id: string;
+      license?: string;
+      modelInvocable: boolean;
+      name: string;
+      resourceCount: number;
+      scriptCount?: number;
+      userInvocable: boolean;
+      whenToUse?: string;
+    };
+    AgentWebResearchSettings: {
+      fetchBilling: "linked" | "dedicated";
+      fetchProvider: "remind" | "deepseek-fetch-api";
+      hasDedicatedKey: boolean;
+      hasLinkedKey: boolean;
+      legacyMaxUses: number;
+      searchBilling: "linked" | "dedicated";
+      searchCount: number;
+      searchProvider: "remind" | "deepseek-search-api" | "deepseek-legacy";
+    };
+    AgentWebResearchUpdate: {
+      clearKey?: boolean;
+      fetchBilling?: "linked" | "dedicated";
+      fetchProvider?: "remind" | "deepseek-fetch-api";
+      key?: string;
+      legacyMaxUses?: number;
+      searchBilling?: "linked" | "dedicated";
+      searchCount?: number;
+      searchProvider?: "remind" | "deepseek-search-api" | "deepseek-legacy";
+    };
     AppleChallengeResponse: {
       challenge: string;
       expires_in: number;
@@ -42,6 +188,91 @@ export interface components {
       message: string;
       user: components["schemas"]["User"];
     };
+    AutomationCreate: {
+      enabled?: boolean;
+      model: string;
+      prompt: string;
+      target_session_id?: string | null;
+      timing: components["schemas"]["AutomationTiming"];
+      title: string;
+      web_search?: boolean;
+      workspace_id?: string | null;
+    };
+    AutomationProposal: {
+      applied_at: string | null;
+      changes: components["schemas"]["AutomationUpdate"];
+      id: string;
+      operation: "create" | "edit" | "pause" | "resume" | "run" | "delete";
+      result: {
+        removed?: boolean;
+        run?: components["schemas"]["AutomationRun"];
+        task_id?: string;
+      } | null;
+      stale: boolean;
+      task: components["schemas"]["AutomationTask"] | null;
+    };
+    AutomationRun: {
+      error: string | null;
+      finished_at: string | null;
+      id: string;
+      occurrence_at: string;
+      queued_at: string;
+      session_id: string | null;
+      started_at: string | null;
+      status: "queued" | "running" | "completed" | "failed" | "cancelled";
+    };
+    AutomationTask: {
+      created_at: string;
+      enabled: boolean;
+      id: string;
+      last_run: components["schemas"]["AutomationRun"] | null;
+      model: string;
+      next_run_at: string | null;
+      prompt: string;
+      target_session_id: string | null;
+      timing: components["schemas"]["AutomationTiming"];
+      title: string;
+      web_search: boolean;
+      workspace_id: string | null;
+    };
+    AutomationTiming: {
+      at: string;
+      kind: "at";
+    } | {
+      kind: "after";
+      seconds: number;
+    } | {
+      kind: "every";
+      seconds: number;
+    } | {
+      kind: "daily";
+      time: string;
+      zone: string;
+    } | {
+      kind: "weekly";
+      time: string;
+      weekdays: number[];
+      zone: string;
+    } | {
+      day: number;
+      kind: "monthly";
+      time: string;
+      zone: string;
+    } | {
+      expression: string;
+      kind: "cron";
+      zone: string;
+    };
+    AutomationUpdate: {
+      enabled?: boolean;
+      model?: string;
+      prompt?: string;
+      target_session_id?: string | null;
+      timing?: components["schemas"]["AutomationTiming"];
+      title?: string;
+      web_search?: boolean;
+      workspace_id?: string | null;
+    };
     CanvasPythonExecuteRequest: {
       code: string;
     };
@@ -74,6 +305,20 @@ export interface components {
       type: string;
       updated_at?: number;
     };
+    ChatContextCheckpoint: {
+      covered_messages: number;
+      excerpts: ({
+        excerpt: boolean;
+        message: number;
+        quote: string;
+        role: "user" | "model";
+      })[];
+      summary?: {
+        model: string;
+        partial_history: boolean;
+        sections: Record<string, string>;
+      };
+    };
     ChatDraft: {
       content: string;
       device_id: string;
@@ -92,7 +337,17 @@ export interface components {
       error?: string;
       [key: string]: unknown;
     };
+    ChatGPTAccount: {
+      configured: boolean;
+      connected: boolean;
+      consent_required: boolean;
+      email?: string | null;
+      login_error: boolean;
+      origin: string | null;
+      registered: boolean;
+    };
     ChatMessage: {
+      chat_references?: components["schemas"]["ChatReference"][];
       composer_content?: string;
       context_usage?: components["schemas"]["ContextUsage"];
       current_variant_index?: number;
@@ -110,6 +365,7 @@ export interface components {
       [key: string]: unknown;
     };
     ChatMessageVariant: {
+      chat_references?: components["schemas"]["ChatReference"][];
       composer_content?: string;
       delivery_status?: "complete" | "interrupted" | null;
       id: string;
@@ -122,8 +378,19 @@ export interface components {
       variant_id?: string;
       [key: string]: unknown;
     };
+    ChatModelPreference: {
+      model: string;
+      serviceTier?: "standard" | "fast" | "ultrafast";
+      thinkingLevel?: components["schemas"]["ModelReasoningLevel"];
+    };
+    ChatModelSelectionView: {
+      lastUsed: components["schemas"]["ChatModelPreference"] | null;
+      next: components["schemas"]["ChatModelPreference"] | null;
+    };
     ChatOperationRequest: {
       assistant_message_id: string;
+      cancel_token?: string;
+      chat_references?: string[] | string;
       composer_content?: string;
       history?: components["schemas"]["ChatMessage"][];
       message?: string;
@@ -131,11 +398,13 @@ export interface components {
       operation?: "send" | "regenerate" | "edit";
       request_id: string;
       selected_tools?: string[] | string;
+      serviceTier?: "standard" | "fast" | "ultrafast";
       session_id: string;
       target_message_id?: string | null;
       temporary_chat?: boolean;
-      thinkingLevel?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+      thinkingLevel?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra";
       user_message_id?: string | null;
+      workspace_id?: string;
       [key: string]: unknown;
     };
     ChatOperationResponse: {
@@ -147,6 +416,31 @@ export interface components {
       request_id: string;
       sessionId: string;
       [key: string]: unknown;
+    };
+    ChatReference: {
+      session_id: string;
+      title: string;
+      workspace_name?: string | null;
+    };
+    ChatReferenceCandidates: {
+      chats: components["schemas"]["ChatReference"][];
+    };
+    CodexStatus: {
+      configured: boolean;
+      connected: boolean;
+      email?: string | null;
+      limits: ({
+        name?: string | null;
+        primary?: components["schemas"]["CodexUsageWindow"] | null;
+        secondary?: components["schemas"]["CodexUsageWindow"] | null;
+      })[];
+      loginState?: "pending" | "failed" | "idle";
+      plan?: string | null;
+    };
+    CodexUsageWindow: {
+      resetsAt?: number | null;
+      usedPercent: number;
+      windowDurationMins?: number | null;
     };
     ComposerToolEntry: {
       available: boolean;
@@ -207,9 +501,15 @@ export interface components {
       [key: string]: unknown;
     };
     Mind: {
+      allow_external_use?: boolean;
       can_edit: boolean;
       category: string;
       created_at?: string | null;
+      custom_skill_names?: string[];
+      custom_skills?: {
+        instructions: string;
+        name: string;
+      }[];
       description: string;
       id: number;
       instructions?: string;
@@ -219,6 +519,7 @@ export interface components {
       is_verified: boolean;
       name: string;
       public_id: string;
+      skill_ids?: string[] | null;
       starters: string[];
       updated_at?: string | null;
       visibility: "private" | "link" | "store";
@@ -226,12 +527,18 @@ export interface components {
     };
     ModelCatalogEntry: {
       availableUntil?: string;
-      defaultThinkingLevel?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+      contextWindow?: number;
+      defaultThinkingLevel?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra";
       id: string;
+      inputModalities?: ("text" | "image")[];
+      maxTokens?: number;
+      provider?: string;
+      serviceTiers?: string[];
+      source?: string;
       stage: "release" | "beta" | "dev" | "alpha";
       subtitle: string;
       subtitleKey?: string;
-      thinkingLevels?: ("minimal" | "low" | "medium" | "high" | "xhigh" | "max")[];
+      thinkingLevels?: ("none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra")[];
       title: string;
       titleKey?: string;
     };
@@ -239,6 +546,7 @@ export interface components {
       models: components["schemas"]["ModelCatalogEntry"][];
       tools: components["schemas"]["ComposerToolEntry"][];
     };
+    ModelReasoningLevel: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra";
     PasswordResetCompleteRequest: {
       code: string;
       password: string;
@@ -284,12 +592,27 @@ export interface components {
       ok: boolean;
       request_id?: string | null;
     };
+    ProviderRetryPolicy: {
+      backoff: {
+        initialDelayMs: number;
+        jitterRatio: number;
+        maxDelayMs: number;
+      };
+      maxRetries: number;
+      mode: "normal" | "always";
+      retryableCodes: ("EMPTY_RESPONSE" | "RATE_LIMIT" | "SERVER" | "TIMEOUT" | "TRANSPORT")[];
+    };
     SessionHistoryResponse: {
       history: components["schemas"]["ChatMessage"][];
       is_owner?: boolean;
       is_public?: boolean;
       mind?: components["schemas"]["Mind"] | null;
+      model_selection?: components["schemas"]["ChatModelSelectionView"];
       ok: boolean;
+      project?: {
+        id: string;
+        name: string;
+      } | null;
       public_id?: string | null;
       read_only?: boolean;
       request_id?: string | null;
@@ -316,6 +639,7 @@ export interface components {
       session_id: string;
       source?: "web" | "telegram_private" | "telegram_group" | "telegram_guest" | "telegram_inline";
       title: string;
+      workspace_id?: string | null;
     };
     SynthesizeRequest: {
       text: string;
@@ -325,6 +649,17 @@ export interface components {
       request_id?: string | null;
       segments: (string | Record<string, unknown>)[];
       [key: string]: unknown;
+    };
+    TelegramAgentSettings: {
+      bot: string | null;
+      businessConnected: boolean;
+      canReply: boolean;
+      linked: boolean;
+      mind_id: string | null;
+      model: string;
+      secretaryMode: "off" | "mentions" | "all";
+      serviceTier: string;
+      webSearch: boolean;
     };
     TelegramLinkResponse: {
       expires_in: number;
@@ -363,10 +698,492 @@ export interface components {
       telegram_bot_ready?: boolean;
       username: string;
     };
+    WorkspaceArtifactResult: {
+      file: {
+        created_at: string;
+        download_url: string;
+        id: string;
+        mime_type: string;
+        name: string;
+        size: number;
+      };
+    };
+    WorkspacePatchView: {
+      applied_at: string | null;
+      changes: ({
+        destination?: string;
+        kind: "add" | "update" | "move" | "delete";
+        path: string;
+        spreadsheet_formulas_escaped?: boolean;
+      })[];
+      id: string;
+      patch: string;
+    };
+    WorkspaceProjectFile: {
+      created_at: string;
+      download_url: string;
+      id: string;
+      mime_type: string;
+      name: string;
+      size: number;
+    };
   };
 }
 
 export interface paths {
+  "/api/agent/codex": {
+    delete: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              connected: boolean;
+            };
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    get: {
+      parameters: {
+        query: {
+          refresh?: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["CodexStatus"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    post: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              code: string;
+              url: string;
+            };
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/agent/codex/cancel": {
+    post: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok?: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+  "/api/agent/providers": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentProviderConnections"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/agent/providers/{provider}": {
+    delete: {
+      parameters: {
+        path: {
+          provider: string;
+        };
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["AgentProviderWriteCondition"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentProviderConnections"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    post: {
+      parameters: {
+        path: {
+          provider: string;
+        };
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["AgentProviderWriteCondition"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentProviderConnections"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    put: {
+      parameters: {
+        path: {
+          provider: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            baseUrl?: string;
+            catalogMode?: components["schemas"]["AgentProviderCatalogMode"];
+            expectedRevision?: components["schemas"]["AgentProviderRevision"];
+            key?: string;
+            models?: components["schemas"]["AgentProviderModel"][];
+            name?: string;
+            protocol?: "openai-completions" | "openai-responses" | "anthropic-messages" | "google-generative-ai";
+            retryPolicy?: components["schemas"]["ProviderRetryPolicy"];
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentProviderConnections"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/agent/providers/{provider}/discover": {
+    post: {
+      parameters: {
+        path: {
+          provider: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            baseUrl?: string;
+            expectedRevision?: components["schemas"]["AgentProviderRevision"];
+            key?: string;
+            name?: string;
+            protocol?: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              models: components["schemas"]["AgentProviderModel"][];
+              ok: boolean;
+            };
+          };
+        };
+        "401": {
+        };
+        "409": {
+        };
+      };
+    };
+  };
+  "/api/agent/runtime": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentRuntimeSettings"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    put: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AgentRuntimeSettings"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentRuntimeSettings"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/agent/skills": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillCatalog"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            document: components["schemas"]["AgentSkillDocument"];
+            replace?: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillResult"];
+          };
+        };
+        "201": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillResult"];
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+      };
+    };
+  };
+  "/api/agent/skills/unpack": {
+    post: {
+      requestBody: {
+        content: {
+          "multipart/form-data": {
+            package: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              markdown: string;
+              resources: Record<string, string>;
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "413": {
+        };
+      };
+    };
+  };
+  "/api/agent/skills/{skill_id}": {
+    delete: {
+      parameters: {
+        path: {
+          skill_id: string;
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    get: {
+      parameters: {
+        path: {
+          skill_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillInspectionResult"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          skill_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            enabled: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillResult"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
+  "/api/agent/telegram": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["TelegramAgentSettings"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    put: {
+      requestBody: {
+        content: {
+          "application/json": {
+            mind_id?: string | null;
+            model?: string;
+            secretaryMode?: "off" | "mentions" | "all";
+            serviceTier?: string;
+            webSearch?: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["TelegramAgentSettings"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/agent/web-research": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentWebResearchSettings"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    put: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AgentWebResearchUpdate"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentWebResearchSettings"];
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
   "/api/auth/apple": {
     post: {
       requestBody: {
@@ -617,6 +1434,302 @@ export interface paths {
       };
     };
   };
+  "/api/automations": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              request_id?: string;
+              tasks: components["schemas"]["AutomationTask"][];
+            };
+          };
+        };
+        "401": {
+        };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AutomationCreate"];
+        };
+      };
+      responses: {
+        "201": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              request_id?: string;
+              task: components["schemas"]["AutomationTask"];
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "403": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+        "429": {
+        };
+      };
+    };
+  };
+  "/api/automations/proposals/{proposal_id}": {
+    get: {
+      parameters: {
+        path: {
+          proposal_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              proposal: components["schemas"]["AutomationProposal"];
+              request_id?: string;
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "410": {
+        };
+      };
+    };
+  };
+  "/api/automations/proposals/{proposal_id}/apply": {
+    post: {
+      parameters: {
+        path: {
+          proposal_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              request_id?: string;
+              result: {
+                removed?: boolean;
+                run?: components["schemas"]["AutomationRun"];
+                task_id?: string;
+              };
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "403": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+        "410": {
+        };
+        "429": {
+        };
+      };
+    };
+  };
+  "/api/automations/{task_id}": {
+    delete: {
+      parameters: {
+        path: {
+          task_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              deleted: boolean;
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "429": {
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          task_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AutomationUpdate"];
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              request_id?: string;
+              task: components["schemas"]["AutomationTask"];
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "403": {
+        };
+        "404": {
+        };
+        "429": {
+        };
+      };
+    };
+  };
+  "/api/automations/{task_id}/runs": {
+    get: {
+      parameters: {
+        path: {
+          task_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              request_id?: string;
+              runs: components["schemas"]["AutomationRun"][];
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    post: {
+      parameters: {
+        path: {
+          task_id: string;
+        };
+      };
+      responses: {
+        "202": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              request_id?: string;
+              run: components["schemas"]["AutomationRun"];
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+        "429": {
+        };
+      };
+    };
+  };
+  "/api/chat-references": {
+    get: {
+      parameters: {
+        query: {
+          q?: string;
+          session_id?: string;
+          workspace_id?: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatReferenceCandidates"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/chatgpt": {
+    delete: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              revoked: boolean;
+            };
+          };
+        };
+      };
+    };
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatGPTAccount"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/chatgpt/connect": {
+    post: {
+      requestBody?: {
+        content: {
+          "application/json": {
+            different_account?: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              url: string;
+            };
+          };
+        };
+      };
+    };
+  };
   "/api/models": {
     get: {
       responses: {
@@ -624,6 +1737,145 @@ export interface paths {
           content: {
             "application/json": components["schemas"]["ModelCatalogResponse"];
           };
+        };
+      };
+    };
+  };
+  "/api/plugins": {
+    get: {
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              builtins: components["schemas"]["AgentBuiltinPlugin"][];
+              custom: components["schemas"]["AgentCustomPlugin"][];
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "401": {
+        };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["AgentPluginManifest"];
+        };
+      };
+      responses: {
+        "201": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              plugin: components["schemas"]["AgentCustomPlugin"];
+              request_id?: string;
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "409": {
+        };
+        "429": {
+        };
+      };
+    };
+  };
+  "/api/plugins/builtin/{skill_id}": {
+    put: {
+      parameters: {
+        path: {
+          skill_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            enabled: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              enabled: boolean;
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "429": {
+        };
+      };
+    };
+  };
+  "/api/plugins/{plugin_id}": {
+    delete: {
+      parameters: {
+        path: {
+          plugin_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              deleted: boolean;
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "429": {
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          plugin_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            enabled?: boolean;
+            manifest?: components["schemas"]["AgentPluginManifest"];
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              ok: boolean;
+              plugin: components["schemas"]["AgentCustomPlugin"];
+              request_id?: string;
+            };
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "429": {
         };
       };
     };
@@ -742,6 +1994,530 @@ export interface paths {
       };
     };
   };
+  "/api/workspaces": {
+    get: {
+      responses: {
+        "200": {
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            name?: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "201": {
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/chats/{session_id}": {
+    put: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            workspace_id?: string | null;
+          };
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}": {
+    delete: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    get: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              files: components["schemas"]["WorkspaceProjectFile"][];
+              id: string;
+              instructions: string;
+              name: string;
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            name?: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/chats": {
+    post: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            title?: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "201": {
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/files": {
+    post: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "multipart/form-data": {
+            files: string[];
+          };
+        };
+      };
+      responses: {
+        "201": {
+          content: {
+            "application/json": {
+              files: components["schemas"]["WorkspaceProjectFile"][];
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "409": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/files/from-chat": {
+    post: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            artifact_path: string;
+            session_id: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["WorkspaceArtifactResult"];
+          };
+        };
+        "201": {
+          content: {
+            "application/json": components["schemas"]["WorkspaceArtifactResult"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/files/{file_id}": {
+    delete: {
+      parameters: {
+        path: {
+          file_id: string;
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              deleted: boolean;
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    get: {
+      parameters: {
+        path: {
+          file_id: string;
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/octet-stream": string;
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/instructions": {
+    put: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            instructions: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              instructions: string;
+              ok: boolean;
+              request_id?: string;
+            };
+          };
+        };
+        "400": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "401": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "404": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "409": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        "429": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/patches/{proposal_id}": {
+    get: {
+      parameters: {
+        path: {
+          proposal_id: string;
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["WorkspacePatchView"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "410": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/patches/{proposal_id}/apply": {
+    post: {
+      parameters: {
+        path: {
+          proposal_id: string;
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["WorkspacePatchView"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+        "410": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/skills": {
+    get: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillCatalog"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    post: {
+      parameters: {
+        path: {
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            document: components["schemas"]["AgentSkillDocument"];
+            replace?: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillResult"];
+          };
+        };
+        "201": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillResult"];
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+      };
+    };
+  };
+  "/api/workspaces/{workspace_id}/skills/{skill_id}": {
+    delete: {
+      parameters: {
+        path: {
+          skill_id: string;
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    get: {
+      parameters: {
+        path: {
+          skill_id: string;
+          workspace_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillInspectionResult"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    patch: {
+      parameters: {
+        path: {
+          skill_id: string;
+          workspace_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": {
+            enabled: boolean;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["AgentSkillResult"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
   "/chat": {
     post: {
       requestBody: {
@@ -776,6 +2552,37 @@ export interface paths {
           content: {
             "application/json": components["schemas"]["ErrorResponse"];
           };
+        };
+      };
+    };
+  };
+  "/chat/cancel": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": {
+            cancel_token: string;
+            request_id: string;
+            session_id: string;
+          };
+        };
+      };
+      responses: {
+        "202": {
+          content: {
+            "application/json": {
+              accepted: boolean;
+              ok: boolean;
+            };
+          };
+        };
+        "400": {
+        };
+        "403": {
+        };
+        "429": {
+        };
+        "503": {
         };
       };
     };
@@ -909,6 +2716,65 @@ export interface paths {
       };
     };
   };
+  "/sessions/{session_id}/compact": {
+    post: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            model?: string;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              compacted_messages: number;
+              ok: boolean;
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+        "409": {
+        };
+        "422": {
+        };
+        "502": {
+        };
+      };
+    };
+  };
+  "/sessions/{session_id}/context-checkpoint": {
+    get: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": {
+              checkpoint: components["schemas"]["ChatContextCheckpoint"] | null;
+              ok: boolean;
+            };
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+  };
   "/sessions/{session_id}/history": {
     get: {
       parameters: {
@@ -936,6 +2802,57 @@ export interface paths {
           content: {
             "application/json": components["schemas"]["ErrorResponse"];
           };
+        };
+      };
+    };
+  };
+  "/sessions/{session_id}/model-selection": {
+    get: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatModelSelectionView"];
+          };
+        };
+        "401": {
+        };
+        "404": {
+        };
+      };
+    };
+    put: {
+      parameters: {
+        path: {
+          session_id: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ChatModelPreference"] | {
+            expected_user_id?: number;
+          };
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["ChatModelSelectionView"];
+          };
+        };
+        "400": {
+        };
+        "401": {
+        };
+        "403": {
+        };
+        "404": {
+        };
+        "409": {
         };
       };
     };

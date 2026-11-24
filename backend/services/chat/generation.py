@@ -7,6 +7,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import after_this_request
 
@@ -15,6 +16,7 @@ from backend.config import ALLOW_GUEST_CHATS_SAVE, CHAT_MAX_VARIANTS_PER_TURN
 from backend.db.models import UserChatHistory, UserSettings
 from backend.errors import ApiError
 from backend.responses import logger
+from backend.services.agent_plugins import disabled_skills
 from backend.services.chat.attachments import (
     build_model_message_for_history,
     build_user_message_parts,
@@ -22,6 +24,7 @@ from backend.services.chat.attachments import (
     persist_pending_uploads,
     stored_attachment_parts,
 )
+from backend.services.chat.cancellation import generation_scope
 from backend.services.chat.conversation import conversation_context_for_operation, normalize_message
 from backend.services.chat.history import (
     chat_file_exists,
@@ -32,19 +35,29 @@ from backend.services.chat.history import (
     persist_chat_operation,
     resolve_session_identifier,
 )
+from backend.services.chat.model_selection import next_model_selection, used_model_selection
 from backend.services.chat.search import (
     attach_web_search_context,
     extract_web_sources,
+)
+from backend.services.chat.session_references import (
+    capture_references,
+    latest_references,
+    parse_reference_ids,
+    reference_error,
+    reference_target_scope,
 )
 from backend.services.chat.streaming import ChatStream, stream_chat_response
 from backend.services.context_usage import normalize_context_usage
 from backend.services.files import restore_stored_file_for_model
 from backend.services.minds import (
+    require_portable_mind,
     resolve_bound_mind_context_for_chat,
     resolve_mind_context_for_chat,
 )
 from backend.services.model_access import can_user_access_model, get_model_stage, model_exists
 from backend.services.privacy import SERVICE_IMPROVEMENT_SETTING_KEY
+from backend.services.project_conversations import bind_project_chat, verify_project_chat
 from backend.services.tools.canvas_tools import (
     normalize_canvas_textdoc,
     process_canmore_calls,
@@ -201,10 +214,17 @@ def generate_chat(
     db_user_id: int | None,
     remote_addr: str | None,
 ) -> dict[str, Any] | ChatImage | ChatStream:
+    disabled = disabled_skills(db_user_id)
+    order = time.time_ns()
     raw_request_id = str(user_data.get("request_id") or uuid.uuid4().hex).strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", raw_request_id):
         raise ApiError("Invalid request ID", status=400, code="invalid_request_id")
     user_data["request_id"] = raw_request_id
+    if (token := user_data.pop("cancel_token", None)) is not None:
+        scope = generation_scope(db_user_id, session_identifier, raw_request_id, token)
+        if scope is None:
+            raise ApiError("invalid_generation_token", status=400, code="invalid_generation_token")
+        user_data["_cancel_scope"] = scope
 
     resolved_session_id, share_entry = resolve_session_identifier(session_identifier)
     if session_identifier.startswith("p_") and share_entry is None:
@@ -213,6 +233,17 @@ def generate_chat(
         if not share_entry.is_public:
             raise ApiError("Chat not found", status=404, code="not_found")
         raise ApiError("Чат доступен только для чтения.", status=403, code="chat_read_only")
+    temporary_chat = _coerce_bool(user_data.get("temporary_chat"))
+    if db_user_id is not None and not temporary_chat and user_data.get("_automation") is not True:
+        user_data["_selection_request_order"] = order
+        if not user_data.get("model") and (choice := next_model_selection(db_user_id, resolved_session_id)):
+            model_name = choice["model"]
+            if not (user_data.get("thinkingLevel") or user_data.get("thinking_level")) and "thinkingLevel" in choice:
+                user_data["thinkingLevel"] = choice["thinkingLevel"]
+            if not user_data.get("serviceTier") and "serviceTier" in choice:
+                user_data["serviceTier"] = choice["serviceTier"]
+    if model_name == "demo_image" and model_name in disabled:
+        raise ApiError("tool_unavailable", status=403, code="tool_unavailable")
     if not model_exists(model_name):
         raise ApiError(
             f"Model '{model_name}' not supported.", status=400, code="model_not_supported"
@@ -225,6 +256,17 @@ def generate_chat(
             code="model_access_denied",
             extra={"model": model_name, "stage": stage},
         )
+    speed = user_data.get("serviceTier") or "standard"
+    if speed not in ("standard", "fast", "ultrafast"):
+        raise ApiError("model_speed_unavailable", status=400, code="model_speed_unavailable")
+    if speed != "standard":
+        from backend.services.model_access import list_accessible_models
+
+        model_caps = next(
+            (item for item in list_accessible_models(db_user_id) if item["id"] == model_name), {}
+        )
+        if speed not in model_caps.get("serviceTiers", []):
+            raise ApiError("model_speed_unavailable", status=400, code="model_speed_unavailable")
 
     user_data["selected_tools"] = validate_selected_tools(
         user_data.get("selected_tools"), db_user_id
@@ -241,6 +283,13 @@ def generate_chat(
     operation = str(user_data.get("operation") or "send").strip().lower()
     if operation not in CHAT_OPERATIONS:
         raise ApiError("Invalid chat operation", status=400, code="invalid_chat_operation")
+    workspace_id = user_data.pop("workspace_id", None)
+    if workspace_id is not None:
+        verify_project_chat(db_user_id, workspace_id, resolved_session_id)
+        if temporary_chat or operation != "send" or user_data.get("_automation"):
+            raise ApiError(
+                "workspace_chat_scope_changed", status=409, code="workspace_chat_scope_changed"
+            )
     target_message_id = _validated_message_id(
         user_data.get("target_message_id"), required=operation != "send"
     )
@@ -250,7 +299,6 @@ def generate_chat(
     assistant_message_id = (
         _validated_message_id(user_data.get("assistant_message_id")) or f"a_{uuid.uuid4().hex}"
     )
-    temporary_chat = _coerce_bool(user_data.get("temporary_chat"))
     allow_guest_file_persistence = _allow_guest_file_persistence(resolved_session_id, db_user_id)
 
     persisted_graph = load_chat_graph(
@@ -329,9 +377,35 @@ def generate_chat(
         db_user_id,
     )
     if mind_context:
+        if model_name.startswith(("key/", "codex/", "chatgpt/")):
+            require_portable_mind(mind_context, db_user_id)
         user_data["active_mind"] = mind_context
         user_data["mind_id"] = mind_context["public_id"]
+        allowed_skills = mind_context.get("skill_ids")
+        if allowed_skills is not None and set(user_data["selected_tools"]).difference(
+            allowed_skills
+        ):
+            raise ApiError("tool_unavailable", status=403, code="tool_unavailable")
 
+    user_data["model"] = model_name
+    user_data["session_id"] = resolved_session_id
+    if db_user_id is not None and not (
+        temporary_chat or user_data.get("_automation") or (share_entry and share_entry.is_public)
+    ):
+        meta = user_data.get("meta")
+        zone = meta.get("time_zone") if isinstance(meta, dict) else None
+        if not isinstance(zone, str) or not re.fullmatch(r"[A-Za-z0-9_+/-]{1,80}", zone):
+            zone = "UTC"
+        try:
+            ZoneInfo(zone)
+        except (ValueError, ZoneInfoNotFoundError):
+            zone = "UTC"
+        user_data["_schedule_origin"] = {
+            "session_id": resolved_session_id,
+            "request_id": raw_request_id,
+            "model": model_name,
+            "zone": zone,
+        }
     model_func = get_model_function(model_name)
     if not model_func:
         raise ApiError(
@@ -340,6 +414,7 @@ def generate_chat(
     is_streaming_model = inspect.isgeneratorfunction(model_func)
     original_user_message = str(user_data.get("message") or "")
     inherited_attachment_parts: list[dict[str, Any]] = []
+    inherited_references = []
     if operation == "regenerate" and not temporary_chat:
         parent_user = next(
             (
@@ -357,8 +432,31 @@ def generate_chat(
             )
         original_user_message = _stored_message_text(parent_user)
         inherited_attachment_parts = stored_attachment_parts(parent_user)
+        inherited_references = parent_user.get("chat_references", [])
     elif operation == "edit" and not temporary_chat:
         inherited_attachment_parts = stored_attachment_parts(target_message)
+        inherited_references = (target_message or {}).get("chat_references", [])
+
+    raw_references = user_data.pop("chat_references", None)
+    current_ids = parse_reference_ids(raw_references)
+    references_allowed = bool(
+        db_user_id and not temporary_chat and not (share_entry and share_entry.is_public)
+        and (not mind_context or mind_context.get("owner_id") == db_user_id)
+        and not any(user_data.get(key) for key in (
+            "_automation", "telegram_context", "external_telegram", "telegram_agent"
+        ))
+        and is_streaming_model and model_name not in {"demo_image", "mindart"}
+    )
+    if current_ids and (not references_allowed or operation == "regenerate"):
+        raise reference_error("chat_reference_private_only", 400)
+    current_references = []
+    if references_allowed:
+        if current_ids:
+            scope = reference_target_scope(db_user_id, resolved_session_id, workspace_id)
+            current_references = capture_references(db_user_id, resolved_session_id, scope, current_ids)
+        elif raw_references is None:
+            current_references = inherited_references
+        user_data["_session_references"] = latest_references(current_references, history)
 
     restored_inherited_files: list[dict[str, Any]] = []
     if operation in {"regenerate", "edit"} and not temporary_chat:
@@ -391,14 +489,30 @@ def generate_chat(
                 cleanup_temporary_uploads({"files": uploaded_files_for_history})
             return response
 
+    if workspace_id is not None:
+        bind_project_chat(db_user_id, workspace_id, resolved_session_id)
+        user_data["_workspace_scope"] = workspace_id
+
     user_data["message"] = original_user_message
 
     user_data["history"] = history
     user_data["history_is_canonical"] = not temporary_chat
+    user_data["_context_is_private_web"] = bool(
+        db_user_id is not None and not temporary_chat and not (share_entry and share_entry.is_public)
+    )
     user_data["tool_rate_key"] = (
         f"user_{db_user_id}" if db_user_id is not None else f"guest_{remote_addr or 'unknown'}"
     )
     auto_web_search, privacy_controls = _load_chat_preferences(db_user_id)
+    if user_data.get("_automation") is True:
+        auto_web_search = False
+    if "web" in disabled or (
+        mind_context
+        and mind_context.get("skill_ids") is not None
+        and "web" not in mind_context["skill_ids"]
+    ):
+        user_data["webSearch"] = False
+        auto_web_search = False
     user_data["privacy"] = privacy_controls
     user_data["temporary_chat"] = temporary_chat
     user_data["autoWebSearch"] = auto_web_search
@@ -414,6 +528,7 @@ def generate_chat(
                 "role": "user",
                 "parts": user_message_parts,
                 "composer_content": user_data.get("composer_content"),
+                "chat_references": current_references,
                 "request_id": raw_request_id,
             }
         )
@@ -439,7 +554,12 @@ def generate_chat(
             newly_uploaded_files=uploaded_files_for_history,
         )
 
-    attach_web_search_context(user_data, original_user_message, auto_enabled=auto_web_search)
+    if "web" not in disabled and (
+        user_data.get("_automation") is not True or user_data.get("webSearch")
+    ):
+        attach_web_search_context(
+            user_data, original_user_message, auto_enabled=auto_web_search, owner=db_user_id
+        )
     model_output = model_func(db_user_id, user_data)
     web_sources = extract_web_sources(user_data)
     canvas_textdoc = normalize_canvas_textdoc(user_data.get("canvas_textdoc"))
@@ -498,6 +618,9 @@ def generate_chat(
             user_id=db_user_id,
             allow_guest_file_persistence=allow_guest_file_persistence,
             mind_id=mind_context.get("id") if mind_context else None,
+            require_existing=user_data.get("_automation") is True,
+            workspace_scope=workspace_id,
+            selection=used_model_selection(model_name, user_data),
         )
 
     direct_image_response = _maybe_direct_image(model_output)

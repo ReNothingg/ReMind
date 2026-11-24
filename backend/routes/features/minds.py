@@ -125,13 +125,16 @@ def register_mind_routes(api_bp):
         if not isinstance(data, dict):
             raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
 
-        fields = _payload_to_mind_fields(data)
+        fields = _payload_to_mind_fields(data, owner=viewer_id)
         mind = Mind(
             public_id=_generate_public_id(),
             user_id=viewer_id,
             name=fields["name"],
             description=fields["description"],
             instructions=fields["instructions"],
+            skill_ids=fields.get("skill_ids"),
+            allow_external_use=fields.get("allow_external_use", False),
+            custom_skills=fields.get("custom_skills"),
             category=fields["category"],
             visibility=fields["visibility"],
             is_verified=False,
@@ -166,8 +169,17 @@ def register_mind_routes(api_bp):
         if not isinstance(data, dict):
             raise ApiError("Invalid JSON payload", status=400, code="invalid_json")
 
-        fields = _payload_to_mind_fields(data, partial=True)
-        for key in ("name", "description", "instructions", "category", "visibility"):
+        fields = _payload_to_mind_fields(data, partial=True, owner=viewer_id)
+        for key in (
+            "name",
+            "description",
+            "instructions",
+            "category",
+            "visibility",
+            "skill_ids",
+            "custom_skills",
+            "allow_external_use",
+        ):
             if key in fields:
                 setattr(mind, key, fields[key])
         if "starters" in fields:

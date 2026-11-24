@@ -30,6 +30,7 @@ from backend.observability.request_context import export_prometheus_metrics
 from backend.responses import logger, make_error
 from backend.routes.api_errors import api_error_boundary
 from backend.services.model_access import list_accessible_models
+from backend.services.project_conversations import WORKSPACE_ID
 from backend.services.tools.composer_tools import composer_tool_catalog
 
 
@@ -151,6 +152,9 @@ def register_system_routes(api_bp):
     def root_index():
         return send_from_directory(current_app.static_folder, "index.html")
 
+    @api_bp.route("/workspace")
+    @api_bp.route("/automations")
+    @api_bp.route("/plugins")
     @api_bp.route("/minds")
     @api_bp.route("/minds/<path:anything>")
     def spa_minds_route(anything=None):
@@ -170,6 +174,14 @@ def register_system_routes(api_bp):
     @api_bp.route("/c/<path:anything>")
     def spa_chat_route(anything):
         return send_from_directory(current_app.static_folder, "index.html")
+
+    @api_bp.route("/projects/<workspace_id>", strict_slashes=False)
+    def spa_project_route(workspace_id):
+        if WORKSPACE_ID.fullmatch(workspace_id) is None:
+            return _operational_not_found()
+        response = send_from_directory(current_app.static_folder, "index.html")
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
 
     @api_bp.route("/openapi.json", methods=["GET"])
     @api_error_boundary("openapi_spec_failed")

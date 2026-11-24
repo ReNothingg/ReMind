@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.ai_engine.errors import ProviderRequestError
+
 GEMINI_CONTEXT_LIMIT = 1_048_576
 TOKEN_FIELDS = ("input_tokens", "system_tokens", "tool_tokens", "message_tokens", "context_limit")
 
@@ -16,6 +18,10 @@ def _weight(value: Any) -> int:
     if isinstance(value, (list, tuple)):
         return sum(_weight(item) for item in value)
     if isinstance(value, dict):
+        if value.get("type") in ("image", "document", "input_image", "input_file", "image_url"):
+            return 768
+        if isinstance(value.get("inline_data"), dict) and value["inline_data"].get("data"):
+            return 768
         return sum(
             _weight(key) + _weight(item)
             for key, item in value.items()
@@ -30,6 +36,11 @@ def context_weights(
     system_prompt: str, declarations: list[dict], messages: Any
 ) -> tuple[int, int, int]:
     return _weight(system_prompt), _weight(declarations), max(1, _weight(messages))
+
+
+def enforce_model_context(weights, context_limit, output_limit=None):
+    if context_limit is not None and sum(weights) + (output_limit or 0) > context_limit:
+        raise ProviderRequestError("model_context_exceeded", 422)
 
 
 def build_context_usage(

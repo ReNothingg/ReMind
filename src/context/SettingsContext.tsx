@@ -10,6 +10,7 @@ const REMOVED_SETTING_KEYS = new Set([
   'autoscroll',
   'renderUserMarkdown',
   'autoSave',
+  'agentRuntime',
 ]);
 
 const detectInterfaceLanguage = () => {
@@ -43,6 +44,12 @@ const detectInterfaceLanguage = () => {
 
 const DEFAULT_SETTINGS = {
   theme: 'system',
+  agentSelection: {
+    owner: 0,
+    model: '',
+    speeds: {} as Record<string, string>,
+    efforts: {} as Record<string, string>,
+  },
   accentColor: 'white',
   renderMarkdown: true,
   codeWrap: true,

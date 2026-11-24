@@ -331,7 +331,7 @@ html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
 }
 
 @media (min-width: 1025px) {
-  .ui-toolbar-navigation-group.is-authenticated {
+  .ui-toolbar-navigation-group.is-authenticated:not(.has-active-project) {
     display: none;
   }
 }
@@ -377,6 +377,13 @@ html .ui-landing-center-stack .input-wrapper.ui-composer-shell {
   transition:
     left var(--motion-layout),
     right var(--motion-layout);
+}
+
+@media (min-width: 1025px) {
+  .ui-toolbar-shell.ui-toolbar-with-project {
+    left: calc(var(--app-rail-offset) + var(--spacing-unit) * 3 + env(safe-area-inset-left));
+    transition-property: right;
+  }
 }
 
 .ui-toolbar-group,

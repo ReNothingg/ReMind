@@ -23,6 +23,7 @@ from backend.config import (
     SECRET_KEY,
 )
 from backend.db.models import ChatShare, UserChatHistory, db
+from backend.errors import ApiError
 from backend.responses import logger
 from backend.services.chat.conversation import (
     apply_chat_operation,
@@ -422,7 +423,14 @@ def persist_chat_operation(
     user_id: int | None = None,
     allow_guest_file_persistence: bool = False,
     mind_id: int | None = None,
+    require_existing: bool = False,
+    workspace_scope: str | None = None,
+    provider_replay=None,
+    selection=None,
 ) -> list[dict]:
+    from backend.services.chat.model_selection import record_model_selection
+    from backend.services.chat.provider_replay import save_replay_cache
+
     model_message = {**model_message, "model_id": model_name}
     safe_session_id = secure_filename(str(session_id))
     if not safe_session_id:
@@ -457,10 +465,22 @@ def persist_chat_operation(
         if user_id is not None and isinstance(user_id, int):
             for attempt in range(3):
                 try:
-                    chat = UserChatHistory.query.filter_by(
-                        user_id=user_id, session_id=session_id
-                    ).first()
+                    chat = (
+                        UserChatHistory.query.filter_by(user_id=user_id, session_id=session_id)
+                        .populate_existing()
+                        .first()
+                    )
+                    if workspace_scope is not None and (
+                        not chat or chat.workspace_id != workspace_scope or chat.source != "web"
+                    ):
+                        raise ApiError(
+                            "workspace_chat_scope_changed",
+                            status=409,
+                            code="workspace_chat_scope_changed",
+                        )
                     if not chat:
+                        if require_existing:
+                            raise ValueError("automation_target_unavailable")
                         seed = [user_message, model_message] if user_message else [model_message]
                         db_graph = apply_chat_operation(
                             [],
@@ -478,6 +498,9 @@ def persist_chat_operation(
                         )
                         chat.set_messages(db_graph)
                         db.session.add(chat)
+                        db.session.flush()
+                        record_model_selection(chat, selection)
+                        save_replay_cache(chat, db_graph, model_message.get("id"), provider_replay)
                         db.session.commit()
                         result_graph = db_graph
                         break
@@ -503,14 +526,35 @@ def persist_chat_operation(
                     }
                     if mind_id is not None:
                         values["mind_id"] = mind_id
-                    updated = (
-                        UserChatHistory.query.filter_by(id=chat.id)
-                        .filter(UserChatHistory.messages_data == previous_messages_data)
-                        .update(values, synchronize_session=False)
+                    update_query = UserChatHistory.query.filter_by(id=chat.id).filter(
+                        UserChatHistory.messages_data == previous_messages_data
                     )
+                    if workspace_scope is not None:
+                        public_link = db.select(ChatShare.id).where(
+                            ChatShare.user_id == user_id,
+                            ChatShare.session_id == session_id,
+                            ChatShare.is_public.is_(True),
+                        )
+                        update_query = update_query.filter(
+                            UserChatHistory.workspace_id == workspace_scope, ~public_link.exists()
+                        )
+                    updated = update_query.update(values, synchronize_session=False)
                     if updated != 1:
                         db.session.rollback()
+                        if (
+                            workspace_scope is not None
+                            and ChatShare.query.filter_by(
+                                user_id=user_id, session_id=session_id, is_public=True
+                            ).first()
+                        ):
+                            raise ApiError(
+                                "workspace_chat_scope_changed",
+                                status=409,
+                                code="workspace_chat_scope_changed",
+                            )
                         continue
+                    record_model_selection(chat, selection)
+                    save_replay_cache(chat, db_graph, model_message.get("id"), provider_replay)
                     db.session.commit()
                     result_graph = db_graph
                     break

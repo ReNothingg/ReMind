@@ -354,6 +354,7 @@ VALIDATE_USER_AGENT: bool = os.getenv("VALIDATE_USER_AGENT", "True").lower() in 
 )
 
 BYPASS_USER_AGENT_VALIDATION_ROUTES = [
+    r"^/internal/agent/",
     r"^/health",
     r"^/metrics",
     r"^/openapi\\.json$",

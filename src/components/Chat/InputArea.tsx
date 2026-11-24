@@ -5,6 +5,7 @@ import {
 } from '../../features/chat/components/ComposerTextEditor';
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MessageSquarePlus, X } from 'lucide-react';
 import { useFileHandler } from '../../hooks/useFileHandler';
 import FilePreviewCard from '../UI/FilePreviewCard';
 import Pet, { type PetState } from '../UI/Pet';
@@ -17,8 +18,9 @@ import { cn } from '../../utils/cn';
 import { imageFilesFromClipboard } from '../../utils/clipboardFiles';
 import { CHAT_UPLOAD_ACCEPT, CHAT_UPLOAD_MAX_TOTAL_BYTES } from '../../utils/constants';
 import ModelSelector from '../../features/chat/components/ModelSelector';
+import ChatReferencePicker, { type ChatReference } from '../../features/chat/ChatReferencePicker';
 import { isImageToolModel, type ChatModel } from '../../features/chat/modelSelection';
-import type { ComposerToolOption, ThinkingLevel } from '../../services/api';
+import type { ComposerToolOption, ModelSpeed, ThinkingLevel } from '../../services/api';
 import {
   deleteRemoteDraft,
   getDeviceId,
@@ -42,12 +44,20 @@ const InputArea = ({
   variant = 'default',
   showDynamicWarning = false,
   currentSessionId = null,
+  projectDraftId = null as string | null,
+  referenceProjectId = null as string | null,
+  allowChatReferences = false,
+  chatReferences = [] as ChatReference[],
+  onChatReferencesChange = undefined as ((choices: ChatReference[]) => void) | undefined,
   currentModel = '',
+  modelUnavailable = false,
   contextUsage = null as unknown,
   models = [] as ChatModel[],
   availableTools = [] as ComposerToolOption[],
   onModelChange = undefined,
-  thinkingLevel = 'medium' as ThinkingLevel,
+  serviceTier = 'standard' as ModelSpeed,
+  onServiceTierChange = undefined,
+  thinkingLevel = null as ThinkingLevel | null,
   onThinkingLevelChange = undefined,
 }) => {
   const [text, setText] = useState(initialPrompt || '');
@@ -59,6 +69,7 @@ const InputArea = ({
     null
   );
   const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [referencePicker, setReferencePicker] = useState('');
   const toolMenuId = useId();
   const composerRef = useRef<HTMLElement | null>(null);
 
@@ -68,11 +79,13 @@ const InputArea = ({
   const draftLoadedRef = useRef(false);
   const [draftLoadRevision, setDraftLoadRevision] = useState(0);
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { settings } = useSettings();
   const { t } = useTranslation();
 
   const fileUploadsEnabled = isAuthenticated && !isReadOnly;
+  const referencesEnabled = isAuthenticated && !isReadOnly && allowChatReferences && !isImageToolModel({ id: currentModel });
+  const referenceScope = `${user?.id || ''}:${projectDraftId || currentSessionId || 'draft'}:${referenceProjectId || ''}`;
   const automaticWebSearch = !!settings.automaticWebSearch;
 
   const tools = [
@@ -155,7 +168,10 @@ const InputArea = ({
     });
     return () => cancelAnimationFrame(frame);
   }, [currentSessionId]);
-  const draftStorageKey = `remind_chat_draft_v2:${currentSessionId || 'new'}`;
+  const draftStorageKey = projectDraftId
+    ? `remind_chat_draft_v2:project:${user?.id || 0}:${projectDraftId}`
+    : `remind_chat_draft_v2:${currentSessionId || 'new'}`;
+  const syncRemoteDraft = isAuthenticated && !projectDraftId;
 
   useEffect(() => {
     let cancelled = false;
@@ -181,7 +197,7 @@ const InputArea = ({
       draftLoadedRef.current = true;
       setDraftLoadRevision((revision) => revision + 1);
     };
-    if (!isAuthenticated || !navigator.onLine) {
+    if (!syncRemoteDraft || !navigator.onLine) {
       queueMicrotask(finishLoading);
       return () => {
         cancelled = true;
@@ -205,14 +221,14 @@ const InputArea = ({
     return () => {
       cancelled = true;
     };
-  }, [currentSessionId, draftStorageKey, initialPrompt, isAuthenticated]);
+  }, [currentSessionId, draftStorageKey, initialPrompt, syncRemoteDraft]);
 
   useEffect(() => {
     if (!draftLoadedRef.current) return;
     let cancelled = false;
     const updatedAt = Date.now();
     localStorage.setItem(draftStorageKey, JSON.stringify({ content: text, updatedAt }));
-    if (!isAuthenticated || !navigator.onLine) return;
+    if (!syncRemoteDraft || !navigator.onLine) return;
     const timer = window.setTimeout(() => {
       void saveRemoteDraft(text, currentSessionId, draftRevisionRef.current)
         .then(async (draft) => {
@@ -231,7 +247,7 @@ const InputArea = ({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [currentSessionId, draftStorageKey, draftLoadRevision, isAuthenticated, text]);
+  }, [currentSessionId, draftStorageKey, draftLoadRevision, syncRemoteDraft, text]);
 
   useEffect(() => {
     if (!initialPrompt) {
@@ -294,6 +310,7 @@ const InputArea = ({
     }
 
     const effectiveFiles = fileUploadsEnabled ? files : [];
+    if (modelUnavailable && !(messageText.trim() === '/compact' && !effectiveFiles.length)) return;
     const hasMessageContent = messageText.trim() || effectiveFiles.length > 0 || quotes.length > 0;
     if (!hasMessageContent) return;
 
@@ -309,6 +326,7 @@ const InputArea = ({
       webSearch: manualWebSearchEnabled,
       autoWebSearch: automaticWebSearch,
       composerContent: selectedTools.length ? composerContent : undefined,
+      ...(chatReferences.length ? { chatReferences } : {}),
       tools: [...new Set(selectedTools.map((tool) => tool.id))],
     });
     onInitialPromptConsumed?.();
@@ -318,6 +336,7 @@ const InputArea = ({
     localStorage.removeItem(draftStorageKey);
     if (isAuthenticated && navigator.onLine) void deleteRemoteDraft().catch(() => undefined);
     setQuotes([]);
+    onChatReferencesChange?.([]);
     clearFiles();
   };
 
@@ -640,12 +659,37 @@ const InputArea = ({
         )}
 
         {!isReadOnly && (
-          <div className="ui-composer-status" role={!isLoading && statusLabel ? 'status' : undefined}>
+          <div
+            className="ui-composer-status"
+            role={!isLoading && statusLabel ? 'status' : undefined}
+          >
             <Pet state={statusPet} />
             {statusLabel && <span>{statusLabel}</span>}
           </div>
         )}
         <div className={cn('input-wrapper ui-composer-shell', hasQuotes && 'has-quotes')}>
+          {chatReferences.length > 0 && (
+            <div className="chat-reference-chips" role="group" aria-label={t('chatReferences.title')}>
+              {chatReferences.map((chat) => {
+                const title = chat.title || t('chatReferences.untitled');
+                return (
+                  <div className="chat-reference-chip" key={chat.session_id}>
+                    <MessageSquarePlus size={15} aria-hidden="true" />
+                    <span title={title}>{title}</span>
+                    <button type="button" aria-label={t('chatReferences.remove', { title })}
+                      onClick={() => onChatReferencesChange?.(chatReferences.filter((item) => item.session_id !== chat.session_id))}>
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {referencesEnabled && referencePicker === referenceScope && (
+            <ChatReferencePicker current={variant === 'landing' ? null : currentSessionId}
+              project={referenceProjectId} selected={chatReferences} onChange={(choices) => onChatReferencesChange?.(choices)}
+              onClose={() => setReferencePicker('')} />
+          )}
           {hasQuotes && (
             <div
               id="quotePreviewArea"
@@ -709,6 +753,14 @@ const InputArea = ({
               />
             )}
 
+            {referencesEnabled && (
+              <button type="button" className="chat-reference-toggle ui-composer-icon-button"
+                aria-label={t('chatReferences.title')} title={t('chatReferences.title')}
+                onClick={() => setReferencePicker(referenceScope)}>
+                <MessageSquarePlus size={18} aria-hidden="true" />
+              </button>
+            )}
+
             <div className="composer-editor">
               <ComposerTextEditor
                 ref={textareaRef}
@@ -739,7 +791,7 @@ const InputArea = ({
                     composerRef.current?.querySelector<HTMLElement>('.ui-composer-input-row');
                   if (!row) return;
                   const controls = Array.from(row.children).filter((child) =>
-                    child.matches('.attach-button, .composer-model-selector, .send-button')
+                    child.matches('.attach-button, .chat-reference-toggle, .composer-model-selector, .send-button')
                   );
                   const controlsWidth = controls.reduce(
                     (sum, child) => sum + child.getBoundingClientRect().width,
@@ -800,9 +852,11 @@ const InputArea = ({
               </div>
             )}
 
-            {models.length > 0 && onModelChange && onThinkingLevelChange && (
+            {(models.length > 0 || currentModel) && onModelChange && onThinkingLevelChange && (
               <ModelSelector
                 currentModel={currentModel}
+                serviceTier={serviceTier}
+                onServiceTierChange={onServiceTierChange}
                 contextUsage={contextUsage}
                 contextKey={`${currentSessionId || 'new'}:${currentModel}`}
                 models={models}
@@ -820,10 +874,10 @@ const InputArea = ({
                 hasContent && !isLoading && 'is-ready',
                 sendButtonClass
               )}
-              title={isReadOnly ? t('chat.readOnly') : sendButtonTitle}
+              title={isReadOnly ? t('chat.readOnly') : modelUnavailable && !isLoading ? t('agentSettings.modelUnavailable') : sendButtonTitle}
               aria-label={isLoading ? t('composer.stop') : sendButtonTitle}
               onClick={handleSend}
-              disabled={isReadOnly || (!isLoading && !hasContent)}
+              disabled={isReadOnly || (!isLoading && (!hasContent || (modelUnavailable && messageText.trim() !== '/compact')))}
             ></button>
           </div>
         </div>

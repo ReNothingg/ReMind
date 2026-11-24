@@ -19,6 +19,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libatomic1 \
+    libstdc++6 \
     build-essential \
     libjpeg62-turbo-dev \
     zlib1g-dev \

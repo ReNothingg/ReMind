@@ -12,6 +12,10 @@ export type Mind = {
   description: string;
   instructions?: string;
   starters: string[];
+  allow_external_use?: boolean;
+  skill_ids?: string[] | null;
+  custom_skills?: MindSkill[];
+  custom_skill_names?: string[];
   category: string;
   visibility: MindVisibility;
   is_verified: boolean;
@@ -31,9 +35,14 @@ export type MindPayload = {
   description: string;
   instructions: string;
   starters: string[];
+  allow_external_use?: boolean;
+  skill_ids?: string[] | null;
+  custom_skills?: MindSkill[];
   category: string;
   visibility: MindVisibility;
 };
+
+export type MindSkill = { name: string; instructions: string };
 
 export type MindListResponse = {
   minds?: Mind[];

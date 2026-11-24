@@ -296,7 +296,19 @@ function TimelineRow({ item, active }: { item: ThoughtTimelineItem; active: bool
       />
     );
   }
-  const name = t(`think.tools.names.${item.name}`, { defaultValue: t('think.tools.generic') });
+  const toolLabels: Record<string, string> = {
+    apply_patch: 'projectChanges.patchTitle',
+    skill: 'skillLibrary.readActivity',
+    skill_resource: 'skillLibrary.resourceActivity',
+    shell_execute: 'agentExecution.shell',
+    shell_pipeline: 'agentExecution.shellPipeline',
+    delegate_tasks: 'agentExecution.subagents',
+    list_subagent_models: 'agentExecution.subagentRoutes.title',
+    chat_reference_read: 'chatReferences.read',
+  };
+  const name = t(toolLabels[item.name] || `think.tools.names.${item.name}`, {
+    defaultValue: t('think.tools.generic'),
+  });
   const error = item.error
     ? t(`think.tools.errors.${item.error}`, { defaultValue: t('think.tools.error') })
     : '';

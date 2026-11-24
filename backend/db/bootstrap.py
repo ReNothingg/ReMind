@@ -145,6 +145,15 @@ def configure_sqlite(app):
 def initialize_schema(app):
     db.create_all()
     inspector = inspect(db.engine)
+    if "instructions" not in {
+        column["name"] for column in inspector.get_columns("remind_workspace")
+    }:
+        with db.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE remind_workspace ADD COLUMN instructions TEXT DEFAULT '' NOT NULL"
+                )
+            )
     date_time_type = (
         "TIMESTAMP" if db.engine.dialect.name in {"postgresql", "postgres"} else "DATETIME"
     )
@@ -155,7 +164,7 @@ def initialize_schema(app):
                 connection.execute(text('ALTER TABLE "user" ADD COLUMN name VARCHAR(100)'))
                 connection.execute(
                     text(
-                        'UPDATE "user" SET name = username ' "WHERE name IS NULL OR TRIM(name) = ''"
+                        "UPDATE \"user\" SET name = username WHERE name IS NULL OR TRIM(name) = ''"
                     )
                 )
             app.logger.info("Added missing user.name column to existing database")
@@ -195,11 +204,15 @@ def initialize_schema(app):
         chat_columns = {column["name"] for column in inspector.get_columns("user_chat_history")}
         chat_source_columns = {
             "source": (
-                "ALTER TABLE user_chat_history "
-                "ADD COLUMN source VARCHAR(32) DEFAULT 'web' NOT NULL"
+                "ALTER TABLE user_chat_history ADD COLUMN source VARCHAR(32) DEFAULT 'web' NOT NULL"
             ),
             "external_ref_hash": (
                 "ALTER TABLE user_chat_history ADD COLUMN external_ref_hash VARCHAR(64)"
+            ),
+            "workspace_id": (
+                "ALTER TABLE user_chat_history ADD COLUMN workspace_id VARCHAR(32) "
+                "CONSTRAINT fk_user_chat_history_workspace_id "
+                "REFERENCES remind_workspace(id) ON DELETE SET NULL"
             ),
             "source_context_data": (
                 "ALTER TABLE user_chat_history "
@@ -215,8 +228,13 @@ def initialize_schema(app):
             with db.engine.begin() as connection:
                 for ddl in missing_chat_source_columns:
                     connection.execute(text(ddl))
-            app.logger.info("Added missing Telegram chat source columns")
+            app.logger.info("Added missing chat metadata columns")
         with db.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_user_chat_history_workspace_id ON user_chat_history (workspace_id)"
+                )
+            )
             connection.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS "
@@ -227,6 +245,9 @@ def initialize_schema(app):
     if "mind" in inspector.get_table_names():
         mind_columns = {column["name"] for column in inspector.get_columns("mind")}
         mind_admin_columns = {
+            "allow_external_use": "ALTER TABLE mind ADD COLUMN allow_external_use BOOLEAN DEFAULT FALSE NOT NULL",
+            "skill_ids": "ALTER TABLE mind ADD COLUMN skill_ids JSON",
+            "custom_skills": "ALTER TABLE mind ADD COLUMN custom_skills JSON",
             "is_featured": "ALTER TABLE mind ADD COLUMN is_featured BOOLEAN DEFAULT FALSE NOT NULL",
             "is_banned": "ALTER TABLE mind ADD COLUMN is_banned BOOLEAN DEFAULT FALSE NOT NULL",
             "moderation_reason": "ALTER TABLE mind ADD COLUMN moderation_reason VARCHAR(280)",

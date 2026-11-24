@@ -21,6 +21,7 @@ def register_share_routes(api_bp):
             get_csrf_token_from_request,
             validate_csrf_token,
         )
+        from backend.services.chat.provider_replay import delete_chat_replays
 
         db_user_id = require_authenticated_user_id()
         csrf_token = get_csrf_token_from_request()
@@ -31,7 +32,7 @@ def register_share_routes(api_bp):
         resolved_session_id, share_entry = resolve_session_identifier(session_id)
         chat = UserChatHistory.query.filter_by(
             user_id=db_user_id, session_id=resolved_session_id
-        ).first()
+        ).with_for_update().first()
         if not chat:
             raise ApiError("Чат не найден или не принадлежит вам", status=404, code="not_found")
 
@@ -50,6 +51,8 @@ def register_share_routes(api_bp):
             share_entry.is_public = make_public
             share_entry.updated_at = datetime.utcnow()
 
+        if make_public:
+            delete_chat_replays(chat.id)
         db.session.commit()
         log_audit_event(
             AuditEvents.MODIFY_CHAT_SHARE,

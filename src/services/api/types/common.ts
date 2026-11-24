@@ -30,6 +30,7 @@ export type GuestChatImportResponse = SessionHistoryWithMind & {
 
 export type SessionHistoryWithMind = SessionHistoryResponse & {
   mind?: Mind | null;
+  project?: { id: string; name: string } | null;
 };
 
 export type SessionMindResponse = {

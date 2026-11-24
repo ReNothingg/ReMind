@@ -38,6 +38,7 @@
 @import './components/auth/guest-mode.css' layer(components);
 @import './components/auth/auth.css' layer(components);
 @import './components/ui/spinwheel.css' layer(components);
+@import './features/agent.css' layer(components);
 @import './features/minds.css' layer(components);
 @import './features/admin.css' layer(components);
 @import './features/github.css' layer(components);

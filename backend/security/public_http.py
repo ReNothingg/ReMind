@@ -12,8 +12,7 @@ import urllib3
 from backend.security.url_security import UnsafeUrlError, _is_public_global_ip, _resolve_host_ips
 
 
-@contextmanager
-def public_http_get(url: str, *, headers: dict, timeout: float, **_kwargs):
+def public_target(url: str):
     if not isinstance(url, str) or len(url) > 2048 or any(ord(char) < 33 for char in url):
         raise UnsafeUrlError("invalid_public_url")
     parsed = urlsplit(url)
@@ -32,6 +31,17 @@ def public_http_get(url: str, *, headers: dict, timeout: float, **_kwargs):
     if any(not _is_public_global_ip(address) for address in addresses):
         raise UnsafeUrlError("non_public_address")
     address = str(sorted(addresses, key=str)[0])
+    return parsed, host, address
+
+
+def public_http_get(url: str, *, headers: dict, timeout: float, **_kwargs):
+    return public_http_request("GET", url, headers=headers, timeout=timeout)
+
+
+@contextmanager
+def public_http_request(method: str, url: str, *, headers: dict, timeout: float, body=None):
+    parsed, host, address = public_target(url)
+    port = parsed.port or 443
     request_timeout = urllib3.Timeout(connect=timeout, read=timeout)
     pool = urllib3.HTTPSConnectionPool(
         address,
@@ -51,8 +61,9 @@ def public_http_get(url: str, *, headers: dict, timeout: float, **_kwargs):
     response = None
     try:
         response = pool.urlopen(
-            "GET",
+            method,
             target,
+            body=body,
             headers={**headers, "Host": host_header, "Accept-Encoding": "identity"},
             redirect=False,
             retries=False,
@@ -96,3 +107,15 @@ class _PublicResponse:
             if time.monotonic() > self.deadline:
                 raise TimeoutError("public_http_timeout")
             yield chunk
+
+    def iter_lines(self, chunk_size=8192):
+        pending = b""
+        for chunk in self.iter_content(chunk_size):
+            lines = (pending + chunk).split(b"\n")
+            pending = lines.pop()
+            if len(pending) > 2 * 1024 * 1024:
+                raise ValueError("public_http_line_too_large")
+            for line in lines:
+                yield line.rstrip(b"\r")
+        if pending:
+            yield pending

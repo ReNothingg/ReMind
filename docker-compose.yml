@@ -1,3 +1,6 @@
+include:
+  - docker-compose.agents.yml
+
 x-default-logging: &default-logging
   driver: json-file
   options:
@@ -22,6 +25,7 @@ services:
     networks:
       - edge
       - backend
+      - agent-control
 
   app:
     image: remind-app:latest
@@ -34,6 +38,7 @@ services:
       - path: .env
         required: false
     environment:
+      - AGENT_SLOT_COUNT=${AGENT_SLOT_COUNT:-2}
       - FLASK_ENV=production
       - FLASK_DEBUG=0
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
@@ -107,8 +112,10 @@ services:
           cpus: '0.25'
           memory: 512M
     networks:
-      - backend
-      - edge
+      backend: {}
+      edge: {}
+      agent-control:
+        aliases: [remind-control]
 
   telegram-bot:
     image: remind-app:latest
@@ -118,6 +125,7 @@ services:
       - path: .env
         required: false
     environment:
+      - AGENT_SLOT_COUNT=${AGENT_SLOT_COUNT:-2}
       - FLASK_ENV=production
       - FLASK_DEBUG=0
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
@@ -172,6 +180,7 @@ services:
     networks:
       - backend
       - edge
+      - agent-control
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -191,11 +200,12 @@ services:
 
   worker:
     image: remind-app:latest
-    command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
+    command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2 --beat --schedule=/tmp/remind-celerybeat
     env_file:
       - path: .env
         required: false
     environment:
+      - AGENT_SLOT_COUNT=${AGENT_SLOT_COUNT:-2}
       - FLASK_ENV=production
       - FLASK_DEBUG=0
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY}
@@ -245,6 +255,7 @@ services:
     networks:
       - backend
       - edge
+      - agent-control
 
   init-storage:
     image: remind-app:latest

@@ -53,10 +53,24 @@ SKILLS = (
             "file_diff",
             "file_write",
             "file_edit",
+            "apply_patch",
         ),
     ),
     SkillDefinition("data", ("table_inspect", "table_query")),
     SkillDefinition("workflow", ("plan_update", "ask_user")),
+    SkillDefinition(
+        "chat_memory",
+        ("chat_history_search", "chat_history_read", "chat_reference_read"),
+        "account",
+        hide_unavailable=True,
+    ),
+    SkillDefinition(
+        "schedule",
+        ("schedule_create", "schedule_list", "schedule_view", "schedule_edit"),
+        "account",
+        hide_unavailable=True,
+    ),
+    SkillDefinition("slides", ("create_presentation",), "account"),
     SkillDefinition("visualize", ("render_visualization",)),
     SkillDefinition(
         "github",
@@ -70,6 +84,12 @@ SKILLS = (
         "github",
     ),
     SkillDefinition("python", ("python_execute",), "python"),
+    SkillDefinition(
+        "shell", ("shell_execute", "shell_pipeline"), "account", "agentExecution.shell", "agentExecution.shellHint",
+    ),
+    SkillDefinition(
+        "subagents", ("delegate_tasks", "list_subagent_models"), "account", "agentExecution.subagents", "agentExecution.subagentsDescription",
+    ),
     SkillDefinition("image_analysis", ("image_crop", "image_tile"), "python"),
     SkillDefinition("canvas", ("canvas_write", "canvas_read", "canvas_edit", "canvas_export")),
     SkillDefinition("charts", ("render_widget",)),

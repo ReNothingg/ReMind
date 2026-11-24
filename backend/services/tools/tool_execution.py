@@ -5,15 +5,20 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.services.tools.model_runtime import ModelRuntime, tool_call_key
+from backend.services.chat.cancellation import GenerationStopped
+from backend.services.tools.model_runtime import IMPORTED_SKILL_TOOLS, ModelRuntime, tool_call_key
 from backend.services.tools.tool_protocol import (
-    MAX_TOOL_CALLS_PER_ROUND,
-    MAX_TOOL_CALLS_TOTAL,
-    MAX_TOOL_EXECUTION_SECONDS,
     ModelToolResult,
 )
 
 logger = logging.getLogger(__name__)
+VOLATILE_TOOLS = {"list_subagent_models", "chat_reference_read"}
+TOOL_BATCH_ARGUMENT = {
+    "web_search_batch": "queries",
+    "github_read_files": "paths",
+    "github_search_code": "paths",
+    "delegate_tasks": "tasks",
+}
 
 
 @dataclass(frozen=True)
@@ -34,39 +39,26 @@ class ToolExecution:
     @property
     def exhausted(self) -> bool:
         return (
-            self.attempted >= MAX_TOOL_CALLS_TOTAL
-            or time.monotonic() - self.started_at >= MAX_TOOL_EXECUTION_SECONDS
+            self.attempted >= self.runtime.agent_settings["maxToolCalls"]
+            or time.monotonic() - self.started_at >= self.runtime.agent_settings["toolTimeSeconds"]
         )
 
     def execute(self, call: ToolCall, index: int) -> ModelToolResult:
-        if time.monotonic() - self.started_at >= MAX_TOOL_EXECUTION_SECONDS:
+        if self.runtime.generation_control is not None:
+            self.runtime.generation_control.check()
+        if time.monotonic() - self.started_at >= self.runtime.agent_settings["toolTimeSeconds"]:
             return ModelToolResult(
                 {"ok": False, "error": "tool_time_limit_reached", "executed": False}
             )
-        if index >= MAX_TOOL_CALLS_PER_ROUND or self.exhausted:
+        if index >= self.runtime.agent_settings["maxToolCallsPerStep"] or self.exhausted:
             return ModelToolResult(
                 {"ok": False, "error": "tool_call_limit_reached", "executed": False}
             )
         arguments = call.arguments if isinstance(call.arguments, dict) else {}
-        cost = max(
-            1,
-            min(
-                5,
-                (
-                    len(arguments.get("queries", []))
-                    if call.name == "web_search_batch"
-                    and isinstance(arguments.get("queries"), list)
-                    else (
-                        len(arguments.get("paths", []))
-                        if call.name in {"github_read_files", "github_search_code"}
-                        and isinstance(arguments.get("paths"), list)
-                        else 1
-                    )
-                ),
-            ),
-        )
-        if self.attempted + cost > MAX_TOOL_CALLS_TOTAL:
-            self.attempted = MAX_TOOL_CALLS_TOTAL
+        batch = arguments.get(TOOL_BATCH_ARGUMENT.get(call.name, ""))
+        cost = max(1, min(5, len(batch))) if isinstance(batch, list) else 1
+        if self.attempted + cost > self.runtime.agent_settings["maxToolCalls"]:
+            self.attempted = self.runtime.agent_settings["maxToolCalls"]
             return ModelToolResult(
                 {"ok": False, "error": "tool_call_limit_reached", "executed": False}
             )
@@ -75,7 +67,7 @@ class ToolExecution:
             state: Any = (
                 self.runtime.canvas if call.name in {"canvas_read", "canvas_export"} else None
             )
-            if call.name in {"file_list", "file_glob", "file_search_all"}:
+            if call.name in {"file_list", "file_glob", "file_search_all", "shell_execute", "shell_pipeline"}:
                 state = [item.get("path") for item in self.runtime.files]
             key = tool_call_key(call.name, {"arguments": call.arguments, "canvas": state})
             previous = self.completed.get(key)
@@ -90,11 +82,17 @@ class ToolExecution:
                     model_artifacts=previous.model_artifacts,
                 )
             result = self.runtime.execute(call.name, call.arguments)
-            if result.output.get("ok") is True and call.name != "plan_update":
+            if (
+                result.output.get("ok") is True
+                and call.name != "plan_update"
+                and call.name not in VOLATILE_TOOLS
+                and call.name not in IMPORTED_SKILL_TOOLS
+            ):
                 self.completed[key] = result
             elif (
                 result.output.get("ok") is not True
                 and result.output.get("error") != "skill_required"
+                and call.name not in VOLATILE_TOOLS
             ):
                 self.failures[key] = self.failures.get(key, 0) + 1
             known = {item.get("path") for item in self.runtime.files}
@@ -103,6 +101,8 @@ class ToolExecution:
                     self.runtime.files.append(item)
                     known.add(item["path"])
             return result
+        except GenerationStopped:
+            raise
         except Exception:
             logger.exception("Tool execution failed: %s", call.name)
             return ModelToolResult({"ok": False, "error": "tool_execution_failed"})

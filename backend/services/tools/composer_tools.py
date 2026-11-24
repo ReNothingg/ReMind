@@ -15,6 +15,7 @@ def composer_tool_catalog(user_id: int | None) -> list[dict[str, Any]]:
         "github_not_connected": "githubConnect",
         "authentication_required": "signIn",
         "tool_disabled": "unavailable",
+        "plugin_disabled": "unavailable",
     }
     return [
         {

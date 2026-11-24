@@ -22,6 +22,7 @@ from backend.security.input_validation import InputValidator, ValidationError
 from backend.security.rate_limiting import RateLimiter, anonymous_rate_limit, rate_limit
 from backend.security.url_security import UnsafeUrlError, validate_public_http_url
 from backend.services.chat.attachments import find_upload_reference
+from backend.services.chat.cancellation import generation_scope, request_cancellation
 from backend.services.chat.generation import ChatImage, generate_chat
 from backend.services.chat.streaming import ChatStream
 from backend.services.translation import TranslationUnavailableError, translate_text
@@ -31,6 +32,7 @@ PUBLIC_UPLOAD_NAME_RE = re.compile(r"^[a-f0-9]{32}(?:\.[a-z0-9]{1,12})$")
 
 
 translation_limiter = RateLimiter(max_requests=60, time_window=3600, namespace="translation")
+cancellation_limiter = RateLimiter(max_requests=120, time_window=60, namespace="chat_cancel")
 
 
 anonymous_translation_limiter = RateLimiter(
@@ -60,6 +62,23 @@ def _resolve_db_user_id() -> int | None:
 
 
 def register_chat_routes(api_bp):
+    @api_bp.post("/chat/cancel")
+    @anonymous_rate_limit(cancellation_limiter)
+    @rate_limit(cancellation_limiter)
+    @api_error_boundary("chat_cancel_unavailable")
+    def cancel_chat():
+        raw = request.get_json(silent=True) if (request.content_length or 0) <= 1024 else None
+        if not isinstance(raw, dict) or set(raw) != {"session_id", "request_id", "cancel_token"}:
+            raise ApiError("invalid_generation_token", status=400, code="invalid_generation_token")
+        scope = generation_scope(
+            _resolve_db_user_id(), raw["session_id"], raw["request_id"], raw["cancel_token"]
+        )
+        if scope is None:
+            raise ApiError("invalid_generation_token", status=400, code="invalid_generation_token")
+        if not request_cancellation(current_app.config.get("REDIS_URL"), scope):
+            raise ApiError("chat_cancel_unavailable", status=503, code="chat_cancel_unavailable")
+        return make_ok({"accepted": True}, 202)
+
     @api_bp.route("/chat", methods=["POST"])
     @api_error_boundary("chat_unexpected_error")
     def chat():

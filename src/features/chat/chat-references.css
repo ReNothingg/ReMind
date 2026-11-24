@@ -1,0 +1,172 @@
+.ui-modal-card.chat-reference-picker {
+  display: flex;
+  flex-direction: column;
+  width: min(30rem, calc(100vw - 1rem));
+  max-height: min(39rem, calc(100dvh - 1rem));
+  gap: .6rem;
+  padding: .75rem;
+  box-shadow: none;
+}
+
+.chat-reference-picker header,
+.chat-reference-picker footer {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+
+.chat-reference-picker h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chat-reference-picker header button {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.chat-reference-picker footer {
+  justify-content: flex-end;
+}
+
+.chat-reference-picker footer > span {
+  margin-inline-end: auto;
+  color: var(--color-text-secondary);
+  font-size: .85rem;
+}
+
+.chat-reference-picker footer button {
+  min-height: 44px;
+  padding-inline: .65rem;
+}
+
+.chat-reference-search {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding-inline: .6rem;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+}
+
+.chat-reference-search input {
+  flex: 1;
+  min-width: 0;
+  padding: .4rem 0;
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.chat-reference-results {
+  min-height: 5.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.chat-reference-results p {
+  padding: .7rem .2rem;
+  color: var(--color-text-secondary);
+}
+
+.chat-reference-results button {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  width: 100%;
+  min-height: 48px;
+  padding: .4rem .6rem;
+  border-radius: 8px;
+  text-align: start;
+}
+
+.chat-reference-picker header button:hover,
+.chat-reference-results button:hover,
+.chat-reference-results button[aria-pressed='true'] {
+  background: var(--color-bg-surface-alt);
+}
+
+.chat-reference-results button:disabled {
+  opacity: .55;
+}
+
+.chat-reference-results button > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-reference-results strong {
+  font-weight: 600;
+}
+
+.chat-reference-results small {
+  color: var(--color-text-secondary);
+}
+
+.chat-reference-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  min-width: 0;
+  padding: .3rem;
+}
+
+.chat-reference-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  max-width: 100%;
+  min-height: 32px;
+  padding: .2rem .45rem;
+  border: 1px solid var(--color-border-medium);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: .83rem;
+}
+
+.chat-reference-chip svg,
+.chat-reference-chip button {
+  flex-shrink: 0;
+}
+
+.chat-reference-chip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-reference-chip button {
+  display: grid;
+  min-width: 30px;
+  min-height: 30px;
+  place-items: center;
+}
+
+.ui-composer-shell .chat-reference-toggle {
+  color: var(--icon-color-secondary);
+}
+
+.main-input-area.expanded .ui-composer-input-row:has(> .chat-reference-toggle) {
+  grid-template-columns: 40px 40px minmax(0, 1fr) 40px;
+}
+
+.main-input-area.expanded .ui-composer-input-row > .chat-reference-toggle {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.main-input-area.expanded .ui-composer-input-row:has(> .chat-reference-toggle) > .composer-model-selector {
+  grid-column: 3;
+}
+
+.main-input-area.expanded .ui-composer-input-row:has(> .chat-reference-toggle) > .send-button {
+  grid-column: 4;
+}

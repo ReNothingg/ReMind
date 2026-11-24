@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+
     "dev:frontend": "vite",
     "dev:backend": "python3 main.py",
+
     "docker:dev": "docker compose -f docker-compose.dev.yml up",
     "docker:dev:build": "docker compose -f docker-compose.dev.yml up --build",
     "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
@@ -74,6 +76,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.61.0",
     "vite": "^7.3.1",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "yaml": "^2.9.0"
   }
 }

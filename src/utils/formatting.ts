@@ -849,7 +849,7 @@ const processInteractiveHTMLTags = (text: string, labels?: FormatTextOptions['la
   const toBase64 = encodeBase64Utf8;
 
   text = text.replace(
-    /<tool_panel data-kind="(plan|questions)" data-b64="([A-Za-z0-9+/=]{1,32000})"><\/tool_panel>/g,
+    /<tool_panel data-kind="(plan|questions|automation|workspace_patch)" data-b64="([A-Za-z0-9+/=]{1,32000})"><\/tool_panel>/g,
     (_match, kind, encoded) =>
       `<div class="tool-panel-instance-host" data-panel-kind="${kind}" data-panel-state="${encoded}"></div>`
   );

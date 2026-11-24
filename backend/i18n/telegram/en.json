@@ -12,8 +12,8 @@
   "open_remind_button": "Open ReMind",
   "use_inline_button": "Ask in another chat",
   "inline_follow_up_button": "Ask a follow-up",
-  "help": "Send text or a photo for a full answer. In groups, mention the bot or reply to it. In any chat, type the bot username and a short question for an inline answer. Use /reset, /stop or /clear to clear the current conversation context.",
-  "settings": "Telegram conversations are synchronized with ReMind and available through the Telegram chat-history filter.",
+  "help": "In private chat, send text, photos or documents and ask for a presentation. Mention the bot in groups. Start a new conversation with /new.",
+  "settings": "Choose your model, Mind, search and secretary mode in settings. Conversations sync with ReMind.",
   "new_chat": "A new Telegram conversation has started.",
   "context_reset": "The current conversation context was cleared. You can start fresh.",
   "not_connected": "This Telegram profile is not connected to ReMind yet.",
@@ -43,5 +43,9 @@
   "command_stop": "Stop and reset context",
   "command_clear": "Clear conversation context",
   "command_help": "How to use ReMind",
-  "command_settings": "Telegram synchronization"
+  "command_settings": "Agent settings",
+  "files_ready": "Your files are ready.",
+  "document_default_prompt": "Analyze the document and summarize the main points.",
+  "document_too_large": "The document exceeds the 8 MB limit.",
+  "document_failed": "Could not read the document. Check its format."
 }

@@ -7,6 +7,14 @@ from dataclasses import dataclass, field
 
 from backend.services.tools.tool_protocol import ModelToolResult
 
+PRIVATE_PANEL = re.compile(
+    r'<tool_panel data-kind="(?:automation|workspace_patch)" data-b64="[A-Za-z0-9+/=]{1,1000}"></tool_panel>'
+)
+
+
+def strip_private_panels(text: str) -> str:
+    return PRIVATE_PANEL.sub("", text)
+
 
 def panel_event(kind: str, state: dict) -> list[dict]:
     encoded = base64.b64encode(json.dumps(state, ensure_ascii=False).encode()).decode()
@@ -29,7 +37,7 @@ def readable_panel_history(text: str) -> str:
     return re.sub(
         r'<tool_panel data-kind="(plan|questions)" data-b64="([A-Za-z0-9+/=]{1,32000})"></tool_panel>',
         replace,
-        text,
+        strip_private_panels(text),
     )
 
 

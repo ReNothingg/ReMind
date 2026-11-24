@@ -41,6 +41,7 @@ export {
   type ComposerToolOption,
   type ModelListResponse,
   type ModelOption,
+  type ModelSpeed,
   type ModelStage,
   type ThinkingLevel,
 } from './api/types/catalog';

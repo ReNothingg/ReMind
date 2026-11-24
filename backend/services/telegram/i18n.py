@@ -6,17 +6,17 @@ from pathlib import Path
 from typing import Any
 
 _LOCALES_DIR = Path(__file__).resolve().parents[2] / "i18n" / "telegram"
-_SUPPORTED = frozenset({"en", "ru"})
+SUPPORTED_LANGUAGES = frozenset({"ar", "bn", "en", "es", "fr", "hi", "pt", "ru", "zh"})
 
 
 def language_from_telegram(value: Any) -> str:
     language = str(value or "").strip().lower().split("-", 1)[0]
-    return language if language in _SUPPORTED else "en"
+    return language if language in SUPPORTED_LANGUAGES else "en"
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=9)
 def _catalog(language: str) -> dict[str, str]:
-    safe_language = language if language in _SUPPORTED else "en"
+    safe_language = language if language in SUPPORTED_LANGUAGES else "en"
     try:
         parsed = json.loads((_LOCALES_DIR / f"{safe_language}.json").read_text(encoding="utf-8"))
     except (OSError, ValueError, json.JSONDecodeError):

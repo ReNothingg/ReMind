@@ -1,0 +1,7 @@
+{
+  "name": "remind-codex-worker",
+  "private": true,
+  "dependencies": {
+    "@openai/codex": "0.171.0"
+  }
+}

@@ -114,6 +114,19 @@ function MindCard({
       </div>
 
       <p className="mind-description">{mind.description}</p>
+      {(Boolean(mind.skill_ids?.length) || Boolean(mind.custom_skill_names?.length)) && (
+        <details className="mind-card-skills">
+          <summary>{t('mindSkills.title')}</summary>
+          <ul>
+            {mind.skill_ids?.map((id) => (
+              <li key={id}>{id.startsWith('skill:') ? id.slice('skill:'.length) : t(`composer.tools.${id === 'demo_image' ? 'image' : id}`)}</li>
+            ))}
+            {mind.custom_skill_names?.map((name) => (
+              <li key={`custom-${name}`}>{name}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {mind.starters.length > 0 && (
         <div className="mind-starters" aria-label={t('minds.startersAria')}>

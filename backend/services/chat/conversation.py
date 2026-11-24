@@ -1,11 +1,60 @@
 import hashlib
 import json
+import re
 import time
 import uuid
 from typing import Any
 
 from backend.config import CHAT_MAX_VARIANTS_PER_TURN
 from backend.services.context_usage import normalize_context_usage
+
+MAX_CHAT_REFERENCES = 3
+CHAT_REFERENCE_ID = re.compile(r"[A-Za-z0-9_-]{1,100}")
+CHAT_REFERENCE_MESSAGE = re.compile(r"[A-Za-z0-9_-]{1,120}")
+CHAT_REFERENCE_DIGEST = re.compile(r"[a-f0-9]{64}")
+CHAT_REFERENCE_WORKSPACE = re.compile(r"[a-f0-9]{32}")
+
+
+def normalize_chat_references(value):
+    if not isinstance(value, list):
+        return []
+    references = []
+    seen = set()
+    for row in value[:MAX_CHAT_REFERENCES]:
+        if not isinstance(row, dict):
+            continue
+        session_id = row.get("session_id")
+        message_id = row.get("message_id")
+        digest = row.get("digest")
+        title = row.get("title")
+        scopes = (row.get("workspace_id"), row.get("target_workspace_id"))
+        if (
+            not isinstance(session_id, str)
+            or not CHAT_REFERENCE_ID.fullmatch(session_id)
+            or session_id in seen
+            or not isinstance(message_id, str)
+            or not CHAT_REFERENCE_MESSAGE.fullmatch(message_id)
+            or not isinstance(digest, str)
+            or not CHAT_REFERENCE_DIGEST.fullmatch(digest)
+            or not isinstance(title, str)
+            or any(
+                scope is not None and (
+                    not isinstance(scope, str) or not CHAT_REFERENCE_WORKSPACE.fullmatch(scope)
+                )
+                for scope in scopes
+            )
+        ):
+            continue
+        seen.add(session_id)
+        references.append({
+            "session_id": session_id,
+            "message_id": message_id,
+            "digest": digest,
+            "title": title[:200],
+            "workspace_id": scopes[0],
+            "target_workspace_id": scopes[1],
+        })
+    return references
 
 
 def _new_message_id() -> str:
@@ -44,6 +93,8 @@ def normalize_message(msg: Any) -> dict:
             ]
         if role == "user" and isinstance(msg.get("composer_content"), str):
             normalized["composer_content"] = msg["composer_content"][:34048]
+        if role == "user" and (references := normalize_chat_references(msg.get("chat_references"))):
+            normalized["chat_references"] = references
         sources = msg.get("sources")
         if isinstance(sources, list) and sources:
             normalized["sources"] = sources

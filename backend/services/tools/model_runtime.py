@@ -8,15 +8,38 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from backend.agent_profile import (
+    SUBAGENT_MODEL_ID_LIMIT,
+    normalize_agent_runtime,
+    supports_delegation,
+)
+from backend.ai_engine.compaction import compaction_turn
 from backend.ai_engine.prompt_builder import PromptBundle, build_prompt_bundle
+from backend.ai_engine.prompt_templates import render_prompt, require_prompt
 from backend.ai_engine.skills import SKILLS, WIDGET_SKILLS, function_skill
+from backend.db.models import db
+from backend.errors import ApiError
+from backend.services import project_patches
+from backend.services.agent_models import EFFORTS
+from backend.services.agent_runtime_settings import load_agent_runtime
+from backend.services.agent_skills import skill_content, skill_script_source
+from backend.services.chat.session_references import read_reference
 from backend.services.files import restore_stored_file_for_model
-from backend.services.python_runner import available_input_files, resolve_input_files
+from backend.services.python_runner import (
+    available_input_files,
+    execute_workspace_pipeline,
+    execute_workspace_shell,
+    python_runner_available,
+    resolve_input_files,
+)
 from backend.services.tools.artifact_workspace import ArtifactWorkspace
+from backend.services.tools.automation_tools import SCHEDULE_TOOLS, execute_schedule_tool
 from backend.services.tools.canvas_tools import normalize_canvas_textdoc
+from backend.services.tools.chat_memory_tools import CHAT_MEMORY_TOOLS, execute_chat_memory
 from backend.services.tools.data_tools import execute_data_tool
+from backend.services.tools.delegation import DelegationChild, DelegationRoute, DelegationTree
 from backend.services.tools.document_tools import execute_document_tool
-from backend.services.tools.interaction_tools import InteractionState
+from backend.services.tools.interaction_tools import InteractionState, panel_event
 from backend.services.tools.model_tools import execute_model_tool
 from backend.services.tools.presentation_tools import (
     render_visualization,
@@ -24,10 +47,14 @@ from backend.services.tools.presentation_tools import (
     write_canvas,
 )
 from backend.services.tools.research_tools import ResearchSession, navigation_url_key
+from backend.services.tools.skill_access import SkillAccess
+from backend.services.tools.slide_deck import create_presentation
 from backend.services.tools.tool_protocol import ModelToolResult
 from backend.services.tools.tool_validation import argument_errors
+from backend.services.web_research_settings import load_web_research
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "ai_engine" / "tool_schemas.json"
+IMPORTED_SKILL_TOOLS = {"skill", "skill_resource", "skill_script"}
 
 
 def tool_call_key(name: str, arguments: dict[str, Any]) -> str:
@@ -47,16 +74,76 @@ class ModelRuntime:
     interaction: InteractionState = field(default_factory=InteractionState)
     workspace: ArtifactWorkspace = field(init=False)
     artifact_count: int = 0
+    agent_settings: dict[str, Any] = field(default_factory=lambda: normalize_agent_runtime(None))
+    schedule_context: dict[str, str] | None = None
+    generation_control: Any = None
+    context_archive: tuple[dict, ...] = ()
+    reference_destination: str | None = None
+    delegation: DelegationTree | None = None
+    delegation_depth: int = 0
+    delegation_route: DelegationRoute | None = None
+    loaded_skills: set[str] = field(default_factory=set)
+    patch_origin: tuple[str, str] | None = None
 
     def __post_init__(self):
         self.workspace = ArtifactWorkspace(self.user_id, self.allow_artifacts)
 
+    @property
+    def step_limit(self):
+        return self.agent_settings["maxSteps"]
+
     @classmethod
     def create(cls, user_id: int | None, data: dict[str, Any]) -> ModelRuntime:
-        bundle = build_prompt_bundle(user_id, data)
+        if compaction_turn(data):
+            bundle = PromptBundle(
+                (require_prompt("context/summarize_checkpoint_system.md"),),
+                SkillAccess(frozenset(), {}),
+                (),
+                {},
+            )
+            runtime = cls(user_id, bundle, [], False, None, {})
+            runtime.agent_settings.update(maxSteps=0, maxToolCalls=0)
+            runtime.generation_control = data.get("_generation_control")
+            return runtime
+        data.pop("_invoked_skill_context", None)
+        options = load_agent_runtime(user_id)
+        child = data.get("_delegation")
+        route = DelegationRoute(
+            data.get("model") or "", data.get("thinkingLevel") or data.get("thinking_level")
+        )
+        model = options["subagentModel"] or route.model
+        enabled = set()
+        if isinstance(child, DelegationChild) and child.tree.owner == user_id:
+            tree = child.tree
+            depth = child.depth
+            if depth < min(tree.max_depth, options["subagentMaxDepth"]):
+                enabled.add("subagents")
+            bundle = PromptBundle(
+                (require_prompt("context/delegated_task.md"),),
+                SkillAccess(frozenset(enabled), {}),
+                (),
+                {},
+            )
+            if enabled:
+                bundle.load("subagents")
+            options.update(maxSteps=2, maxToolCallsPerStep=1, maxToolCalls=3, toolTimeSeconds=35)
+        else:
+            depth, tree = 0, None
+            if user_id and data.get("_context_is_private_web") is True:
+                if options["shellEnabled"] and python_runner_available(user_id):
+                    enabled.add("shell")
+                if options["subagentMaxDepth"] and (
+                    supports_delegation(model)
+                    or (options["subagentModelSelection"] and options["subagentAllowedModels"])
+                ):
+                    enabled.add("subagents")
+                    tree = DelegationTree(
+                        user_id, options["subagentMaxDepth"], options["subagentMaxActive"]
+                    )
+            bundle = build_prompt_bundle(user_id, data, execution_skills=frozenset(enabled))
         raw_schemas = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         schemas = {schema["name"]: schema for schema in raw_schemas}
-        expected = {name for skill in SKILLS for name in skill.functions} | {"read_skill"}
+        expected = {name for skill in SKILLS for name in skill.functions} | {"read_skill"} | IMPORTED_SKILL_TOOLS
         if len(schemas) != len(raw_schemas) or set(schemas) != expected:
             raise ValueError("invalid_tool_schema_registry")
         files = [dict(item) for item in (data.get("files") or []) if isinstance(item, dict)]
@@ -82,12 +169,38 @@ class ModelRuntime:
         runtime = cls(
             user_id,
             bundle,
-            files,
+            [*files, *bundle.project_files],
             not bool(data.get("temporary_chat")),
             normalize_canvas_textdoc(data.get("canvas_textdoc")),
             schemas,
         )
+        runtime.agent_settings = options
+        if bundle.invoked_skill is not None:
+            runtime.loaded_skills.add(bundle.invoked_skill["name"])
+            rendered = json.dumps(bundle.invoked_skill, ensure_ascii=False).replace("<", r"\u003c")
+            data["_invoked_skill_context"] = render_prompt("context/invoked_skill.md", {"SKILL": rendered})
+        runtime.delegation = tree
+        runtime.delegation_depth = depth
+        runtime.delegation_route = route if tree is not None else None
+        runtime.schedule_context = data.get("_schedule_origin")
+        if (
+            bundle.project_id
+            and data.get("_context_is_private_web") is True
+            and not data.get("_automation")
+            and not data.get("telegram_agent")
+            and runtime.allow_artifacts
+            and isinstance(data.get("session_id"), str)
+            and isinstance(data.get("request_id"), str)
+        ):
+            runtime.patch_origin = (data["session_id"], data["request_id"])
+        runtime.generation_control = data.get("_generation_control")
+        runtime.context_archive = tuple(data.get("_context_archive") or ())
+        if bundle.chat_references:
+            runtime.reference_destination = data.get("session_id")
         runtime.research.rate_key = str(data.get("tool_rate_key") or f"user_{user_id}")[:180]
+        if "web" in bundle.access.available:
+            runtime.research.settings = load_web_research(user_id)
+            runtime.research.control = runtime.generation_control
         user_text = str(data.get("message") or "")
         if data.get("history_is_canonical"):
             for message in (data.get("history") or [])[-40:]:
@@ -108,13 +221,36 @@ class ModelRuntime:
 
     def declarations(self) -> list[dict[str, Any]]:
         available = self.prompts.access.available
-        if not available:
+        imported = {
+            name for name, item in self.prompts.imported_skills.items()
+            if item["modelInvocable"] or name in self.loaded_skills
+        }
+        if not available and not imported:
             return []
         names = {
             function for skill in SKILLS if skill.id in available for function in skill.functions
-        } | {"read_skill"}
+        }
+        if available:
+            names.add("read_skill")
+        if imported:
+            names.update({"skill", "skill_resource"})
+        script_paths = {
+            name: self.prompts.imported_skills[name]["scriptPaths"]
+            for name in imported & self.loaded_skills
+            if self.prompts.imported_skills[name].get("scriptPaths")
+        }
+        if "shell" in available and script_paths:
+            names.add("skill_script")
+        if self.patch_origin is None:
+            names.discard("apply_patch")
+        if not self.agent_settings["subagentModelSelection"]:
+            names.discard("list_subagent_models")
+        if not self.context_archive:
+            names.difference_update(CHAT_MEMORY_TOOLS)
+        if not self.prompts.chat_references:
+            names.discard("chat_reference_read")
         if self.user_id is None or not self.allow_artifacts:
-            names -= {"file_write", "file_edit", "canvas_export"}
+            names -= {"file_write", "file_edit", "canvas_export", "create_presentation"}
         image_names = [
             name
             for name, path in resolve_input_files(self.files)
@@ -130,12 +266,39 @@ class ModelRuntime:
             properties = declaration["parameters"]["properties"]
             if name == "read_skill":
                 properties["skill_id"]["enum"] = sorted(available)
+            elif name == "chat_reference_read":
+                properties["session_id"]["enum"] = [item["session_id"] for item in self.prompts.chat_references]
+            elif name == "skill_script":
+                properties["name"]["enum"] = sorted(script_paths)
+                properties["path"]["enum"] = sorted(
+                    {path for paths in script_paths.values() for path in paths}
+                )
+            elif name in IMPORTED_SKILL_TOOLS:
+                properties["name"]["enum"] = sorted(imported)
             elif name in {"image_crop", "image_tile"}:
                 properties["filename"]["enum"] = image_names
             elif name == "render_widget":
                 properties["format"]["enum"] = [
                     kind for kind, skill in WIDGET_SKILLS.items() if skill in available
                 ]
+            elif name == "shell_execute":
+                input_names = available_input_files(self.files)
+                if input_names:
+                    properties["files"]["items"]["enum"] = input_names
+                else:
+                    properties["command"]["enum"] = ["ls"]
+            elif name == "delegate_tasks" and self.agent_settings["subagentModelSelection"]:
+                task = properties["tasks"]["items"]["properties"]
+                task["model"] = {
+                    "type": "string",
+                    "maxLength": SUBAGENT_MODEL_ID_LIMIT,
+                    "description": "Exact route id returned by list_subagent_models. Omit to use the configured model.",
+                }
+                task["reasoning_effort"] = {
+                    "type": "string",
+                    "enum": ["", *EFFORTS],
+                    "description": "Optional supported reasoning effort. Requires an explicit model route.",
+                }
             elif name == "python_execute":
                 declaration["description"] = declaration["description"].replace(
                     "{{availableInputFiles}}",
@@ -164,6 +327,33 @@ class ModelRuntime:
                 return ModelToolResult({"ok": False, "error": "skill_unavailable"})
             self.prompts.load(skill_id)
             return ModelToolResult({"ok": True, "skill_id": skill_id, "instructions_loaded": True})
+        if name == "skill_script":
+            invoked = self.prompts.invoked_skill or {}
+            script = skill_script_source(
+                self.user_id,
+                self.prompts.project_id,
+                self.prompts.imported_skills[arguments["name"]],
+                arguments["path"],
+                user_invoked=invoked.get("name") == arguments["name"],
+            )
+            if script is None:
+                return ModelToolResult({"ok": False, "error": "skill_script_not_found"})
+            result = self._run_workspace_command(script, script_arguments=arguments.get("arguments", []))
+            return self._record_result(result)
+        if name in IMPORTED_SKILL_TOOLS:
+            skill_name = arguments["name"]
+            if name == "skill_resource" and skill_name not in self.loaded_skills:
+                return ModelToolResult({"ok": False, "error": "skill_required", "name": skill_name})
+            result = skill_content(
+                self.user_id,
+                self.prompts.project_id,
+                self.prompts.imported_skills[skill_name],
+                path=arguments.get("path") if name == "skill_resource" else None,
+                offset=arguments.get("offset", 0),
+            )
+            if result["ok"] and name == "skill":
+                self.loaded_skills.add(skill_name)
+            return ModelToolResult(result)
         skill_id = function_skill(name, arguments)
         if skill_id not in self.prompts.access.available:
             return ModelToolResult({"ok": False, "error": "tool_not_available"})
@@ -176,9 +366,22 @@ class ModelRuntime:
                     "required_function": "read_skill",
                 }
             )
+        if name == "apply_patch" and self.patch_origin is not None:
+            try:
+                session_id, request_id = self.patch_origin
+                proposal = project_patches.propose(
+                    self.user_id, self.prompts.project_id, session_id, request_id, arguments["input"]
+                )
+                return ModelToolResult(
+                    {"ok": True, "awaiting_user": True},
+                    events=panel_event("workspace_patch", {"proposal_id": proposal.id, "workspace_id": proposal.workspace_id}),
+                )
+            except ApiError as error:
+                db.session.rollback()
+                return ModelToolResult({"ok": False, "error": error.code, **(error.extra or {})})
         artifact_slots = max(0, 20 - self.artifact_count)
         if not artifact_slots and (
-            name in {"file_write", "file_edit", "canvas_export"}
+            name in {"file_write", "file_edit", "canvas_export", "create_presentation"}
             or (name == "table_query" and arguments.get("export_filename"))
         ):
             return ModelToolResult({"ok": False, "error": "artifact_limit_reached"})
@@ -190,6 +393,41 @@ class ModelRuntime:
             result = execute_data_tool(name, arguments, self.files, self.workspace)
         elif name in {"plan_update", "ask_user"}:
             result = self.interaction.execute(name, arguments)
+        elif name in SCHEDULE_TOOLS:
+            result = execute_schedule_tool(self.user_id, self.schedule_context, name, arguments)
+        elif name in CHAT_MEMORY_TOOLS:
+            result = execute_chat_memory(self.context_archive, name, arguments)
+        elif name == "chat_reference_read":
+            result = ModelToolResult(read_reference(
+                self.user_id, self.reference_destination, self.prompts.chat_references, arguments
+            ))
+        elif name == "list_subagent_models" and self.delegation is not None:
+            result = self.delegation.models(self.delegation_depth)
+        elif (
+            name == "delegate_tasks"
+            and self.delegation is not None
+            and self.delegation_route is not None
+        ):
+            result = self.delegation.run(
+                arguments["tasks"],
+                self.delegation_depth,
+                self.delegation_route,
+                self.generation_control,
+            )
+        elif name == "shell_execute":
+            result = ModelToolResult(
+                execute_workspace_shell(
+                    arguments,
+                    user_id=self.user_id,
+                    input_files=self.files,
+                    timeout_ms=self.agent_settings["shellTimeoutMs"],
+                    max_output_bytes=self.agent_settings["shellMaxOutputBytes"],
+                ).output
+            )
+        elif name == "shell_pipeline":
+            result = self._run_workspace_command(arguments["line"])
+        elif name == "create_presentation":
+            result = create_presentation(arguments, self.files, self.workspace)
         elif name in {
             "file_list",
             "file_read",
@@ -240,6 +478,29 @@ class ModelRuntime:
                 allow_artifacts=self.allow_artifacts and artifact_slots > 0,
                 artifact_limit=artifact_slots,
             )
+        return self._record_result(result)
+
+    def _run_workspace_command(self, source, *, script_arguments=None):
+        settings = self.agent_settings if script_arguments is None else load_agent_runtime(self.user_id)
+        if not settings["shellEnabled"]:
+            return ModelToolResult({"ok": False, "error": "tool_not_available"})
+        run = execute_workspace_pipeline(
+            source,
+            user_id=self.user_id,
+            input_files=self.files,
+            timeout_ms=settings["shellTimeoutMs"],
+            max_output_bytes=settings["shellMaxOutputBytes"],
+            allow_artifacts=self.allow_artifacts and self.artifact_count < 20,
+            generation_control=self.generation_control,
+            script_arguments=script_arguments,
+        )
+        return ModelToolResult(
+            run.output,
+            events=[{"python_artifacts": run.artifacts}] if run.artifacts else [],
+            reusable_files=run.reusable_files,
+        )
+
+    def _record_result(self, result):
         self.artifact_count += sum(
             len(event.get("python_artifacts") or []) for event in result.events
         )

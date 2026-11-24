@@ -1,5 +1,6 @@
 import { normalizeHistoryMessage } from '../features/chat/historyMessages';
 import type { ChatGenerationOutcome } from '../features/chat/petActivity';
+import type { Project } from '../features/projects/useProjects';
 import {
   extractLatestBeatboxState,
   extractLatestCanvasTextdoc,
@@ -9,7 +10,7 @@ import {
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService, type CanvasTextdoc, type CanvasUpdate } from '../services/api';
-import { getChatErrorCode, getChatErrorMessage } from '../services/api/chat';
+import { cancelChat, getChatErrorCode, getChatErrorMessage } from '../services/api/chat';
 import { showToast } from '../utils/toast';
 import { fileService } from '../services/fileService';
 import { ALLOW_GUEST_CHATS_SAVE } from '../utils/constants';
@@ -40,6 +41,14 @@ const SLUG_INDEX_KEY = 'session_slug_index';
 const SESSION_ID_KEY = 'session_id';
 const SESSION_SLUG_KEY = 'session_slug';
 
+type ActiveRequest = { controller: AbortController; wireId: string; token: string };
+
+function stopRequest(sessionId: string, request?: ActiveRequest) {
+  if (!request || request.controller.signal.aborted) return;
+  void cancelChat(sessionId, request.wireId, request.token).catch(() => undefined);
+  request.controller.abort();
+}
+
 type HistoryMode = 'replace' | 'push' | 'none';
 
 type SyncSessionOptions = {
@@ -63,12 +72,15 @@ type ClearChatOptions = {
 
 type SendMessageOptions = {
   composerContent?: string;
+  chatReferences?: import('../features/chat/ChatReferencePicker').ChatReference[];
   tools?: string[];
   webSearch?: boolean;
   autoWebSearch?: boolean;
   mindId?: string | null;
   temporaryChat?: boolean;
   thinkingLevel?: string;
+  serviceTier?: string;
+  project?: Project;
   _fromQueue?: boolean;
   _forcedSessionId?: string;
   _queueId?: string;
@@ -118,9 +130,19 @@ function appendModelIfSelected(formData, model) {
   }
 }
 
-const VALID_THINKING_LEVELS = new Set(['minimal', 'low', 'medium', 'high']);
+const VALID_THINKING_LEVELS = new Set([
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+  'ultra',
+]);
 
-function appendThinkingLevelIfValid(formData: FormData, value: unknown) {
+function appendModelOptions(formData: FormData, value: unknown, speed: unknown) {
+  if (speed === 'fast' || speed === 'ultrafast') formData.append('serviceTier', speed);
   const thinkingLevel = String(value || '')
     .trim()
     .toLowerCase();
@@ -199,6 +221,10 @@ function patchMessageVariant(message, variantId, patch) {
 
 const MAX_STREAMED_THINKING_CHARS = 160_000;
 
+function patchReplyPreview(message, delta: string | null) {
+  return { ...message, replyPreview: delta === null ? '' : ((message.replyPreview || '') + delta).slice(0, 32_000) };
+}
+
 function patchThinkingUpdate(message, update) {
   if (!message || !update || typeof update !== 'object') {
     return message;
@@ -235,9 +261,11 @@ export const useChat = () => {
   const [beatboxState, setBeatboxState] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCanvasStreaming, setIsCanvasStreaming] = useState(false);
+  const [compactingSessions, setCompactingSessions] = useState<ReadonlySet<string>>(() => new Set());
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [currentSessionSlug, setCurrentSessionSlug] = useState(null);
   const [sessionAccess, setSessionAccess] = useState(createDefaultSessionAccess);
+  const [sessionProject, setSessionProject] = useState<{ sessionId: string; id: string; name: string } | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [isTemporaryChat, setIsTemporaryChat] = useState(false);
   const [sessionActivity, setSessionActivity] = useState<Record<string, SessionActivity>>({});
@@ -250,7 +278,9 @@ export const useChat = () => {
   const sessionActivityRef = useRef<Record<string, SessionActivity>>({});
   const sessionHistoryCacheRef = useRef(new Map());
   const sessionDataCacheRef = useRef(new Map());
-  const sessionAbortControllersRef = useRef(new Map());
+  const pendingProjects = useRef(new Map<string, { owner: string; project: Project }>());
+  const activeRequestsRef = useRef(new Map<string, ActiveRequest>());
+  const activeCompactions = useRef(new Set<string>());
   const sessionRequestIdsRef = useRef(new Map());
   const nextChatRequestIdRef = useRef(0);
   const temporaryBranchTailsRef = useRef(new Map<string, unknown[]>());
@@ -510,22 +540,20 @@ export const useChat = () => {
   }, []);
 
   const beginSessionRequest = useCallback(
-    (sessionId) => {
-      const previousController = sessionAbortControllersRef.current.get(sessionId);
-      if (previousController) {
-        previousController.abort();
-      }
+    (sessionId, wireId: string) => {
+      stopRequest(sessionId, activeRequestsRef.current.get(sessionId));
 
       const requestId = nextChatRequestIdRef.current + 1;
       nextChatRequestIdRef.current = requestId;
       const controller = new AbortController();
+      const cancelToken = crypto.randomUUID();
 
-      sessionAbortControllersRef.current.set(sessionId, controller);
+      activeRequestsRef.current.set(sessionId, { controller, wireId, token: cancelToken });
       sessionRequestIdsRef.current.set(sessionId, requestId);
       if (currentSessionIdRef.current === sessionId) setGenerationOutcome(null);
       setSessionActivityState(sessionId, 'generating');
 
-      return { requestId, controller };
+      return { requestId, controller, cancelToken };
     },
     [setSessionActivityState]
   );
@@ -542,7 +570,7 @@ export const useChat = () => {
         return false;
       }
 
-      sessionAbortControllersRef.current.delete(sessionId);
+      activeRequestsRef.current.delete(sessionId);
       sessionRequestIdsRef.current.delete(sessionId);
 
       const active = currentSessionIdRef.current === resolvedSessionId;
@@ -567,7 +595,7 @@ export const useChat = () => {
   );
 
   const upsertOptimisticSession = useCallback(
-    (sessionId, text, files = []) => {
+    (sessionId, text, files = [], project?: Project) => {
       if (!sessionId) return;
       const filePreview =
         files.length > 0
@@ -581,10 +609,12 @@ export const useChat = () => {
       setOptimisticSessions((previous) => ({
         ...previous,
         [sessionId]: {
+          ...previous[sessionId],
           session_id: sessionId,
           title: previous[sessionId]?.title || preview,
           last_message: preview,
           last_updated: Date.now() / 1000,
+          ...(project ? { workspace_id: project.id } : {}),
         },
       }));
     },
@@ -666,6 +696,7 @@ export const useChat = () => {
     updateBeatboxState(null);
     updateSessionIdentity(null, null);
     setSessionAccess(createDefaultSessionAccess());
+    setSessionProject(null);
     setIsReadOnly(false);
     activeMindIdRef.current = null;
     temporaryBranchTailsRef.current.clear();
@@ -709,8 +740,8 @@ export const useChat = () => {
   useEffect(
     () => () => {
       sessionLoadRequestIdRef.current += 1;
-      sessionAbortControllersRef.current.forEach((controller) => controller.abort());
-      sessionAbortControllersRef.current.clear();
+      activeRequestsRef.current.forEach(({ controller }) => controller.abort());
+      activeRequestsRef.current.clear();
       sessionRequestIdsRef.current.clear();
       revokeLocalPreviewUrls(Array.from(localPreviewUrlsRef.current));
     },
@@ -724,9 +755,13 @@ export const useChat = () => {
       sessionLoadRequestIdRef.current = loadRequestId;
       activeMindIdRef.current = null;
       const requestedSessionId = slugToSessionId(sessionIdOrSlug);
-      const cachedHistory = sessionHistoryCacheRef.current.get(requestedSessionId);
-      const cachedData = sessionDataCacheRef.current.get(requestedSessionId);
-      const cachedActivity = sessionActivityRef.current[requestedSessionId];
+      const storedProject = pendingProjects.current.get(requestedSessionId);
+      const provisional = isAuthenticated && storedProject?.owner === reliabilityOwnerKey
+        ? storedProject.project : null;
+      const useCached = Boolean(provisional || !storedProject);
+      const cachedHistory = useCached ? sessionHistoryCacheRef.current.get(requestedSessionId) : null;
+      const cachedData = useCached ? sessionDataCacheRef.current.get(requestedSessionId) : null;
+      const cachedActivity = useCached ? sessionActivityRef.current[requestedSessionId] : undefined;
       const requestedSlug = cachedData?.public_id || sessionIdToSlug(requestedSessionId);
 
       const hasTrustedCachedSession = Array.isArray(cachedHistory) || !!cachedData;
@@ -738,11 +773,13 @@ export const useChat = () => {
       });
 
       if (clearHistory) {
-        setHistory(Array.isArray(cachedHistory) ? cachedHistory : []);
+        setHistory(hasTrustedCachedSession && Array.isArray(cachedHistory) ? cachedHistory : []);
         setCanvasTextdocState(extractLatestCanvasTextdoc(cachedHistory));
         updateBeatboxState(extractLatestBeatboxState(cachedHistory));
         const cachedAccess = cachedData?.accessState || createDefaultSessionAccess();
         setSessionAccess(cachedAccess);
+        const project = provisional || cachedData?.project;
+        setSessionProject(project ? { ...project, sessionId: requestedSessionId } : null);
         setIsReadOnly(!!cachedAccess.readOnly);
         activeMindIdRef.current = cachedData?.mind?.public_id || null;
         setTemporaryChatMode(false);
@@ -767,6 +804,7 @@ export const useChat = () => {
         }
 
         if (data && Array.isArray(data.history)) {
+          if (provisional) pendingProjects.current.delete(requestedSessionId);
           const normalized = data.history.map(normalizeHistoryMessage);
           const resolvedSessionId = data.session_id || requestedSessionId;
           const slug = data.public_id || sessionIdToSlug(resolvedSessionId);
@@ -798,6 +836,7 @@ export const useChat = () => {
             sessionDataCacheRef.current.set(requestedSessionId, cachedSessionData);
           }
           setSessionAccess(accessState);
+          setSessionProject(data.project ? { ...data.project, sessionId: resolvedSessionId } : null);
           setIsReadOnly(accessState.readOnly);
           setTemporaryChatMode(false);
           activeMindIdRef.current = data.mind?.public_id || null;
@@ -815,6 +854,9 @@ export const useChat = () => {
         if (sessionLoadRequestIdRef.current !== loadRequestId) {
           return;
         }
+        if (provisional && Array.isArray(cachedHistory)) {
+          return { ...(cachedData || {}), session_id: requestedSessionId, history: cachedHistory, project: provisional };
+        }
 
         console.error('Failed to load session', e);
         resetConversationState();
@@ -826,6 +868,8 @@ export const useChat = () => {
     },
     [
       resetConversationState,
+      isAuthenticated,
+      reliabilityOwnerKey,
       sessionIdToSlug,
       setTemporaryChatMode,
       setCanvasTextdocState,
@@ -973,16 +1017,42 @@ export const useChat = () => {
     },
     [history]
   );
+  const compactSession = useCallback(async (sessionId: string, model?: string) => {
+    if (!isAuthenticated || !sessionId) {
+      showToast(t('chatMemory.privateOnly'), { type: 'error' });
+      return;
+    }
+    if (activeCompactions.current.has(sessionId)) return;
+    activeCompactions.current.add(sessionId);
+    setCompactingSessions(new Set(activeCompactions.current));
+    try {
+      const { compacted_messages } = await apiService.compactSession(sessionId, model);
+      showToast(
+        compacted_messages ? t('chatMemory.saved', { count: compacted_messages }) : t('chatMemory.short'),
+        { type: 'success' }
+      );
+    } catch (error) {
+      const code = error instanceof Error ? getChatErrorCode(error) : '';
+      showToast(t('chatMemory.errors.' + code, { defaultValue: t('chatMemory.failed') }), { type: 'error' });
+    } finally {
+      activeCompactions.current.delete(sessionId);
+      setCompactingSessions(new Set(activeCompactions.current));
+    }
+  }, [isAuthenticated, t]);
+
   const sendMessage = useCallback(
     async (text, files = [], model = '', options: SendMessageOptions = {}) => {
       const {
         composerContent,
+        chatReferences = [],
         tools = [],
         webSearch = false,
         autoWebSearch: requestedAutoWebSearch,
         mindId = undefined,
         temporaryChat: requestedTemporaryChat,
         thinkingLevel,
+        serviceTier,
+        project: requestedProject,
         _fromQueue = false,
         _forcedSessionId,
         _queueId,
@@ -993,6 +1063,14 @@ export const useChat = () => {
       const autoWebSearch = requestedAutoWebSearch ?? !!settings?.automaticWebSearch;
       const temporaryChat = requestedTemporaryChat ?? temporaryChatRef.current;
       if ((!text || !text.trim()) && files.length === 0) return;
+      if (!_fromQueue && !files.length && text?.trim() === '/compact') {
+        if (temporaryChat || isReadOnly || sessionAccess.isPublic) {
+          showToast(t('chatMemory.privateOnly'), { type: 'error' });
+          return;
+        }
+        await compactSession(currentSessionIdRef.current, model);
+        return;
+      }
       if (isReadOnly && !_fromQueue) {
         console.warn('Attempt to send message in read-only chat is blocked.');
         return;
@@ -1004,12 +1082,15 @@ export const useChat = () => {
       let sessionId = _forcedSessionId || currentSessionIdRef.current;
       const path = window.location.pathname;
       const isNewChat = !_forcedSessionId && (path === '/' || !path.startsWith('/c/'));
+      const suppliedProject = isAuthenticated && !temporaryChat && (isNewChat || _fromQueue)
+        ? requestedProject : undefined;
 
       if (!sessionId || isNewChat) {
         sessionId = temporaryChat ? generateTemporarySessionId() : generateSessionId();
         const slug = sessionIdToSlug(sessionId);
         updateSessionIdentity(sessionId, slug);
         setSessionAccess(createDefaultSessionAccess());
+        setSessionProject(suppliedProject ? { ...suppliedProject, sessionId } : null);
         setIsReadOnly(false);
         setTemporaryChatMode(temporaryChat);
 
@@ -1023,7 +1104,13 @@ export const useChat = () => {
           syncBrowserPath(`/c/${encodeURIComponent(slug)}`, 'push');
         }
       }
-      const sourceHistory = _forcedSessionId
+      if (suppliedProject) {
+        pendingProjects.current.set(sessionId, { owner: reliabilityOwnerKey, project: suppliedProject });
+      }
+      const pending = pendingProjects.current.get(sessionId);
+      const workspace = isAuthenticated && !temporaryChat && pending?.owner === reliabilityOwnerKey
+        ? pending.project : undefined;
+      const sourceHistory = isNewChat ? [] : _forcedSessionId
         ? sessionHistoryCacheRef.current.get(sessionId) || []
         : history;
       const sourceCanvasTextdoc = _forcedSessionId
@@ -1037,6 +1124,7 @@ export const useChat = () => {
         sessionDataCacheRef.current.set(sessionId, {
           ...cachedSessionData,
           session_id: sessionId,
+          ...(workspace ? { project: workspace } : {}),
           mind: _sessionMind !== undefined ? _sessionMind : cachedSessionData.mind,
           accessState: sessionAccess,
         });
@@ -1067,12 +1155,15 @@ export const useChat = () => {
             model,
             options: {
               composerContent,
+              chatReferences,
               tools,
               webSearch,
               autoWebSearch,
               mindId,
               temporaryChat,
               thinkingLevel,
+              serviceTier,
+              ...(workspace ? { project: workspace } : {}),
               ...metadata,
             },
             files,
@@ -1096,6 +1187,7 @@ export const useChat = () => {
           id: `queued-${queueId}`,
           role: 'user',
           content: text,
+          chatReferences,
           files: files.map((file) => ({
             file: {
               original_name: file.name,
@@ -1110,13 +1202,14 @@ export const useChat = () => {
         updateSessionHistory(sessionId, (previous) => [...previous, pendingMessage]);
         setQueuedMessageCount((count) => count + 1);
         setConnectionState('offline');
-        if (!temporaryChat) upsertOptimisticSession(sessionId, text, files);
+        if (!temporaryChat) upsertOptimisticSession(sessionId, text, files, workspace);
         return { queued: true, queueId };
       }
       sessionHistoryCacheRef.current.set(sessionId, sourceHistory);
-      const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
+      const deliveryRequestId = _queueId || crypto.randomUUID();
+      const { requestId: chatRequestId, controller, cancelToken } = beginSessionRequest(sessionId, deliveryRequestId);
       if (!temporaryChat) {
-        upsertOptimisticSession(sessionId, text, files);
+        upsertOptimisticSession(sessionId, text, files, workspace);
       }
       const userMessageId = `u_${crypto.randomUUID()}`;
       const assistantMessageId = `a_${crypto.randomUUID()}`;
@@ -1132,6 +1225,7 @@ export const useChat = () => {
         role: 'user',
         content: text,
         composerContent,
+        chatReferences,
         images: [],
         files: pendingFiles,
         localAttachments: temporaryChat ? files : [],
@@ -1196,10 +1290,14 @@ export const useChat = () => {
       const formData = new FormData();
       formData.append('message', text);
       if (composerContent) formData.append('composer_content', composerContent);
+      if (chatReferences.length) {
+        formData.append('chat_references', JSON.stringify(chatReferences.map((chat) => chat.session_id)));
+      }
       formData.append('selected_tools', JSON.stringify(tools));
       appendModelIfSelected(formData, model);
-      appendThinkingLevelIfValid(formData, thinkingLevel);
+      appendModelOptions(formData, thinkingLevel, serviceTier);
       formData.append('session_id', sessionId);
+      if (workspace) formData.append('workspace_id', workspace.id);
       formData.append('operation', 'send');
       formData.append('user_message_id', userMessageId);
       formData.append('assistant_message_id', assistantMessageId);
@@ -1207,8 +1305,8 @@ export const useChat = () => {
         ? _queuedHistory
         : buildHistoryForAPI(sourceHistory.length, sourceHistory);
       formData.append('history', JSON.stringify(apiHistoryForDelivery));
-      const deliveryRequestId = _queueId || crypto.randomUUID();
       formData.append('request_id', deliveryRequestId);
+      formData.append('cancel_token', cancelToken);
       if (sourceCanvasTextdoc) {
         formData.append('canvas_textdoc', JSON.stringify(sourceCanvasTextdoc));
       }
@@ -1288,6 +1386,7 @@ export const useChat = () => {
           device_type,
           time_since_visit_seconds,
           local_hour,
+          time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           avg_conversation_depth,
           avg_message_length,
           ...personalizationData,
@@ -1305,6 +1404,13 @@ export const useChat = () => {
         await apiService.chat(formData, controller.signal, {
           onPart: (data) => {
             if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data) return;
+            if (data.reply_preview === null || typeof data.reply_preview === 'string') {
+              const delta = data.reply_preview;
+              updateSessionHistory(sessionId, (prev) =>
+                prev.map((msg) => msg.id === aiMsgId ? patchReplyPreview(msg, delta) : msg)
+              );
+              return;
+            }
             if (data.status === 'generating_image') {
               updateSessionHistory(sessionId, (prev) =>
                 prev.map((msg) => {
@@ -1459,6 +1565,9 @@ export const useChat = () => {
               return;
             }
             deliverySucceeded = !finalData?.aborted;
+            if (workspace && Array.isArray(finalData.history) && deliverySucceeded) {
+              pendingProjects.current.delete(sessionId);
+            }
             if (finalData?.aborted) {
               fullReply += `\n\n_${t('chat.generationStopped')}_`;
             }
@@ -1659,10 +1768,12 @@ export const useChat = () => {
                         composerContent,
                         tools,
                         thinkingLevel,
+                        serviceTier,
                         webSearch,
                         autoWebSearch,
                         mindId,
                         temporaryChat,
+                        ...(workspace ? { project: workspace } : {}),
                         ...metadata,
                       },
                       files,
@@ -1732,6 +1843,7 @@ export const useChat = () => {
       beginSessionRequest,
       buildHistoryForAPI,
       completeSessionRequest,
+      compactSession,
       createLocalPreviewUrl,
       history,
       isSessionRequestCurrent,
@@ -1782,13 +1894,10 @@ export const useChat = () => {
   const stopGeneration = useCallback(() => {
     const sessionId = currentSessionIdRef.current;
     if (!sessionId) return;
-    const controller = sessionAbortControllersRef.current.get(sessionId);
-    if (controller) {
-      controller.abort();
-    }
+    stopRequest(sessionId, activeRequestsRef.current.get(sessionId));
   }, []);
   const regenerateMessage = useCallback(
-    async (aiMessageId, model = '', thinkingLevel = '') => {
+    async (aiMessageId, model = '', thinkingLevel = '', serviceTier = 'standard') => {
       if (isLoading || !aiMessageId) return;
 
       const aiIndex = history.findIndex((msg) => msg.id === aiMessageId);
@@ -1822,7 +1931,7 @@ export const useChat = () => {
 
       sessionLoadRequestIdRef.current += 1;
       sessionHistoryCacheRef.current.set(sessionId, history);
-      const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
+      const { requestId: chatRequestId, controller, cancelToken } = beginSessionRequest(sessionId, deliveryRequestId);
       if (!temporaryChat) {
         upsertOptimisticSession(sessionId, userMessage.content, []);
       }
@@ -1876,12 +1985,14 @@ export const useChat = () => {
       formData.append('message', userMessage.content);
       formData.append('selected_tools', JSON.stringify(history[aiIndex].selectedTools || []));
       appendModelIfSelected(formData, model);
-      appendThinkingLevelIfValid(formData, thinkingLevel);
+      appendModelOptions(formData, thinkingLevel, serviceTier);
       formData.append('session_id', sessionId);
       formData.append('operation', 'regenerate');
+      formData.append('meta', JSON.stringify({ time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
       formData.append('target_message_id', aiMessageId);
       formData.append('assistant_message_id', assistantMessageId);
       formData.append('request_id', deliveryRequestId);
+      formData.append('cancel_token', cancelToken);
       formData.append('history', JSON.stringify(historyBefore));
       if (canvasTextdocRef.current) {
         formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
@@ -1910,6 +2021,13 @@ export const useChat = () => {
           },
           onPart: (data) => {
             if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data) {
+              return;
+            }
+            if (data.reply_preview === null || typeof data.reply_preview === 'string') {
+              const delta = data.reply_preview;
+              updateSessionHistory(sessionId, (prev) =>
+                prev.map((msg) => msg.id === aiMessageId ? patchReplyPreview(msg, delta) : msg)
+              );
               return;
             }
             if (data.thinking_update) {
@@ -2191,6 +2309,7 @@ export const useChat = () => {
             ...item,
             id: selectedMessageId || item.id,
             composerContent: selectedVariant.composerContent,
+            chatReferences: selectedVariant.chatReferences,
             selectedTools: selectedVariant.selectedTools || [],
             modelId: selectedVariant.modelId,
             content: selectedVariant.content,
@@ -2222,7 +2341,7 @@ export const useChat = () => {
     ]
   );
   const editMessage = useCallback(
-    async (userMessageId, newText, model = '', thinkingLevel = '') => {
+    async (userMessageId, newText, model = '', thinkingLevel = '', serviceTier = 'standard') => {
       if (isLoading || !userMessageId || !newText?.trim() || isReadOnly) return;
 
       const userIndex = history.findIndex((msg) => msg.id === userMessageId);
@@ -2251,7 +2370,7 @@ export const useChat = () => {
 
       sessionLoadRequestIdRef.current += 1;
       sessionHistoryCacheRef.current.set(sessionId, history);
-      const { requestId: chatRequestId, controller } = beginSessionRequest(sessionId);
+      const { requestId: chatRequestId, controller, cancelToken } = beginSessionRequest(sessionId, deliveryRequestId);
       if (!temporaryChat) {
         upsertOptimisticSession(sessionId, newText, []);
       }
@@ -2323,13 +2442,15 @@ export const useChat = () => {
         JSON.stringify(history[userIndex + 1]?.selectedTools || [])
       );
       appendModelIfSelected(formData, model);
-      appendThinkingLevelIfValid(formData, thinkingLevel);
+      appendModelOptions(formData, thinkingLevel, serviceTier);
       formData.append('session_id', sessionId);
       formData.append('operation', 'edit');
+      formData.append('meta', JSON.stringify({ time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
       formData.append('target_message_id', userMessageId);
       formData.append('user_message_id', editedUserMessageId);
       formData.append('assistant_message_id', assistantMessageId);
       formData.append('request_id', deliveryRequestId);
+      formData.append('cancel_token', cancelToken);
       formData.append('history', JSON.stringify(historyBefore));
       if (canvasTextdocRef.current) {
         formData.append('canvas_textdoc', JSON.stringify(canvasTextdocRef.current));
@@ -2359,6 +2480,13 @@ export const useChat = () => {
           },
           onPart: (data) => {
             if (!isSessionRequestCurrent(sessionId, chatRequestId) || !data) {
+              return;
+            }
+            if (data.reply_preview === null || typeof data.reply_preview === 'string') {
+              const delta = data.reply_preview;
+              updateSessionHistory(sessionId, (prev) =>
+                prev.map((msg) => msg.id === aiMsgId ? patchReplyPreview(msg, delta) : msg)
+              );
               return;
             }
             if (data.thinking_update) {
@@ -2586,11 +2714,14 @@ export const useChat = () => {
     history,
     canvasTextdoc,
     beatboxState,
+    compactSession,
+    compactingSessions,
     isLoading,
     isCanvasStreaming,
     currentSessionId,
     currentSessionSlug,
     sessionAccess,
+    sessionProject,
     isReadOnly,
     isTemporaryChat,
     sessionActivity,

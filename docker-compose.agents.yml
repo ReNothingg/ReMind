@@ -1,0 +1,67 @@
+x-agent-slot: &agent-slot
+  image: remind-workspace:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: workspace
+  command: ["node", "/opt/remind/codex/slot.mjs"]
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE, KILL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  mem_limit: ${AGENT_SLOT_MEMORY:-1536m}
+  cpus: ${AGENT_SLOT_CPUS:-1.5}
+  tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=192m"]
+  environment: &slot-env
+    REMIND_CONTROL_URL: http://agent-router:8090/control/
+    REMIND_EGRESS_PROXY: http://agent-router:8090
+  healthcheck:
+    test: ["CMD","node","-e","fetch('http://127.0.0.1:8092/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+services:
+  agent-router:
+    image: remind-workspace:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: workspace
+    command: ["node","/opt/remind/codex/router.mjs"]
+    user: "1001:1001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 96
+    mem_limit: 256m
+    restart: unless-stopped
+    environment:
+      AGENT_SLOT_TARGETS: http://workspace-1:8092,http://workspace-2:8092
+      REMIND_APP_URL: http://remind-control:5000
+      AGENT_EGRESS_HOSTS: ${AGENT_EGRESS_HOSTS:-}
+      REMIND_INTERNAL_HOST: ${AGENT_INTERNAL_HOST:-localhost}
+    networks: [agent-control, agent-slot-1, agent-slot-2, agent-egress]
+  workspace-1:
+    <<: *agent-slot
+    environment:
+      <<: *slot-env
+      REMIND_SLOT_ID: "1"
+    networks: [agent-slot-1]
+    volumes: [workspace_1_data:/data]
+  workspace-2:
+    <<: *agent-slot
+    environment:
+      <<: *slot-env
+      REMIND_SLOT_ID: "2"
+    networks: [agent-slot-2]
+    volumes: [workspace_2_data:/data]
+networks:
+  agent-control: {internal: true}
+  agent-slot-1: {internal: true}
+  agent-slot-2: {internal: true}
+  agent-egress: {}
+volumes:
+  workspace_1_data: {}
+  workspace_2_data: {}

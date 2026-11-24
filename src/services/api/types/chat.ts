@@ -42,6 +42,7 @@ export type ChatStreamResult = {
   images?: string[] | string;
   reply?: string;
   reply_part?: string;
+  reply_preview?: string | null;
   sessionId?: string;
   sessionSlug?: string;
   sources?: unknown[];

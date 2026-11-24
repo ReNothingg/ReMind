@@ -10,6 +10,11 @@
 .message-content,
 .ui-message-bubble,
 .message-text,
+.ui-message-reply-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .ui-message-text {
   min-width: 0;
   max-width: 100%;

@@ -71,7 +71,7 @@ function messageTokens(message: SessionMessage): number {
       : parts.map((part) => (typeof part.text === 'string' ? part.text : '')).join('\n');
   text = text.replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gi, '');
   text = text.replace(
-    /<tool_panel data-kind="(?:plan|questions)" data-b64="([A-Za-z0-9+/=]{1,32000})"><\/tool_panel>/g,
+    /<tool_panel data-kind="(?:plan|questions|automation)" data-b64="([A-Za-z0-9+/=]{1,32000})"><\/tool_panel>/g,
     (_match, encoded: string) => {
       try {
         return new TextDecoder().decode(

@@ -24,6 +24,14 @@ from werkzeug.utils import secure_filename
 from backend.config import PYTHON_RUNNER_ENABLED, PYTHON_RUNNER_QUEUE, UPLOAD_FOLDER
 from backend.security.rate_limiting import RateLimiter
 from backend.security.secure_upload import detect_mime_from_content
+from backend.services.chat.cancellation import GenerationStopped
+from backend.services.project_resources import MAX_PROJECT_BYTES, MAX_PROJECT_FILES
+from python_runner.workspace_shell import (
+    ShellError,
+    compile_pipeline,
+    compile_script,
+    is_workspace_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +105,18 @@ def python_runner_available(user_id: int | None) -> bool:
 
 
 def available_input_files(files: Any) -> list[str]:
-    return [item[0] for item in _resolve_input_files(files)]
+    return [item[0] for item in resolve_input_files(files)]
 
 
 def resolve_input_files(files: Any) -> list[tuple[str, Path]]:
-
+    if isinstance(files, list) and any(
+        isinstance(file, dict) and file.get("workspace_file_id") for file in files
+    ):
+        return _resolve_input_files(
+            files,
+            max_count=MAX_INPUT_FILES + MAX_PROJECT_FILES,
+            max_bytes=MAX_INPUT_TOTAL_BYTES + MAX_PROJECT_BYTES,
+        )
     return _resolve_input_files(files)
 
 
@@ -110,6 +125,7 @@ def execute_python(
     *,
     user_id: int | None,
     input_files: Any = None,
+    selected_inputs: list[str] | None = None,
     allow_artifacts: bool = True,
     inline_artifacts: bool = False,
     include_model_artifacts: bool = False,
@@ -130,6 +146,138 @@ def execute_python(
             }
         )
 
+    return _execute_runner_job(
+        {"code": code},
+        resolved_user_id=resolved_user_id,
+        input_files=input_files,
+        selected_inputs=selected_inputs,
+        allow_artifacts=allow_artifacts,
+        inline_artifacts=inline_artifacts,
+        include_model_artifacts=include_model_artifacts,
+        max_artifacts=max_artifacts,
+    )
+
+
+def execute_workspace_shell(arguments, *, user_id, input_files, timeout_ms, max_output_bytes):
+    if not python_runner_available(user_id):
+        return PythonExecutionResult({"ok": False, "error": "python_runner_unavailable"})
+    inputs = arguments.get("files", [])
+    command = arguments["command"]
+    if command == "ls":
+        inputs = [name for name, _ in _resolve_input_files(input_files)]
+    elif len(inputs) != (2 if command == "diff" else 1):
+        return PythonExecutionResult({"ok": False, "error": "shell_invalid_files"})
+    return _execute_runner_job(
+        {
+            "shell": {
+                "command": command,
+                "lines": arguments.get("lines", 20),
+                "pattern": arguments.get("pattern"),
+                "timeout_ms": timeout_ms,
+                "max_output_bytes": max_output_bytes,
+            },
+        },
+        resolved_user_id=int(user_id),
+        input_files=input_files,
+        selected_inputs=inputs,
+        allow_artifacts=False,
+    )
+
+
+def _workspace_names(files):
+    inputs = resolve_input_files(files)
+    authorized = {path for _, path in inputs}
+    project_names = {}
+    for item in files or []:
+        if (
+            not isinstance(item, dict)
+            or not item.get("workspace_file_id")
+            or not isinstance(item.get("path"), str)
+            or not is_workspace_name(item.get("original_name"))
+        ):
+            continue
+        path = Path(item["path"])
+        try:
+            if path.is_symlink():
+                continue
+            resolved = path.resolve(strict=True)
+        except (OSError, ValueError, RuntimeError):
+            continue
+        if resolved in authorized:
+            project_names[resolved] = item["original_name"]
+    reserved = {name for name, _ in inputs}
+    names = {}
+    for alias, path in inputs:
+        display = project_names.get(path)
+        if display and display not in reserved and display not in names:
+            names[display] = alias
+        else:
+            names[alias] = alias
+    return names
+
+
+def execute_workspace_pipeline(
+    line, *, user_id, input_files, timeout_ms, max_output_bytes, allow_artifacts,
+    generation_control=None, script_arguments=None
+):
+    if not python_runner_available(user_id):
+        return PythonExecutionResult({"ok": False, "error": "python_runner_unavailable"})
+    names = _workspace_names(input_files)
+    try:
+        pipeline = (
+            compile_pipeline(line, names) if script_arguments is None
+            else compile_script(line, names, script_arguments)
+        )
+    except ShellError as error:
+        return PythonExecutionResult({"ok": False, "error": error.code})
+    if pipeline.output_name and not allow_artifacts:
+        return PythonExecutionResult({"ok": False, "error": "artifact_limit_reached"})
+    result = _execute_runner_job(
+        {
+            "pipeline": {
+                "line": line,
+                "files": names,
+                "timeout_ms": timeout_ms,
+                "max_output_bytes": max_output_bytes,
+                **({"arguments": script_arguments} if script_arguments is not None else {}),
+            },
+        },
+        resolved_user_id=int(user_id),
+        input_files=input_files,
+        selected_inputs=pipeline.required,
+        allow_artifacts=bool(pipeline.output_name),
+        max_artifacts=1,
+        generation_control=generation_control,
+    )
+    expects_artifact = (
+        pipeline.output_name if script_arguments is None else result.output.get("artifact_created")
+    )
+    if expects_artifact and result.output.get("ok") and not result.artifacts:
+        return PythonExecutionResult({**result.output, "ok": False, "error": "shell_artifact_unavailable"})
+    for artifact in result.artifacts:
+        artifact.pop("preview", None)
+        artifact["source"] = "tool"
+    return result
+
+
+def _execute_runner_job(
+    operation,
+    *,
+    resolved_user_id,
+    input_files,
+    selected_inputs,
+    allow_artifacts=True,
+    inline_artifacts=False,
+    include_model_artifacts=False,
+    max_artifacts=MAX_ARTIFACT_FILES,
+    generation_control=None,
+):
+    if generation_control is not None:
+        generation_control.check()
+    try:
+        input_sources = _selected_input_files(input_files, selected_inputs)
+    except (OSError, ValueError):
+        return PythonExecutionResult({"ok": False, "error": "python_input_unavailable"})
     rate_state = python_tool_limiter.evaluate(f"python_tool:user_{resolved_user_id}")
     if not rate_state.allowed:
         return PythonExecutionResult(
@@ -158,12 +306,18 @@ def execute_python(
             if pending:
                 return PythonExecutionResult({"ok": False, "error": "python_runner_busy"})
             input_root.mkdir(parents=True, mode=0o750)
-            copied_names = _stage_input_files(input_files, input_root)
+            copied_names = _stage_input_files(input_sources, input_root)
             _atomic_json(
                 request_manifest,
-                {"version": 1, "code": code, "input_files": copied_names},
+                {"version": 1, **operation, "input_files": copied_names},
             )
-        response = _wait_for_response(response_manifest)
+        response = _wait_for_response(
+            response_manifest,
+            generation_control=generation_control,
+            marker=request_root / job_id / ".cancelled",
+        )
+        if generation_control is not None:
+            generation_control.check()
         persisted_artifacts = (
             _persist_artifacts(job_id, response, max_artifacts=max_artifacts)
             if allow_artifacts
@@ -207,11 +361,26 @@ def execute_python(
                     if isinstance(name, str)
                 ][:MAX_INPUT_FILES],
                 "artifacts": public_artifacts,
+                **(
+                    {
+                        "stages": response.get("stages") or [],
+                        "output_bytes": _safe_int(response.get("output_bytes"), maximum=MAX_INPUT_TOTAL_BYTES),
+                        **(
+                            {"artifact_created": response.get("artifact_created") is True}
+                            if "arguments" in operation["pipeline"]
+                            else {}
+                        ),
+                    }
+                    if "pipeline" in operation
+                    else {}
+                ),
             },
             artifacts=public_artifacts,
             model_artifacts=model_artifacts,
             reusable_files=reusable_files,
         )
+    except GenerationStopped:
+        raise
     except TimeoutError:
         logger.warning("Python runner timed out waiting for job %s", job_id)
         return PythonExecutionResult({"ok": False, "error": "python_runner_timeout"})
@@ -236,9 +405,19 @@ def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-def _wait_for_response(path: Path) -> dict[str, Any]:
+def _wait_for_response(path: Path, *, generation_control=None, marker=None) -> dict[str, Any]:
     deadline = time.monotonic() + WAIT_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
+        if generation_control is not None:
+            try:
+                generation_control.check()
+            except GenerationStopped:
+                if marker is not None:
+                    try:
+                        marker.touch(exist_ok=True)
+                    except FileNotFoundError:
+                        pass
+                generation_control = None
         try:
             size = path.stat().st_size
         except OSError:
@@ -253,7 +432,9 @@ def _wait_for_response(path: Path) -> dict[str, Any]:
     raise TimeoutError("python_runner_timeout")
 
 
-def _resolve_input_files(files: Any) -> list[tuple[str, Path]]:
+def _resolve_input_files(
+    files: Any, *, max_count=MAX_INPUT_FILES, max_bytes=MAX_INPUT_TOTAL_BYTES
+) -> list[tuple[str, Path]]:
     if not isinstance(files, list):
         return []
     upload_root = Path(UPLOAD_FOLDER).resolve()
@@ -261,7 +442,7 @@ def _resolve_input_files(files: Any) -> list[tuple[str, Path]]:
     seen_names: set[str] = set()
     total_bytes = 0
 
-    for item in files[:MAX_INPUT_FILES]:
+    for item in files[:max_count]:
         if not isinstance(item, dict):
             continue
         raw_path = item.get("path")
@@ -277,14 +458,16 @@ def _resolve_input_files(files: Any) -> list[tuple[str, Path]]:
             stat = path.lstat()
         except (OSError, ValueError):
             continue
-        if path.is_symlink() or not path.is_file() or stat.st_size <= 0:
+        if path.is_symlink() or not path.is_file():
             continue
         total_bytes += stat.st_size
-        if total_bytes > MAX_INPUT_TOTAL_BYTES:
+        if total_bytes > max_bytes:
             break
 
         raw_name = unicodedata.normalize("NFC", str(item.get("original_name") or path.name))
         safe_name = secure_filename(raw_name)[:160] or f"input-{len(resolved) + 1}"
+        if item.get("workspace_file_id") and not secure_filename(Path(raw_name).stem):
+            safe_name = f"project-{len(resolved) + 1}{path.suffix}"
         if safe_name in seen_names:
             stem, suffix = os.path.splitext(safe_name)
             safe_name = f"{stem[:140]}-{len(resolved) + 1}{suffix[:12]}"
@@ -293,9 +476,28 @@ def _resolve_input_files(files: Any) -> list[tuple[str, Path]]:
     return resolved
 
 
-def _stage_input_files(files: Any, destination: Path) -> list[str]:
+def _selected_input_files(files, selected):
+    if selected is None:
+        return _resolve_input_files(files)
+    if (
+        not isinstance(selected, list)
+        or len(selected) > MAX_INPUT_FILES
+        or any(not isinstance(name, str) for name in selected)
+        or len(set(selected)) != len(selected)
+    ):
+        raise ValueError("invalid_input_selection")
+    known = dict(resolve_input_files(files))
+    if any(name not in known for name in selected):
+        raise ValueError("input_file_not_available")
+    sources = [(name, known[name]) for name in selected]
+    if sum(path.stat().st_size for _, path in sources) > MAX_INPUT_TOTAL_BYTES:
+        raise ValueError("input_files_too_large")
+    return sources
+
+
+def _stage_input_files(files: list[tuple[str, Path]], destination: Path) -> list[str]:
     names: list[str] = []
-    for name, source in _resolve_input_files(files):
+    for name, source in files:
         target = destination / name
         with source.open("rb") as source_handle, target.open("xb") as target_handle:
             shutil.copyfileobj(source_handle, target_handle, length=1024 * 1024)

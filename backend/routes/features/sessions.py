@@ -11,7 +11,14 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from backend.config import ALLOW_GUEST_CHATS_SAVE
-from backend.db.models import ChatShare, UserChatHistory, db
+from backend.db.models import (
+    AutomationProposal,
+    ChatShare,
+    ReMindWorkspace,
+    UserChatHistory,
+    WorkspacePatchProposal,
+    db,
+)
 from backend.errors import ApiError
 from backend.responses import make_ok
 from backend.routes.api_errors import api_error_boundary, require_authenticated_user_id
@@ -21,6 +28,7 @@ from backend.services.attachment_lifecycle import (
     collect_managed_references,
     delete_unreferenced_managed_files,
 )
+from backend.services.chat.context_compaction import compact_context, session_checkpoint
 from backend.services.chat.conversation import (
     ensure_conversation_graph,
     materialize_conversation_history,
@@ -40,6 +48,11 @@ from backend.services.chat.history import (
     select_conversation_variant,
     write_chat_file,
 )
+from backend.services.chat.model_selection import (
+    read_model_selection,
+    save_model_selection,
+    selection_view,
+)
 from backend.services.minds import get_mind_for_session_binding, serialize_mind_for_session
 from backend.services.tools.canvas_tools import MAX_TEXTDOC_CONTENT_LENGTH
 
@@ -54,15 +67,29 @@ guest_chat_import_limiter = RateLimiter(
     time_window=3600,
     namespace="guest_chat_import",
 )
+chat_compaction_limiter = RateLimiter(max_requests=12, time_window=60, namespace="chat_compaction")
+chat_reference_limiter = RateLimiter(max_requests=100, time_window=60, namespace="chat_references")
+model_selection_limiter = RateLimiter(max_requests=90, time_window=60, namespace="chat_model_selection")
 
 
 def _safe_session_preview(messages: list) -> str:
-    if not messages:
-        return ""
-    last = messages[-1]
-    parts = last.get("parts", [])
-    if parts and isinstance(parts[0], dict):
-        return str(parts[0].get("text", ""))[:60]
+    for message in reversed(messages[-2:]):
+        parts = message.get("parts", [])
+        if parts and isinstance(parts[0], dict):
+            text = re.sub(
+                r"<think(?:\s[^>]*)?>[\s\S]*?</think>",
+                "",
+                str(parts[0].get("text", "")),
+                flags=re.I,
+            )
+            text = re.sub(
+                r'<tool_panel data-kind="(?:plan|questions|automation)" data-b64="[A-Za-z0-9+/=]{1,32000}"></tool_panel>',
+                "",
+                text,
+            )
+            text = " ".join(text.split())
+            if text:
+                return text[:60]
     return ""
 
 
@@ -80,7 +107,16 @@ def _session_mind_payload(chat: UserChatHistory | None, viewer_id: int | None) -
     return serialize_mind_for_session(chat.mind_id, viewer_id)
 
 
+def _session_workspace_payload(chat: UserChatHistory | None, owner: int | None) -> dict | None:
+    if not chat or not chat.workspace_id or chat.user_id != owner:
+        return None
+    row = ReMindWorkspace.query.filter_by(id=chat.workspace_id, user_id=owner).one_or_none()
+    return {"id": row.id, "name": row.name} if row else None
+
+
 def _public_history(history: list[dict]) -> list[dict]:
+    from backend.services.tools.interaction_tools import strip_private_panels
+
     hidden_fields = {
         "variants",
         "current_variant_index",
@@ -88,11 +124,20 @@ def _public_history(history: list[dict]) -> list[dict]:
         "is_active",
         "request_id",
         "delivery_status",
+        "chat_references",
     }
-    return [
-        {key: value for key, value in message.items() if key not in hidden_fields}
-        for message in history
-    ]
+    result = []
+    for message in history:
+        public = {key: value for key, value in message.items() if key not in hidden_fields}
+        if isinstance(public.get("parts"), list):
+            public["parts"] = [
+                {**part, "text": strip_private_panels(part["text"])}
+                if isinstance(part, dict) and isinstance(part.get("text"), str)
+                else part
+                for part in public["parts"]
+            ]
+        result.append(public)
+    return result
 
 
 def _parse_guest_tokens_header() -> dict[str, str]:
@@ -154,6 +199,76 @@ def _sanitize_imported_guest_history(raw_history: object) -> list[dict]:
 
 
 def register_session_routes(api_bp):
+    @api_bp.get("/api/chat-references")
+    @rate_limit(chat_reference_limiter)
+    @api_error_boundary("chat_references_unavailable")
+    def list_chat_references():
+        from backend.services.chat.session_references import reference_candidates
+
+        owner = require_authenticated_user_id()
+        return make_ok({"chats": reference_candidates(
+            owner,
+            request.args.get("session_id"),
+            request.args.get("workspace_id"),
+            request.args.get("q", ""),
+        )})
+
+    @api_bp.get("/sessions/<session_id>/model-selection")
+    @api_error_boundary("model_selection_failed")
+    def get_session_model_selection(session_id):
+        owner = require_authenticated_user_id()
+        resolved, share = resolve_session_identifier(session_id)
+        if share and share.user_id != owner:
+            raise ApiError("not_found", status=404, code="not_found")
+        return make_ok(read_model_selection(owner, resolved))
+
+    @api_bp.put("/sessions/<session_id>/model-selection")
+    @rate_limit(model_selection_limiter)
+    @api_error_boundary("model_selection_failed")
+    def update_session_model_selection(session_id):
+        owner = require_authenticated_user_id()
+        resolved, share = resolve_session_identifier(session_id)
+        if share and share.user_id != owner:
+            raise ApiError("not_found", status=404, code="not_found")
+        return make_ok(save_model_selection(owner, resolved, request.get_json(silent=True)))
+
+    @api_bp.post("/sessions/<session_id>/compact")
+    @rate_limit(chat_compaction_limiter)
+    @api_error_boundary("session_compaction_failed")
+    def compact_session(session_id):
+        owner = require_authenticated_user_id()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", session_id):
+            raise ApiError("not_found", status=404, code="not_found")
+        chat = UserChatHistory.query.filter_by(
+            user_id=owner, session_id=session_id, source="web"
+        ).one_or_none()
+        if (
+            not chat
+            or ChatShare.query.filter_by(
+                user_id=owner, session_id=session_id, is_public=True
+            ).first()
+        ):
+            raise ApiError("not_found", status=404, code="not_found")
+        payload = request.get_json(silent=True)
+        model = None
+        if payload is not None:
+            if not isinstance(payload, dict) or set(payload) - {"model"}:
+                raise ApiError("context_summary_model_unavailable", status=400, code="context_summary_model_unavailable")
+            model = payload.get("model")
+            if model is not None and (not isinstance(model, str) or len(model) > 240):
+                raise ApiError("context_summary_model_unavailable", status=400, code="context_summary_model_unavailable")
+        history = materialize_conversation_history(chat.get_messages())
+        _, _, checkpoint = compact_context(history, owner, session_id, force=True, model=model)
+        return make_ok({"compacted_messages": checkpoint["covered_messages"] if checkpoint else 0})
+
+    @api_bp.get("/sessions/<session_id>/context-checkpoint")
+    @api_error_boundary("session_compaction_failed")
+    def get_session_context_checkpoint(session_id):
+        owner = require_authenticated_user_id()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", session_id):
+            raise ApiError("not_found", status=404, code="not_found")
+        return make_ok({"checkpoint": session_checkpoint(owner, session_id)})
+
     @api_bp.route("/sessions/<session_id>/canvas", methods=["PUT"])
     @api_error_boundary("canvas_save_failed")
     def save_session_canvas(session_id):
@@ -237,6 +352,8 @@ def register_session_routes(api_bp):
                     "history": history,
                     "title": title,
                     "mind": _session_mind_payload(chat, db_user_id),
+                    "project": _session_workspace_payload(chat, db_user_id),
+                    **({"model_selection": selection_view(chat)} if is_owner else {}),
                     "is_public": True,
                     "is_owner": is_owner,
                     "public_id": share_entry.public_id if share_entry else None,
@@ -256,6 +373,8 @@ def register_session_routes(api_bp):
                         "history": materialize_conversation_history(chat.get_messages()),
                         "title": chat.title,
                         "mind": _session_mind_payload(chat, db_user_id),
+                        "project": _session_workspace_payload(chat, db_user_id),
+                        "model_selection": selection_view(chat),
                         "is_public": False,
                         "is_owner": True,
                     }
@@ -430,6 +549,7 @@ def register_session_routes(api_bp):
                 sessions.append(
                     {
                         "session_id": chat.session_id,
+                        "workspace_id": chat.workspace_id,
                         "last_updated": _session_timestamp(chat),
                         "title": chat.title or "Новый чат",
                         "source": chat.source or "web",
@@ -656,16 +776,22 @@ def register_session_routes(api_bp):
     @api_error_boundary("session_delete_failed")
     def delete_session(session_id):
         from backend.security.audit_log import AuditEvents, log_audit_event
+        from backend.services.chat.provider_replay import delete_chat_replays
 
         raw_user_id = session.get("user_id")
         if isinstance(raw_user_id, int):
             chat = UserChatHistory.query.filter_by(
                 user_id=raw_user_id, session_id=session_id
-            ).first()
+            ).with_for_update().first()
             if not chat:
                 raise ApiError("Chat not found", status=404, code="not_found")
             managed_references = collect_managed_references(chat.get_messages())
+            WorkspacePatchProposal.query.filter_by(user_id=raw_user_id, chat_id=chat.id).delete()
+            delete_chat_replays(chat.id)
             db.session.delete(chat)
+            AutomationProposal.query.filter_by(user_id=raw_user_id, session_id=session_id).delete(
+                synchronize_session=False
+            )
             ChatShare.query.filter_by(user_id=raw_user_id, session_id=session_id).delete(
                 synchronize_session=False
             )

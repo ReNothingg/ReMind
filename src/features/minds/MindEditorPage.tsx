@@ -13,12 +13,15 @@ import {
 } from 'lucide-react';
 import {
   apiService,
+  type ComposerToolOption,
   type Mind,
   type MindCategory,
   type MindPayload,
   type MindVisibility,
 } from '../../services/api';
 import { cn } from '../../utils/cn';
+import { fetchApi } from '../../services/api/transport';
+import { personalSkillEndpoint, skillReferencePrefix, type ImportedSkill } from '../plugins/skillPackage';
 import { getMindErrorMessage } from './errorMessages';
 
 type MindEditorPageProps = {
@@ -34,6 +37,9 @@ type FormState = {
   description: string;
   instructions: string;
   name: string;
+  allow_external_use: boolean;
+  skill_ids: string[] | null;
+  custom_skills: NonNullable<Mind['custom_skills']>;
   starters: string[];
   visibility: MindVisibility;
 };
@@ -43,6 +49,9 @@ const DEFAULT_FORM: FormState = {
   description: '',
   instructions: '',
   name: '',
+  allow_external_use: false,
+  skill_ids: null,
+  custom_skills: [],
   starters: ['', '', ''],
   visibility: 'private',
 };
@@ -90,6 +99,9 @@ function toFormState(mind: Mind): FormState {
     description: mind.description || '',
     instructions: mind.instructions || '',
     name: mind.name || '',
+    allow_external_use: mind.allow_external_use === true,
+    skill_ids: mind.skill_ids ?? null,
+    custom_skills: mind.custom_skills ?? [],
     starters: mind.starters.length > 0 ? [...mind.starters, ''].slice(0, 6) : ['', '', ''],
     visibility: mind.visibility,
   };
@@ -105,6 +117,8 @@ export default function MindEditorPage({
   const { t } = useTranslation();
   const mindErrorMessages = useMindErrorMessages();
   const [categories, setCategories] = useState<MindCategory[]>([]);
+  const [skills, setSkills] = useState<ComposerToolOption[]>([]);
+  const [library, setLibrary] = useState<ImportedSkill[]>([]);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [loading, setLoading] = useState(Boolean(editingMindId));
   const [saving, setSaving] = useState(false);
@@ -118,13 +132,18 @@ export default function MindEditorPage({
       setError('');
       setLoading(Boolean(editingMindId));
       try {
-        const [categoryList, editingMind] = await Promise.all([
+        const [categoryList, editingMind, catalog, imported] = await Promise.all([
           apiService.listMindCategories(),
           editingMindId ? apiService.getMind(editingMindId) : Promise.resolve(null),
+          apiService.listModelCatalog(),
+          isAuthenticated ? fetchApi<{ skills: ImportedSkill[] }>(personalSkillEndpoint)
+            .catch(() => ({ skills: [] })) : Promise.resolve({ skills: [] }),
         ]);
         if (cancelled) return;
 
         setCategories(categoryList);
+        setSkills(catalog.tools);
+        setLibrary(imported.skills);
         if (editingMind) {
           if (!editingMind.can_edit) {
             setError(t('minds.errors.editAccess'));
@@ -148,7 +167,7 @@ export default function MindEditorPage({
     return () => {
       cancelled = true;
     };
-  }, [editingMindId, mindErrorMessages, t]);
+  }, [editingMindId, mindErrorMessages, isAuthenticated, t]);
 
   const normalizedStarters = useMemo(() => normalizeStarters(form.starters), [form.starters]);
 
@@ -156,6 +175,12 @@ export default function MindEditorPage({
     if (form.name.trim().length < 2) return t('minds.validation.name');
     if (form.description.trim().length < 8) return t('minds.validation.description');
     if (form.instructions.trim().length < 16) return t('minds.validation.instructions');
+    const names = form.custom_skills.map((skill) => skill.name.trim().toLocaleLowerCase());
+    if (
+      new Set(names).size !== names.length ||
+      form.custom_skills.some((skill) => !skill.name.trim() || !skill.instructions.trim())
+    )
+      return t('mindSkills.invalid');
     if (form.visibility === 'store' && !form.category) return t('minds.validation.category');
     return '';
   }, [form, t]);
@@ -199,6 +224,9 @@ export default function MindEditorPage({
         description: form.description.trim(),
         instructions: form.instructions.trim(),
         starters: normalizedStarters,
+        skill_ids: form.skill_ids,
+        allow_external_use: form.allow_external_use,
+        custom_skills: form.custom_skills,
         category: form.category,
         visibility: form.visibility,
       };
@@ -307,6 +335,107 @@ export default function MindEditorPage({
             </label>
 
             <div className="mind-field">
+              <span>{t('mindSkills.title')}</span>
+              <label className="mind-skill-option">
+                <input
+                  type="checkbox"
+                  checked={form.skill_ids === null}
+                  onChange={(event) => {
+                    const automatic = event.currentTarget.checked;
+                    setForm((current) => ({ ...current, skill_ids: automatic ? null : [] }));
+                  }}
+                />
+                {t('mindSkills.automatic')}
+              </label>
+              {form.skill_ids !== null && (
+                <div className="mind-skill-grid">
+                  {[
+                    ...skills.map(({ id, titleKey }) => ({ id, label: t(titleKey) })),
+                    ...library.map(({ name }) => ({ id: skillReferencePrefix + name, label: name })),
+                  ].map((skill) => (
+                    <label className="mind-skill-option" key={skill.id}>
+                      <input
+                        type="checkbox"
+                        checked={form.skill_ids?.includes(skill.id) || false}
+                        onChange={(event) => {
+                          const checked = event.currentTarget.checked;
+                          setForm((current) => ({
+                            ...current,
+                            skill_ids: checked
+                              ? [...(current.skill_ids || []), skill.id]
+                              : (current.skill_ids || []).filter((id) => id !== skill.id),
+                          }));
+                        }}
+                      />
+                      {skill.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {form.custom_skills.map((skill, index) => (
+                <fieldset className="mind-field mind-custom-skill" key={index}>
+                  <input
+                    aria-label={t('mindSkills.name')}
+                    placeholder={t('mindSkills.name')}
+                    value={skill.name}
+                    maxLength={80}
+                    onChange={(event) => {
+                      const name = event.currentTarget.value;
+                      setForm((current) => ({
+                        ...current,
+                        custom_skills: current.custom_skills.map((entry, i) =>
+                          i === index ? { ...entry, name } : entry
+                        ),
+                      }));
+                    }}
+                  />
+                  <textarea
+                    aria-label={t('mindSkills.instructions')}
+                    placeholder={t('mindSkills.instructions')}
+                    rows={4}
+                    maxLength={4000}
+                    value={skill.instructions}
+                    onChange={(event) => {
+                      const instructions = event.currentTarget.value;
+                      setForm((current) => ({
+                        ...current,
+                        custom_skills: current.custom_skills.map((entry, i) =>
+                          i === index ? { ...entry, instructions } : entry
+                        ),
+                      }));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="mind-secondary-action"
+                    onClick={() =>
+                      setForm((current) => ({
+                        ...current,
+                        custom_skills: current.custom_skills.filter((_, i) => i !== index),
+                      }))
+                    }
+                  >
+                    <Trash2 size={16} />
+                    {t('mindSkills.remove')}
+                  </button>
+                </fieldset>
+              ))}
+              <button
+                type="button"
+                className="mind-secondary-action"
+                disabled={form.custom_skills.length >= 6}
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    custom_skills: [...current.custom_skills, { name: '', instructions: '' }],
+                  }))
+                }
+              >
+                <Plus size={16} />
+                {t('mindSkills.add')}
+              </button>
+            </div>
+            <div className="mind-field">
               <span>{t('minds.editor.fields.starters')}</span>
               <div className="mind-starter-editor">
                 {form.starters.map((starter, index) => (
@@ -370,6 +499,22 @@ export default function MindEditorPage({
               </div>
             </div>
 
+            {form.visibility !== 'private' && (
+              <div className="mind-side-block">
+                <label className="mind-skill-option">
+                  <input
+                    type="checkbox"
+                    checked={form.allow_external_use}
+                    onChange={(e) => {
+                      const allow = e.target.checked;
+                      setForm((current) => ({ ...current, allow_external_use: allow }));
+                    }}
+                  />
+                  {t('mindSkills.external')}
+                </label>
+                <p>{t('mindSkills.externalHelp')}</p>
+              </div>
+            )}
             {form.visibility === 'store' && (
               <div className="mind-side-block">
                 <span>{t('minds.editor.category')}</span>

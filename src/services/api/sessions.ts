@@ -1,5 +1,6 @@
+import type { components } from '../../generated/openapi';
 import { apiGetSessionHistory, apiListSessions, type ListSessionsResponse } from '../openapiClient';
-import { fetchApi, getGuestSessionToken, getGuestSessionTokens } from './transport';
+import { fetchApi, getGuestSessionToken, getGuestSessionTokens, writeApiJson } from './transport';
 import {
   GuestChatImportResponse,
   ListSessionsOptions,
@@ -12,6 +13,16 @@ import {
 import { Mind } from './types/minds';
 
 export const sessionsApi = {
+  compactSession(sessionId: string, model?: string) {
+    return writeApiJson<{ compacted_messages: number }>(
+      `/sessions/${encodeURIComponent(sessionId)}/compact`, 'POST', model ? { model } : undefined
+    );
+  },
+  getContextCheckpoint(sessionId: string, signal?: AbortSignal) {
+    return fetchApi<{ checkpoint: components['schemas']['ChatContextCheckpoint'] | null }>(
+      `/sessions/${encodeURIComponent(sessionId)}/context-checkpoint`, signal ? { signal } : undefined
+    );
+  },
   async listSessions(options: ListSessionsOptions = ''): Promise<ListSessionsResponse> {
     const guestTokens = getGuestSessionTokens();
     const headers: HeadersInit | undefined = Object.keys(guestTokens).length

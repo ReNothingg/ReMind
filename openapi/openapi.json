@@ -5,6 +5,1661 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/agent/providers/{provider}/discover": {
+      "post": {
+        "summary": "Discover models from a provider draft without saving credentials or catalog changes",
+        "parameters": [{"name":"provider","in":"path","required":true,"schema":{"type":"string"}}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"type":"object","properties":{"key":{"type":"string","writeOnly":true},"name":{"type":"string"},"baseUrl":{"type":"string"},"protocol":{"type":"string"},"expectedRevision":{"$ref":"#/components/schemas/AgentProviderRevision"}}}}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Discovered models",
+            "content": {"application/json":{"schema":{"type":"object","required":["ok","models"],"properties":{"ok":{"type":"boolean"},"models":{"type":"array","items":{"$ref":"#/components/schemas/AgentProviderModel"}}}}}}
+          },
+          "401": {"description": "Authentication required"},
+          "409": {"description": "The provider profile changed while editing"}
+        }
+      }
+    },
+    "/sessions/{session_id}/compact": {
+      "post": {
+        "summary": "Create a private context checkpoint without removing visible messages",
+        "parameters": [{"name":"session_id","in":"path","required":true,"schema":{"type":"string"}}],
+        "requestBody": {"content":{"application/json":{"schema":{"type":"object","properties":{"model":{"type":"string","maxLength":240}},"additionalProperties":false}}}},
+        "responses": {
+          "200": {"description":"Checkpoint result","content":{"application/json":{"schema":{"type":"object","required":["ok","compacted_messages"],"properties":{"ok":{"type":"boolean"},"compacted_messages":{"type":"integer"}}}}}},
+          "401": {"description":"Authentication required"},
+          "404": {"description":"Private chat unavailable"},
+          "409": {"description":"The conversation changed or is being summarized"},
+          "422": {"description":"The chosen model was unavailable or the summary did not reduce the context"},
+          "502": {"description":"The model did not return a usable summary"}
+        }
+      }
+    },
+    "/sessions/{session_id}/context-checkpoint": {
+      "get": {
+        "summary": "Inspect the current checkpoint for an owned private chat",
+        "parameters": [{"name":"session_id","in":"path","required":true,"schema":{"type":"string"}}],
+        "responses": {
+          "200": {"description":"Current checkpoint","content":{"application/json":{"schema":{"type":"object","required":["ok","checkpoint"],"properties":{"ok":{"type":"boolean"},"checkpoint":{"anyOf":[{"$ref":"#/components/schemas/ChatContextCheckpoint"},{"type":"null"}]}}}}}},
+          "401": {"description":"Authentication required"},
+          "404": {"description":"Private chat unavailable"}
+        }
+      }
+    },
+    "/sessions/{session_id}/model-selection": {
+      "parameters": [{"name":"session_id","in":"path","required":true,"schema":{"type":"string"}}],
+      "get": {
+        "summary": "Get the next and last-used model for an owned web chat",
+        "responses": {
+          "200": {"description":"Current model selection","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatModelSelectionView"}}}},
+          "401": {"description":"Authentication required"},
+          "404": {"description":"Chat not found"}
+        }
+      },
+      "put": {
+        "summary": "Save the model and options for the next request in an owned web chat",
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"allOf":[
+          {"$ref":"#/components/schemas/ChatModelPreference"},
+          {"type":"object","properties":{"expected_user_id":{"type":"integer","minimum":1}}}
+        ]}}}},
+        "responses": {
+          "200": {"description":"Updated model selection","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatModelSelectionView"}}}},
+          "400": {"description":"Invalid model selection"},
+          "401": {"description":"Authentication required"},
+          "403": {"description":"Model access denied"},
+          "404": {"description":"Chat not found"},
+          "409": {"description":"Selection conflict"}
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/files/from-chat": {
+      "parameters": [{"name":"workspace_id","in":"path","required":true,"schema":{"type":"string"}}],
+      "post": {
+        "summary": "Save an owned chat artifact as a project file",
+        "requestBody": {"required":true,"content":{"application/json":{"schema":{"type":"object","required":["session_id","artifact_path"],"properties":{"session_id":{"type":"string"},"artifact_path":{"type":"string"}},"additionalProperties":false}}}},
+        "responses": {
+          "200":{"description":"The artifact is already saved","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkspaceArtifactResult"}}}},
+          "201":{"description":"Artifact saved","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkspaceArtifactResult"}}}},
+          "401":{"description":"Authentication required"},
+          "404":{"description":"Project, chat, or artifact not found"},
+          "409":{"description":"Storage quota or file revision conflict"}
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/patches/{proposal_id}": {
+      "parameters": [
+        {"name":"workspace_id","in":"path","required":true,"schema":{"type":"string"}},
+        {"name":"proposal_id","in":"path","required":true,"schema":{"type":"string"}}
+      ],
+      "get": {
+        "summary": "Preview a project patch before applying it",
+        "responses": {
+          "200":{"description":"Proposed patch","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkspacePatchView"}}}},
+          "401":{"description":"Authentication required"},
+          "404":{"description":"Project or proposal not found"},
+          "410":{"description":"The proposal has expired"}
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/patches/{proposal_id}/apply": {
+      "parameters": [
+        {"name":"workspace_id","in":"path","required":true,"schema":{"type":"string"}},
+        {"name":"proposal_id","in":"path","required":true,"schema":{"type":"string"}}
+      ],
+      "post": {
+        "summary": "Apply the reviewed project patch as a single transaction",
+        "responses": {
+          "200":{"description":"Patch applied","content":{"application/json":{"schema":{"$ref":"#/components/schemas/WorkspacePatchView"}}}},
+          "401":{"description":"Authentication required"},
+          "404":{"description":"Project or proposal not found"},
+          "409":{"description":"Project files have changed or the quota is exhausted"},
+          "410":{"description":"The proposal has expired"}
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/instructions": {
+      "put": {
+        "summary": "Replace the project instructions",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "instructions": {
+                      "type": "string",
+                      "maxLength": 65536
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "instructions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or file unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid instructions or file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project file limit or duplicate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "instructions": {
+                    "type": "string",
+                    "maxLength": 65536
+                  }
+                },
+                "required": [
+                  "instructions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/files": {
+      "post": {
+        "summary": "Upload private files to a project",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WorkspaceProjectFile"
+                      }
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "files"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or file unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid instructions or file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project file limit or duplicate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "files"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/files/{file_id}": {
+      "get": {
+        "summary": "Download a project file as its owner",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private file download",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project file unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a private project file",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "deleted"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or file unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/automations/proposals/{proposal_id}": {
+      "get": {
+        "summary": "Review an automation proposed in chat",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "proposal": {
+                      "$ref": "#/components/schemas/AutomationProposal"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "proposal"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Proposal unavailable"
+          },
+          "410": {
+            "description": "Proposal expired"
+          }
+        }
+      }
+    },
+    "/api/automations/proposals/{proposal_id}/apply": {
+      "post": {
+        "summary": "Confirm and apply an automation proposal",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "task_id": {
+                          "type": "string"
+                        },
+                        "run": {
+                          "$ref": "#/components/schemas/AutomationRun"
+                        },
+                        "removed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "result"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Proposal unavailable"
+          },
+          "409": {
+            "description": "The task changed"
+          },
+          "410": {
+            "description": "Proposal expired"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/automations": {
+      "get": {
+        "summary": "List the authenticated owner’s automations",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "tasks"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AutomationTask"
+                      }
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a scheduled automation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "task"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "task": {
+                      "$ref": "#/components/schemas/AutomationTask"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/automations/{task_id}": {
+      "patch": {
+        "summary": "Edit, pause, or resume an automation",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "task"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "task": {
+                      "$ref": "#/components/schemas/AutomationTask"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an automation and keep its chats",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "deleted"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/automations/{task_id}/runs": {
+      "get": {
+        "summary": "List the latest automation runs",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "runs"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AutomationRun"
+                      }
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Resource not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Queue an automation run immediately",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "run"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "run": {
+                      "$ref": "#/components/schemas/AutomationRun"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/agent/skills": {
+      "get": {
+        "summary": "List the skills installed in this library",
+        "responses": {
+          "200": {
+            "description": "Available skill records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillCatalog"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Import or replace a skill",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "document"
+                ],
+                "properties": {
+                  "document": {
+                    "$ref": "#/components/schemas/AgentSkillDocument"
+                  },
+                  "replace": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Skill imported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid skill document"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          },
+          "409": {
+            "description": "Name already present, or scope limit reached"
+          }
+        }
+      }
+    },
+    "/api/agent/skills/{skill_id}": {
+      "parameters": [
+        {
+          "name": "skill_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Read the instructions of an installed skill",
+        "responses": {
+          "200": {
+            "description": "Skill and resource paths",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillInspectionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Enable or disable a skill",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an installed skill",
+        "responses": {
+          "200": {
+            "description": "Skill deleted"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/skills": {
+      "parameters": [
+        {
+          "name": "workspace_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "List the skills installed in this library",
+        "responses": {
+          "200": {
+            "description": "Available skill records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillCatalog"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Import or replace a skill",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "document"
+                ],
+                "properties": {
+                  "document": {
+                    "$ref": "#/components/schemas/AgentSkillDocument"
+                  },
+                  "replace": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Skill imported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid skill document"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          },
+          "409": {
+            "description": "Name already present, or scope limit reached"
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}/skills/{skill_id}": {
+      "parameters": [
+        {
+          "name": "workspace_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        },
+        {
+          "name": "skill_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Read the instructions of an installed skill",
+        "responses": {
+          "200": {
+            "description": "Skill and resource paths",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillInspectionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Enable or disable a skill",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSkillResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an installed skill",
+        "responses": {
+          "200": {
+            "description": "Skill deleted"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Skill or workspace not found"
+          }
+        }
+      }
+    },
+    "/api/agent/skills/unpack": {
+      "post": {
+        "summary": "Preview one skill archive without installing it",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "package"
+                ],
+                "properties": {
+                  "package": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Markdown, text resources and validated workspace shell scripts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "markdown",
+                    "resources"
+                  ],
+                  "properties": {
+                    "markdown": {
+                      "type": "string"
+                    },
+                    "resources": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid archive"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "413": {
+            "description": "The archive exceeds its size limit"
+          }
+        }
+      }
+    },
+    "/api/plugins": {
+      "get": {
+        "summary": "List built-in and installed plugins for the authenticated account",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "builtins",
+                    "custom"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "builtins": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AgentBuiltinPlugin"
+                      }
+                    },
+                    "custom": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AgentCustomPlugin"
+                      }
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "post": {
+        "summary": "Install an account-owned plugin manifest",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentPluginManifest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "plugin"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "plugin": {
+                      "$ref": "#/components/schemas/AgentCustomPlugin"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/plugins/{plugin_id}": {
+      "patch": {
+        "summary": "Update or toggle an installed plugin",
+        "parameters": [
+          {
+            "name": "plugin_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "manifest": {
+                    "$ref": "#/components/schemas/AgentPluginManifest"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "plugin"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "plugin": {
+                      "$ref": "#/components/schemas/AgentCustomPlugin"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove an installed plugin",
+        "parameters": [
+          {
+            "name": "plugin_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "deleted"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/plugins/builtin/{skill_id}": {
+      "put": {
+        "summary": "Set a built-in skill’s account preference",
+        "parameters": [
+          {
+            "name": "skill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok",
+                    "enabled"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
     "/api/auth/check": {
       "get": {
         "summary": "Get current auth state",
@@ -442,17 +2097,57 @@
             }
           },
           "404": {
-            "description": "Target message not found",
+            "description": "Target message or owned project not found",
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
             }
           },
           "409": {
-            "description": "Message identifier conflict or version limit reached",
+            "description": "Message identifier conflict, version limit, or changed project scope",
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
             }
           }
+        }
+      }
+    },
+    "/chat/cancel": {
+      "post": {
+        "summary": "Stop a running chat request using its cancellation token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["session_id", "request_id", "cancel_token"],
+                "additionalProperties": false,
+                "properties": {
+                  "session_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,100}$" },
+                  "request_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,100}$" },
+                  "cancel_token": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Cancellation accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok", "accepted"],
+                  "properties": { "ok": { "type": "boolean" }, "accepted": { "type": "boolean" } }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid cancellation token or request identifiers" },
+          "403": { "description": "Invalid request origin or CSRF token" },
+          "429": { "description": "Rate limit exceeded" },
+          "503": { "description": "Cancellation service unavailable" }
         }
       }
     },
@@ -875,10 +2570,1269 @@
           }
         }
       }
+    },
+    "/api/chatgpt": {
+      "get": {
+        "summary": "Get the signed-in user's ChatGPT connection status",
+        "responses": {
+          "200": {
+            "description": "Connection and consent status",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatGPTAccount"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      },
+      "delete": {
+        "summary": "Disconnect the current user's ChatGPT session",
+        "responses": {
+          "200": {
+            "description": "Local tokens cleared",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"revoked": {"type": "boolean"}}, "required": ["revoked"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chatgpt/connect": {
+      "post": {
+        "summary": "Start a session-bound ChatGPT plan authorization",
+        "requestBody": {
+          "content": {
+            "application/json": {"schema": {"type": "object", "properties": {"different_account": {"type": "boolean"}}}}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorization URL",
+            "content": {
+              "application/json": {"schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}}
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/providers": {
+      "get": {
+        "summary": "List personal model provider connections",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentProviderConnections"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      }
+    },
+    "/api/agent/providers/{provider}": {
+      "put": {
+        "summary": "Save a provider profile with its inherited or custom model catalog",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentProviderConnections"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "key": {"type": "string", "writeOnly": true},
+                  "baseUrl": {"type": "string"},
+                  "name": {"type": "string"},
+                  "protocol": {"type": "string", "enum": ["openai-completions","openai-responses","anthropic-messages","google-generative-ai"]},
+                  "retryPolicy": {"$ref": "#/components/schemas/ProviderRetryPolicy"},
+                  "catalogMode": {"$ref": "#/components/schemas/AgentProviderCatalogMode"},
+                  "expectedRevision": {"$ref": "#/components/schemas/AgentProviderRevision"},
+                  "models": {"type": "array", "items": {"$ref":"#/components/schemas/AgentProviderModel"}}
+                }
+              }
+            }
+          }
+        },
+        "parameters": [{"in": "path", "name": "provider", "required": true, "schema": {"type": "string"}}]
+      },
+      "post": {
+        "summary": "Refresh the provider model catalog for a profile using the inherited list",
+        "requestBody": {
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentProviderWriteCondition"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentProviderConnections"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        },
+        "parameters": [{"in": "path", "name": "provider", "required": true, "schema": {"type": "string"}}]
+      },
+      "delete": {
+        "summary": "Remove a personal model provider",
+        "requestBody": {
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentProviderWriteCondition"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentProviderConnections"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        },
+        "parameters": [{"in": "path", "name": "provider", "required": true, "schema": {"type": "string"}}]
+      }
+    },
+    "/api/chat-references": {
+      "get": {
+        "summary": "List the owner's private chats that can be attached to a message",
+        "parameters": [
+          {"name": "session_id", "in": "query", "schema": {"type": "string", "maxLength": 100}},
+          {"name": "workspace_id", "in": "query", "schema": {"type": "string", "maxLength": 32}},
+          {"name": "q", "in": "query", "schema": {"type": "string", "maxLength": 120}}
+        ],
+        "responses": {
+          "200": {"description": "Private chat candidates", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatReferenceCandidates"}}}},
+          "401": {"description": "Authentication required", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}
+        }
+      }
+    },
+    "/api/agent/runtime": {
+      "get": {
+        "summary": "Read native agent execution settings",
+        "responses": {
+          "200": {
+            "description": "Agent settings for the requesting account",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentRuntimeSettings"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      },
+      "put": {
+        "summary": "Save native agent execution settings",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentRuntimeSettings"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Saved settings for the requesting account",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentRuntimeSettings"}}}
+          },
+          "400": {
+            "description": "Unsupported setting or invalid value",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      }
+    },
+    "/api/agent/web-research": {
+      "get": {
+        "summary": "Read the account settings for web search and page retrieval",
+        "responses": {
+          "200": {
+            "description": "Provider selections and credential status",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentWebResearchSettings"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      },
+      "put": {
+        "summary": "Save the account settings for web search and page retrieval",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentWebResearchUpdate"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Provider selections and credential status",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentWebResearchSettings"}}}
+          },
+          "400": {
+            "description": "Invalid web settings or missing credential",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      }
+    },
+    "/api/agent/telegram": {
+      "get": {
+        "summary": "Read the linked Telegram agent settings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelegramAgentSettings"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      },
+      "put": {
+        "summary": "Update the linked account’s Telegram agent",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TelegramAgentSettings"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model": {"type": "string"},
+                  "mind_id": {"type": ["string", "null"]},
+                  "serviceTier": {"type": "string"},
+                  "webSearch": {"type": "boolean"},
+                  "secretaryMode": {"type": "string", "enum": ["off", "mentions", "all"]}
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces": {
+      "get": {
+        "summary": "List the authenticated owner’s projects",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Project or chat not found"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a project",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Project or chat not found"
+          },
+          "201": {
+            "description": "Created"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspace_id}": {
+      "get": {
+        "summary": "Read project settings and private file metadata",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "instructions": {
+                      "type": "string",
+                      "maxLength": 65536
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WorkspaceProjectFile"
+                      }
+                    },
+                    "request_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "id",
+                    "name",
+                    "instructions",
+                    "files"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or file unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Rename a project",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Project or chat not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Remove a project and ungroup its chats",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Project or chat not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/chats": {
+      "post": {
+        "summary": "Create a ReMind chat inside a project",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Project or chat not found"
+          },
+          "201": {
+            "description": "Created"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/workspaces/chats/{session_id}": {
+      "put": {
+        "summary": "Move the owner’s chat into or out of a project",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Project or chat not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspace_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/agent/codex": {
+      "get": {
+        "summary": "Read the private Codex account and provider-reported rate limits",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CodexStatus"}}}
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        },
+        "parameters": [{"in": "query", "name": "refresh", "schema": {"type": "string"}}]
+      },
+      "post": {
+        "summary": "Start device authorization in the private Codex runtime",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {"url": {"type": "string"}, "code": {"type": "string"}},
+                  "required": ["url", "code"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      },
+      "delete": {
+        "summary": "Disconnect the private Codex account",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"connected": {"type": "boolean"}}, "required": ["connected"]}
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+          }
+        }
+      }
+    },
+    "/api/agent/codex/cancel": {
+      "post": {
+        "summary": "Cancel a pending private Codex device login",
+        "responses": {
+          "200": {
+            "description": "Canceled",
+            "content": {"application/json": {"schema": {"type": "object", "properties": {"ok": {"type": "boolean"}}}}}
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "WorkspaceProjectFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "download_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "mime_type",
+          "size",
+          "created_at",
+          "download_url"
+        ],
+        "additionalProperties": false
+      },
+      "AutomationProposal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "create",
+              "edit",
+              "pause",
+              "resume",
+              "run",
+              "delete"
+            ]
+          },
+          "changes": {
+            "$ref": "#/components/schemas/AutomationUpdate"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AutomationTask"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "applied_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string"
+                  },
+                  "run": {
+                    "$ref": "#/components/schemas/AutomationRun"
+                  },
+                  "removed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "operation",
+          "changes",
+          "task",
+          "stale",
+          "applied_at",
+          "result"
+        ],
+        "additionalProperties": false
+      },
+      "AutomationTiming": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "at"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "at"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "seconds"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "after"
+                ]
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 60,
+                "maximum": 31622400
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "seconds"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "every"
+                ]
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 60,
+                "maximum": 31622400
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "zone",
+              "time"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "daily"
+                ]
+              },
+              "zone": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "time": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "zone",
+              "time",
+              "weekdays"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "weekly"
+                ]
+              },
+              "zone": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "time": {
+                "type": "string"
+              },
+              "weekdays": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "zone",
+              "time",
+              "day"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "monthly"
+                ]
+              },
+              "zone": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "time": {
+                "type": "string"
+              },
+              "day": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "zone",
+              "expression"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "cron"
+                ]
+              },
+              "zone": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "expression": {
+                "type": "string",
+                "maxLength": 160
+              }
+            }
+          }
+        ]
+      },
+      "AutomationCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "prompt",
+          "model",
+          "timing"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "workspace_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "target_session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "web_search": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/AutomationTiming"
+          }
+        }
+      },
+      "AutomationUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "workspace_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "target_session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "web_search": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/AutomationTiming"
+          }
+        }
+      },
+      "AutomationRun": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "session_id",
+          "status",
+          "occurrence_at",
+          "queued_at",
+          "started_at",
+          "finished_at",
+          "error"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "occurrence_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "queued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AutomationTask": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "prompt",
+          "model",
+          "workspace_id",
+          "target_session_id",
+          "web_search",
+          "enabled",
+          "timing",
+          "next_run_at",
+          "created_at",
+          "last_run"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "workspace_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "target_session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "web_search": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/AutomationTiming"
+          },
+          "next_run_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AutomationRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AgentPluginManifest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "version",
+          "description",
+          "instructions",
+          "skills"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AgentCustomPlugin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "version",
+          "description",
+          "instructions",
+          "skills",
+          "enabled"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "custom"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AgentBuiltinPlugin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title_key",
+          "description_key",
+          "enabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "User": {
         "type": "object",
         "required": ["id", "username", "email", "is_confirmed"],
@@ -1099,6 +4053,11 @@
             "minLength": 1,
             "maxLength": 100
           },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{32}$",
+            "description": "Bind a new private authenticated web chat to an owned project on send. A saved chat must already belong to the same project."
+          },
           "message": {
             "type": "string"
           },
@@ -1125,6 +4084,11 @@
           "request_id": {
             "type": "string",
             "pattern": "^[A-Za-z0-9_-]{8,100}$"
+          },
+          "cancel_token": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A fresh UUID v4 shared only with the client that may stop this request."
           },
           "history": {
             "type": "array",
@@ -1156,10 +4120,18 @@
             "maxLength": 34048,
             "description": "Optional presentation text with selected tool markers. Removing authorized markers must reproduce message text."
           },
+          "chat_references": {
+            "description": "Explicitly attached owner-private session IDs. Multipart requests serialize the array as JSON.",
+            "oneOf": [
+              {"type": "array", "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "maxLength": 100}},
+              {"type": "string", "maxLength": 512}
+            ]
+          },
           "thinkingLevel": {
             "type": "string",
-            "enum": ["minimal", "low", "medium", "high", "xhigh", "max"]
-          }
+            "enum": ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
+          },
+          "serviceTier": {"type": "string", "enum": ["standard", "fast", "ultrafast"]}
         },
         "additionalProperties": true
       },
@@ -1277,6 +4249,7 @@
           "composer_content": {
             "type": "string"
           },
+          "chat_references": {"type": "array", "maxItems": 3, "items": {"$ref": "#/components/schemas/ChatReference"}},
           "model_id": {
             "type": "string"
           }
@@ -1321,11 +4294,26 @@
           "composer_content": {
             "type": "string"
           },
+          "chat_references": {"type": "array", "maxItems": 3, "items": {"$ref": "#/components/schemas/ChatReference"}},
           "model_id": {
             "type": "string"
           }
         },
         "additionalProperties": true
+      },
+      "ChatReference": {
+        "type": "object",
+        "required": ["session_id", "title"],
+        "properties": {
+          "session_id": {"type": "string", "maxLength": 100},
+          "title": {"type": "string", "maxLength": 200},
+          "workspace_name": {"type": ["string", "null"]}
+        }
+      },
+      "ChatReferenceCandidates": {
+        "type": "object",
+        "required": ["chats"],
+        "properties": {"chats": {"type": "array", "maxItems": 30, "items": {"$ref": "#/components/schemas/ChatReference"}}}
       },
       "SessionSummary": {
         "type": "object",
@@ -1333,6 +4321,7 @@
         "properties": {
           "session_id": { "type": "string" },
           "last_updated": { "type": "number" },
+          "workspace_id": {"type": ["string", "null"]},
           "title": { "type": "string" },
           "source": {
             "type": "string",
@@ -1382,7 +4371,18 @@
           "can_edit": { "type": "boolean" },
           "is_pinned": { "type": "boolean" },
           "created_at": { "type": ["string", "null"] },
-          "updated_at": { "type": ["string", "null"] }
+          "updated_at": { "type": ["string", "null"] },
+          "skill_ids": {"type": ["array", "null"], "items": {"type": "string"}},
+          "custom_skill_names": {"type": "array", "items": {"type": "string"}},
+          "custom_skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {"name": {"type": "string"}, "instructions": {"type": "string"}},
+              "required": ["name", "instructions"]
+            }
+          },
+          "allow_external_use": {"type": "boolean"}
         },
         "additionalProperties": true
       },
@@ -1415,6 +4415,8 @@
             "items": { "$ref": "#/components/schemas/ChatMessage" }
           },
           "title": { "type": ["string", "null"] },
+          "project": { "type": ["object", "null"], "properties": { "id": {"type":"string"}, "name": {"type":"string"} }, "required": ["id", "name"] },
+          "model_selection": {"$ref":"#/components/schemas/ChatModelSelectionView"},
           "mind": { "anyOf": [{ "$ref": "#/components/schemas/Mind" }, { "type": "null" }] },
           "is_public": { "type": "boolean" },
           "is_owner": { "type": "boolean" },
@@ -1423,6 +4425,23 @@
           "read_only": { "type": "boolean" }
         },
         "additionalProperties": true
+      },
+      "ChatModelPreference": {
+        "type": "object",
+        "required": ["model"],
+        "properties": {
+          "model": {"type":"string","minLength":1,"maxLength":240},
+          "thinkingLevel": {"$ref":"#/components/schemas/ModelReasoningLevel"},
+          "serviceTier": {"type":"string","enum":["standard","fast","ultrafast"]}
+        }
+      },
+      "ChatModelSelectionView": {
+        "type": "object",
+        "required": ["next","lastUsed"],
+        "properties": {
+          "next": {"anyOf":[{"$ref":"#/components/schemas/ChatModelPreference"},{"type":"null"}]},
+          "lastUsed": {"anyOf":[{"$ref":"#/components/schemas/ChatModelPreference"},{"type":"null"}]}
+        }
       },
       "GuestChatImportRequest": {
         "type": "object",
@@ -1720,17 +4739,23 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["minimal", "low", "medium", "high", "xhigh", "max"]
+              "enum": ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
             }
           },
           "defaultThinkingLevel": {
             "type": "string",
-            "enum": ["minimal", "low", "medium", "high", "xhigh", "max"]
+            "enum": ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
           },
           "availableUntil": {
             "type": "string",
             "format": "date"
-          }
+          },
+          "source": {"type": "string"},
+          "provider": {"type": "string"},
+          "contextWindow": {"type":"integer","minimum":1,"maximum":16000000},
+          "maxTokens": {"type":"integer","minimum":1,"maximum":262144},
+          "inputModalities": {"type":"array","items":{"type":"string","enum":["text","image"]}},
+          "serviceTiers": {"type": "array", "items": {"type": "string"}}
         },
         "additionalProperties": false
       },
@@ -1774,6 +4799,442 @@
           }
         },
         "additionalProperties": false
+      },
+      "ChatGPTAccount": {
+        "type": "object",
+        "required": ["configured", "registered", "connected", "consent_required", "login_error", "origin"],
+        "properties": {
+          "configured": {"type": "boolean"},
+          "registered": {"type": "boolean"},
+          "connected": {"type": "boolean"},
+          "consent_required": {"type": "boolean"},
+          "login_error": {"type": "boolean"},
+          "origin": {"type": ["string", "null"]},
+          "email": {"type": ["string", "null"]}
+        }
+      },
+      "WorkspacePatchView": {
+        "type":"object",
+        "required":["id","patch","changes","applied_at"],
+        "properties":{
+          "id":{"type":"string"},
+          "patch":{"type":"string"},
+          "applied_at":{"type":["string","null"],"format":"date-time"},
+          "changes":{"type":"array","items":{"type":"object","required":["kind","path"],"properties":{
+            "kind":{"type":"string","enum":["add","update","move","delete"]},
+            "path":{"type":"string"},
+            "destination":{"type":"string"},
+            "spreadsheet_formulas_escaped":{"type":"boolean"}
+          }}}
+        }
+      },
+      "WorkspaceArtifactResult": {
+        "type":"object",
+        "required":["file"],
+        "properties":{"file":{"type":"object","required":["id","name","mime_type","size","created_at","download_url"],"properties":{
+          "id":{"type":"string"},
+          "name":{"type":"string"},
+          "mime_type":{"type":"string"},
+          "size":{"type":"integer"},
+          "created_at":{"type":"string","format":"date-time"},
+          "download_url":{"type":"string"}
+        }}}
+      },
+      "AgentSkillDocument": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "body"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "modelInvocable": {
+            "type": "boolean"
+          },
+          "userInvocable": {
+            "type": "boolean"
+          },
+          "whenToUse": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "compatibility": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "resources": {
+            "type": "object",
+            "description": "Text resources and validated .sh scripts under scripts/",
+            "maxProperties": 16,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentSkillSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "enabled",
+          "modelInvocable",
+          "userInvocable",
+          "resourceCount"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "modelInvocable": {
+            "type": "boolean"
+          },
+          "userInvocable": {
+            "type": "boolean"
+          },
+          "whenToUse": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "compatibility": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "resourceCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16
+          },
+          "scriptCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16
+          }
+        }
+      },
+      "AgentSkillCatalog": {
+        "type": "object",
+        "required": [
+          "skills"
+        ],
+        "properties": {
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentSkillSummary"
+            }
+          }
+        }
+      },
+      "AgentSkillResult": {
+        "type": "object",
+        "required": [
+          "skill"
+        ],
+        "properties": {
+          "skill": {
+            "$ref": "#/components/schemas/AgentSkillSummary"
+          }
+        }
+      },
+      "AgentSkillInspectionResult": {
+        "type": "object",
+        "required": [
+          "skill"
+        ],
+        "properties": {
+          "skill": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentSkillSummary"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "body",
+                  "resources"
+                ],
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  },
+                  "resources": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "scripts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "AgentProviderConnection": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "connected": {"type": "boolean"},
+          "modelCount": {"type": "integer"},
+          "baseUrl": {"type": "string"},
+          "defaultBaseUrl": {"type": "string"},
+          "protocol": {"type":"string","enum":["openai-completions","openai-responses","anthropic-messages","google-generative-ai"]},
+          "custom": {"type":"boolean"},
+          "catalogMode": {"$ref":"#/components/schemas/AgentProviderCatalogMode"},
+          "revision": {"$ref":"#/components/schemas/AgentProviderRevision"},
+          "models": {"type":"array","items":{"$ref":"#/components/schemas/AgentProviderModel"}},
+          "reasoningLevels": {"type":"array","items":{"$ref":"#/components/schemas/ModelReasoningLevel"}},
+          "retryPolicy": {"$ref": "#/components/schemas/ProviderRetryPolicy"}
+        },
+        "required": ["id", "name", "connected", "modelCount", "baseUrl", "defaultBaseUrl", "protocol", "custom", "catalogMode", "revision", "models"]
+      },
+      "AgentProviderCatalogMode": {"type":"string","enum":["provider","custom"]},
+      "AgentProviderRevision": {"type":["string","null"],"pattern":"^[a-f0-9]{64}$"},
+      "AgentProviderWriteCondition": {
+        "type":"object",
+        "properties":{"expectedRevision":{"$ref":"#/components/schemas/AgentProviderRevision"}}
+      },
+      "AgentProviderConnections": {
+        "type": "object",
+        "properties": {"providers": {"type": "array", "items": {"$ref": "#/components/schemas/AgentProviderConnection"}}},
+        "required": ["providers"]
+      },
+      "ModelReasoningLevel": {
+        "type":"string",
+        "enum":["none","minimal","low","medium","high","xhigh","max","ultra"]
+      },
+      "AgentProviderModel": {
+        "type":"object",
+        "required":["slug","title"],
+        "properties":{
+          "slug":{"type":"string","minLength":1,"maxLength":191},
+          "title":{"type":"string","minLength":1,"maxLength":160},
+          "contextWindow":{"type":"integer","minimum":1,"maximum":16000000},
+          "maxTokens":{"type":"integer","minimum":1,"maximum":262144},
+          "inputModalities":{"type":"array","minItems":1,"maxItems":2,"items":{"type":"string","enum":["text","image"]}},
+          "reasoningEfforts":{"anyOf":[
+            {"enum":[false]},
+            {"type":"object","properties":{
+              "none":{"type":["string","null"],"maxLength":32},
+              "off":{"type":["string","null"],"maxLength":32},
+              "minimal":{"type":"string","maxLength":32},
+              "low":{"type":"string","maxLength":32},
+              "medium":{"type":"string","maxLength":32},
+              "high":{"type":"string","maxLength":32},
+              "xhigh":{"type":"string","maxLength":32},
+              "max":{"type":"string","maxLength":32},
+              "ultra":{"type":"string","maxLength":32}
+            },"additionalProperties":false}
+          ]}
+        },
+        "additionalProperties":false
+      },
+      "ProviderRetryPolicy": {
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["normal", "always"]},
+          "maxRetries": {"type": "integer", "minimum": 0, "maximum": 12},
+          "retryableCodes": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["EMPTY_RESPONSE", "RATE_LIMIT", "SERVER", "TIMEOUT", "TRANSPORT"]}
+          },
+          "backoff": {
+            "type": "object",
+            "properties": {
+              "initialDelayMs": {"type": "integer", "minimum": 100, "maximum": 15000},
+              "maxDelayMs": {"type": "integer", "minimum": 100, "maximum": 15000},
+              "jitterRatio": {"type": "number", "minimum": 0, "maximum": 1}
+            },
+            "required": ["initialDelayMs", "maxDelayMs", "jitterRatio"]
+          }
+        },
+        "required": ["mode", "maxRetries", "retryableCodes", "backoff"]
+      },
+      "ChatContextCheckpoint": {
+        "type":"object",
+        "required":["covered_messages","excerpts"],
+        "properties":{
+          "covered_messages":{"type":"integer","minimum":1},
+          "excerpts":{"type":"array","items":{"type":"object","required":["message","role","quote","excerpt"],"properties":{
+            "message":{"type":"integer"},"role":{"enum":["user","model"]},"quote":{"type":"string"},"excerpt":{"type":"boolean"}
+          }}},
+          "summary":{"type":"object","required":["model","sections","partial_history"],"properties":{
+            "model":{"type":"string"},"partial_history":{"type":"boolean"},
+            "sections":{"type":"object","additionalProperties":{"type":"string"}}
+          }}
+        }
+      },
+      "AgentRuntimeSettings": {
+        "type": "object",
+        "properties": {
+          "maxSteps": {"type": "integer", "minimum": 1, "maximum": 32},
+          "maxToolCallsPerStep": {"type": "integer", "minimum": 1, "maximum": 4},
+          "maxToolCalls": {"type": "integer", "minimum": 1, "maximum": 32},
+          "toolTimeSeconds": {"type": "integer", "minimum": 30, "maximum": 180},
+          "contextCompaction": {"type": "string", "enum": ["automatic", "manual"]},
+          "contextSummaryMode": {"type":"string","enum":["excerpts","model"]},
+          "contextSummaryModel": {"type":"string","maxLength":240},
+          "contextThresholdPercent": {"type":"integer","minimum":20,"maximum":99},
+          "contextRetainPercent": {"type":"integer","minimum":4,"maximum":80},
+          "contextRetainTokens": {"type":"integer","minimum":0,"maximum":160000},
+          "contextHeadroomTokens": {"type":"integer","minimum":0,"maximum":65536},
+          "contextSummaryTokens": {"type":"integer","minimum":512,"maximum":8192},
+          "contextSummaryRetries": {"type":"integer","minimum":0,"maximum":2},
+          "modelReplayEnabled": {"type":"boolean"},
+          "shellEnabled": {"type": "boolean"},
+          "shellTimeoutMs": {"type": "integer", "minimum": 100, "maximum": 15000},
+          "shellMaxOutputBytes": {"type": "integer", "minimum": 256, "maximum": 16000},
+          "subagentMaxDepth": {"type": "integer", "minimum": 0, "maximum": 2},
+          "subagentMaxActive": {"type": "integer", "minimum": 1, "maximum": 3},
+          "subagentModel": {"type": "string", "maxLength": 240},
+          "subagentModelSelection": {"type": "boolean"},
+          "subagentAllowedModels": {"type": "array", "maxItems": 24, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 240}}
+        },
+        "required": [
+          "maxSteps", "maxToolCallsPerStep", "maxToolCalls", "toolTimeSeconds",
+          "contextCompaction", "shellEnabled", "shellTimeoutMs", "shellMaxOutputBytes",
+          "contextSummaryMode", "contextSummaryModel", "contextThresholdPercent", "contextRetainPercent",
+          "contextRetainTokens", "contextHeadroomTokens", "contextSummaryTokens", "contextSummaryRetries", "modelReplayEnabled",
+          "subagentMaxDepth", "subagentMaxActive", "subagentModel", "subagentModelSelection", "subagentAllowedModels"
+        ],
+        "additionalProperties": false
+      },
+      "AgentWebResearchSettings": {
+        "type": "object",
+        "properties": {
+          "searchProvider": {"type": "string", "enum": ["remind", "deepseek-search-api", "deepseek-legacy"]},
+          "fetchProvider": {"type": "string", "enum": ["remind", "deepseek-fetch-api"]},
+          "searchBilling": {"type": "string", "enum": ["linked", "dedicated"]},
+          "fetchBilling": {"type": "string", "enum": ["linked", "dedicated"]},
+          "searchCount": {"type": "integer", "minimum": 1, "maximum": 50},
+          "legacyMaxUses": {"type": "integer", "minimum": 1, "maximum": 5},
+          "hasLinkedKey": {"type": "boolean"},
+          "hasDedicatedKey": {"type": "boolean"}
+        },
+        "required": [
+          "searchProvider", "fetchProvider", "searchBilling", "fetchBilling",
+          "searchCount", "legacyMaxUses", "hasLinkedKey", "hasDedicatedKey"
+        ],
+        "additionalProperties": false
+      },
+      "AgentWebResearchUpdate": {
+        "type": "object",
+        "properties": {
+          "searchProvider": {"type": "string", "enum": ["remind", "deepseek-search-api", "deepseek-legacy"]},
+          "fetchProvider": {"type": "string", "enum": ["remind", "deepseek-fetch-api"]},
+          "searchBilling": {"type": "string", "enum": ["linked", "dedicated"]},
+          "fetchBilling": {"type": "string", "enum": ["linked", "dedicated"]},
+          "searchCount": {"type": "integer", "minimum": 1, "maximum": 50},
+          "legacyMaxUses": {"type": "integer", "minimum": 1, "maximum": 5},
+          "key": {"type": "string", "writeOnly": true, "minLength": 4, "maxLength": 4096},
+          "clearKey": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      },
+      "TelegramAgentSettings": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "mind_id": {"type": ["string", "null"]},
+          "serviceTier": {"type": "string"},
+          "webSearch": {"type": "boolean"},
+          "secretaryMode": {"type": "string", "enum": ["off", "mentions", "all"]},
+          "linked": {"type": "boolean"},
+          "bot": {"type": ["string", "null"]},
+          "businessConnected": {"type": "boolean"},
+          "canReply": {"type": "boolean"}
+        },
+        "required": [
+          "model",
+          "mind_id",
+          "serviceTier",
+          "webSearch",
+          "secretaryMode",
+          "linked",
+          "bot",
+          "businessConnected",
+          "canReply"
+        ]
+      },
+      "CodexUsageWindow": {
+        "type": "object",
+        "properties": {
+          "usedPercent": {"type": "number"},
+          "windowDurationMins": {"type": ["integer", "null"]},
+          "resetsAt": {"type": ["integer", "null"]}
+        },
+        "required": ["usedPercent"]
+      },
+      "CodexStatus": {
+        "type": "object",
+        "properties": {
+          "configured": {"type": "boolean"},
+          "connected": {"type": "boolean"},
+          "email": {"type": ["string", "null"]},
+          "plan": {"type": ["string", "null"]},
+          "limits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": ["string", "null"]},
+                "primary": {"anyOf": [{"$ref": "#/components/schemas/CodexUsageWindow"}, {"type": "null"}]},
+                "secondary": {"anyOf": [{"$ref": "#/components/schemas/CodexUsageWindow"}, {"type": "null"}]}
+              },
+              "required": []
+            }
+          },
+          "loginState": {"type": "string", "enum": ["pending", "failed", "idle"]}
+        },
+        "required": ["configured", "connected", "limits"]
       }
     }
   }

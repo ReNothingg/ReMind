@@ -9,15 +9,24 @@ import re
 import time
 from typing import Any, Generator
 
+import httpx
 from google import genai
 from google.genai import errors, types
 
 from backend.ai_engine.errors import ProviderRequestError
-from backend.ai_engine.output_contract import output_contract_errors
+from backend.ai_engine.output_contract import ReplyPreview, output_contract_errors
 from backend.ai_engine.prompt_templates import render_prompt
 from backend.config import GEMINI_API_KEY, GEMINI_STREAM_TIMEOUT_MS
-from backend.services.context_usage import build_context_usage, context_weights
+from backend.services.chat.cancellation import GenerationStopped, cancellable_events
+from backend.services.chat.provider_replay import begin_replay
+from backend.services.context_usage import (
+    GEMINI_CONTEXT_LIMIT,
+    build_context_usage,
+    context_weights,
+    enforce_model_context,
+)
 from backend.services.files import restore_stored_file_for_model
+from backend.services.provider_retry import retry_failure_for_status, retry_first_event
 from backend.services.tools.interaction_tools import readable_panel_history
 from backend.services.tools.model_runtime import ModelRuntime
 from backend.services.tools.tool_execution import ToolCall, ToolExecution
@@ -85,7 +94,8 @@ def _generation_config(
     declarations: list[dict[str, Any]],
     *,
     force_web_search: bool,
-    thinking_level: types.ThinkingLevel,
+    thinking_level: types.ThinkingLevel | None,
+    max_output_tokens: int | None = None,
 ) -> types.GenerateContentConfig:
     function_declarations = _function_declarations(declarations)
     tool_config = None
@@ -100,10 +110,9 @@ def _generation_config(
 
     return types.GenerateContentConfig(
         system_instruction=system_prompt or None,
-        thinking_config=types.ThinkingConfig(
-            include_thoughts=True,
-            thinking_level=thinking_level,
-        ),
+        thinking_config=types.ThinkingConfig(include_thoughts=True, thinking_level=thinking_level)
+        if thinking_level is not None else None,
+        max_output_tokens=max_output_tokens,
         tools=(
             [types.Tool(function_declarations=function_declarations)]
             if function_declarations
@@ -117,6 +126,8 @@ def _generation_config(
 def _prepare_history_parts(
     parts: Any,
     restored_files: dict[str, dict[str, Any]] | None = None,
+    *,
+    inline_media=True,
 ) -> list[dict[str, Any]]:
     prepared_parts: list[dict[str, Any]] = []
     if not isinstance(parts, list):
@@ -134,7 +145,7 @@ def _prepare_history_parts(
             continue
         restored = restored_files.get(str(attachment.get("url_path") or ""))
         model_part = restored.get("model_part") if restored else None
-        if isinstance(model_part, dict) and model_part:
+        if isinstance(model_part, dict) and model_part and (inline_media or "inline_data" not in model_part):
             prepared_parts.append(model_part)
     return prepared_parts
 
@@ -143,6 +154,8 @@ def _prepare_history(
     history_from_main: list[dict[str, Any]],
     *,
     allow_stored_attachments: bool = False,
+    inline_media=True,
+    include_ids=False,
 ) -> list[dict[str, Any]]:
     restored_files: dict[str, dict[str, Any]] = {}
     remaining_bytes = HISTORY_ATTACHMENT_MAX_BYTES
@@ -177,15 +190,18 @@ def _prepare_history(
         role = str(message.get("role") or "").strip().lower()
         if role not in {"user", "model"}:
             continue
-        prepared_parts = _prepare_history_parts(message.get("parts", []), restored_files)
+        prepared_parts = _prepare_history_parts(message.get("parts", []), restored_files, inline_media=inline_media)
         if not prepared_parts:
             continue
         if not prepared_history and role != "user":
             continue
-        if prepared_history and prepared_history[-1]["role"] == role:
+        if prepared_history and prepared_history[-1]["role"] == role and not include_ids:
             prepared_history[-1]["parts"].extend(prepared_parts)
         else:
-            prepared_history.append({"role": role, "parts": prepared_parts})
+            prepared_history.append({
+                "role": role, "parts": prepared_parts,
+                **({"id": message.get("id")} if include_ids else {}),
+            })
     return prepared_history
 
 
@@ -214,6 +230,8 @@ def _prepare_new_message(user_message_data: dict[str, Any]) -> list[types.Part]:
     text = str(user_message_data.get("message") or "")
     if text:
         content_parts.append(types.Part.from_text(text=text))
+    if skill_context := user_message_data.get("_invoked_skill_context"):
+        content_parts.append(types.Part.from_text(text=skill_context))
 
     for file_info in user_message_data.get("files", []):
         if not isinstance(file_info, dict):
@@ -234,18 +252,24 @@ def _prepare_new_message(user_message_data: dict[str, Any]) -> list[types.Part]:
             content_parts.append(
                 types.Part.from_text(text=json.dumps(attachment_label, ensure_ascii=False))
             )
-            content_parts.append(converted)
+            if converted.inline_data is None or not user_message_data.get("_model_text_only"):
+                content_parts.append(converted)
     return content_parts
 
 
 def _history_for_client(
     user_message_data: dict[str, Any],
+    replay=None,
 ) -> list[types.Content | types.ContentDict]:
+    restoring = bool(replay and replay.previous_frames)
     legacy_history = _prepare_history(
-        user_message_data.get("history", []),
+        user_message_data.get("_model_history", user_message_data.get("history", [])),
         allow_stored_attachments=bool(user_message_data.get("history_is_canonical")),
+        inline_media=not user_message_data.get("_model_text_only"),
+        include_ids=restoring,
     )
     history: list[types.Content | types.ContentDict] = []
+    entries = []
     recent_history = []
     history_chars = 0
     for message in reversed(legacy_history[-40:]):
@@ -279,8 +303,32 @@ def _history_for_client(
             if isinstance(part, dict) and (converted := _part_from_legacy(part)) is not None
         ]
         if parts:
-            history.append(types.Content(role=message.get("role"), parts=parts))
+            item = types.Content(role=message.get("role"), parts=parts)
+            history.append(item)
+            if restoring:
+                entries.append((message.get("id"), item.model_dump(mode="json", by_alias=True, exclude_none=True)))
+    if restoring:
+        try:
+            return [types.Content.model_validate(item) for item in replay.restore(entries)]
+        except (ValueError, TypeError):
+            pass
     return history
+
+
+def _record_gemini_replay(replay, chat, start):
+    tail = chat.get_history(curated=True)[start:]
+    if len(tail) < 2 or tail[0].role != "user" or tail[-1].role != "model":
+        return None
+    for content in tail[1:]:
+        item = content.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if content.role == "user" and (
+            not item.get("parts") or not all("functionResponse" in part for part in item["parts"])
+        ):
+            return None
+        if content.role not in ("model", "user"):
+            return None
+        replay.append(item)
+    return replay.finish()
 
 
 def _parts_from_chunk(chunk: Any) -> list[Any]:
@@ -537,7 +585,9 @@ def _execution_activity(
             else (
                 "web_search_failed"
                 if not output.get("ok")
-                else "web_search_done" if result.sources else "web_search_no_results"
+                else "web_search_done"
+                if result.sources
+                else "web_search_no_results"
             )
         )
         return _search_activity_token(
@@ -620,35 +670,84 @@ def _thinking_level(user_message_data: dict[str, Any]) -> types.ThinkingLevel:
     return THINKING_LEVELS.get(requested, THINKING_LEVELS[DEFAULT_THINKING_LEVEL])
 
 
-def _create_gemini_client() -> genai.Client:
+def _create_gemini_client(
+    api_key=GEMINI_API_KEY, *, managed_retry=False, timeout_ms=GEMINI_STREAM_TIMEOUT_MS
+) -> genai.Client:
     return genai.Client(
-        api_key=GEMINI_API_KEY,
-        http_options=types.HttpOptions(timeout=GEMINI_STREAM_TIMEOUT_MS),
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            timeout=timeout_ms,
+            retry_options=types.HttpRetryOptions(attempts=1) if managed_retry else None,
+        ),
     )
 
 
-def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[Any, None, None]:
-    if not GEMINI_API_KEY or GEMINI_API_KEY == "ВАШ_API_КЛЮЧ":
+def _gemini_retry_failure(error):
+    if isinstance(error, errors.APIError):
+        return retry_failure_for_status(error.code)
+    if isinstance(error, httpx.ConnectTimeout):
+        return "TIMEOUT"
+    if isinstance(error, httpx.ConnectError):
+        return "TRANSPORT"
+    return None
+
+
+def gemini_stream(
+    user_id: str,
+    user_message_data: dict[str, Any],
+    *,
+    api_key=GEMINI_API_KEY,
+    model=GEMINI_31_FLASH_LITE_MODEL_ID,
+    retry_policy=None,
+    model_route=None,
+) -> Generator[Any, None, None]:
+    if not api_key or api_key == "ВАШ_API_КЛЮЧ":
         logger.error(
             "Gemini 3.1 Flash-Lite is unavailable because GEMINI_API_KEY is not configured"
         )
         raise ProviderRequestError("provider_not_configured")
 
     db_user_id = _db_user_id(user_id)
+    control = user_message_data.get("_generation_control")
     client: genai.Client | None = None
     try:
         runtime = ModelRuntime.create(db_user_id, user_message_data)
-        tools_enabled = bool(runtime.prompts.access.available)
+        tools_enabled = bool(runtime.declarations())
         execution = ToolExecution(runtime)
-        output_repairs = 0
-        client = _create_gemini_client()
-        chat = client.chats.create(
-            model=GEMINI_31_FLASH_LITE_MODEL_ID,
-            history=_history_for_client(user_message_data),
+        output_limit = model_route.max_tokens if model_route else None
+        context_limit = model_route.context_window if model_route else None
+        effort = (
+            THINKING_LEVELS.get(model_route.wire_effort(user_message_data.get("thinkingLevel") or user_message_data.get("thinking_level")))
+            if model_route else _thinking_level(user_message_data)
         )
+        output_repairs = 0
+        timeout = (
+            int(control.timeout(GEMINI_STREAM_TIMEOUT_MS / 1000) * 1000)
+            if control is not None else GEMINI_STREAM_TIMEOUT_MS
+        )
+        limited = control is not None and control.deadline is not None
+        client = _create_gemini_client(api_key, managed_retry=limited or retry_policy is not None, timeout_ms=timeout)
+        transport = getattr(client, "_api_client", None)
+        http = getattr(transport, "_http_options", None)
+        base = getattr(http, "base_url", None)
+        replay = begin_replay(
+            db_user_id, user_message_data, runtime, protocol="google-sdk", provider="google",
+            model=model,
+            endpoint=[base, getattr(http, "api_version", None), getattr(transport, "project", None),
+                      getattr(transport, "location", None)],
+            authority=api_key if base else None,
+        )
+        history = _history_for_client(user_message_data, replay)
         next_message: Any = _prepare_new_message(user_message_data)
         if not next_message:
             raise RuntimeError("empty_model_input")
+        if replay and replay.previous_frames and context_limit is not None and (
+            sum(context_weights(runtime.prompts.render(runtime.canvas), runtime.declarations(), [history, next_message]))
+            + (output_limit or 0) > context_limit
+        ):
+            history = _history_for_client(user_message_data)
+        chat = client.chats.create(model=model, history=history)
+        replay_start = len(chat.get_history(curated=True)) if replay is not None else 0
 
         any_answer_generated = False
         force_web_search = tools_enabled and _manual_web_search_requested(
@@ -717,10 +816,12 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 content_delta=thought_chunk,
             )
 
-        for tool_round in range(MAX_TOOL_ROUNDS + 1):
+        for tool_round in range(runtime.step_limit + 1):
+            if control is not None:
+                control.check()
             declarations = (
                 runtime.declarations()
-                if tool_round < MAX_TOOL_ROUNDS and not execution.exhausted
+                if tool_round < runtime.step_limit and not execution.exhausted
                 else []
             )
             system_prompt = runtime.prompts.render(runtime.canvas)
@@ -730,9 +831,11 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
             round_usage = None
             function_calls: list[ToolCall] = []
             round_answer_chunks: list[str] = []
+            preview = ReplyPreview()
             answer_chars = 0
             model_wait_id = ""
             waiting_for_first_chunk = False
+            round_stopped = False
             model_wait_id = hashlib.sha256(
                 f"{user_message_data.get('request_id') or 'model'}:{tool_round}".encode("utf-8")
             ).hexdigest()[:24]
@@ -750,18 +853,30 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
 
             response_stream = None
             try:
-                response_stream = chat.send_message_stream(
-                    next_message,
-                    config=_generation_config(
-                        system_prompt,
-                        declarations,
-                        force_web_search=force_web_search,
-                        thinking_level=_thinking_level(user_message_data),
-                    ),
+                config = _generation_config(
+                    system_prompt,
+                    declarations,
+                    force_web_search=force_web_search,
+                    thinking_level=effort,
+                    max_output_tokens=output_limit,
                 )
+                enforce_model_context(weights, context_limit, output_limit)
+                if retry_policy is None or limited:
+                    response_stream = chat.send_message_stream(next_message, config=config)
+                else:
+                    response_stream = retry_first_event(
+                        lambda message=next_message, request_config=config: chat.send_message_stream(
+                            message, config=request_config
+                        ),
+                        retry_policy,
+                        control,
+                        _gemini_retry_failure,
+                    )
                 force_web_search = False
 
-                for chunk in response_stream:
+                for chunk in cancellable_events(response_stream, control, client.close):
+                    if any(candidate.finish_reason == types.FinishReason.MAX_TOKENS for candidate in (chunk.candidates or [])):
+                        raise ProviderRequestError("provider_output_limit", 422)
                     if getattr(chunk, "usage_metadata", None) is not None:
                         round_usage = chunk.usage_metadata
                     if waiting_for_first_chunk:
@@ -781,6 +896,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                     finish = (
                         str(getattr(candidates[0], "finish_reason", "") or "") if candidates else ""
                     )
+                    round_stopped |= finish.split(".")[-1] == "STOP"
                     if finish and finish.split(".")[-1] not in {
                         "STOP",
                         "FINISH_REASON_UNSPECIFIED",
@@ -800,6 +916,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
 
                         if text:
                             round_answer_chunks.append(str(text))
+                            if part_preview := preview.append(text):
+                                yield part_preview
                             answer_chars += len(str(text))
                             if answer_chars > 1_000_000:
                                 raise RuntimeError("model_output_too_large")
@@ -807,6 +925,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                         function_call = getattr(part, "function_call", None)
                         name = str(getattr(function_call, "name", "") or "").strip()
                         if name:
+                            if part_preview := preview.clear(block=True):
+                                yield part_preview
                             function_calls.append(
                                 ToolCall(
                                     name=name,
@@ -815,6 +935,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                                 )
                             )
             except Exception:
+                if control is not None:
+                    control.check()
                 if model_wait_id:
                     model_wait_failed = append_thought_content(
                         _model_activity_token(
@@ -832,6 +954,10 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 if response_stream is not None and hasattr(response_stream, "close"):
                     response_stream.close()
 
+            if part_preview := preview.clear():
+                yield part_preview
+            if replay is not None and not round_stopped:
+                replay.usable = False
             if waiting_for_first_chunk:
                 model_wait_failed = append_thought_content(
                     _model_activity_token(
@@ -844,13 +970,15 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 if model_wait_failed:
                     yield model_wait_failed
 
-            if context_usage := build_context_usage(round_usage, weights):
+            if context_usage := build_context_usage(round_usage, weights, context_limit or GEMINI_CONTEXT_LIMIT):
                 yield {"context_usage": context_usage}
 
             if not function_calls:
                 contract_errors = output_contract_errors("".join(round_answer_chunks))
                 if contract_errors:
-                    if output_repairs >= 2 or tool_round >= MAX_TOOL_ROUNDS:
+                    if replay is not None:
+                        replay.usable = False
+                    if output_repairs >= 2 or tool_round >= runtime.step_limit:
                         raise RuntimeError("invalid_model_output")
                     output_repairs += 1
                     next_message = render_prompt(
@@ -858,12 +986,16 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                     )
                     continue
                 yield from finalize_thought()
+                if replay and replay.usable and round_answer_chunks and (
+                    draft := _record_gemini_replay(replay, chat, replay_start)
+                ):
+                    yield draft
                 for answer_chunk in round_answer_chunks:
                     yield answer_chunk
                     any_answer_generated = True
                 break
 
-            if tool_round >= MAX_TOOL_ROUNDS:
+            if tool_round >= runtime.step_limit:
                 yield from finalize_thought()
                 raise RuntimeError("tool_round_limit_reached")
 
@@ -924,7 +1056,7 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
                 if result.sources:
                     yield {"sources": result.sources}
                 feedback = _model_artifact_response_parts(
-                    result.model_artifacts,
+                    [] if user_message_data.get("_model_text_only") else result.model_artifacts,
                     max_images=MAX_MODEL_FEEDBACK_IMAGES_PER_ROUND - feedback_images,
                     max_bytes=MAX_MODEL_FEEDBACK_BYTES_PER_ROUND - feedback_bytes,
                 )
@@ -951,6 +1083,8 @@ def gemini_stream(user_id: str, user_message_data: dict[str, Any]) -> Generator[
         yield from finalize_thought()
         if not any_answer_generated:
             raise RuntimeError("empty_model_response")
+    except (GenerationStopped, ProviderRequestError):
+        raise
     except errors.APIError as exc:
         status = int(exc.code or 503)
         code = {

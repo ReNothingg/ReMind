@@ -23,6 +23,12 @@ def _load_model_function(module_name: str, attr_name: str) -> ModelFunction | No
 
 
 def get_model_function(model_name: str) -> ModelFunction | None:
+    if model_name.startswith("codex/"):
+        return _load_model_function("backend.ai_engine.codex", "codex_stream")
+    if model_name.startswith("chatgpt/"):
+        return _load_model_function("backend.ai_engine.chatgpt", "chatgpt_stream")
+    if model_name.startswith("key/"):
+        return _load_model_function("backend.ai_engine.agent", "agent_stream")
     definition = get_model_definition(model_name)
     if not definition:
         return None

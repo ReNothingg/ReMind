@@ -4,6 +4,7 @@ import { readGuestSessionIds } from '../guestSessionStorage';
 
 export interface SessionSummary {
   session_id: string;
+  workspace_id?: string | null;
   title?: string;
   last_updated?: number;
   last_message?: string;
@@ -116,10 +117,16 @@ export function useSessionList({ isAuthenticated, allowGuestChatsSave }: UseSess
     );
   }, []);
 
+  const onSessionMoved = useCallback((sessionId: string, workspaceId: string | null) => {
+    refreshRequestIdRef.current += 1;
+    setSessions((rows) => rows.map((item) => item.session_id === sessionId ? { ...item, workspace_id: workspaceId } : item));
+  }, []);
+
   return {
     sessions,
     refreshSessions,
     removeSession,
     onSessionRenamed,
+    onSessionMoved,
   };
 }

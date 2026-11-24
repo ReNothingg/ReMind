@@ -1624,3 +1624,19 @@ html[data-theme='light'] .user-settings-modal .account-profile-summary {
     height: 44px;
   }
 }
+.chatgpt-connection .account-connected-app-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .chatgpt-connection .account-connected-app-controls {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .chatgpt-connection button {
+    min-height: 44px;
+    white-space: normal;
+  }
+}
