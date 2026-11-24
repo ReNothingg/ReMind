@@ -4,30 +4,22 @@ import {
   useCallback,
   useRef,
   type FormEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Accessibility,
   ArrowUpRight,
   Download,
   FileText,
   Globe2,
-  Info,
-  LayoutPanelLeft,
   LogOut,
   Loader2,
   MessageCircle,
   Music2,
-  Palette,
   PlugZap,
   Send,
   Save,
   ShieldAlert,
-  ShieldCheck,
-  SlidersHorizontal,
-  UserRound,
   X,
 } from 'lucide-react';
 import { Github, Youtube } from '../UI/BrandIcons';
@@ -38,7 +30,6 @@ import type { AuthConfig } from '../../services/auth';
 import { apiService, type GitHubStatus } from '../../services/api';
 import { useURLRouter } from '../../hooks/useURLRouter';
 import CustomSelect from '../UI/CustomSelect';
-import ModalShell from '../UI/ModalShell';
 import ToggleSwitch from '../UI/ToggleSwitch';
 import { AppleLogo, GoogleLogo, TelegramLogo } from '../Auth/SocialAuthButton';
 import { requestNotificationPermission } from '../../utils/notifications';
@@ -48,6 +39,8 @@ import { safeGitHubUrl } from '../../utils/githubUrls';
 import AgentWorkspace from '../../features/chat/AgentWorkspace';
 import ProviderSettings from '../../features/chat/ProviderSettings';
 import TelegramAgentSettings from '../../features/chat/TelegramAgentSettings';
+import SettingsShell from '../../features/settings/SettingsShell';
+import { settingsSectionGroups, type SettingsSectionId } from '../../features/settings/settingsSections';
 import {
   firstAccountFieldError,
   localizeAccountError,
@@ -56,29 +49,9 @@ import {
   validateUsername,
 } from '../../utils/accountValidation';
 
-type SettingsTabId =
-  | 'workspace'
-  | 'telegram'
-  | 'models'
-  | 'account'
-  | 'appearance'
-  | 'personalization'
-  | 'privacy'
-  | 'interface'
-  | 'accessibility'
-  | 'about';
-
-type SettingsTabButtonProps = {
-  active: boolean;
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-  tabId: SettingsTabId;
-};
-
 type SettingsPaneProps = {
   children: ReactNode;
-  dataPane: SettingsTabId;
+  dataPane: SettingsSectionId;
   className?: string;
 };
 
@@ -113,6 +86,7 @@ type SettingToggleProps = {
 };
 
 type SettingsModalProps = {
+  compact: boolean;
   onClose: () => void;
   onOpenAuth: (mode?: 'login' | 'link') => void;
   onOpenPlugins: () => void;
@@ -263,32 +237,10 @@ const ABOUT_LINKS = {
   ],
 } as const;
 
-const SettingsTabButton = ({ active, icon, label, onClick, tabId }: SettingsTabButtonProps) => (
-  <button
-    type="button"
-    className={cn('settings-tab', active && 'active')}
-    onClick={onClick}
-    role="tab"
-    id={`settings-tab-${tabId}`}
-    aria-controls={`settings-panel-${tabId}`}
-    aria-selected={active}
-    data-settings-tab={tabId}
-    tabIndex={active ? 0 : -1}
-  >
-    <span className="settings-tab-icon" aria-hidden="true">
-      {icon}
-    </span>
-    <span className="settings-tab-label">{label}</span>
-  </button>
-);
-
 const SettingsPane = ({ children, dataPane, className = '' }: SettingsPaneProps) => (
   <div
     className={cn('settings-pane active ui-scrollbar-thin', className)}
     data-pane={dataPane}
-    role="tabpanel"
-    id={`settings-panel-${dataPane}`}
-    aria-labelledby={`settings-tab-${dataPane}`}
     tabIndex={0}
   >
     {children}
@@ -344,11 +296,11 @@ const SettingToggle = ({
   </div>
 );
 
-const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }: SettingsModalProps) => {
+const SettingsModal = ({ compact, onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }: SettingsModalProps) => {
   const { t, i18n } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { user, isAuthenticated, logout, updateProfile, deleteAccount } = useAuth();
-  const { getSettingsTab, navigateToSettings } = useURLRouter();
+  const { getSettingsTab, navigateToSettings, navigate } = useURLRouter();
 
   const FONT_SIZE_MIN_PX = 10;
   const FONT_SIZE_MAX_PX = 24;
@@ -372,10 +324,11 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
     }
   }, [currentLanguage, i18n, settings.interface_language]);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    const tab = getSettingsTab();
-    return tab || 'appearance';
-  });
+  const groups = settingsSectionGroups(t, isAuthenticated);
+  const rows = groups.flatMap((group) => group.rows);
+  const selectedSection = rows.find((row) => row.id === getSettingsTab());
+  const activeSection = selectedSection ?? (compact ? undefined : rows[0]);
+  const activeTab = activeSection?.id;
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -397,55 +350,6 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
     setFieldErrors({});
     setDeleteConfirmation('');
   }, [user]);
-
-  useEffect(() => {
-    const syncTab = () => {
-      const [section, tab] = window.location.hash.slice(1).split('/');
-      if (
-        section === 'settings' &&
-        tab &&
-        [
-          'account',
-          'models',
-          'workspace',
-          'telegram',
-          'appearance',
-          'personalization',
-          'privacy',
-          'interface',
-          'accessibility',
-          'about',
-        ].includes(tab)
-      ) {
-        setActiveTab(tab);
-      }
-    };
-    window.addEventListener('hashchange', syncTab);
-    window.addEventListener('hashRouteChange', syncTab);
-    return () => {
-      window.removeEventListener('hashchange', syncTab);
-      window.removeEventListener('hashRouteChange', syncTab);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleEscapeKey = (e) => {
-      if (isRecordingShortcut) {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setIsRecordingShortcut(false);
-        }
-        return;
-      }
-
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscapeKey);
-    return () => document.removeEventListener('keydown', handleEscapeKey);
-  }, [isRecordingShortcut, onClose]);
 
   useEffect(() => {
     if (!isRecordingShortcut) return undefined;
@@ -481,12 +385,6 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
     window.addEventListener('keydown', handleShortcutKeyDown, true);
     return () => window.removeEventListener('keydown', handleShortcutKeyDown, true);
   }, [isRecordingShortcut, t, updateSetting]);
-
-  useEffect(() => {
-    if (!isAuthenticated && activeTab === 'personalization') {
-      setActiveTab('appearance');
-    }
-  }, [activeTab, isAuthenticated]);
 
   const loadTelegramAuthConfig = useCallback(async () => {
     const config = await authService.getAuthConfig();
@@ -578,11 +476,6 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
     url.searchParams.set('redirect_to', `${window.location.origin}/#settings/account`);
     return url.toString();
   })();
-
-  const handleTabChange = (tab: SettingsTabId) => {
-    setActiveTab(tab);
-    navigateToSettings(tab, true);
-  };
 
   const handleSaveProfile = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -709,100 +602,6 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
   const currentFontSizePx = Number.isFinite(parsedFontSizePx)
     ? Math.min(FONT_SIZE_MAX_PX, Math.max(FONT_SIZE_MIN_PX, parsedFontSizePx))
     : 16;
-  const optionalPersonalizationTabs: Array<{ id: SettingsTabId; label: string; icon: ReactNode }> =
-    isAuthenticated
-      ? [
-          {
-            id: 'personalization',
-            label: t('settings.tabs.personalization'),
-            icon: <SlidersHorizontal size={18} strokeWidth={1.9} />,
-          },
-        ]
-      : [];
-
-  const tabs: Array<{ id: SettingsTabId; label: string; icon: ReactNode }> = [
-    {
-      id: 'account',
-      label: t('settings.tabs.account'),
-      icon: <UserRound size={18} strokeWidth={1.9} />,
-    },
-    ...(isAuthenticated
-      ? [
-          {
-            id: 'models' as const,
-            label: t('agentSettings.title'),
-            icon: <SlidersHorizontal size={18} />,
-          },
-          {
-            id: 'workspace' as const,
-            label: t('workspace.title'),
-            icon: <SlidersHorizontal size={18} />,
-          },
-          { id: 'telegram' as const, label: t('agentTelegram.title'), icon: <Send size={18} /> },
-        ]
-      : []),
-    {
-      id: 'appearance',
-      label: t('settings.tabs.appearance'),
-      icon: <Palette size={18} strokeWidth={1.9} />,
-    },
-    ...optionalPersonalizationTabs,
-    {
-      id: 'privacy',
-      label: t('settings.tabs.privacy'),
-      icon: <ShieldCheck size={18} strokeWidth={1.9} />,
-    },
-    {
-      id: 'interface',
-      label: t('settings.tabs.interface'),
-      icon: <LayoutPanelLeft size={18} strokeWidth={1.9} />,
-    },
-    {
-      id: 'accessibility',
-      label: t('settings.tabs.accessibility'),
-      icon: <Accessibility size={18} strokeWidth={1.9} />,
-    },
-    {
-      id: 'about',
-      label: t('settings.tabs.about'),
-      icon: <Info size={18} strokeWidth={1.9} />,
-    },
-  ];
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(`[data-settings-tab="${activeTab}"]`)
-        ?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [activeTab]);
-
-  const handleTabsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const currentIndex = tabs.findIndex((tab) => tab.id === activeTab);
-    let nextIndex = currentIndex;
-
-    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-      nextIndex = (currentIndex + 1) % tabs.length;
-    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    } else if (event.key === 'Home') {
-      nextIndex = 0;
-    } else if (event.key === 'End') {
-      nextIndex = tabs.length - 1;
-    } else {
-      return;
-    }
-
-    event.preventDefault();
-    const nextTab = tabs[nextIndex];
-    if (!nextTab) return;
-    handleTabChange(nextTab.id);
-    window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(`[data-settings-tab="${nextTab.id}"]`)?.focus();
-    });
-  };
-
   const normalizedAccountName = String(user?.name || '').trim();
   const accountDisplayName =
     normalizedAccountName || user?.username || user?.email || t('settings.account.status.guest');
@@ -1213,47 +1012,17 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
   );
 
   return (
-    <ModalShell
-      ariaLabel={t('settings.title')}
-      className="user-settings-modal active items-end px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-      contentClassName="user-settings-content flex h-[100dvh] min-h-[100dvh] w-full max-w-[1000px] flex-col rounded-none border-border bg-surface sm:h-[85vh] sm:min-h-[560px] sm:rounded-xl"
-      onBackdropClick={onClose}
-      onRequestClose={onClose}
+    <SettingsShell
+      title={t('settings.title')}
+      closeLabel={t('settings.close')}
+      backLabel={t('settings.navigation.back')}
+      groups={groups}
+      active={activeSection}
+      compact={compact}
+      onSelect={(id) => navigateToSettings(id, true)}
+      onBack={() => navigate('settings', true)}
+      onClose={onClose}
     >
-      <div className="user-settings-header flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
-        <h3 className="text-[1.05rem] font-semibold tracking-normal text-foreground">
-          {t('settings.title')}
-        </h3>
-        <button
-          className="user-settings-close ui-icon-control size-9 rounded-md border-transparent bg-transparent text-muted hover:bg-interactive hover:text-foreground"
-          onClick={onClose}
-          aria-label={t('settings.close')}
-          type="button"
-        >
-          <X size={20} strokeWidth={1.9} />
-        </button>
-      </div>
-
-      <div className="user-settings-body flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-        <div
-          className="settings-tabs ui-scrollbar-thin"
-          role="tablist"
-          aria-label={t('settings.title')}
-          onKeyDown={handleTabsKeyDown}
-        >
-          {tabs.map((tab) => (
-            <SettingsTabButton
-              key={tab.id}
-              active={activeTab === tab.id}
-              icon={tab.icon}
-              label={tab.label}
-              tabId={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-            />
-          ))}
-        </div>
-
-        <div className="settings-content">
           {activeTab === 'account' && renderAccountTab()}
           {activeTab === 'workspace' && isAuthenticated && (
             <SettingsPane dataPane="workspace">
@@ -1830,9 +1599,7 @@ const SettingsModal = ({ onClose, onOpenAuth, onOpenPlugins, onOpenAutomations }
               </section>
             </SettingsPane>
           )}
-        </div>
-      </div>
-    </ModalShell>
+    </SettingsShell>
   );
 };
 

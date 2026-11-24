@@ -682,6 +682,12 @@
     "github": "GitHub"
   },
   "settings": {
+    "navigation": {
+      "work": "Рабочая среда",
+      "application": "Приложение",
+      "data": "Данные и информация",
+      "back": "К списку настроек"
+    },
     "title": "Настройки",
     "close": "Закрыть",
     "tabs": {
@@ -1730,6 +1736,8 @@
     }
   },
   "projects": {
+    "actions": "Действия проекта «{{name}}»",
+    "newChatInProject": "Новый чат в проекте «{{name}}»",
     "showChats": "Чаты проекта {{name}}",
     "personalChat": "Личный чат",
     "recentChats": "Недавние чаты проекта",

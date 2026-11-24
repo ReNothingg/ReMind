@@ -611,6 +611,12 @@
     "github": "GitHub"
   },
   "settings": {
+    "navigation": {
+      "work": "कार्यक्षेत्र",
+      "application": "ऐप",
+      "data": "डेटा और जानकारी",
+      "back": "सेटिंग की सूची पर लौटें"
+    },
     "title": "सेटिंग्स",
     "close": "बंद करें",
     "tabs": {
@@ -1659,6 +1665,8 @@
     }
   },
   "projects": {
+    "actions": "{{name}} प्रोजेक्ट की कार्रवाइयाँ",
+    "newChatInProject": "{{name}} में नई चैट",
     "showChats": "{{name}} प्रोजेक्ट की चैट",
     "personalChat": "निजी चैट",
     "recentChats": "प्रोजेक्ट की हाल की चैट",

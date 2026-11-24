@@ -16,7 +16,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
 from backend.auth.accounts import is_account_disabled
-from backend.db.models import AgentCodexLogin, AgentWorkspaceSlot, AgentWorkspaceTicket, User, db
+from backend.db.models import AgentWorkspaceSlot, AgentWorkspaceTicket, User, db
 from backend.errors import ApiError
 from backend.security.provider_secrets import provider_master_key
 
@@ -35,14 +35,7 @@ def existing(owner):
     return AgentWorkspaceSlot.query.filter_by(user_id=owner).first() if owner else None
 
 
-def available():
-    count = capacity()
-    return bool(count) and AgentWorkspaceSlot.query.filter(
-        AgentWorkspaceSlot.id <= count, AgentWorkspaceSlot.user_id.is_not(None)
-    ).count() < count
-
-
-def reserve(owner, *, login_expires_at):
+def reserve(owner):
     user = db.session.get(User, owner)
     if not user or is_account_disabled(user):
         raise ApiError("access_denied", status=403, code="access_denied")
@@ -72,13 +65,9 @@ def reserve(owner, *, login_expires_at):
                     codex_catalog_time=0,
                 )
             )
-            if changed.rowcount:
-                db.session.add(AgentCodexLogin(
-                    slot_id=index, attempt_id=secrets.token_hex(16), expires_at=login_expires_at
-                ))
-                db.session.commit()
-                return db.session.get(AgentWorkspaceSlot, index)
             db.session.commit()
+            if changed.rowcount:
+                return db.session.get(AgentWorkspaceSlot, index)
         except IntegrityError:
             db.session.rollback()
             row = existing(owner)
@@ -98,19 +87,10 @@ class LeaseIdentity:
     user_id: int | None
 
 
-def lease_identity(slot):
-    return LeaseIdentity(slot.id, slot.workspace_id, slot.generation, slot.user_id)
-
-
-def lock_owner(owner, *, expected=None):
-    query = update(AgentWorkspaceSlot).where(AgentWorkspaceSlot.user_id == owner)
-    if expected is not None:
-        query = query.where(
-            AgentWorkspaceSlot.id == expected.id,
-            AgentWorkspaceSlot.generation == expected.generation,
-            AgentWorkspaceSlot.workspace_id == expected.workspace_id,
-        )
-    locked = db.session.execute(query.values(user_id=owner))
+def _lock_owner(owner):
+    locked = db.session.execute(
+        update(AgentWorkspaceSlot).where(AgentWorkspaceSlot.user_id == owner).values(user_id=owner)
+    )
     if not locked.rowcount:
         return None
     return AgentWorkspaceSlot.query.filter_by(user_id=owner).populate_existing().one()
@@ -206,10 +186,7 @@ def target(slot, path):
 
 
 def rpc(slot, op, payload=None, *, owner, stream=False, timeout=12):
-    expected = lease_identity(slot)
-    slot = _identity(expected.id, owner)
-    if slot != expected:
-        raise ApiError("workspace_session_expired", status=401, code="workspace_session_expired")
+    slot = _identity(slot.id, owner)
     body = payload or {}
     headers = {"Authorization": "Bearer " + grant(slot, "rpc", 120, op=op)}
     try:
@@ -229,8 +206,6 @@ def rpc(slot, op, payload=None, *, owner, stream=False, timeout=12):
             response.close()
             statuses = {
                 "chatgpt_reconnect": 401,
-                "workspace_session_expired": 401,
-                "workspace_restarting": 503,
                 "model_speed_unavailable": 400,
                 "model_access_denied": 403,
                 "chatgpt_quota": 429,
@@ -251,16 +226,11 @@ def rpc(slot, op, payload=None, *, owner, stream=False, timeout=12):
 
 
 def release(owner):
-    slot = lock_owner(owner)
+    slot = _lock_owner(owner)
     if not slot:
         return None
-    return retire_slot(slot)
-
-
-def retire_slot(slot):
     removal = {"url": target(slot, "erase"), "token": grant(slot, "rpc", 120, op="erase")}
     AgentWorkspaceTicket.query.filter_by(slot_id=slot.id).delete()
-    AgentCodexLogin.query.filter_by(slot_id=slot.id).delete()
     slot.user_id, slot.workspace_id, slot.codex_catalog, slot.codex_catalog_time = (
         None,
         None,

@@ -603,7 +603,6 @@ html[data-theme='light'] .user-message .message-content {
   background: var(--color-bg-surface);
 }
 
-html .user-settings-modal .user-settings-content,
 html .auth-modal .auth-modal-content,
 html .file-modal .file-modal-content {
   border-color: transparent;
@@ -614,31 +613,6 @@ html .file-modal .file-modal-content {
 .file-modal.active .file-modal-content,
 .share-modal {
   animation: modal-settle var(--motion-settle) both;
-}
-
-.user-settings-modal .user-settings-body,
-.user-settings-modal .settings-content {
-  background: var(--color-bg-canvas);
-}
-
-.user-settings-modal .settings-tabs {
-  border-right: 0;
-  background: var(--color-bg-main);
-}
-
-html .user-settings-modal .user-settings-header,
-html .user-settings-modal .settings-tabs {
-  border-color: transparent;
-}
-
-.user-settings-modal .settings-tab {
-  border: 0;
-  border-radius: 12px;
-}
-
-.user-settings-modal .settings-tab.active {
-  border-color: transparent;
-  background: var(--color-bg-surface);
 }
 
 .user-settings-modal .setting-group,

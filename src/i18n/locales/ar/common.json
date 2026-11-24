@@ -607,6 +607,12 @@
     "github": "GitHub"
   },
   "settings": {
+    "navigation": {
+      "work": "مساحة العمل",
+      "application": "التطبيق",
+      "data": "البيانات والمعلومات",
+      "back": "الرجوع إلى الإعدادات"
+    },
     "title": "الإعدادات",
     "close": "إغلاق",
     "tabs": {
@@ -1655,6 +1661,8 @@
     }
   },
   "projects": {
+    "actions": "إجراءات المشروع {{name}}",
+    "newChatInProject": "محادثة جديدة في {{name}}",
     "showChats": "محادثات المشروع {{name}}",
     "personalChat": "محادثة شخصية",
     "recentChats": "محادثات المشروع الأخيرة",

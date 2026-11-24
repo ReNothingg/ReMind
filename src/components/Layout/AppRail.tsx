@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, BookOpen, Check, ChevronRight, ListFilter, MessageSquarePlus, Pencil, Plus, Settings2, ShieldCheck, Trash2, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, ChevronRight, Ellipsis, EllipsisVertical, FolderOpen, ListFilter, MessageSquarePlus, Pencil, Settings2, ShieldCheck, SquarePen, Trash2, X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -134,7 +134,7 @@ const RailActionButton = ({
   </button>
 );
 
-const RailMenuItem = ({ children, className, danger = false, icon, ...props }) => (
+const RailMenuItem = ({ children, className = 'menu-item', danger = false, icon, ...props }) => (
   <button
     type="button"
     role="menuitem"
@@ -210,7 +210,7 @@ const AppRail = ({
   const { settings } = useSettings();
   const projectHeading = useRef<HTMLDivElement>(null);
   const [projectEditor, setProjectEditor] = useState<{ id?: string; name: string } | null>(null);
-  const [foldedProjects, setFoldedProjects] = useState<ReadonlySet<string>>(() => new Set());
+  const [projectExpansion, setProjectExpansion] = useState<ReadonlyMap<string, boolean>>(() => new Map());
   const [projectBusy, setProjectBusy] = useState(false);
   const [projectError, setProjectError] = useState(false);
   const projects = projectStore.projects;
@@ -521,6 +521,39 @@ const AppRail = ({
     if (target instanceof HTMLElement) target.focus();
   };
 
+  function renderMenuTrigger(id: string, label: string, horizontal = false) {
+    const open = openMenuId === id;
+    const Icon = horizontal ? Ellipsis : EllipsisVertical;
+    return (
+      <button
+        type="button"
+        className="chat-menu-btn ui-rail-menu-trigger"
+        ref={(element) => {
+          if (element) menuTriggerRefs.current.set(id, element);
+          else menuTriggerRefs.current.delete(id);
+        }}
+        title={label}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? `rail-session-menu-${id}` : undefined}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpenMenuId(open ? null : id);
+          if (!open) focusSessionMenuItem(id);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+          event.preventDefault();
+          setOpenMenuId(id);
+          focusSessionMenuItem(id, event.key === 'ArrowUp' ? 'last' : 'first');
+        }}
+      >
+        <Icon size={17} aria-hidden="true" />
+      </button>
+    );
+  }
+
   const renderSession = (session) => {
     const isFavorite = favorites.includes(session.session_id);
     const activity = sessionActivity[session.session_id];
@@ -631,44 +664,7 @@ const AppRail = ({
                 openMenuId === session.session_id && 'ui-rail-menu-anchor-open'
               )}
             >
-              <button
-                type="button"
-                className="chat-menu-btn ui-rail-menu-trigger"
-                ref={(element) => {
-                  if (element) menuTriggerRefs.current.set(session.session_id, element);
-                  else menuTriggerRefs.current.delete(session.session_id);
-                }}
-                title={t('rail.menu')}
-                aria-label={t('rail.menu')}
-                aria-haspopup="menu"
-                aria-expanded={openMenuId === session.session_id}
-                aria-controls={
-                  openMenuId === session.session_id
-                    ? `rail-session-menu-${session.session_id}`
-                    : undefined
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const shouldOpen = openMenuId !== session.session_id;
-                  setOpenMenuId(shouldOpen ? session.session_id : null);
-                  if (shouldOpen) focusSessionMenuItem(session.session_id);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-                  event.preventDefault();
-                  setOpenMenuId(session.session_id);
-                  focusSessionMenuItem(
-                    session.session_id,
-                    event.key === 'ArrowUp' ? 'last' : 'first'
-                  );
-                }}
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <circle cx="12" cy="5" r="2" />
-                  <circle cx="12" cy="12" r="2" />
-                  <circle cx="12" cy="19" r="2" />
-                </svg>
-              </button>
+              {renderMenuTrigger(session.session_id, t('rail.menu'))}
               {openMenuId === session.session_id && (
                 <div
                   className="chat-dropdown-menu ui-rail-menu"
@@ -1125,119 +1121,131 @@ const AppRail = ({
                 <p role="alert">{t('projects.failed')}</p>
               )}
               {projects.map((project) => {
-                const expanded = !foldedProjects.has(project.id);
+                const chats = filteredSessions.filter((item) => item.workspace_id === project.id);
                 const active = project.id === activeProjectId;
+                const expanded = projectExpansion.get(project.id) ?? (active || Boolean(searchQuery.trim()));
                 const chatsId = 'project-chats-' + project.id;
+                const menuId = 'project-' + project.id;
+                const menuOpen = openMenuId === menuId;
+                const currentChat = localSessions.find((item) => item.session_id === currentSessionId);
+                const canMoveChat = currentChat && !currentChat.is_public &&
+                  (!currentChat.source || currentChat.source === 'web') &&
+                  currentChat.workspace_id !== project.id;
+                const folder = expanded && chats.length > 0
+                  ? <FolderOpen size={17} strokeWidth={1.7} aria-hidden="true" />
+                  : <ProjectIcon />;
+
                 return (
-                <div key={project.id} className={cn('ui-rail-project', active && 'is-active')}>
-                  <div className="ui-rail-project-row">
-                    <button
-                      type="button"
-                      className="ui-rail-project-fold"
-                      aria-label={t('projects.showChats', { name: project.name })}
-                      aria-expanded={expanded}
-                      aria-controls={chatsId}
-                      onClick={() => {
-                        setFoldedProjects((previous) => {
-                          const next = new Set(previous);
-                          if (next.has(project.id)) next.delete(project.id);
-                          else next.add(project.id);
-                          return next;
-                        });
-                      }}
-                    >
-                      <ChevronRight size={15} aria-hidden="true" />
-                    </button>
-                    <button type="button" className="ui-rail-project-name" aria-current={active ? 'true' : undefined} onClick={() => onOpenProject(project.id)} title={project.name}>
-                      <ProjectIcon />
-                      <span>{project.name}</span>
-                    </button>
-                  </div>
-                  <div className="ui-rail-project-actions">
-                    <button
-                      type="button"
-                      disabled={projectBusy}
-                      aria-label={t('rail.newChat')}
-                      title={t('rail.newChat')}
-                      onClick={() => onOpenProject(project.id)}
-                    >
-                      <Plus size={17} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={projectBusy}
-                      aria-label={t('projects.details')}
-                      title={t('projects.details')}
-                      onClick={() => onProjectSettings(project.id)}
-                    >
-                      <Settings2 size={17} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={projectBusy}
-                      aria-label={t('rail.rename')}
-                      title={t('rail.rename')}
-                      onClick={() => setProjectEditor(project)}
-                    >
-                      <Pencil size={16} aria-hidden="true" />
-                    </button>
-                    {currentSessionId &&
-                      !localSessions.some(
-                        (item) =>
-                          item.session_id === currentSessionId && item.workspace_id === project.id
-                      ) && (
+                  <div key={project.id} className={cn('ui-rail-project', active && 'is-active')}>
+                    <div className={cn('ui-rail-project-row', menuOpen && 'is-menu-open')}>
+                      {chats.length > 0 ? (
+                        <button
+                          type="button"
+                          className="ui-rail-project-fold"
+                          title={t('projects.showChats', { name: project.name })}
+                          aria-label={t('projects.showChats', { name: project.name })}
+                          aria-expanded={expanded}
+                          aria-controls={chatsId}
+                          onClick={() => setProjectExpansion((previous) => new Map(previous).set(project.id, !expanded))}
+                        >
+                          <span className="ui-rail-project-folder">{folder}</span>
+                          <ChevronRight className="ui-rail-project-chevron" size={16} aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span className="ui-rail-project-fold ui-rail-project-folder" aria-hidden="true">{folder}</span>
+                      )}
+                      <button
+                        type="button"
+                        className="ui-rail-project-name"
+                        aria-current={active ? 'true' : undefined}
+                        onClick={() => onOpenProject(project.id)}
+                        title={project.name}
+                      >
+                        <span>{project.name}</span>
+                      </button>
+                      <div className="ui-rail-project-actions">
+                        <div className={cn('chat-menu-wrapper ui-rail-menu-anchor', menuOpen && 'ui-rail-menu-anchor-open')}>
+                          {renderMenuTrigger(menuId, t('projects.actions', { name: project.name }), true)}
+                          {menuOpen && (
+                            <div
+                              className="chat-dropdown-menu ui-rail-menu ui-rail-project-menu"
+                              id={'rail-session-menu-' + menuId}
+                              role="menu"
+                              onKeyDown={(event) => handleSessionMenuKeyDown(event, menuId)}
+                            >
+                              <RailMenuItem
+                                icon={<Settings2 size={16} aria-hidden="true" />}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  onProjectSettings(project.id);
+                                }}
+                              >
+                                {t('projects.details')}
+                              </RailMenuItem>
+                              <RailMenuItem
+                                icon={<Pencil size={16} aria-hidden="true" />}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setProjectEditor(project);
+                                }}
+                              >
+                                {t('rail.rename')}
+                              </RailMenuItem>
+                              {canMoveChat && (
+                                <RailMenuItem
+                                  icon={<ArrowRight size={16} aria-hidden="true" />}
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    void changeProject(async () => {
+                                      await projectStore.moveChat(currentChat.session_id, project.id);
+                                      onSessionMoved(currentChat.session_id, project.id);
+                                      setLocalSessions((items) => items.map((item) =>
+                                        item.session_id === currentChat.session_id
+                                          ? { ...item, workspace_id: project.id }
+                                          : item
+                                      ));
+                                    });
+                                  }}
+                                >
+                                  {t('projects.moveCurrent')}
+                                </RailMenuItem>
+                              )}
+                              <RailMenuItem
+                                danger
+                                icon={<Trash2 size={16} aria-hidden="true" />}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  if (!window.confirm(t('projects.confirmRemove', { name: project.name }))) return;
+                                  void changeProject(async () => {
+                                    await projectStore.remove(project.id);
+                                    onProjectsChanged();
+                                    setLocalSessions((items) => items.map((item) =>
+                                      item.workspace_id === project.id ? { ...item, workspace_id: null } : item
+                                    ));
+                                  });
+                                }}
+                              >
+                                {t('rail.delete')}
+                              </RailMenuItem>
+                            </div>
+                          )}
+                        </div>
                         <button
                           type="button"
                           disabled={projectBusy}
-                          aria-label={t('projects.moveCurrent')}
-                          title={t('projects.moveCurrent')}
-                          onClick={() =>
-                            void changeProject(async () => {
-                              await projectStore.moveChat(currentSessionId, project.id);
-                              onSessionMoved(currentSessionId, project.id);
-                              setLocalSessions((items) =>
-                                items.map((item) =>
-                                  item.session_id === currentSessionId
-                                    ? { ...item, workspace_id: project.id }
-                                    : item
-                                )
-                              );
-                            })
-                          }
+                          className="ui-rail-project-new"
+                          aria-label={t('projects.newChatInProject', { name: project.name })}
+                          title={t('projects.newChatInProject', { name: project.name })}
+                          onClick={() => onOpenProject(project.id)}
                         >
-                          <ArrowRight size={17} aria-hidden="true" />
+                          <SquarePen size={16} strokeWidth={1.7} aria-hidden="true" />
                         </button>
-                      )}
-                    <button
-                      type="button"
-                      disabled={projectBusy}
-                      aria-label={t('rail.delete')}
-                      title={t('rail.delete')}
-                      onClick={() => {
-                        if (!window.confirm(t('projects.confirmRemove', { name: project.name })))
-                          return;
-                        void changeProject(async () => {
-                          await projectStore.remove(project.id);
-                          onProjectsChanged();
-                          setLocalSessions((items) =>
-                            items.map((item) =>
-                              item.workspace_id === project.id
-                                ? { ...item, workspace_id: null }
-                                : item
-                            )
-                          );
-                        });
-                      }}
-                    >
-                      <Trash2 size={17} aria-hidden="true" />
-                    </button>
+                      </div>
+                    </div>
+                    <ul className="ui-rail-project-chats" id={chatsId} hidden={!expanded || chats.length === 0}>
+                      {expanded && chats.map(renderSession)}
+                    </ul>
                   </div>
-                  <ul id={chatsId} hidden={!expanded}>
-                    {filteredSessions
-                      .filter((item) => item.workspace_id === project.id)
-                      .map(renderSession)}
-                  </ul>
-                </div>
                 );
               })}
             </li>

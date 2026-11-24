@@ -600,16 +600,6 @@ class AgentWorkspaceTicket(db.Model):
     expires = db.Column(db.BigInteger, nullable=False, index=True)
 
 
-class AgentCodexLogin(db.Model):
-    __tablename__ = "agent_codex_login"
-    slot_id = db.Column(
-        db.Integer, db.ForeignKey("agent_workspace_slot.id", ondelete="CASCADE"), primary_key=True
-    )
-    attempt_id = db.Column(db.String(32), nullable=False)
-    expires_at = db.Column(db.BigInteger, nullable=False, index=True)
-    encrypted_code = db.Column(db.Text)
-
-
 class TelegramAgentSettings(db.Model):
     __tablename__ = "telegram_agent_settings"
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)

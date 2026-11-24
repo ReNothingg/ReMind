@@ -159,9 +159,7 @@
 .auth-card,
 .profile-card,
 .file-modal-content,
-.user-settings-content,
-.translation-panel,
-.settings-tabs {
+.translation-panel {
   background: var(--color-bg-surface);
   background-color: var(--color-bg-surface);
   border-radius: var(--radius-md);
@@ -172,9 +170,7 @@
 html[data-theme='light'] .auth-card,
 html[data-theme='light'] .profile-card,
 html[data-theme='light'] .file-modal-content,
-html[data-theme='light'] .user-settings-content,
-html[data-theme='light'] .translation-panel,
-html[data-theme='light'] .settings-tabs {
+html[data-theme='light'] .translation-panel {
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
 }
@@ -182,9 +178,7 @@ html[data-theme='light'] .settings-tabs {
 html:not([data-theme='light']) .auth-card,
 html:not([data-theme='light']) .profile-card,
 html:not([data-theme='light']) .file-modal-content,
-html:not([data-theme='light']) .user-settings-content,
-html:not([data-theme='light']) .translation-panel,
-html:not([data-theme='light']) .settings-tabs {
+html:not([data-theme='light']) .translation-panel {
   background-color: rgba(var(--color-black-raw), 0.95);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }

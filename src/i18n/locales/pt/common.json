@@ -616,6 +616,12 @@
     "github": "GitHub"
   },
   "settings": {
+    "navigation": {
+      "work": "Espaço de trabalho",
+      "application": "Aplicativo",
+      "data": "Dados e informações",
+      "back": "Voltar às configurações"
+    },
     "title": "Definições",
     "close": "Fechar",
     "tabs": {
@@ -1669,6 +1675,8 @@
     }
   },
   "projects": {
+    "actions": "Ações de {{name}}",
+    "newChatInProject": "Novo chat em {{name}}",
     "showChats": "Chats de {{name}}",
     "personalChat": "Chat pessoal",
     "recentChats": "Chats recentes do projeto",

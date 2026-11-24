@@ -1748,6 +1748,7 @@ const MainLayout = () => {
       {isSettingsOpen && (
         <Suspense fallback={null}>
           <SettingsModal
+            compact={isMobileViewport}
             onClose={() => {
               setSettingsOpen(false);
               clearHash();

@@ -607,6 +607,12 @@
     "github": "GitHub"
   },
   "settings": {
+    "navigation": {
+      "work": "工作区",
+      "application": "应用",
+      "data": "数据与信息",
+      "back": "返回设置列表"
+    },
     "title": "设置",
     "close": "关闭",
     "tabs": {
@@ -1650,6 +1656,8 @@
     }
   },
   "projects": {
+    "actions": "项目「{{name}}」的操作",
+    "newChatInProject": "在「{{name}}」中新建聊天",
     "showChats": "{{name}} 项目的聊天",
     "personalChat": "个人聊天",
     "recentChats": "项目最近的聊天",
