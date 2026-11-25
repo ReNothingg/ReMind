@@ -575,6 +575,25 @@
     "availableUntil": "Disponível até {{date}}"
   },
   "rail": {
+    "sidebar": {
+      "label": "Barra lateral",
+      "sections": "Seções",
+      "more": "Mais",
+      "pin": "Fixar {{name}}",
+      "unpin": "Desafixar {{name}}",
+      "searchPlaceholder": "Título ou mensagem",
+      "closeSearch": "Fechar pesquisa",
+      "view": "Opções de visualização",
+      "group": "Agrupamento",
+      "flat": "Sem agrupar",
+      "order": "Ordem dos chats",
+      "recent": "Por atividade",
+      "alphabetical": "Por título",
+      "personal": "Sem projeto",
+      "showMore": "Mostrar mais",
+      "searchUnavailable": "A busca no histórico está indisponível. Exibindo resultados da lista de chats.",
+      "searchPartial": "Os resultados estão incompletos. Refine a busca."
+    },
     "newChat": "Novo chat",
     "searchChats": "Pesquisar chats",
     "searchHint": "Dica: título, tópico, última mensagem",

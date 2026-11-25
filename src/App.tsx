@@ -133,7 +133,13 @@ function normalizeAppPath(path: string): string {
 }
 
 const MainLayout = () => {
-  const [isRailExpandedDesktop, setRailExpandedDesktop] = useState(true);
+  const [isRailExpandedDesktop, setRailExpandedDesktop] = useState(() => {
+    try {
+      return window.localStorage.getItem('remind:sidebar-desktop-collapsed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const [isMobileRailOpen, setMobileRailOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_RAIL_MEDIA_QUERY).matches : false
@@ -419,13 +425,14 @@ const MainLayout = () => {
         rail.querySelectorAll<HTMLElement>(
           'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
         )
-      ).filter((element) => !element.hasAttribute('hidden'));
+      ).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
 
     const frame = window.requestAnimationFrame(() => {
-      rail.querySelector<HTMLElement>('[data-rail-close]')?.focus();
+      if (!rail.contains(document.activeElement)) rail.querySelector<HTMLElement>('[data-rail-close]')?.focus();
     });
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || (event.target instanceof Element && event.target.closest('.sidebar-floating-menu'))) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         setMobileRailOpen(false);
@@ -849,19 +856,12 @@ const MainLayout = () => {
         return;
       }
 
-      const body = document.body;
       const appRail = document.getElementById('appRail');
       const globalControls = document.querySelector('.global-controls');
-      const target = event.target as Node | null;
-
-      if (
-        (target === body ||
-          target === document.querySelector('main') ||
-          (globalControls && target && !globalControls.contains(target))) &&
-        (!appRail || !target || !appRail.contains(target))
-      ) {
-        closeMenu();
-      }
+      const path = event.composedPath();
+      if (path.some((node) => node === appRail || node === globalControls ||
+        (node instanceof Element && node.classList.contains('sidebar-floating-menu')))) return;
+      closeMenu();
     };
 
     let touchStartX = 0;
@@ -906,6 +906,14 @@ const MainLayout = () => {
 
     setRailExpandedDesktop((prev) => !prev);
   }, [isMobileViewport]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('remind:sidebar-desktop-collapsed', String(!isRailExpandedDesktop));
+    } catch {
+      return;
+    }
+  }, [isRailExpandedDesktop]);
 
   const handleSelectSession = useCallback(
     (id: string) => {

@@ -6,12 +6,17 @@
   backdrop-filter: none;
 }
 
+.user-settings-modal.ui-modal-overlay:not(.ui-modal-ghost),
+.user-settings-modal.ui-modal-overlay:not(.ui-modal-ghost) > .settings-shell {
+  animation: none;
+}
+
 .user-settings-modal .settings-shell {
   display: grid;
   grid-template:
     'title header' 60px
     'nav content' minmax(0, 1fr)
-    / 214px minmax(0, 1fr);
+    / 222px minmax(0, 1fr);
   width: min(920px, calc(100vw - 48px));
   height: min(700px, calc(100dvh - 48px));
   min-height: 0;
@@ -145,6 +150,8 @@
 }
 
 .settings-tab-label {
+  min-width: 0;
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 

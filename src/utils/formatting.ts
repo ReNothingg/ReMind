@@ -647,8 +647,7 @@ const buildDiagramBlock = ({ language, filename, codeContent, labels }: DiagramB
     formatLabels.codeBlock
   );
 
-  return `
-    <div class="code-block diagram-block ${meta.blockClass}" data-language="${normalizedLanguage}" data-filename="${safeName}" data-source-filename="${safeSourceFilename}">
+  return `<div class="code-block diagram-block ${meta.blockClass}" data-language="${normalizedLanguage}" data-filename="${safeName}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeName}</span>
@@ -802,8 +801,7 @@ md.renderer.rules.fence = (tokens, idx, _options, env) => {
     actualLanguage,
     formatLabels.codeBlock
   );
-  return `
-    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
+  return `<div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>
@@ -1127,8 +1125,7 @@ userMd.renderer.rules.fence = (tokens, idx, _options, env) => {
     formatLabels.codeBlock
   );
 
-  return `
-    <div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
+  return `<div class="code-block" data-language="${safeLanguage}" data-filename="${safeFilename}" data-source-filename="${safeSourceFilename}">
         <div class="code-block-header">
             <span class="code-block-icon">&lt;/&gt;</span>
             <span class="code-block-filename">${safeFilename}</span>

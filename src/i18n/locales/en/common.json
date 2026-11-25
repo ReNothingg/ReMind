@@ -637,6 +637,25 @@
     "availableUntil": "Available until {{date}}"
   },
   "rail": {
+    "sidebar": {
+      "label": "Sidebar",
+      "sections": "Sections",
+      "more": "More",
+      "pin": "Pin {{name}}",
+      "unpin": "Unpin {{name}}",
+      "searchPlaceholder": "Title or message",
+      "closeSearch": "Close search",
+      "view": "View options",
+      "group": "Grouping",
+      "flat": "Ungrouped",
+      "order": "Chat order",
+      "recent": "By activity",
+      "alphabetical": "By title",
+      "personal": "Without a project",
+      "showMore": "Show more",
+      "searchUnavailable": "History search is unavailable. Showing matches from the chat list.",
+      "searchPartial": "Results are incomplete. Refine your search."
+    },
     "newChat": "New chat",
     "searchChats": "Search chats",
     "searchHint": "Hint: title, topic, last message",

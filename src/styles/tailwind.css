@@ -47,6 +47,7 @@
 @import './features/canvas.css' layer(components);
 @import './design-language.css';
 @import './features/settings-shell.css';
+@import './features/sidebar.css';
 @import './motion.css';
 
 @source "../../index.html";

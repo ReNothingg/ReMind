@@ -399,23 +399,12 @@
   padding-block: .3rem .65rem;
 }
 
-.ui-rail-projects-heading,
 .ui-rail-projects form {
   display: flex;
   align-items: center;
   gap: .4rem;
 }
 
-.ui-rail-projects-heading {
-  justify-content: space-between;
-  min-height: 32px;
-  padding-inline: .6rem .2rem;
-  color: var(--color-text-secondary);
-  font-size: .79rem;
-  font-weight: 570;
-}
-
-.ui-rail-projects-heading button,
 .ui-rail-projects form button {
   display: grid;
   min-width: 32px;
@@ -425,7 +414,6 @@
   color: var(--color-text-secondary);
 }
 
-.ui-rail-projects-heading button:hover,
 .ui-rail-projects form button:hover {
   background: var(--color-bg-hover);
   color: var(--color-text-primary);

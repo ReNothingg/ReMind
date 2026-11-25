@@ -2702,6 +2702,19 @@
         "parameters": [{"in": "path", "name": "provider", "required": true, "schema": {"type": "string"}}]
       }
     },
+    "/api/sidebar/session-search": {
+      "get": {
+        "summary": "Search visible chat history belonging to the requesting account",
+        "parameters": [
+          {"name": "q", "in": "query", "required": true, "schema": {"type": "string", "maxLength": 120}},
+          {"name": "source", "in": "query", "schema": {"type": "string", "enum": ["all", "web", "telegram"]}}
+        ],
+        "responses": {
+          "200": {"description": "Matches and visible snippets", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SidebarSessionSearch"}}}},
+          "401": {"description": "Authentication required", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}
+        }
+      }
+    },
     "/api/chat-references": {
       "get": {
         "summary": "List the owner's private chats that can be attached to a message",
@@ -4314,6 +4327,14 @@
         "type": "object",
         "required": ["chats"],
         "properties": {"chats": {"type": "array", "maxItems": 30, "items": {"$ref": "#/components/schemas/ChatReference"}}}
+      },
+      "SidebarSessionSearch": {
+        "type": "object",
+        "required": ["sessions", "partial"],
+        "properties": {
+          "sessions": {"type": "array", "maxItems": 40, "items": {"$ref": "#/components/schemas/SessionSummary"}},
+          "partial": {"type": "boolean"}
+        }
       },
       "SessionSummary": {
         "type": "object",

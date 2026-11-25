@@ -575,6 +575,25 @@
     "availableUntil": "Disponible jusqu’au {{date}}"
   },
   "rail": {
+    "sidebar": {
+      "label": "Barre latérale",
+      "sections": "Sections",
+      "more": "Plus",
+      "pin": "Épingler {{name}}",
+      "unpin": "Désépingler {{name}}",
+      "searchPlaceholder": "Titre ou message",
+      "closeSearch": "Fermer la recherche",
+      "view": "Options d’affichage",
+      "group": "Regroupement",
+      "flat": "Sans groupe",
+      "order": "Ordre des discussions",
+      "recent": "Par activité",
+      "alphabetical": "Par titre",
+      "personal": "Sans projet",
+      "showMore": "Afficher plus",
+      "searchUnavailable": "La recherche dans l’historique est indisponible. Les résultats proviennent de la liste des discussions.",
+      "searchPartial": "Les résultats sont incomplets. Affinez la recherche."
+    },
     "newChat": "Nouveau chat",
     "searchChats": "Rechercher des chats",
     "searchHint": "Astuce : titre, sujet, dernier message",

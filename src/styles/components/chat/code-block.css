@@ -5,6 +5,7 @@
   overflow: hidden;
   margin: calc(var(--spacing-unit) * 4) 0 !important;
   font-family: var(--font-family-code) !important;
+  white-space: normal;
 
   max-width: 100%;
   box-sizing: border-box;
@@ -171,7 +172,6 @@
 }
 
 .code-block-content pre {
-  margin: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
   font-size: 0.875em !important;
@@ -400,6 +400,7 @@ pre.code-line-numbered {
 
 pre.code-line-numbered > code {
   grid-column: 2;
+  grid-row: 1;
   min-width: 0;
   padding: 0 1em;
   display: block;

@@ -25,6 +25,13 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+function focusableElements(content: HTMLElement) {
+  return Array.from(content.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.tabIndex >= 0 && element.getAttribute('aria-hidden') !== 'true' &&
+      element.getClientRects().length > 0
+  );
+}
+
 let openModalCount = 0;
 
 const GHOST_MIN_OPEN_MS = 120;
@@ -128,7 +135,8 @@ const ModalShell = ({
       const alreadyFocusedInside = content.contains(document.activeElement);
       if (alreadyFocusedInside) return;
 
-      const focusTarget = content.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) || content;
+      const focusTarget = content.querySelector<HTMLElement>('[data-modal-autofocus]') ||
+        focusableElements(content)[0] || content;
       focusTarget.focus({ preventScroll: true });
     });
 
@@ -157,10 +165,7 @@ const ModalShell = ({
     const content = internalContentRef.current;
     if (!content) return;
 
-    const focusable = Array.from(content.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-      (element) =>
-        !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true'
-    );
+    const focusable = focusableElements(content);
 
     if (focusable.length === 0) {
       event.preventDefault();

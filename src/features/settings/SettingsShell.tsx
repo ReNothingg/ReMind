@@ -89,6 +89,7 @@ export default function SettingsShell({
                   role={compact ? undefined : 'tab'} aria-selected={compact ? undefined : row.id === activeId}
                   aria-controls={!compact && row.id === activeId ? 'settings-panel-' + row.id : undefined}
                   id={'settings-tab-' + row.id} data-settings-tab={row.id}
+                  data-modal-autofocus={!compact && row.id === activeId ? '' : undefined}
                   tabIndex={compact || row.id === activeId ? 0 : -1}
                   onFocus={(event) => event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })}
                   onClick={() => onSelect(row.id)}>
@@ -109,7 +110,7 @@ export default function SettingsShell({
                 <ChevronLeft size={21} strokeWidth={1.8} aria-hidden="true" />
               </button>
             )}
-            <h2 id={pageTitleId} ref={heading} tabIndex={-1}>{active.label}</h2>
+            <h2 id={pageTitleId} ref={heading} tabIndex={-1} data-modal-autofocus={compact ? '' : undefined}>{active.label}</h2>
             {closeButton}
           </header>
           <div className="settings-content" role={compact ? undefined : 'tabpanel'}

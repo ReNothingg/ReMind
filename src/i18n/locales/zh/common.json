@@ -566,6 +566,25 @@
     "availableUntil": "可用至 {{date}}"
   },
   "rail": {
+    "sidebar": {
+      "label": "侧边栏",
+      "sections": "功能区",
+      "more": "更多",
+      "pin": "固定「{{name}}」",
+      "unpin": "取消固定「{{name}}」",
+      "searchPlaceholder": "标题或消息",
+      "closeSearch": "关闭搜索",
+      "view": "视图选项",
+      "group": "分组方式",
+      "flat": "不分组",
+      "order": "聊天顺序",
+      "recent": "按活动排序",
+      "alphabetical": "按标题排序",
+      "personal": "未归入项目",
+      "showMore": "显示更多",
+      "searchUnavailable": "历史记录搜索暂不可用。当前显示聊天列表中的匹配项。",
+      "searchPartial": "结果不完整，请缩小搜索范围。"
+    },
     "newChat": "新聊天",
     "searchChats": "搜索聊天",
     "searchHint": "提示：标题、主题、最后一条消息",

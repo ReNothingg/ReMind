@@ -641,6 +641,10 @@ export interface components {
       title: string;
       workspace_id?: string | null;
     };
+    SidebarSessionSearch: {
+      partial: boolean;
+      sessions: components["schemas"]["SessionSummary"][];
+    };
     SynthesizeRequest: {
       text: string;
     };
@@ -1946,6 +1950,28 @@ export interface paths {
           };
         };
         "503": {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/sidebar/session-search": {
+    get: {
+      parameters: {
+        query: {
+          q: string;
+          source?: "all" | "web" | "telegram";
+        };
+      };
+      responses: {
+        "200": {
+          content: {
+            "application/json": components["schemas"]["SidebarSessionSearch"];
+          };
+        };
+        "401": {
           content: {
             "application/json": components["schemas"]["ErrorResponse"];
           };

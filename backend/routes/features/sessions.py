@@ -53,6 +53,7 @@ from backend.services.chat.model_selection import (
     save_model_selection,
     selection_view,
 )
+from backend.services.chat.sidebar_search import search_sidebar_sessions
 from backend.services.minds import get_mind_for_session_binding, serialize_mind_for_session
 from backend.services.tools.canvas_tools import MAX_TEXTDOC_CONTENT_LENGTH
 
@@ -68,6 +69,7 @@ guest_chat_import_limiter = RateLimiter(
     namespace="guest_chat_import",
 )
 chat_compaction_limiter = RateLimiter(max_requests=12, time_window=60, namespace="chat_compaction")
+sidebar_search_limiter = RateLimiter(max_requests=75, time_window=60, namespace="sidebar_chat_search")
 chat_reference_limiter = RateLimiter(max_requests=100, time_window=60, namespace="chat_references")
 model_selection_limiter = RateLimiter(max_requests=90, time_window=60, namespace="chat_model_selection")
 
@@ -199,6 +201,17 @@ def _sanitize_imported_guest_history(raw_history: object) -> list[dict]:
 
 
 def register_session_routes(api_bp):
+    @api_bp.get("/api/sidebar/session-search")
+    @rate_limit(sidebar_search_limiter)
+    @api_error_boundary("sidebar_search_failed")
+    def find_sidebar_sessions():
+        owner = require_authenticated_user_id()
+        query = request.args.get("q", "")
+        source = request.args.get("source", "all")
+        if len(query) > 120 or "\x00" in query or source not in {"all", "web", "telegram"}:
+            raise ApiError("sidebar_search_invalid", status=400, code="sidebar_search_invalid")
+        return make_ok(search_sidebar_sessions(owner, query, source))
+
     @api_bp.get("/api/chat-references")
     @rate_limit(chat_reference_limiter)
     @api_error_boundary("chat_references_unavailable")
